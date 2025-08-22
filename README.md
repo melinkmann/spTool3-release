@@ -1,6 +1,8 @@
 # <img width="53" height="50" alt="20240418_symbol" src="https://github.com/user-attachments/assets/ed5ca55e-35ed-42b4-a225-273b7f2ff93d" /> Single particle tool - spTool
 
-spTool provides a Java-based graphical user interface platform for the analysis of single event mass spectrometry data.
+spTool is a Java-based graphical user interface platform for the analysis of single event mass spectrometry data.
+Please cite it like this:
+>Matthias Elinkmann, spTool: single particle tool, 2025. https://github.com/melinkmann/spTool3-release.
 
 ## Applications in inductively coupled plasma-mass spectrometry (ICP-MS)
 Single event ICP-MS including
