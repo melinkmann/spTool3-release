@@ -14,3 +14,4 @@ Check out the [wiki](https://github.com/melinkmann/spTool3-release/wiki) for mor
 **Content of this repository is constantly updated.**
 ***
 Matthias Elinkmann
+<img width="1920" height="120" alt="Bild1" src="https://github.com/user-attachments/assets/9ee0553a-ed71-4b2c-aa71-99c006845925" />
