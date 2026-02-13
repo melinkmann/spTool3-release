@@ -1,0 +1,136 @@
+<!--
+  ~  Copyright 2026 Matthias Elinkmann, spTool3
+  ~
+  ~  Licensed under the Apache License, Version 2.0 (the "License");
+  ~  you may not use this file except in compliance with the License.
+  ~  You may obtain a copy of the License at
+  ~
+  ~       http://www.apache.org/licenses/LICENSE-2.0
+  ~
+  ~  Unless required by applicable law or agreed to in writing, software
+  ~  distributed under the License is distributed on an "AS IS" BASIS,
+  ~  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  ~  See the License for the specific language governing permissions and
+  ~  limitations under the License.
+  ~
+  -->
+
+<!--<!DOCTYPE html>-->
+<!--<html>-->
+<!--<head>-->
+<!--  <meta charset="UTF-8">-->
+<!--  <title>Test Page</title>-->
+<!--  <link rel="stylesheet" type="text/css" href="style.css">-->
+<!--</head>-->
+<!--<body>-->
+<!--  <h1>Hello from JavaFX WebView!</h1>-->
+<!--  <p>This text should be styled in green if CSS loads correctly.</p>-->
+<!--  <img src="images/image001.png" alt="My Image" width="300">-->
+<!--</body>-->
+<!--</html>-->
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SpTool3 User Guide</title>
+</head>
+<body>
+
+
+<header style="display: flex; align-items: center;">
+    <h1>spTool</h1>
+    <img src="images/image001.png" alt="My Image" width="100" style="margin-right: 20px;">
+</header>
+
+<section>
+
+    <h2>Single Particle Tool</h2>
+    <article>
+        <p>For the analysis of single event ICP-MS data.</p>
+    </article>
+
+    <h2>Hotkeys and key combinations</h2>
+    <article>
+        <p><kbd>Control + O</kbd> Open project</p>
+        <p><kbd>Control + R</kbd> Reprocess</p>
+        <p><kbd>Control + G</kbd> Create ('generate')</p>
+        <p><kbd>Control + E</kbd> Export dialog</p>
+        <p><kbd>Control + I</kbd> Go to import menu</p>
+        <p><kbd>Alt + I</kbd> Import dialog</p>
+        <p><kbd>Control + S</kbd> Save Project</p>
+        <p><kbd>Alt + S</kbd> Save GUI appearance</p>
+    </article>
+
+    <h2>Quick troubleshooting</h2>
+    <article>
+        <h3>Installation</h3>
+        <p>spTool is executed from the batch file in the folder you received. If you keep this folder on
+            a
+            network drive (e.g., virtual drives, Google Drive, OneDrive, etc.), you may encounter issues.
+            On university or company systems, the Windows desktop is often mapped to such a network drive.
+            If spTool behaves unexpectedly, try copying the folder to a local path on your machine and run
+            it from there.</p>
+    </article>
+
+    <h2>Plot Navigation</h2>
+
+    <article>
+        <h3>Go Back to Previous View</h3>
+        <p><strong>Shortcut:</strong> <kbd>Control + Z</kbd></p>
+        <p><strong>Reset graph entirely</strong>: Click left mouse and drag up.</p>
+    </article>
+
+    <article>
+        <h3>Move the Plot</h3>
+        <ul>
+            <li><strong>Option A:</strong> <kbd>Alt</kbd> + 1× left mouse click, then move the mouse</li>
+            <li><strong>Option B:</strong> 2× left mouse click, then drag the mouse</li>
+        </ul>
+    </article>
+
+    <article>
+        <h3>Zoom</h3>
+        <ul>
+            <li><strong>Option A:</strong> Scroll wheel → zoom both x and y axes</li>
+            <li><strong>Option B:</strong> Scroll wheel + <kbd>Control</kbd> → zoom x axis</li>
+            <li><strong>Option C:</strong> Scroll wheel + <kbd>Alt</kbd> → zoom y axis</li>
+        </ul>
+    </article>
+
+    <article>
+        <h3>Arrow Keys</h3>
+        <p>Click on the plot to activate arrow navigation.</p>
+        <ul>
+            <li><strong>Arrow keys
+                (<kbd>Left</kbd>/<kbd>Right</kbd>/<kbd>Up</kbd>/<kbd>Down</kbd>):</strong> Move the plot
+            </li>
+            <li><strong><kbd>Control</kbd> + <kbd>Left</kbd>/<kbd>Right</kbd>:</strong> Zoom in/out for x
+                axis
+            </li>
+            <li><strong><kbd>Control</kbd> + <kbd>Up</kbd>/ <kbd>Down</kbd>:</strong> Zoom in/out for y
+                axis
+            </li>
+        </ul>
+    </article>
+
+    <article>
+        <h3>Dragging zoom</h3>
+        <ul>
+            <li><strong><kbd>Control</kbd> + Right mouse</strong> Zoom x axis by dragging</li>
+            <li><strong><kbd>Shift</kbd> + Left mouse:</strong> Zoom y axis by dragging</li>
+        </ul>
+    </article>
+
+    <article>
+        <h3>Transfer values from plots</h3>
+        <p>Double left click on a graph to copy current mouse position. Certain text fields in the user
+            interface accept values when double clicking on the text field while pressing
+            <kbd>control</kbd> key.</p>
+    </article>
+
+</section>
+</body>
+</html>

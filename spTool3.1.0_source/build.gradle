@@ -1,0 +1,255 @@
+/*
+ *  Copyright 2026 Matthias Elinkmann, spTool3
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ *
+ */
+
+
+
+plugins {
+    id "java"
+    id "application"
+    id "org.openjfx.javafxplugin" version "0.0.8"
+    //    id 'org.openjfx.javafxplugin' version '0.0.10' // testet Feb2022
+    /*
+    Returned
+    > Configure project :
+        Project : => no module-info.java found
+        OS detected as Windows
+
+     */
+    id "org.beryx.runtime" version "1.8.0"
+}
+
+sourceCompatibility = "15"
+targetCompatibility = "15"
+/*
+used to run with 12
+ */
+
+
+defaultTasks "runtimeZip"
+
+// Check the OS
+project.ext.osSuffix = org.gradle.internal.os.OperatingSystem.current().getName().replaceAll(" ", "_")
+if (org.gradle.internal.os.OperatingSystem.current().isMacOsX())
+    project.ext.osSuffix = "macOS"
+if (org.gradle.internal.os.OperatingSystem.current().isLinux())
+    project.ext.osSuffix = "Linux"
+if (org.gradle.internal.os.OperatingSystem.current().isWindows())
+    project.ext.osSuffix = "Windows"
+println "OS detected as " + project.ext.osSuffix
+
+
+group 'org.me'
+version = 'v'
+
+repositories {
+    mavenCentral()
+}
+
+
+ext {
+    guavaVersion = "29.0-jre"
+    controlsfxVersion = "11.0.1"
+    opencsvVersion = "5.1"
+}
+
+
+// https://openjfx.io/openjfx-docs/#gradle --> Suggests reducing redundany and using v17 but 17 does not work...
+javafx {
+    version = "12"
+    modules = ["javafx.controls",
+               "javafx.fxml",
+               "javafx.web", // HTML view
+    ]
+    dependencies {
+        // implementation("eu.hoefel:chemistry:1.0.0")
+        // System.out.println(Element.Ag.mass()); However, does not offer density.
+        // https://github.com/akmaier/CONRAD/tree/feced95c5c568d1901d7b8712e2a23f877a12494/data/materials
+        // https://www5.cs.fau.de/conrad/doc/indexa9b4.html?edu/stanford/rsl/conrad/physics/materials/database/MaterialsDB.html
+        // Has density but all in xml files and no mixed NP materials..
+        // implementation 'com.github.psambit9791:jdsp:2.0.0' // clashes with j free chart. version clash?
+        // I think it uses xchart methods with almost the same names as in jfree and this confuses gradle!
+        // If needed, try importing these:
+        // https://mvnrepository.com/artifact/org.knowm.xchart/xchart
+        //  implementation group: 'org.knowm.xchart', name: 'xchart', version: '3.8.3'
+        // implementation 'io.jhdf:jhdf:0.5.4' //--> TOFWERK import potentially
+
+        // implementation "org.jfree:jfreechart:1.5.0"
+        // implementation "org.jfree:jfreechart-fx:1.0.1"
+        // 1.5.5 somehow did not contain some marker.setLabelAnchor(RectangleAnchor.TOP_RIGHT); - "org.jfree:jfreechart:1.5.3" has it but nothing shows in plot
+        // implementation "org.jfree:jfreechart:1.5.5"
+
+        implementation 'org.jfree:org.jfree.chart.fx:2.0.1'
+        implementation "org.jfree:fxgraphics2d:1.8"
+        implementation "org.jfree:jfreesvg:3.3"
+
+        implementation("com.google.code.gson:gson:2.10.1")
+        implementation("org.openscience.cdk:cdk-bundle:2.11")
+
+        implementation "com.orsonpdf:orsonpdf:1.9"
+        implementation "com.google.guava:guava:$guavaVersion"
+        implementation "com.opencsv:opencsv:$opencsvVersion"
+        // https://mvnrepository.com/artifact/org.apache.commons/commons-math3
+//    implementation group: 'org.apache.commons', name: 'commons-math3', version: '3.0'
+        implementation group: 'org.apache.commons', name: 'commons-math3', version: '3.6.1'
+        // https://mvnrepository.com/artifact/org.apache.commons/commons-numbers-gamma
+        implementation group: 'org.apache.commons', name: 'commons-numbers-gamma', version: '1.1'
+        // implementation group: 'com.esotericsoftware', name: 'kryo', version: '5.6.0' // deep copy
+        // implementation 'com.google.code.gson:gson:2.10.1' // XML writer
+        implementation 'org.apache.logging.log4j:log4j-core:2.23.1'
+        implementation 'org.apache.logging.log4j:log4j-api:2.23.1'
+        implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-xml:2.17.1'
+        // implementation 'com.ibm.icu:icu4j:75.1'
+        implementation 'it.unimi.dsi:dsiutils:2.7.3'
+        implementation 'org.jetbrains:annotations:20.1.0'
+// https://mvnrepository.com/artifact/com.github.haifengl/smile-math
+        implementation 'com.github.haifengl:smile-math:2.6.0'
+        // https://mvnrepository.com/artifact/org.hipparchus/hipparchus -- apache commons statistics is not that good apparently.
+        implementation 'org.hipparchus:hipparchus-stat:2.0'
+        implementation 'org.apache.commons:commons-statistics-distribution:1.2'
+        // https://mvnrepository.com/artifact/org.apache.commons/commons-rng-core
+        implementation 'org.apache.commons:commons-rng-core:1.6'
+        // https://mvnrepository.com/artifact/de.gsi/chartfx
+//    implementation 'org.slf4j:slf4j-simple:2.0.9' // needs java15
+        // https://mvnrepository.com/artifact/io.github.ruozhuochen/savitzky-golay-filter
+        implementation 'io.github.ruozhuochen:savitzky-golay-filter:1.0.1'
+        // https://mvnrepository.com/artifact/org.moeaframework/moeaframework
+        // compileOnly 'org.moeaframework:moeaframework:5.1' // stats but does not give p val
+        // https://mvnrepository.com/artifact/jdistlib/jdistlib
+        // implementation 'jdistlib:jdistlib:0.5.1' old, fails, but would offer useful stats
+        // murmurhash3
+        implementation 'commons-codec:commons-codec:1.20.0'
+
+
+        // faster plotting library
+        //implementation 'io.fair-acc:chartfx:11.3.1' // needs java17 at least
+
+        /*
+         read pdf
+          // https://github.com/qwertme/OpenViewerFX
+          // https://stackoverflow.com/questions/48438136/error-displaying-some-pdfs-with-openviewerfx
+         */
+        // implementation 'org.jpedal:OpenViewerFX:6.6.14'
+
+        // https://mvnrepository.com/artifact/com.github.haifengl/smile-core
+        // Copied b/c the implemented logger crashed with sp looger.
+        // implementation group: 'com.github.haifengl', name: 'smile-core', version: '3.0.2'
+
+
+        // Tried this with highest compression but for Sample Objects no gain is observed.
+        //compile 'org.apache.commons:commons-compress:1.23.0'
+
+//    implementation "org.renjin:renjin-script-engine:3.5-beta43"
+//    compile group: 'org.apache.logging.log4j', name: 'log4j-api', version: '2.14.1'
+//    compile group: 'org.apache.logging.log4j', name: 'log4j-core', version: '2.14.1'
+    }
+}
+
+tasks.withType(JavaCompile) {
+    options.encoding = "UTF-8"
+}
+
+
+/*
+ * Set the basic Java runtime parameters (heap size etc.)
+ */
+application {
+    mainClass.set("MainLauncher"); // relative to src/main/java/ //"org.me.nano.MainLauncher"
+    applicationName = "spTool3"
+    executableDir = ""
+    applicationDefaultJvmArgs = ["-showversion",
+                                 "-XX:MaxHeapFreeRatio=100",
+                                 "-XX:InitialRAMPercentage=30",
+                                 "-XX:MinRAMPercentage=20", //80
+                                 "-XX:MaxRAMPercentage=90", //80 but trying 65 b/c the system freezes badly if sptool2 and e.g. excel are also open for processing
+                                 //"-Dprism.maxvram=2G", // v91 b/c  error message
+                                 "-Dprism.maxvram=2G",
+                                 "-Djava.library.path=lib",
+                                 "-enableassertions",
+                                 "-Dprism.order=sw", // Disable hardware acceleration may help with JFree bugs at high load
+                                 "-Dapple.awt.application.name=spTool3 ${version}",
+                                 // "-XX:+UnlockExperimentalVMOptions", // v39 recommended by SH
+                                 // "-XX:+UseZGC", // v39 recommended by SH
+                                 // "-XX:+UseParallelGC", // new and quite good else XX:+UseG1GC
+                                 "-XX:+UseG1GC", // chatgpt says is better at releasing memory
+                                 "-XX:G1PeriodicGCInterval=5000",
+                                 "-XX:+ExplicitGCInvokesConcurrent" // NO SPACES BEFORE -XX !!!
+    ]
+}
+
+/*
+ * Build the JVM runtime using jlink
+ */
+runtime {
+    options = ["--compress=2", "--vm=server", "--no-header-files", "--no-man-pages", "--output", "jre/jre"]
+    modules = ["java.desktop",
+               "java.logging",
+               "java.net.http",
+               "java.rmi",
+               "java.sql",
+               "java.datatransfer",
+               "java.management",
+               "java.xml",
+               "java.xml.crypto",
+               "jdk.xml.dom",
+               "java.naming",
+               "java.transaction.xa",
+               "java.scripting",
+               "java.compiler",
+               "jdk.jsobject",
+               "jdk.jfr",
+               "java.security.sasl",
+               "java.security.jgss",
+               "jdk.unsupported",
+               "jdk.unsupported.desktop"]
+
+    imageDir = file("${buildDir}/${applicationName}-${version}-${osSuffix}")
+    imageZip = file(relativePath(imageDir) + ".zip")
+}
+
+/*
+ * Provide a default start script for this platform
+ */
+startScripts {
+    applicationName = "startspTool3-" + osSuffix
+    classpath = files("lib/*")
+    doLast {
+        if (org.gradle.internal.os.OperatingSystem.current().isWindows()) {
+            delete unixScript
+            // Temporary fix for https://github.com/gradle/gradle/issues/10387
+            windowsScript.text = windowsScript.text.replace('set JAVA_HOME=\"%~dp0.."', 'set JAVA_HOME="%~dp0"')
+        } else {
+            delete windowsScript
+        }
+    }
+}
+
+/*
+ * Copy the resources and logging properties
+ */
+tasks.runtime.doLast {
+
+
+}
+
+/*
+ * This is important in order to copy all .java, .fxml, and help files into the final MZmine jar.
+ * The .java files are only for people who want to check the source codes.
+ * But the .fxml and help files are required for the GUI.
+ */
+jar {
+    sourceSets.main.resources.srcDirs += ["src/main/java"]
+}

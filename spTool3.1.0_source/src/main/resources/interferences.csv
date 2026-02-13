@@ -1,0 +1,3853 @@
+https://doi.org/10.1016/j.sab.2021.106098
+m/z	Analyte Element Ion	Element Overlap Ion Contains	Overlap ion	Ion type
+10	B	Be	9Be1H	hydride
+11	B	C	12C wing	carbide
+23	Na	Ca	46Ca++	doubly charged
+23	Na	Li	7Li16O	oxide
+23	Na	Li	6Li16O1H	hydroxide
+23	Na	Li	6Li17O	oxide
+23	Na	Ti	46Ti++	doubly charged
+23	Na	Ti	47Ti++	doubly charged
+24	Mg	C	12C12C	carbide
+24	Mg	Ca	48Ca++	doubly charged
+24	Mg	Li	7Li16O1H	hydroxide
+24	Mg	Li	7Li17O	oxide
+24	Mg	B	10B14N	nitride
+24	Mg	Li	6Li18O	oxide
+24	Mg	Li	6Li17O1H	hydroxide
+24	Na	Ti	47Ti++	doubly charged
+24	Mg	Ti	48Ti++	doubly charged
+24	Mg	Ti	49Ti++	doubly charged
+24	Mg	N	10B14N	nitride
+25	Mg	Li	7Li18O	oxide
+25	Mg	Be	9Be16O	oxide
+25	Mg	C	12C13C	carbide
+25	Mg	C	12C12C1H	carbide
+25	Mg	Li	7Li17O1H	hydroxide
+25	Mg	Li	6Li18O1H	hydroxide
+25	Mg	Mg	24Mg1H	hydride
+25	Mg	Ti	49Ti++	doubly charged
+25	Mg	Ti	50Ti++	doubly charged
+25	Mg	V	50V++	doubly charged
+25	Mg	V	51V++	doubly charged
+25	Mg	Cr	50Cr++	doubly charged
+25	Mg	B	11B14N	nitride
+25	Mg	N	11B14N	nitride
+26	Mg	V	51V++	doubly charged
+26	Mg	B	10B16O	oxide
+26	Mg	Be	9Be16O1H	hydroxide
+26	Mg	Be	9Be17O	oxide
+26	Mg	C	12C14N	nitride
+26	Mg	C	12C13C1H	hydride
+26	Mg	C	13C13C	carbide
+26	Mg	C	12C12C1H1H	carbide
+26	Mg	Li	7Li18O1H	hydroxide
+26	Mg	Cr	52Cr++	doubly charged
+26	Mg	Mg	25Mg1H	hydride
+26	Mg	Cr	53Cr++	doubly charged
+26	Mg	N	12C14N	nitride
+27	Al	Be	9Be17O1H	hydroxide
+27	Al	Be	9Be18O	oxide
+27	Al	B	10B16O1H	hydroxide
+27	Al	B	9B18O	oxide
+27	Al	B	11B16O	oxide
+27	Al	B	10B17O	oxide
+27	Al	C	12C15N	nitride
+27	Al	C	13C14N	nitride
+27	Al	C	12C14N1H	hydride
+27	Al	Cr	53Cr++	doubly charged
+27	Al	Cr	54Cr++	doubly charged
+27	Al	Fe	54Fe++	doubly charged
+27	Al	Mn	55Mn++	doubly charged
+27	Al	Mg	26Mg1H	hydride
+27	Al	N	12C15N	nitride
+27	Al	N	13C14N	nitride
+28	Si	Be	9Be18O1H	hydroxide
+28	Si	Fe	57Fe++	doubly charged
+28	Si	Fe	56Fe++	doubly charged
+28	Si	Mn	55Mn++	doubly charged
+28	Si	B	11B17O	oxide
+28	Si	B	10B18O	oxide
+28	Si	B	11B16O1H	hydroxide
+28	Si	B	10B17O1H	hydroxide
+28	Si	C	12C16O	oxide
+28	Si	N	14N14N	nitride
+29	Si	Fe	58Fe++	doubly charged
+29	Si	Fe	57Fe++	doubly charged
+29	Si	B	11B18O	oxide
+29	Si	B	11B17O1H	hydroxide
+29	Si	B	10B18O1H	hydroxide
+29	Si	C	13C16O	oxide
+29	Si	C	12C17O	oxide
+29	Si	C	12C16O1H	hydroxide
+29	Si	N	14N15N	nitride
+29	Si	N	14N14N1H	hydride
+29	Si	Si	28Si1H	hydride
+30	Si	B	11B18O1H	hydroxide
+30	Si	C	12C18O	oxide
+30	Si	C	13C17O	oxide
+30	Si	C	13C16O1H	hydroxide
+30	Si	C	12C16O1H1H	other polyatomic
+30	Si	N	15N15N	nitride
+30	Si	N	14N16O	oxide
+30	Si	N	14N15N1H	hydride
+30	Si	N	14N141H1H	other polyatomic
+30	Si	Si	29Si1H	hydride
+31	P	N	14N16O1H	hydroxide
+31	P	N	15N15N1H	hydride
+31	P	C	13C18O	oxide
+31	P	C	12C18O1H	hydroxide
+31	P	C	13C17O1H	hydroxide
+31	P	N	15N16O	oxide
+31	P	N	14N17O	oxide
+31	P	Si	30Si1H	hydride
+32	S	O	16O16O	dioxide
+32	S	N	14N17O1H	hydroxide
+32	S	N	15N17O	oxide
+32	S	N	14N18O	oxide
+33	S	N	14N18O1H	hydroxide
+33	S	N	15N17O1H	hydroxide
+33	S	N	15N18O	oxide
+33	S	O	16O17O	dioxide
+33	S	N	15N15N1H1H	other polyatomic
+33	S	C	13C18O1H	hydroxide
+33	S	C	12C18O1H1H	other polyatomic
+33	S	C	13C17O1H1H	other polyatomic
+33	S	S	32S1H	hydride
+33	S	O	16O17O	dioxide
+33	S	O	16O16O1H	hydroxide
+34	S	N	15N18O1H	hydroxide
+34	S	O	16O17O1H	hydroxide
+34	S	C	13C18O1H1H	other polyatomic
+34	S	O	17O17O	dioxide
+34	S	O	16O18O	dioxide
+34	S	S	33S1H	hydride
+34	S	O	16O18O	dioxide
+34	S	O	16O17O1H	hydroxide
+35	Cl	O	16O18O1H	hydroxide
+35	Cl	S	34S1H	hydride
+36	S	Cl	1H35Cl	hydride
+37	Cl	Ar	36Ar1H	hydride
+37	Cl	S	36S1H	hydride
+38	Ar	Cl	1H37Cl	hydride
+38	Ar	Ar	36Ar1H1H	other polyatomic
+39	K	Na	23Na16O	oxide
+39	K	Ar	38Ar1H	hydride
+40	Ca	Ar	40Ar	argide
+40	K	Ar	40Ar	argide
+40	K	Ar	38Ar1H1H	other polyatomic
+40	Ca	Ar	38Ar1H1H	other polyatomic
+40	Ca	Na	23Na17O	oxide
+40	K	Na	23Na17O	oxide
+40	Ca	Mg	24Mg16O	oxide
+40	K	Mg	24Mg16O	oxide
+40	K	Ca	40Ca	elemental
+40	Ar	K	40K	elemental
+40	Ca	K	40K	elemental
+41	K	Ar	40Ar1H	hydride
+41	K	Na	23Na18O	oxide
+41	K	Mg	25Mg16O	oxide
+42	Ca	Ar	40Ar1H1H	other polyatomic
+42	Ca	C	12C14N16O	other polyatomic
+42	Ca	B	10B16O16O	dioxide
+42	Ca	Sr	84Sr++	doubly charged
+42	Ca	Mg	26Mg16O	oxide
+42	Ca	N	12C14N16O	other polyatomic
+43	Ca	Al	27Al16O	oxide
+43	Ca	B	10B16O17O	dioxide
+43	Ca	B	11B16O16O	dioxide
+43	Ca	B	10B16O16OH	other polyatomic
+43	Ca	C	12C14N17O	other polyatomic
+43	Ca	C	12C15N16O	other polyatomic
+43	Ca	C	13C14N16O	other polyatomic
+43	Ca	Ca	42Ca1H	hydride
+43	Ca	Sr	86Sr++	doubly charged
+43	Ca	Sr	87Sr++	doubly charged
+43	Ca	N	12C14N17O	other polyatomic
+43	Ca	N	12C15N16O	other polyatomic
+43	Ca	N	13C14N16O	other polyatomic
+44	Ca	Al	27Al16O1H	hydroxide
+44	Ca	Al	27Al17O	oxide
+44	Ca	B	10B17O17O	dioxide
+44	Ca	B	11B16O17O	dioxide
+44	Ca	B	10B16O17O1H	other polyatomic
+44	Ca	B	11B16O16O1H	other polyatomic
+44	Ca	C	12C15N17O	other polyatomic
+44	Ca	C	12C14N18O	other polyatomic
+44	Ca	C	13C15N16O	other polyatomic
+44	Ca	C	13C14N17O	other polyatomic
+44	Ca	C	12C16O16O	other polyatomic
+44	Ca	N	14N14N16O	other polyatomic
+44	Ca	Si	28Si16O	oxide
+44	Ca	Sr	87Sr++	doubly charged
+44	Ca	Sr	88Sr++	doubly charged
+44	Ca	Y	89Y++	doubly charged
+44	Ca	Ca	43Ca1H	hydride
+44	Ca	N	12C15N17O	other polyatomic
+44	Ca	N	12C14N18O	other polyatomic
+44	Ca	N	13C15N16O	other polyatomic
+44	Ca	N	13C14N17O	other polyatomic
+44	Ca	N	12C16O16O	other polyatomic
+45	Sc	Y	89Y++	doubly charged
+45	Sc	Al	27Al18O	oxide
+45	Sc	Al	27Al17O1H	hydroxide
+45	Sc	Be	9Be36Ar	argide
+45	Sc	C	12C15N18O	other polyatomic
+45	Sc	C	13C15N17O	other polyatomic
+45	Sc	C	13C14N18O	other polyatomic
+45	Sc	C	13C16O16O	other polyatomic
+45	Sc	C	12C16O16O1H	other polyatomic
+45	Sc	N	14N14N16O1H	other polyatomic
+45	Sc	N	14N15N16O	other polyatomic
+45	Sc	Ca	44Ca1H	hydride
+45	Sc	Si	28Si17O	oxide
+45	Sc	Si	29Si16O	oxide
+45	Sc	Si	28Si16O1H	hydroxide
+45	Sc	Zr	90Zr++	doubly charged
+45	Sc	Zr	91Zr++	doubly charged
+45	Sc	Ar	9Be36Ar	argide
+45	Sc	N	12C15N18O	other polyatomic
+45	Sc	N	13C15N17O	other polyatomic
+45	Sc	N	13C14N18O	other polyatomic
+46	Ti	Al	27Al18O1H	hydroxide
+46	Ti	C	13C15N18O	other polyatomic
+46	Ti	C	12C16O18O	other polyatomic
+46	Ti	C	12C17O17O	dioxide
+46	Ti	C	13C16O17O	dioxide
+46	Ti	N	14N16O16O	dioxide
+46	Ti	N	14N14N18O	oxide
+46	Ti	N	14N15N17O	oxide
+46	Ti	N	15N15N16O	oxide
+46	Ti	N	14N14N16O1H1H	other polyatomic
+46	Ti	Li	6Li40Ar	argide
+46	Ti	Mo	92Mo++	doubly charged
+46	Ti	Nb	93Nb++	doubly charged
+46	Ti	Sc	45Sc1H	hydride
+46	Ti	Si	30Si16O	oxide
+46	Ti	Si	28Si18O	oxide
+46	Ti	Si	29Si17O	oxide
+46	Ti	Si	29Si16O1H	hydroxide
+46	Ti	Zr	91Zr++	doubly charged
+46	Ca	Zr	91Zr++	doubly charged
+46	Ti	Zr	92Zr++	doubly charged
+46	Ti	S	32S14N	nitride
+46	Ca	Al	27Al18O1H	hydroxide
+46	Ca	C	13C15N18O	dioxide
+46	Ca	C	12C16O18O	dioxide
+46	Ca	C	12C17O17O	dioxide
+46	Ca	C	13C16O17O	dioxide
+46	Ca	N	14N16O16O	dioxide
+46	Ca	N	14N14N18O	oxide
+46	Ca	N	14N15N17O	oxide
+46	Ca	N	15N15N16O	oxide
+46	Ca	N	14N14N16O1H1H	other polyatomic
+46	Ca	Li	6Li40Ar	argide
+46	Ca	Mo	92Mo++	doubly charged
+46	Ca	Nb	93Nb++	doubly charged
+46	Ca	Sc	45Sc1H	hydride
+46	Ca	Si	30Si16O	oxide
+46	Ca	Si	28Si18O	oxide
+46	Ca	Si	29Si17O	oxide
+46	Ca	Si	29Si16O1H	hydroxide
+46	Ca	Zr	92Zr++	doubly charged
+46	Ca	S	32S14N	nitride
+46	Ti	Ca	46Ca	elemental
+46	Ca	Ti	46Ti	elemental
+46	Ti	Ar	6Li40Ar	argide
+46	Ca	Ar	6Li40Ar	argide
+46	Ti	N	32S14N	nitride
+46	Ca	N	32S14N	nitride
+46	Ti	N	13C15N18O	other polyatomic
+46	Ti	C	12C16O18O	other polyatomic
+47	Ca	Si	30Si17O	oxide
+47	Ti	Si	29Si18O	oxide
+47	Ti	C	12C35Cl	chloride
+47	Ti	S	33S14N	nitride
+47	Ti	Ca	46Ca1H	hydride
+47	Ti	Li	7Li40Ar	argide
+47	Ti	Mo	94Mo++	doubly charged
+47	Ti	Mo	95Mo++	doubly charged
+47	Ti	N	14N16O16O1H	hydride
+47	Ti	N	15N16O16O	dioxide
+47	Ti	P	31P16O	oxide
+47	Ti	Si	30Si16O1H	hydroxide
+47	Ti	Si	28Si19F	fluoride
+47	Ti	Zr	94Zr++	doubly charged
+47	Ti	Be	9Be36Ar	argide
+47	Ti	Ar	7Li40Ar	argide
+47	Ti	Ar	9Be36Ar	argide
+47	Ti	Cl	12C35Cl	chloride
+47	Ti	N	33S14N	nitride
+48	Ti	Si	30Si18O	oxide
+48	Ca	Si	30Si18O	oxide
+48	Ca	Mo	95Mo++	doubly charged
+48	Ti	Mo	95Mo++	doubly charged
+48	Ti	C	12C12C12C12C	carbide
+48	Ti	C	12C36Ar	argide
+48	Ti	N	14N16O18O	dioxide
+48	Ti	N	14N17O17O	dioxide
+48	Ti	N	15N15N18O	oxide
+48	Ti	N	14N15N16O1H	other polyatomic
+48	Ti	Mo	96Mo++	doubly charged
+48	Ti	Mo	97Mo++	doubly charged
+48	Ti	P	31P16O1H	hydroxide
+48	Ti	P	31P17O	oxide
+48	Ti	S	34S14N	nitride
+48	Ti	S	32S16O	oxide
+48	Ti	Si	29Si19F	fluoride
+48	Ti	Si	28Si19F1H	hydride
+48	Ti	Zr	96Zr++	doubly charged
+48	Ca	C	12C12C12C12C	carbide
+48	Ca	C	12C36Ar	argide
+48	Ca	N	14N16O18O	dioxide
+48	Ca	N	14N17O17O	dioxide
+48	Ca	N	15N15N18O	oxide
+48	Ca	N	14N15N16O1H	hydroxide
+48	Ca	Mo	96Mo++	doubly charged
+48	Ca	Mo	97Mo++	doubly charged
+48	Ca	P	31P16O1H	hydroxide
+48	Ca	P	31P17O	oxide
+48	Ca	S	34S14N	nitride
+48	Ca	S	32S16O	oxide
+48	Ca	Si	29Si19F	fluoride
+48	Ca	Si	28Si19F1H	hydride
+48	Ca	Zr	96Zr++	doubly charged
+48	Ca	Si	28Si19F1H	hydride
+48	Ti	Si	28Si19F1H	hydride
+48	Ca	Ru	96Ru++	doubly charged
+48	Ti	Ru	96Ru++	doubly charged
+48	Ti	Ca	48Ca	elemental
+48	Ca	Ti	48Ti	elemental
+48	Ti	Ar	12C36Ar	argide
+48	Ca	Ar	12C36Ar	argide
+48	Ti	N	34S14N	nitride
+48	Ca	N	34S14N	nitride
+49	Ti	Si	29Si19F1H	hydride
+49	Ti	Mo	97Mo++	doubly charged
+49	Ti	Be	9Be40Ar	argide
+49	Ti	Ca	48Ca1H	hydride
+49	Ti	Mo	98Mo++	doubly charged
+49	Ti	P	31P17O1H	hydroxide
+49	Ti	P	31P18O	oxide
+49	Ti	S	32S16O1H	hydroxide
+49	Ti	S	32S17O	oxide
+49	Ti	S	33S16O	oxide
+49	Ti	Si	30Si19F	fluoride
+49	Ti	Si	29Si19F1H	hydride
+49	Ti	Ru	98Ru++	doubly charged
+49	Ti	Ru	99Ru++	doubly charged
+49	Ti	Ar	9Be40Ar	argide
+50	Ti	Si	30Si19F1H	hydride
+50	V	Si	30Si19F1H	hydride
+50	Cr	Si	30Si19F1H	hydride
+50	Cr	Si	30Si19F1H	hydride
+50	V	Si	30Si19F1H	hydride
+50	Ti	Si	30Si19F1H	hydride
+50	V	B	10B40Ar	argide
+50	V	C	12C38Ar	argide
+50	V	C	12C12C13C13C	carbide
+50	V	Mo	100Mo++	doubly charged
+50	V	N	36Ar14N	nitride
+50	V	P	31P18O1H	hydroxide
+50	V	Cl	1H14N35Cl	other polyatomic
+50	V	S	36S14N	nitride
+50	V	Cl	35Cl15N	nitride
+50	V	S	34S16O	oxide
+50	V	S	33S17O	oxide
+50	V	S	32S18O	oxide
+50	V	S	32S17O1H	hydroxide
+50	V	S	33S16O1H	hydroxide
+50	Ti	B	10B40Ar	argide
+50	Ti	C	12C38Ar	argide
+50	Ti	C	12C12C13C13C	carbide
+50	Ti	Mo	100Mo++	doubly charged
+50	Ti	N	36Ar14N	nitride
+50	Ti	P	31P18O1H	hydroxide
+50	Ti	Cl	1H14N35Cl	other polyatomic
+50	Ti	S	36S14N	nitride
+50	Ti	Cl	35Cl15N	nitride
+50	Ti	S	34S16O	oxide
+50	Ti	S	33S17O	oxide
+50	Ti	S	32S18O	oxide
+50	Ti	S	32S17O1H	hydroxide
+50	Ti	S	33S16O1H	hydroxide
+50	Cr	B	10B40Ar	argide
+50	Cr	C	12C38Ar	argide
+50	Cr	C	12C12C13C13C	carbide
+50	Cr	Mo	100Mo++	doubly charged
+50	Cr	N	36Ar14N	nitride
+50	Cr	P	31P18O1H	hydroxide
+50	Cr	Cl	1H14N35Cl	other polyatomic
+50	Cr	S	36S14N	nitride
+50	Cr	Cl	35Cl15N	nitride
+50	Cr	S	34S16O	oxide
+50	Cr	S	33S17O	oxide
+50	Cr	S	32S18O	oxide
+50	Cr	S	32S17O1H	hydroxide
+50	Cr	S	33S16O1H	hydroxide
+50	Ti	Ar	36Ar14N	nitride
+50	Cr	Ar	36Ar14N	nitride
+50	V	Ar	36Ar14N	nitride
+50	Ti	Ru	99Ru++	doubly charged
+50	V	Ru	99Ru++	doubly charged
+50	Cr	Ru	99Ru++	doubly charged
+50	Ti	Ru	100Ru++	doubly charged
+50	V	Ru	100Ru++	doubly charged
+50	Cr	Ru	100Ru++	doubly charged
+50	Ti	Ru	101Ru++	doubly charged
+50	V	Ru	101Ru++	doubly charged
+50	Cr	Ru	101Ru++	doubly charged
+50	Ti	Cr	50Cr	elemental
+50	V	Cr	50Cr	elemental
+50	V	Ti	50Ti	elemental
+50	Cr	Ti	50Ti	elemental
+50	Cr	V	50V	elemental
+50	Ti	V	50V	elemental
+50	V	Ar	10B40Ar	argide
+50	V	Ar	12C38Ar	argide
+50	Ti	Ar	10B40Ar	argide
+50	Ti	Ar	12C38Ar	argide
+50	Cr	Ar	10B40Ar	argide
+50	Cr	Ar	12C38Ar	argide
+50	V	N	36S14N	nitride
+50	V	N	35Cl15N	nitride
+50	Ti	N	36S14N	nitride
+50	Ti	N	35Cl15N	nitride
+50	Cr	N	36S14N	nitride
+50	Cr	N	35Cl15N	nitride
+50	Ti	N	36Ar14N	nitride
+50	Cr	N	36Ar14N	nitride
+50	V	N	36Ar14N	nitride
+50	V	N	1H14N35Cl	other polyatomic
+50	Ti	N	1H14N35Cl	other polyatomic
+50	Cr	N	1H14N35Cl	other polyatomic
+51	V	B	11B40Ar	argide
+51	V	Cl	35Cl16O	oxide
+51	V	Cl	37Cl14N	nitride
+51	V	Ar	36Ar15N	nitride
+51	V	Ar	36Ar14N1H	other polyatomic
+51	V	Cr	50Cr1H	hydride
+51	V	S	34S17O	oxide
+51	V	S	33S18O	oxide
+51	V	S	34S16O1H	hydroxide
+51	V	S	33S17O1H	hydroxide
+51	V	S	32S18O1H	hydroxide
+51	V	V	50V1H	hydride
+51	V	Ru	101Ru++	doubly charged
+51	V	Ru	102Ru++	doubly charged
+51	V	Ar	11B40Ar	argide
+51	V	N	37Cl14N	nitride
+51	V	N	36Ar15N	nitride
+51	V	N	36Ar14N1H	other polyatomic
+52	Cr	C	12C40Ar	carbide
+52	Cr	Ar	36Ar16O	oxide
+52	Cr	Ar	38Ar14N	nitride
+52	Cr	Cl	35Cl16O1H	hydroxide
+52	Cr	Cl	35Cl17O	oxide
+52	Cr	Cl	37Cl14N1H	other polyatomic
+52	Cr	Cl	37Cl15N	nitride
+52	Cr	Cl	35Cl17O	oxide
+52	Cr	S	36S16O	oxide
+52	Cr	S	34S18O	oxide
+52	Cr	S	34S17O1H	hydroxide
+52	Cr	S	33S18O1H	hydroxide
+52	Cr	Rh	103Rh++	doubly charged
+52	Cr	Pd	104Pd++	doubly charged
+52	Cr	Ru	104Ru++	doubly charged
+52	Cr	Pd	105Pd++	doubly charged
+52	Cr	V	51V1H	hydride
+52	Cr	Ca	40Ca12C	carbide
+52	Cr	Ar	36Ar15N1H	other polyatomic
+52	Cr	Ar	12C40Ar	carbide
+52	Cr	C	40Ca12C	carbide
+52	Cr	N	38Ar14N	nitride
+52	Cr	N	37Cl15N	nitride
+52	Cr	N	37Cl14N1H	other polyatomic
+52	Cr	N	36Ar15N1H	other polyatomic
+53	Cr	Rh	103Rh++	doubly charged
+53	Cr	C	13C40Ar	argide
+53	Cr	C	12C12C14N14N1H	other polyatomic
+53	Cr	Ar	38Ar14N1H	other polyatomic
+53	Cr	Ar	36Ar17O	oxide
+53	Cr	Ar	38Ar15N	nitride
+53	Cr	Cl	37Cl16O	oxide
+53	Cr	Cl	35Cl18O	oxide
+53	Cr	Cl	35Cl16O1H1H	other polyatomic
+53	Cr	Cl	35Cl17O1H	hydroxide
+53	Cr	Cr	52Cr1H	hydride
+53	Cr	S	36S17O	oxide
+53	Cr	Ar	36Ar16O1H	hydroxide
+53	Cr	S	36S16O1H	hydroxide
+53	Cr	Cd	106Cd++	doubly charged
+53	Cr	Ag	107Ag++	doubly charged
+53	Cr	Pd	105Pd++	doubly charged
+53	Cr	Pd	106Pd++	doubly charged
+53	Cr	S	34S18O1H	hydroxide
+53	Cr	K	39K14N	nitride
+53	Cr	Ar	38Ar14N1H	hydride
+53	Cr	Ar	13C40Ar	argide
+53	Cr	N	38Ar15N	nitride
+53	Cr	N	39K14N	nitride
+53	Cr	N	12C12C14N14N1H	other polyatomic
+53	Cr	N	38Ar14N1H	other polyatomic
+54	Cr	Ar	40Ar14N	nitride
+54	Cr	Ar	36Ar18O	oxide
+54	Cr	Ar	38Ar16O	oxide
+54	Cr	Ca	42Ca12C	carbide
+54	Cr	Ca	40Ca14N	nitride
+54	Cr	Cl	35Cl18OH	hydroxide
+54	Cr	Cl	37Cl16O1H	hydroxide
+54	Cr	Cl	37Cl17O	oxide
+54	Cr	K	40K14N	nitride
+54	Cr	Pd	108Pd++	doubly charged
+54	Cr	Cd	108Cd++	doubly charged
+54	Cr	Cr	53Cr1H	hydride
+54	Cr	S	36S18O	oxide
+54	Cr	S	36S17O1H	hydroxide
+54	Fe	Ar	40Ar14N	nitride
+54	Fe	Ar	36Ar18O	oxide
+54	Fe	Ar	38Ar16O	oxide
+54	Fe	Ca	42Ca12C	carbide
+54	Fe	Ca	40Ca14N	nitride
+54	Fe	Cl	35Cl18OH	hydroxide
+54	Fe	Cl	37Cl16O1H	hydroxide
+54	Fe	Cl	37Cl17O	oxide
+54	Fe	K	40K14N	nitride
+54	Fe	Pd	108Pd++	doubly charged
+54	Fe	Cd	108Cd++	doubly charged
+54	Fe	Cr	53Cr1H	hydride
+54	Fe	S	36S18O	oxide
+54	Fe	S	36S17O1H	hydroxide
+54	Cr	Ar	38Ar15N1H	other polyatomic
+54	Fe	Ar	38Ar15N1H	other polyatomic
+54	Cr	Ar	36Ar17O1H	hydroxide
+54	Fe	Ar	36Ar17O1H	hydroxide
+54	Cr	Fe	54Fe	elemental
+54	Cr	C	42Ca12C	carbide
+54	Fe	C	42Ca12C	carbide
+54	Cr	N	40Ar14N	nitride
+54	Cr	N	40Ca14N	nitride
+54	Cr	N	40K14N	nitride
+54	Fe	N	40Ar14N	nitride
+54	Fe	N	40Ca14N	nitride
+54	Fe	N	40K14N	nitride
+54	Cr	N	38Ar15N1H	other polyatomic
+54	Fe	N	38Ar15N1H	other polyatomic
+55	Mn	K	41K14N	nitride
+55	Mn	Ar	40Ar15N	nitride
+55	Mn	Ar	36Ar16O1H	hydroxide
+55	Mn	Ar	38Ar17O	oxide
+55	Mn	Ar	40Ar14N1H	hydride
+55	Mn	Ag	109Ag++	doubly charged
+55	Mn	Cl	37Cl16O1H1H	other polyatomic
+55	Mn	Cl	37Cl17O1H	hydroxide
+55	Mn	Na	23Na32S	sulfide
+55	Mn	Cl	37Cl17O1H	hydroxide
+55	Mn	Cl	37Cl18O	oxide
+55	Mn	Cr	54Cr1H	hydride
+55	Mn	K	39K16O	oxide
+55	Mn	Cd	111Cd++	doubly charged
+55	Mn	Cd	110Cd++	doubly charged
+55	Mn	Na	23Na16O16O	dioxide
+55	Mn	Pd	110Pd++	doubly charged
+55	Mn	Fe	54Fe1H	hydride
+55	Mn	Ar	36Ar19F	fluoride
+55	Mn	S	36S18O1H	hydroxide
+55	Mn	Ar	38Ar16O1H	hydroxide
+55	Mn	Ca	43Ca12C	carbide
+55	Mn	Ca	40Ca15N	nitride
+55	Mn	Ar	36Ar18O1H	hydroxide
+55	Mn	S	23Na32S	sulfide
+55	Mn	C	43Ca12C	carbide
+55	Mn	N	41K14N	nitride
+55	Mn	N	40Ar15N	nitride
+55	Mn	N	40Ca15N	nitride
+56	Fe	Cd	111Cd++	doubly charged
+56	Fe	Mn	55Mn1H	hydride
+56	Fe	Ar	40Ar16O	oxide
+56	Fe	Ar	40Ar15N1H	other polyatomic
+56	Fe	Ar	38Ar18O	oxide
+56	Fe	Ar	38Ar17O1H	hydroxide
+56	Fe	Cd	113Cd++	doubly charged
+56	Fe	Cd	112Cd++	doubly charged
+56	Fe	Sn	112Sn++	doubly charged
+56	Fe	Ca	44Ca12C	carbide
+56	Fe	Ca	42Ca14N	nitride
+56	Fe	Ca	40Ca16O	oxide
+56	Fe	Cl	37Cl18O1H	hydroxide
+56	Fe	In	113In++	doubly charged
+56	Fe	Ca	42Ca14N	nitride
+56	Fe	K	39K17O	oxide
+56	Fe	K	40K16O	oxide
+56	Fe	C	44Ca12C	carbide
+56	Fe	N	42Ca14N	nitride
+56	Fe	N	42Ca14N	nitride
+56	Fe	N	40Ar15N1H	other polyatomic
+57	Fe	Cd	113Cd++	doubly charged
+57	Fe	Ar	40Ar16O1H	hydroxide
+57	Fe	Sn	114Sn++	doubly charged
+57	Fe	Sc	45Sc12C	carbide
+57	Fe	Sn	115Sn++	doubly charged
+57	Fe	Cd	114Cd++	doubly charged
+57	Fe	In	115In++	doubly charged
+57	Fe	In	113In++	doubly charged
+57	Fe	Ar	38Ar18O1H	hydroxide
+57	Fe	Ar	40Ar17O	oxide
+57	Fe	Ca	40Ca16O1H	hydroxide
+57	Fe	Ca	42Ca15N	nitride
+57	Fe	Ca	43Ca14N	nitride
+57	Fe	Ca	40Ca17O	oxide
+57	Fe	K	39K18O	oxide
+57	Fe	K	41K16O	oxide
+57	Fe	Fe	56Fe1H	hydride
+57	Fe	K	40K17O	oxide
+57	Fe	Ar	38Ar19F	fluoride
+57	Fe	C	45Sc12C	carbide
+57	Fe	N	42Ca15N	nitride
+57	Fe	N	43Ca14N	nitride
+58	Fe	In	115In++	doubly charged
+58	Fe	Ar	40Ar18O	oxide
+58	Fe	Ar	40Ar17O1H	hydroxide
+58	Fe	Fe	57Fe1H	hydride
+58	Fe	Ca	42Ca16O	oxide
+58	Fe	Mg	24Mg34S	sulfide
+58	Fe	Mg	25Mg33S	sulfide
+58	Fe	Mg	26Mg32S	sulfide
+58	Fe	Ca	44Ca14N	nitride
+58	Fe	Ca	43Ca15N	nitride
+58	Fe	Ca	40Ca18O	oxide
+58	Fe	Ca	40Ca17O1H	hydroxide
+58	Fe	Ca	46Ca14C	carbide
+58	Fe	Cd	116Cd++	doubly charged
+58	Fe	Sn	115Sn++	doubly charged
+58	Fe	Sn	116Sn++	doubly charged
+58	Fe	Ti	46Ti12C	carbide
+58	Fe	Na	23Na35Cl	chloride
+58	Fe	K	41K17O	oxide
+58	Fe	K	40K18O	oxide
+58	Fe	Sn	117Sn++	doubly charged
+58	Ni	Ar	40Ar18O	oxide
+58	Ni	Ar	40Ar17O1H	hydroxide
+58	Ni	Fe	57Fe1H	hydride
+58	Ni	Ca	42Ca16O	oxide
+58	Ni	Mg	24Mg34S	sulfide
+58	Ni	Mg	25Mg33S	sulfide
+58	Ni	Mg	26Mg32S	sulfide
+58	Ni	Ca	44Ca14N	nitride
+58	Ni	Ca	43Ca15N	nitride
+58	Ni	Ca	40Ca18O	oxide
+58	Ni	Ca	40Ca17O1H	hydroxide
+58	Ni	Ca	46Ca14C	carbide
+58	Ni	Cd	116Cd++	doubly charged
+58	Ni	Sn	115Sn++	doubly charged
+58	Ni	Sn	116Sn++	doubly charged
+58	Ni	Ti	46Ti12C	carbide
+58	Ni	Na	23Na35Cl	chloride
+58	Ni	K	41K17O	oxide
+58	Ni	K	40K18O	oxide
+58	Ni	Sn	117Sn++	doubly charged
+58	Ni	Fe	58Fe	elemental
+58	Fe	Ni	58Ni	elemental
+58	Fe	S	24Mg34S	sulfide
+58	Fe	S	25Mg33S	sulfide
+58	Fe	S	26Mg32S	sulfide
+58	Ni	S	24Mg34S	sulfide
+58	Ni	S	25Mg33S	sulfide
+58	Ni	S	26Mg32S	sulfide
+58	Fe	C	46Ca14C	carbide
+58	Fe	C	46Ti12C	carbide
+58	Ni	C	46Ca14C	carbide
+58	Ni	C	46Ti12C	carbide
+58	Fe	Cl	23Na35Cl	chloride
+58	Ni	Cl	23Na35Cl	chloride
+58	Fe	N	44Ca14N	nitride
+58	Fe	N	43Ca15N	nitride
+58	Ni	N	44Ca14N	nitride
+58	Ni	N	43Ca15N	nitride
+59	Co	Fe	58Fe1H	hydride
+59	Co	Ca	44Ca15N	nitride
+59	Co	Sn	117Sn++	doubly charged
+59	Co	Mg	24Mg35Cl	chloride
+59	Co	Ca	42Ca16O1H	hydroxide
+59	Co	Ca	42Ca17O	oxide
+59	Co	Ca	43Ca16O	oxide
+59	Co	Ca	40Ca18O1H	hydroxide
+59	Co	Na	23Na36Ar	argide
+59	Co	K	41K18O	oxide
+59	Co	Ar	40Ar19F	fluoride
+59	Co	Ar	40Ar18O1H	hydroxide
+59	Co	Ni	58Ni1H	hydride
+59	Co	Sn	118Sn++	doubly charged
+59	Co	Sn	119Sn++	doubly charged
+59	Co	Ti	47Ti12C	carbide
+59	Co	Ar	23Na36Ar	argide
+59	Co	C	47Ti12C	carbide
+59	Co	Cl	24Mg35Cl	chloride
+59	Co	N	44Ca15N	nitride
+60	Ni	Ca	42Ca17O1H	hydroxide
+60	Ni	Ti	48Ti12C	carbide
+60	Ni	Ti	46Ti14N	nitride
+60	Ni	Ca	46Ca14N	nitride
+60	Ni	Ca	44Ca16O	oxide
+60	Ni	Ca	43Ca17O	oxide
+60	Ni	Ca	43Ca16O1H	hydroxide
+60	Ni	Ca	42Ca18O	oxide
+60	Ni	Ca	48Ca12C	carbide
+60	Ni	Ca	46Ca14N	nitride
+60	Ni	Co	59Co1H	hydride
+60	Ni	Mg	24Mg36Ar	argide
+60	Ni	Na	23Na37Cl	chloride
+60	Ni	Mg	25Mg35Cl	chloride
+60	Ni	Sn	119Sn++	doubly charged
+60	Ni	Sn	120Sn++	doubly charged
+60	Ni	Ar	24Mg36Ar	argide
+60	Ni	C	48Ti12C	carbide
+60	Ni	C	48Ca12C	carbide
+60	Ni	Cl	23Na37Cl	chloride
+60	Ni	Cl	25Mg35Cl	chloride
+60	Ni	N	46Ti14N	nitride
+60	Ni	N	46Ca14N	nitride
+60	Ni	N	46Ca14N	nitride
+61	Ni	Ca	43Ca18O	oxide
+61	Ni	Ca	44Ca17O	oxide
+61	Ni	Ca	42Ca18O1H	hydroxide
+61	Ni	Ti	49Ti12C	carbide
+61	Ni	Ti	47Ti14N	nitride
+61	Ni	Ca	46Ca15N	nitride
+61	Ni	Mg	24Mg37Cl	chloride
+61	Ni	Mg	26Mg35Cl	chloride
+61	Ni	Ca	43Ca17O1H	hydroxide
+61	Ni	Ca	44Ca16O1H	hydroxide
+61	Ni	Mg	25Mg36Ar	argide
+61	Ni	Na	23Na38Ar	argide
+61	Ni	Ni	60Ni1H	hydride
+61	Ni	Sc	45Sc16O	oxide
+61	Ni	Te	122Te++	doubly charged
+61	Ni	Sn	121Sn++	doubly charged
+61	Ni	Sn	122Sn++	doubly charged
+61	Ni	Ar	25Mg36Ar	argide
+61	Ni	Ar	23Na38Ar	argide
+61	Ni	C	49Ti12C	carbide
+61	Ni	Cl	24Mg37Cl	chloride
+61	Ni	Cl	26Mg35Cl	chloride
+61	Ni	N	47Ti14N	nitride
+61	Ni	N	46Ca15N	nitride
+62	Ni	Ca	46Ca16O	oxide
+62	Ni	Ti	50Ti12C	carbide
+62	Ni	Ti	48Ti14N	nitride
+62	Ni	Ca	48Ca14N	nitride
+62	Ni	Mg	25Mg37Cl	chloride
+62	Ni	Ca	46Ca16O	oxide
+62	Ni	Ca	44Ca18O	oxide
+62	Ni	Ca	44Ca17O1H	hydroxide
+62	Ni	Ca	43Ca18O1H	hydroxide
+62	Ni	Mg	26Mg36Ar	argide
+62	Ni	Mg	24Mg38Ar	argide
+62	Ni	Na	23Na39K	other polyatomic
+62	Ni	Na	23Na23Na16O	oxide
+62	Ni	Ni	61Ni1H	hydride
+62	Ni	Sc	45Sc16O1H	hydroxide
+62	Ni	Sc	45Sc17O	oxide
+62	Ni	Sn	124Sn++	doubly charged
+62	Ni	Te	124Te++	doubly charged
+62	Ni	Sr	84Sr40Ar++	doubly charged polyatomic
+62	Ni	Ti	46Ti16O	oxide
+62	Ni	Te	125Te++	doubly charged
+62	Ni	Ar	26Mg36Ar	argide
+62	Ni	Ar	24Mg38Ar	argide
+62	Ni	C	50Ti12C	carbide
+62	Ni	Cl	25Mg37Cl	chloride
+62	Ni	Ar	84Sr40Ar++	doubly charged polyatomic
+62	Ni	N	48Ti14N	nitride
+62	Ni	N	48Ca14N	nitride
+62	Ni	K	23Na39K	other polyatomic
+63	Cu	Ca	46Ca17O	oxide
+63	Cu	Ca	46Ca17O	oxide
+63	Cu	Ti	49Ti14N	nitride
+63	Cu	Ca	48Ca15N	nitride
+63	Cu	Ca	44Ca18O1H	hydroxide
+63	Cu	Ca	46Ca16O1H	hydroxide
+63	Cu	Na	23Na40Ar	argide
+63	Cu	Na	23Na40Ca	other polyatomic
+63	Cu	Na	23Na23Na16O1H	hydroxide
+63	Cu	Na	23Na23Na17O	oxide
+63	Cu	F	14F14F16O	oxide
+63	Cu	Ar	40Ar12C14N1H	hydride
+63	Cu	Mg	25Mg38Ar	argide
+63	Cu	Mg	26Mg37Cl	chloride
+63	Cu	Mg	24Mg23Na16O	oxide
+63	Cu	Cl	35Cl14N14N	chloride
+63	Cu	Cl	37Cl12C14N	other polyatomic
+63	Cu	Al	27Al36Ar	argide
+63	Cu	Ca	40Ca23Na	other polyatomic
+63	Cu	Ni	62Ni1H	hydride
+63	Cu	N	15N16O16O16O	trioxide
+63	Cu	N	14N16O16O17O	trioxide
+63	Cu	I	127I++	doubly charged
+63	Cu	C	12C16O35Cl	other polyatomic
+63	Cu	P	31P16O16O	dioxide
+63	Cu	Sc	45Sc18O	oxide
+63	Cu	Sc	45Sc17O1H	hydroxide
+63	Cu	Sr	86Sr40Ar++	doubly charged polyatomic
+63	Cu	Sr	87Sr40Ar++	doubly charged polyatomic
+63	Cu	Te	125Te++	doubly charged
+63	Cu	Te	126Te++	doubly charged
+63	Cu	Ti	47Ti16O	oxide
+63	Cu	Ti	46Ti16O1H	hydroxide
+63	Cu	Ti	46Ti17O	oxide
+63	Cu	Ar	23Na40Ar	argide
+63	Cu	Ar	25Mg38Ar	argide
+63	Cu	Ar	27Al36Ar	argide
+63	Cu	Cl	26Mg37Cl	chloride
+63	Cu	Ar	86Sr40Ar++	doubly charged polyatomic
+63	Cu	Ar	87Sr40Ar++	doubly charged polyatomic
+63	Cu	N	49Ti14N	nitride
+63	Cu	N	48Ca15N	nitride
+63	Cu	Ca	23Na40Ca	other polyatomic
+63	Cu	N	37Cl12C14N	other polyatomic
+63	Cu	Na	40Ca23Na	other polyatomic
+63	Cu	Cl	12C16O35Cl	other polyatomic
+64	Ni	Ca	46Ca18O	oxide
+64	Zn	Ca	46Ca18O	oxide
+64	Zn	Ti	50Ti14N	nitride
+64	Ni	Ti	50Ti14N	nitride
+64	Zn	Na	23Na23Na18O	oxide
+64	Ni	Na	23Na23Na18O	oxide
+64	Ni	Sr	87Sr40Ar++	doubly charged polyatomic
+64	Zn	Sr	87Sr40Ar++	doubly charged polyatomic
+64	Ni	Ca	48Ca16O	oxide
+64	Ni	Ca	46Ca18O	oxide
+64	Ni	Cu	63Cu1H	hydride
+64	Ni	Mg	24Mg40Ar	argide
+64	Ni	Mg	26Mg38Ar	argide
+64	Ni	Mg	24Mg24Mg16O	oxide
+64	Ni	Na	23Na40Ar1H	other polyatomic
+64	Ni	P	31P16O17O	dioxide
+64	Ni	P	31P16O16O1H	other polyatomic
+64	Ni	Ar	36Ar14N14N	argide
+64	Ni	S	32S32S	sulfide
+64	Ni	S	32S16O16O	dioxide
+64	Ni	Sc	45Sc18O1H	hydroxide
+64	Ni	Sr	88Sr40Ar++	doubly charged polyatomic
+64	Ni	Ti	48Ti16O	oxide
+64	Ni	Ti	47Ti16O1H	hydroxide
+64	Ni	Ti	47Ti17O	oxide
+64	Ni	Si	28Si36Ar	argide
+64	Ni	I	127I++	doubly charged
+64	Ni	Te	128Te++	doubly charged
+64	Ni	Ti	46Ti18O	oxide
+64	Zn	Ca	48Ca16O	oxide
+64	Zn	Ca	46Ca18O	oxide
+64	Zn	Cu	63Cu1H	hydride
+64	Zn	Mg	24Mg40Ar	argide
+64	Zn	Mg	26Mg38Ar	argide
+64	Zn	Mg	24Mg24Mg16O	oxide
+64	Zn	Na	23Na40Ar1H	other polyatomic
+64	Zn	P	31P16O17O	dioxide
+64	Zn	P	31P16O16O1H	other polyatomic
+64	Zn	Ar	36Ar14N14N	argide
+64	Zn	S	32S32S	sulfide
+64	Zn	S	32S16O16O	dioxide
+64	Zn	Sc	45Sc18O1H	hydroxide
+64	Zn	Sr	88Sr40Ar++	doubly charged polyatomic
+64	Zn	Ti	48Ti16O	oxide
+64	Zn	Ti	47Ti16O1H	hydroxide
+64	Zn	Ti	47Ti17O	oxide
+64	Zn	Si	28Si36Ar	argide
+64	Zn	I	127I++	doubly charged
+64	Zn	Te	128Te++	doubly charged
+64	Zn	Ti	46Ti18O	oxide
+64	Zn	Ca	46Ca17O1H	hydroxide
+64	Zn	Ni	64Ni	elemental
+64	Ni	Zn	64Zn	elemental
+64	Zn	Na	23Na23Na17O1H	hydroxide
+64	Ni	Ar	24Mg40Ar	argide
+64	Ni	Ar	26Mg38Ar	argide
+64	Ni	Ar	36Ar14N14N	argide
+64	Ni	Ar	28Si36Ar	argide
+64	Zn	Ar	24Mg40Ar	argide
+64	Zn	Ar	26Mg38Ar	argide
+64	Zn	Ar	36Ar14N14N	argide
+64	Zn	Ar	28Si36Ar	argide
+64	Ni	Ar	87Sr40Ar++	doubly charged polyatomic
+64	Zn	Ar	87Sr40Ar++	doubly charged polyatomic
+64	Ni	Ar	88Sr40Ar++	doubly charged polyatomic
+64	Zn	Ar	88Sr40Ar++	doubly charged polyatomic
+64	Zn	N	50Ti14N	nitride
+64	Ni	N	50Ti14N	nitride
+64	Ni	Ar	23Na40Ar1H	other polyatomic
+64	Zn	Ar	23Na40Ar1H	other polyatomic
+65	Cu	Ar	36Ar14N14N1H	hydride
+65	Cu	C	12C16O37Cl	other polyatomic
+65	Cu	Ba	130Ba++	doubly charged
+65	Cu	Ca	48Ca17O	oxide
+65	Cu	Ca	46Ca18O1H	hydroxide
+65	Cu	Ca	48Ca16O1H	hydroxide
+65	Cu	Mg	25Mg40Ar	argide
+65	Cu	Mg	24Mg40Ar1H	other polyatomic
+65	Cu	Mg	24Mg25Mg16O	oxide
+65	Cu	Na	23Na23Na18O1H	hydroxide
+65	Cu	Ni	64Ni1H	hydride
+65	Cu	P	31P16O18O	dioxide
+65	Cu	P	31P17O17O	dioxide
+65	Cu	S	32S32S1H	hydride
+65	Cu	S	32S33S	sulfide
+65	Cu	S	32S16O17O	dioxide
+65	Cu	S	32S16O16O1H	other polyatomic
+65	Cu	S	33S16O16O	dioxide
+65	Cu	Ti	49Ti16O	oxide
+65	Cu	Ti	48Ti16O1H	hydroxide
+65	Cu	Ti	48Ti17O	oxide
+65	Cu	Ti	47Ti18O	oxide
+65	Cu	Cl	37Cl14N14N	chloride
+65	Cu	Si	29Si36Ar	argide
+65	Cu	Al	27Al38Ar	argide
+65	Cu	Te	130Te++	doubly charged
+65	Cu	Zn	64Zn1H	hydride
+65	Cu	Ar	25Mg40Ar	argide
+65	Cu	Ar	29Si36Ar	argide
+65	Cu	Ar	27Al38Ar	argide
+65	Cu	Cl	12C16O37Cl	other polyatomic
+65	Cu	Ar	24Mg40Ar1H	other polyatomic
+66	Zn	Mg	24Mg40Ar1H	other polyatomic
+66	Zn	Ca	48Ca18O1H	hydroxide
+66	Zn	S	33S16O16O1H	other polyatomic
+66	Zn	B	10B16O40Ar	other polyatomic
+66	Zn	Ba	132Ba++	doubly charged
+66	Zn	Cr	50Cr16O	oxide
+66	Zn	Cu	65Cu1H	hydride
+66	Zn	Cl	35Cl14N16O1H	hydroxide
+66	Zn	Cl	37Cl12C16O1H	hydroxide
+66	Zn	Ar	38Ar14N14N	argide
+66	Zn	Mg	26Mg40Ar	argide
+66	Zn	Mg	25Mg25Mg16O	oxide
+66	Zn	P	31P17O18O	dioxide
+66	Zn	S	32S34S	sulfide
+66	Zn	S	33S33S	sulfide
+66	Zn	S	34S16O16O	dioxide
+66	Zn	S	32S17O17O	dioxide
+66	Zn	S	33S16O16O1H	other polyatomic
+66	Zn	S	33S16O17O	dioxide
+66	Zn	S	32S16O18O	dioxide
+66	Zn	Ti	50Ti16O	oxide
+66	Zn	Ti	49Ti16O1H	hydroxide
+66	Zn	Ti	49Ti17O	oxide
+66	Zn	Ti	48Ti18O	oxide
+66	Zn	Si	28Si38Ar	argide
+66	Zn	Ca	48Ca18O	oxide
+66	Zn	Ca	48Ca17O1H	hydroxide
+66	Zn	V	50V16O	oxide
+66	Zn	Si	30Si36Ar	argide
+66	Zn	B	10B40Ar16O	other polyatomic
+66	Zn	Ar	38Ar14N14N	argide
+66	Zn	Ar	26Mg40Ar	argide
+66	Zn	Ar	28Si38Ar	argide
+66	Zn	Ar	30Si36Ar	argide
+66	Zn	Ar	24Mg40Ar1H	other polyatomic
+66	Zn	Ar	10B16O40Ar	other polyatomic
+67	Zn	Mg	24Mg40Ar1H	other polyatomic
+67	Zn	S	34S16O16O1H	other polyatomic
+67	Zn	Ar	36Ar14N16O1H	hydroxide
+67	Zn	Al	27Al40Ar	argide
+67	Zn	B	11B40Ar16O	other polyatomic
+67	Zn	B	10B40Ar17O	other polyatomic
+67	Zn	Cl	35Cl16O16O	dioxide
+67	Zn	Cl	37Cl14N16O	other polyatomic
+67	Zn	Ba	134Ba++	doubly charged
+67	Zn	Ba	135Ba++	doubly charged
+67	Zn	Cr	50Cr16O1H	hydroxide
+67	Zn	Mg	25Mg26Mg16O	oxide
+67	Zn	Na	23Na14N14N16O	other polyatomic
+67	Zn	P	31P18O18O	dioxide
+67	Zn	P	31P36Ar	argide
+67	Zn	S	33S34S	sulfide
+67	Zn	S	32S17O17O1H	hydroxide
+67	Zn	S	34S16O16O1H	other polyatomic
+67	Zn	S	32S16O18O1H	hydroxide
+67	Zn	S	34S16O17O	dioxide
+67	Zn	S	33S16O18O	dioxide
+67	Zn	S	32S17O18O	dioxide
+67	Zn	S	33S17O17O	dioxide
+67	Zn	Ti	50Ti17O	oxide
+67	Zn	Ti	50Ti16O1H	hydroxide
+67	Zn	Ti	49Ti18O	oxide
+67	Zn	V	51V16O	oxide
+67	Zn	V	50V16O1H	hydroxide
+67	Zn	V	50V17O	oxide
+67	Zn	Zn	66Zn1H	hydride
+67	Zn	Si	29Si38Ar	argide
+67	Zn	Ar	27Al40Ar	argide
+67	Zn	Ar	31P36Ar	argide
+67	Zn	Ar	29Si38Ar	argide
+67	Zn	Ar	24Mg40Ar1H	other polyatomic
+67	Zn	Ar	11B40Ar16O	other polyatomic
+67	Zn	Ar	10B40Ar17O	other polyatomic
+67	Zn	N	37Cl14N16O	other polyatomic
+67	Zn	N	23Na14N14N16O	other polyatomic
+68	Zn	B	11B40Ar17O	other polyatomic
+68	Zn	B	10B40Ar18O	other polyatomic
+68	Zn	Ar	36Ar18O18O	dioxide
+68	Zn	Ar	36Ar16O16O	dioxide
+68	Zn	Ar	40Ar14N14N	argide
+68	Zn	Ba	136Ba++	doubly charged
+68	Zn	Ba	137Ba++	doubly charged
+68	Zn	C	12C16O40Ar	other polyatomic
+68	Zn	Ce	136Ce++	doubly charged
+68	Zn	Cr	52Cr16O	oxide
+68	Zn	Cr	50Cr16O1H1H	other polyatomic
+68	Ga	La	138La++	doubly charged
+68	Zn	Mg	26Mg26Mg16O	oxide
+68	Zn	Na	23Na14N14N16O1H	hydroxide
+68	Zn	S	32S36S	sulfide
+68	Zn	S	34S34S	sulfide
+68	Zn	S	36S16O16O	dioxide
+68	Zn	S	32S36Ar	argide
+68	Zn	S	34S16O18O	dioxide
+68	Zn	S	34S17O17O	dioxide
+68	Zn	S	33S17O18O	dioxide
+68	Zn	S	32S18O18O	dioxide
+68	Zn	Si	28Si40Ar	argide
+68	Zn	Ti	50Ti18O	oxide
+68	Zn	Ti	50Ti17O1H	hydroxide
+68	Zn	Ti	49Ti18O1H	hydroxide
+68	Zn	V	51V17O	oxide
+68	Zn	V	51V16O1H	hydroxide
+68	Zn	V	50V18O	oxide
+68	Zn	V	50V17O1H	hydroxide
+68	Zn	Cl	35Cl16O16O1H	other polyatomic
+68	Zn	Cl	37Cl14N16O1H	hydroxide
+68	Zn	Cl	35Cl16O17O	dioxide
+68	Zn	Zn	67Zn1H	hydride
+68	Zn	Si	30Si38Ar	argide
+68	Zn	Ar	40Ar14N14N	argide
+68	Zn	Ar	32S36Ar	argide
+68	Zn	Ar	28Si40Ar	argide
+68	Zn	Ar	30Si38Ar	argide
+68	Zn	Ar	11B40Ar17O	other polyatomic
+68	Zn	Ar	10B40Ar18O	other polyatomic
+68	Zn	Ar	12C16O40Ar	other polyatomic
+69	Ga	B	11B40Ar18O	other polyatomic
+69	Ga	S	36S16O16O1H	other polyatomic
+69	Ga	Ar	38Ar14N16O1H	hydroxide
+69	Ga	Ar	36Ar16O16O1H	other polyatomic
+69	Ga	Ar	36Ar17O17O	dioxide
+69	Ga	Ar	36Ar16O17O	dioxide
+69	Ga	Ba	137Ba++	doubly charged
+69	Ga	Ba	138Ba++	doubly charged
+69	Ga	Ce	138Ce++	doubly charged
+69	Ga	Cl	35Cl16O18O	dioxide
+69	Ga	Cl	35Cl17O17O	dioxide
+69	Ga	Cl	37Cl16O16O	dioxide
+69	Ga	Cr	53Cr16O	oxide
+69	Ga	Cr	52Cr16O1H	hydroxide
+69	Ga	La	139La++	doubly charged
+69	Ga	Na	23Na14N16O16O	other polyatomic
+69	Ga	P	31P38Ar	argide
+69	Ga	S	33S36Ar	argide
+69	Ga	S	33S18O18O	dioxide
+69	Ga	S	34S17O18O	dioxide
+69	Ga	S	36S16O17O	dioxide
+69	Ga	S	36S16O16O1H	other polyatomic
+69	Ga	S	33S36S	sulfide
+69	Ga	Si	29SiAr40	argide
+69	Ga	Ti	50Ti18O1H	hydroxide
+69	Ga	V	51V18O	oxide
+69	Ga	V	51V17O1H	hydroxide
+69	Ga	V	50V18O1H	hydroxide
+69	Ga	Zn	68Zn1H	hydride
+69	Ga	Ar	31P38Ar	argide
+69	Ga	Ar	33S36Ar	argide
+69	Ga	Ar	29SiAr40	argide
+69	Ga	Ar	11B40Ar18O	other polyatomic
+69	Ga	N	23Na14N16O16O	other polyatomic
+70	Ge	Ar	38Ar16O16O	dioxide
+70	Zn	Ar	38Ar16O16O	dioxide
+70	Ge	Ar	36Ar16O18O	dioxide
+70	Zn	Ar	36Ar16O18O	dioxide
+70	Zn	La	139La++	doubly charged
+70	Ge	La	139La++	doubly charged
+70	Zn	Al	27Al27Al16O	oxide
+70	Zn	Ce	140Ce++	doubly charged
+70	Zn	Cr	54Cr16O	oxide
+70	Zn	Ar	40Ar14N16O	other polyatomic
+70	Zn	Cr	53Cr16O1H	hydroxide
+70	Zn	Cr	52Cr16O1H1H	other polyatomic
+70	Zn	Fe	54Fe16O	oxide
+70	Zn	Ga	69Ga1H	hydride
+70	Zn	Pr	141Pr++	doubly charged
+70	Zn	Si	30SiAr40	argide
+70	Zn	V	51V18O1H	hydroxide
+70	Ge	Al	27Al27Al16O	oxide
+70	Ge	Ce	140Ce++	doubly charged
+70	Ge	Cr	54Cr16O	oxide
+70	Ge	Ar	40Ar14N16O	other polyatomic
+70	Ge	Cr	53Cr16O1H	hydroxide
+70	Ge	Cr	52Cr16O1H1H	other polyatomic
+70	Ge	Fe	54Fe16O	oxide
+70	Ge	Ga	69Ga1H	hydride
+70	Ge	Pr	141Pr++	doubly charged
+70	Ge	Si	30SiAr40	argide
+70	Ge	V	51V18O1H	hydroxide
+70	Ge	S	34S36Ar	argide
+70	Zn	S	34S36Ar	argide
+70	Ge	S	32S38Ar	argide
+70	Zn	S	32S38Ar	argide
+70	Zn	Ge	70Ge	elemental
+70	Ge	Zn	70Zn	elemental
+70	Zn	Ar	30SiAr40	argide
+70	Ge	Ar	30SiAr40	argide
+70	Ge	Ar	34S36Ar	argide
+70	Zn	Ar	34S36Ar	argide
+70	Ge	Ar	32S38Ar	argide
+70	Zn	Ar	32S38Ar	argide
+70	Zn	N	40Ar14N16O	other polyatomic
+70	Ge	N	40Ar14N16O	other polyatomic
+71	Ga	Ar	40Ar14N16O1H	hydroxide
+71	Ga	Ar	38Ar16O17O	dioxide
+71	Ga	Ar	38Ar16O16O1H	other polyatomic
+71	Ga	Pr	141Pr++	doubly charged
+71	Ga	Ar	40Ar15N16O	other polyatomic
+71	Ga	Ar	40Ar14N16O1H	other polyatomic
+71	Ga	Ce	142Ce++	doubly charged
+71	Ga	Cl	35Cl35Cl1H	other polyatomic
+71	Ga	Cl	35Cl18O18O	dioxide
+71	Ga	Cl	37Cl16O18O	dioxide
+71	Ga	Cl	37Cl17O17O	dioxide
+71	Ga	Cl	35Cl36Ar	argide
+71	Ga	Cr	54Cr16O1H	hydroxide
+71	Ga	Cr	53Cr16O1H1H	other polyatomic
+71	Ga	Fe	54Fe16O1H	hydroxide
+71	Ga	Ge	70Ge1H	hydride
+71	Ga	Mn	55Mn16O	oxide
+71	Ga	Nd	142Nd++	doubly charged
+71	Ga	P	31P40Ar	argide
+71	Ga	S	33S38Ar	argide
+71	Ga	S	36S17O18O	dioxide
+71	Ga	Zn	70Zn1H	hydride
+71	Ga	Ar	35Cl36Ar	argide
+71	Ga	Ar	31P40Ar	argide
+71	Ga	Ar	33S38Ar	argide
+71	Ga	N	40Ar15N16O	other polyatomic
+71	Ga	N	40Ar14N16O1H	other polyatomic
+72	Ge	Ar	38Ar17O17O	dioxide
+72	Ge	Ar	40Ar16O16O	dioxide
+72	Ge	Ar	38Ar16O18O	dioxide
+72	Ge	Mn	55Mn17O	oxide
+72	Ge	S	36S36Ar	argide
+72	Ge	Ar	36Ar36Ar	argide
+72	Ge	Ca	40Ca16O16O	dioxide
+72	Ge	Fe	56Fe16O	oxide
+72	Ge	Ga	71Ga1H	hydride
+72	Ge	Mn	55Mn16O1H	hydroxide
+72	Ge	Nd	144Nd++	doubly charged
+72	Ge	S	32S40Ar	argide
+72	Ge	S	34S38Ar	argide
+72	Ge	S	36S36S	sulfide
+72	Ge	Sm	144Sm++	doubly charged
+72	Ge	Ar	36Ar36Ar	argide
+72	Ge	Nd	145Nd++	doubly charged
+72	Ge	Ar	36S36Ar	argide
+72	Ge	Ar	36Ar36Ar	argide
+72	Ge	Ar	32S40Ar	argide
+72	Ge	Ar	34S38Ar	argide
+72	Ge	Ar	36Ar36Ar	argide
+73	Ge	Ar	40Ar16O17O	dioxide
+73	Ge	Ar	40Ar16O16O1H	other polyatomic
+73	Ge	Mn	55Mn18O	oxide
+73	Ge	Mn	55Mn17O1H	hydroxide
+73	Ga	S	33S40Ar	argide
+73	Ge	Cl	37Cl36Ar	argide
+73	Ge	Fe	57Fe16O	oxide
+73	Ge	Fe	56Fe16O1H	hydroxide
+73	Ge	Ge	72Ge1H	hydride
+73	Ge	Nd	145Nd++	doubly charged
+73	Ge	Nd	146Nd++	doubly charged
+73	Ge	Sm	147Sm++	doubly charged
+73	Ge	Ar	36Ar36Ar1H	hydride
+73	Ga	Ar	33S40Ar	argide
+73	Ge	Ar	37Cl36Ar	argide
+74	Ge	Ar	40Ar17O17O	dioxide
+74	Se	Ar	40Ar17O17O	dioxide
+74	Ge	Ar	38Ar18O18O	dioxide
+74	Se	Ar	38Ar18O18O	dioxide
+74	Ge	Ar	40Ar16O18O	dioxide
+74	Se	Ar	40Ar16O18O	dioxide
+74	Ge	S	36S38Ar	argide
+74	Se	S	36S38Ar	argide
+74	Ge	Ca	42Ca16O16O	dioxide
+74	Se	Ca	42Ca16O16O	dioxide
+74	Se	Mn	55Mn18O1H	hydroxide
+74	Ge	Mn	55Mn18O1H	hydroxide
+74	Ge	S	34S40Ar	argide
+74	Se	S	34S40Ar	argide
+74	Ge	Ar	36Ar38Ar	argide
+74	Ge	Fe	57Fe16O1H	hydroxide
+74	Ge	Fe	58Fe16O	oxide
+74	Ge	Ge	73Ge1H	hydride
+74	Ge	Nd	148Nd++	doubly charged
+74	Ge	Ni	58Ni16O	oxide
+74	Se	Sm	147Sm++	doubly charged
+74	Ge	Sm	147Sm++	doubly charged
+74	Ge	Sm	148Sm++	doubly charged
+74	Se	Ar	36Ar38Ar	argide
+74	Se	Fe	57Fe16O1H	hydroxide
+74	Se	Fe	58Fe16O	oxide
+74	Se	Ge	73Ge1H	hydride
+74	Se	Nd	148Nd++	doubly charged
+74	Se	Ni	58Ni16O	oxide
+74	Se	Sm	148Sm++	doubly charged
+74	Ge	Se	74Se	elemental
+74	Ge	Ar	36S38Ar	argide
+74	Se	Ar	36S38Ar	argide
+74	Ge	Ar	34S40Ar	argide
+74	Se	Ar	34S40Ar	argide
+74	Ge	Ar	36Ar38Ar	argide
+74	Se	Ar	36Ar38Ar	argide
+75	As	Ca	43Ca16O16O	dioxide
+75	As	Cl	35Cl40Ar	argide
+75	As	Ca	40Ca35Cl	chloride
+75	As	Co	59Co16O	oxide
+75	As	Eu	151Eu++	doubly charged
+75	As	Fe	58Fe16O1H	hydroxide
+75	As	Ge	74Ge1H	hydride
+75	As	K	39K36Ar	argide
+75	As	Nd	150Nd++	doubly charged
+75	As	Ni	58Ni16O1H	hydroxide
+75	As	Se	74Se1H	hydride
+75	As	Sm	149Sm++	doubly charged
+75	As	Sm	150Sm++	doubly charged
+75	As	Ar	36Ar38Ar1H	hydride
+75	As	Ar	35Cl40Ar	argide
+75	As	Ar	39K36Ar	argide
+75	As	Cl	40Ca35Cl	chloride
+76	Ge	Ar	40Ar18O18O	dioxide
+76	Se	Ar	40Ar18O18O	dioxide
+76	Se	Ca	44Ca16O16O	dioxide
+76	Ge	Ca	44Ca16O16O	dioxide
+76	Ge	S	36S40Ar	argide
+76	Se	S	36S40Ar	argide
+76	Ge	Co	59Co17O	oxide
+76	Se	Co	59Co17O	oxide
+76	Ge	Sm	149Sm++	doubly charged
+76	Se	Sm	149Sm++	doubly charged
+76	Se	Eu	151Eu++	doubly charged
+76	Se	Ar	36Ar40Ar	argide
+76	Se	Ar	38Ar38Ar	argide
+76	Se	As	75As1H	hydride
+76	Se	Eu	153Eu++	doubly charged
+76	Se	Gd	152Gd++	doubly charged
+76	Se	K	40K36Ar	argide
+76	Se	Ni	60Ni16O	oxide
+76	Se	Sm	152Sm++	doubly charged
+76	Ge	Eu	151Eu++	doubly charged
+76	Ge	Ar	36Ar40Ar	argide
+76	Ge	Ar	38Ar38Ar	argide
+76	Ge	As	75As1H	hydride
+76	Ge	Eu	153Eu++	doubly charged
+76	Ge	Gd	152Gd++	doubly charged
+76	Ge	K	40K36Ar	argide
+76	Ge	Ni	60Ni16O	oxide
+76	Ge	Sm	152Sm++	doubly charged
+76	Ge	Ca	40Ca36Ar	argide
+76	Se	Ca	40Ca36Ar	argide
+76	Se	Ge	76Ge	elemental
+76	Ge	Se	76Se	elemental
+76	Ge	Ar	36S40Ar	argide
+76	Se	Ar	36S40Ar	argide
+76	Se	Ar	36Ar40Ar	argide
+76	Se	Ar	38Ar38Ar	argide
+76	Se	Ar	40K36Ar	argide
+76	Ge	Ar	36Ar40Ar	argide
+76	Ge	Ar	38Ar38Ar	argide
+76	Ge	Ar	40K36Ar	argide
+76	Ge	Ar	40Ca36Ar	argide
+76	Se	Ar	40Ca36Ar	argide
+77	Se	Ca	46Ca16O16O	dioxide
+77	Se	Ca	42Ca35Cl	chloride
+77	Se	Co	59Co18O	oxide
+77	Se	Ar	36Ar40Ar1H	hydride
+77	Se	Ar	38Ar38Ar1H	hydride
+77	Se	Cl	37Cl40Ar	argide
+77	Ge	Eu	153Eu++	doubly charged
+77	Se	Gd	154Gd++	doubly charged
+77	Se	Gd	155Gd++	doubly charged
+77	Se	Ge	76Ge1H	hydride
+77	Se	K	41K36Ar	argide
+77	Se	K	39K38Ar	argide
+77	Se	La	138La16O++	doubly charged polyatomic
+77	Se	Ni	61Ni16O	oxide
+77	Se	Ni	60Ni16O1H	hydroxide
+77	Se	Se	76Se1H	hydride
+77	Se	Sm	154Sm++	doubly charged
+77	Se	La	139La16O++	doubly charged polyatomic
+77	Se	Ar	37Cl40Ar	argide
+77	Se	Ar	41K36Ar	argide
+77	Se	Ar	39K38Ar	argide
+77	Se	Cl	42Ca35Cl	chloride
+77	Se	O	138La16O++	doubly charged polyatomic
+77	Se	O	139La16O++	doubly charged polyatomic
+78	Se	Ca	43Ca35Cl	chloride
+78	Se	Gd	155Gd++	doubly charged
+78	Se	Ar	38Ar40Ar	argide
+78	Se	Cl	37Cl40Ar1H	hydride
+78	Se	Ca	42Ca36Ar	argide
+78	Se	Ca	40Ca38Ar	argide
+78	Se	Dy	156Dy++	doubly charged
+78	Se	Gd	156Gd++	doubly charged
+78	Se	Gd	157Gd++	doubly charged
+78	Se	K	40K38Ar	argide
+78	Se	Kr	78Kr	plasma
+78	Se	La	139La16O++	doubly charged polyatomic
+78	Se	Ni	62Ni16O	oxide
+78	Se	Ni	61Ni16O1H	hydroxide
+78	Se	Se	77Se1H	hydride
+78	Se	Ar	38Ar40Ar	argide
+78	Se	Ar	42Ca36Ar	argide
+78	Se	Ar	40Ca38Ar	argide
+78	Se	Ar	40K38Ar	argide
+78	Se	Cl	43Ca35Cl	chloride
+78	Se	O	139La16O++	doubly charged polyatomic
+79	Br	Ca	44Ca35Cl	chloride
+79	Br	Ca	43Ca36Ar	argide
+79	Br	Ar	40Ar38Ar1H	hydride
+79	Br	Cu	63Cu16O	oxide
+79	Br	Dy	158Dy++	doubly charged
+79	Br	Gd	158Gd++	doubly charged
+79	Br	K	39K40Ar	argide
+79	Br	K	41K38Ar	argide
+79	Br	Ni	62Ni16O1H	hydroxide
+79	Br	Se	78Se1H	hydride
+79	Br	Ca	42Ca37Cl	chloride
+79	Br	Ar	43Ca36Ar	argide
+79	Br	Ar	39K40Ar	argide
+79	Br	Ar	41K38Ar	argide
+79	Br	Cl	44Ca35Cl	chloride
+79	Br	Cl	42Ca37Cl	chloride
+80	Se	Ca	42Ca38Ar	argide
+80	Se	Ca	44Ca36Ar	argide
+80	Se	Ar	40Ar40Ar	argide
+80	Se	Br	79Br1H	hydride
+80	Se	Dy	160Dy++	doubly charged
+80	Se	Dy	161Dy++	doubly charged
+80	Se	Gd	160Gd++	doubly charged
+80	Se	K	40K40Ar	argide
+80	Se	Kr	80Kr	plasma
+80	Se	Ca	40Ca40Ar	argide
+80	Se	S	32S16O16O16O	trioxide
+80	Se	Ni	64Ni16O	oxide
+80	Se	Zn	64Zn16O	oxide
+80	Se	Ar	42Ca38Ar	argide
+80	Se	Ar	44Ca36Ar	argide
+80	Se	Ar	40Ar40Ar	argide
+80	Se	Ar	40K40Ar	argide
+80	Se	Ar	40Ca40Ar	argide
+81	Br	Ca	46Ca35Cl	chloride
+81	Br	Ca	43Ca38Ar	argide
+81	Br	S	33S16O16O16O	trioxide
+81	Br	Ar	40Ar40Ar1H	hydride
+81	Br	Cu	65Cu16O	oxide
+81	Br	Dy	162Dy++	doubly charged
+81	Br	Dy	163Dy++	doubly charged
+81	Br	Er	162Er++	doubly charged
+81	Br	K	41K40Ar	argide
+81	Br	Ni	64Ni16O1H	hydroxide
+81	Br	Se	80Se1H	hydride
+81	Br	Sc	45Sc36Ar	argide
+81	Br	Ca	44Ca37Cl	chloride
+81	Br	Ar	43Ca38Ar	argide
+81	Br	Ar	41K40Ar	argide
+81	Br	Ar	45Sc36Ar	argide
+81	Br	Cl	46Ca35Cl	chloride
+81	Br	Cl	44Ca37Cl	chloride
+82	Se	Ca	42Ca40Ar	argide
+82	Se	Ca	44Ca38Ar	argide
+82	Se	Ca	46Ca36Ar	argide
+82	Se	S	34S16O16O16O	trioxide
+82	Se	Ar	40Ar40Ar1H1H	other polyatomic
+82	Se	C	12C35Cl35Cl	chloride
+82	Se	Br	81Br1H	hydride
+82	Se	Cr	50Cr16O16O	dioxide
+82	Se	Dy	164Dy++	doubly charged
+82	Se	Er	164Er++	doubly charged
+82	Se	Ho	165Ho++	doubly charged
+82	Se	Kr	82Kr	plasma
+82	Se	V	50V16O16O	dioxide
+82	Se	Zn	66Zn16O	oxide
+82		Cr	50Cr16O16O	dioxide
+82	Se	Ar	42Ca40Ar	argide
+82	Se	Ar	44Ca38Ar	argide
+82	Se	Ar	46Ca36Ar	argide
+82	Se	Cl	12C35Cl35Cl	chloride
+83	Kr	Ca	43Ca40Ar	argide
+83	Kr	Er	166Er++	doubly charged
+83	Kr	Ho	165Ho++	doubly charged
+83	Kr	Zn	67Zn16O	oxide
+83	Kr	Kr	83Kr	plasma
+83	Kr	Se	82Se1H	hydride
+83		Cr	50Cr16O16O1H	other polyatomic
+83	Kr	Er	167Er++	doubly charged
+83	Se	V	50V16O16O1H	other polyatomic
+83	Kr	Sc	45Sc38Ar	argide
+83	Kr	V	51V16O16O	dioxide
+83	Kr	Ar	43Ca40Ar	argide
+83	Kr	Ar	45Sc38Ar	argide
+84	Sr	Ca	44Ca40Ar	argide
+84	Sr	Ca	46Ca38Ar	argide
+84	Sr	Ca	48Ca36Ar	argide
+84	Sr	S	36S16O16O16O	trioxide
+84	Sr	Cr	52Cr16O16O	dioxide
+84	Sr	Cr	50Cr16O16O1H1H	other polyatomic
+84	Sr	Er	167Er++	doubly charged
+84	Sr	Er	168Er++	doubly charged
+84	Sr	Kr	84Kr	plasma
+84	Sr	Tm	169Tm++	doubly charged
+84	Sr	V	51V16O16O1H	other polyatomic
+84	Sr	Yb	168Yb++	doubly charged
+84	Sr	Zn	68Zn16O	oxide
+84		Cr	52Cr16O16O	dioxide
+84		Cr	52Cr16O16O1H1H	other polyatomic
+84	Sr	Ar	44Ca40Ar	argide
+84	Sr	Ar	46Ca38Ar	argide
+84	Sr	Ar	48Ca36Ar	argide
+87	Se	Ca	40Ca37Cl	chloride
+85	Rb	Tm	169Tm++	doubly charged
+85	Rb	Cr	52Cr16O16O1H	other polyatomic
+85	Rb	Cr	53Cr16O16O	dioxide
+85	Rb	Er	170Er++	doubly charged
+85	Rb	Sc	45Sc40Ar	argide
+85	Rb	Si	28Si40Ar16O1H	hydroxide
+85	Rb	Sr	84Sr1H	hydride
+85	Rb	Yb	170Yb++	doubly charged
+85	Rb	Yb	171Yb++	doubly charged
+85	Rb	Ga	69Ga16O	oxide
+85	Rb	Ar	45Sc40Ar	argide
+85	Se	Cl	40Ca37Cl	chloride
+86	Sr	Ca	46Ca40Ar	argide
+86	Sr	Ca	48Ca38Ar	argide
+86	Sr	Ba	132Ba40Ar++	doubly charged polyatomic
+86	Sr	Cr	52Cr16O16O1H1H	other polyatomic
+86	Sr	Cr	53Cr16O16O1H	other polyatomic
+86	Sr	Cr	54Cr16O16O	dioxide
+86	Sr	Ge	70Ge16O	oxide
+86	Sr	Kr	86Kr	plasma
+86	Sr	Rb	85Rb1H	hydride
+86	Sr	Si	29Si40Ar16O1H	hydroxide
+86	Sr	Ti	46Ti40Ar	argide
+86	Sr	Yb	171Yb++	doubly charged
+86	Sr	Yb	172Yb++	doubly charged
+86	Sr	Zn	70Zn16O	oxide
+86	Sr	Ga	69Ga17O	oxide
+86	Sr	V	50V36Ar	argide
+86	Sr	Ar	36Ar36Ar14N	nitride
+86	Sr	Ar	46Ca40Ar	argide
+86	Sr	Ar	48Ca38Ar	argide
+86	Sr	Ar	46Ti40Ar	argide
+86	Sr	Ar	50V36Ar	argide
+86	Sr	Ar	132Ba40Ar++	doubly charged polyatomic
+86	Sr	N	36Ar36Ar14N	nitride
+87	Sr	Ba	134Ba40Ar++	doubly charged polyatomic
+87	Sr	Ba	135Ba40Ar++	doubly charged polyatomic
+87	Sr	Cr	53Cr16O16O1H1H	other polyatomic
+87	Sr	Cr	54Cr16O16O1H	other polyatomic
+87	Sr	Ge	70Ge16O1H	hydroxide
+87	Sr	Lu	175Lu++	doubly charged
+87	Sr	Si	30Si40Ar16O1H	hydroxide
+87	Sr	Sr	86Sr1H	hydride
+87	Sr	Ti	47Ti40Ar	argide
+87	Sr	Yb	173Yb++	doubly charged
+87	Sr	Yb	174Yb++	doubly charged
+87	Rb	Ba	134Ba40Ar++	doubly charged polyatomic
+87	Rb	Ba	135Ba40Ar++	doubly charged polyatomic
+87	Rb	Cr	53Cr16O16O1H1H	other polyatomic
+87	Rb	Cr	54Cr16O16O1H	other polyatomic
+87	Rb	Ge	70Ge16O1H	hydroxide
+87	Rb	Lu	175Lu++	doubly charged
+87	Rb	Si	30Si40Ar16O1H	hydroxide
+87	Rb	Sr	86Sr1H	hydride
+87	Rb	Ti	47Ti40Ar	argide
+87	Rb	Yb	173Yb++	doubly charged
+87	Rb	Yb	174Yb++	doubly charged
+87	Sr	Hf	174Hf++	doubly charged
+87	Rb	Hf	174Hf++	doubly charged
+87	Sr	Ga	69Ga18O	oxide
+87	Rb	Ga	69Ga18O	oxide
+87	Sr	Ga	71Ga16O	oxide
+87	Rb	Ga	71Ga16O	oxide
+87	Sr	V	51V36Ar	argide
+87	Rb	V	51V36Ar	argide
+87	Sr	Rb	87Rb	elemental
+87	Sr	Ar	47Ti40Ar	argide
+87	Rb	Ar	47Ti40Ar	argide
+87	Sr	Ar	51V36Ar	argide
+87	Rb	Ar	51V36Ar	argide
+87	Sr	Ar	134Ba40Ar++	doubly charged polyatomic
+87	Sr	Ar	135Ba40Ar++	doubly charged polyatomic
+87	Rb	Ar	134Ba40Ar++	doubly charged polyatomic
+87	Rb	Ar	135Ba40Ar++	doubly charged polyatomic
+90	Se	Ca	43Ca37Cl	chloride
+88	Sr	Ca	48Ca40Ar	argide
+88	Sr	Yb	173Yb++	doubly charged
+88	Sr	Ba	136Ba40Ar++	doubly charged polyatomic
+88	Sr	Ba	137Ba40Ar++	doubly charged polyatomic
+88	Sr	Cr	54Cr16O16O1H1H	other polyatomic
+88	Sr	Ge	72Ge16O	oxide
+88	Sr	Hf	176Hf++	doubly charged
+88	Sr	Lu	176Lu++	doubly charged
+88	Sr	Rb	87Rb1H	hydride
+88	Sr	Sr	87Sr1H	hydride
+88	Sr	Ti	48Ti40Ar	argide
+88	Sr	Yb	176Yb++	doubly charged
+88	Sr	Ga	71Ga17O	oxide
+88	Sr	Hf	177Hf++	doubly charged
+88	Sr	La	138La40Ar++	doubly charged polyatomic
+88	Sr	V	50V38Ar	argide
+88	Sr	Ar	36Ar38Ar14N	nitride
+88	Sr	Ar	48Ca40Ar	argide
+88	Sr	Ar	48Ti40Ar	argide
+88	Sr	Ar	50V38Ar	argide
+88	Se	Cl	43Ca37Cl	chloride
+88	Sr	Ar	136Ba40Ar++	doubly charged polyatomic
+88	Sr	Ar	137Ba40Ar++	doubly charged polyatomic
+88	Sr	Ar	138La40Ar++	doubly charged polyatomic
+88	Sr	N	36Ar38Ar14N	nitride
+89	Y	Ba	138Ba40Ar++	doubly charged polyatomic
+89	Y	Ga	71Ga18O	oxide
+89	Y	Ge	72Ge17O	oxide
+89	Y	Ge	72Ge16O1H	hydroxide
+89	Y	Ge	73Ge16O	oxide
+89	Y	Hf	177Hf++	doubly charged
+89	Y	Hf	178Hf++	doubly charged
+89	Y	La	139La40Ar++	doubly charged polyatomic
+89	Y	Sr	88Sr1H	hydride
+89	Y	Ti	49Ti40Ar	argide
+89	Y	Hf	179Hf++	doubly charged
+89	Y	V	51V38Ar	argide
+89	Y	Ar	49Ti40Ar	argide
+89	Y	Ar	51V38Ar	argide
+89	Y	Ar	138Ba40Ar++	doubly charged polyatomic
+89	Y	Ar	139La40Ar++	doubly charged polyatomic
+90	Zr	La	139La40Ar++	doubly charged polyatomic
+90	Zr	Cr	50Cr40Ar	argide
+90	Zr	Ge	73Ge16O1H	hydroxide
+90	Zr	Ge	74Ge16O	oxide
+90	Ze	W	180W++	doubly charged
+90	Zr	Hf	179Hf++	doubly charged
+90	Zr	Hf	180Hf++	doubly charged
+90	Zr	Se	74Se16O	oxide
+90	Zr	Ta	180Ta++	doubly charged
+90	Zr	Ta	181Ta++	doubly charged
+90	Zr	Ti	50Ti40Ar	argide
+90	Zr	V	50V40Ar	argide
+90	Zr	Y	89Y1H	hydride
+90	Zr	Fe	54Fe36Ar	argide
+90	Zr	Ar	38Ar38Ar14N	nitride
+90	Zr	Ar	40Ar36Ar14N	nitride
+90	Zr	Ar	50Cr40Ar	argide
+90	Zr	Ar	50Ti40Ar	argide
+90	Zr	Ar	50V40Ar	argide
+90	Zr	Ar	54Fe36Ar	argide
+90	Zr	Ar	139La40Ar++	doubly charged polyatomic
+90	Zr	N	38Ar38Ar14N	nitride
+90	Zr	N	40Ar36Ar14N	nitride
+93	Kr	Ca	46Ca37Cl	chloride
+91	Zr	Ta	181Ta++	doubly charged
+91	Zr	As	75As16O	oxide
+91	Zr	Ge	74Ge16O1H	hydroxide
+91	Zr	Nd	142Nd40Ar++	doubly charged polyatomic
+91	Zr	V	51V40Ar	argide
+91	Zr	W	182W++	doubly charged
+91	Zr	W	183W++	doubly charged
+91	Zr	Zr	90Zr1H	hydride
+91	Zr	Mn	55Mn36Ar	argide
+91	Zr	Ar	51V40Ar	argide
+91	Zr	Ar	55Mn36Ar	argide
+91	Kr	Cl	46Ca37Cl	chloride
+91	Zr	Ar	142Nd40Ar++	doubly charged polyatomic
+92	Zr	W	183W++	doubly charged
+92	Mo	As	75As16O1H	hydroxide
+92	Mo	As	75As17O	oxide
+92	Mo	C	12C40Ar40Ar	argide
+92	Mo	Cr	52Cr40Ar	argide
+92	Mo	Ge	76Ge16O	oxide
+92	Mo	Nd	144Nd40Ar++	doubly charged polyatomic
+92	Mo	Nd	144Nd40Ar++	doubly charged polyatomic
+92	Mo	Se	76Se16O	oxide
+92	Mo	Os	184Os++	doubly charged
+92	Mo	W	184W++	doubly charged
+92	Mo	Zr	91Zr1H	hydride
+92	Zr	As	75As16O1H	hydroxide
+92	Zr	As	75As17O	oxide
+92	Zr	C	12C40Ar40Ar	argide
+92	Zr	Cr	52Cr40Ar	argide
+92	Zr	Ge	76Ge16O	oxide
+92	Zr	Nd	144Nd40Ar++	doubly charged polyatomic
+92	Zr	Nd	144Nd40Ar++	doubly charged polyatomic
+92	Zr	Se	76Se16O	oxide
+92	Zr	Os	184Os++	doubly charged
+92	Zr	W	184W++	doubly charged
+92	Zr	Zr	91Zr1H	hydride
+92	Mo	Fe	54Fe38Ar	argide
+92	Zr	Fe	54Fe38Ar	argide
+92	Mo	Fe	56Fe36Ar	argide
+92	Zr	Fe	56Fe36Ar	argide
+92	Zr	Ar	40Ar38Ar14N	nitride
+92	Mo	Ar	40Ar38Ar14N	nitride
+92	Zr	Mo	92Mo	elemental
+92	Mo	Ar	12C40Ar40Ar	argide
+92	Mo	Ar	52Cr40Ar	argide
+92	Zr	Ar	12C40Ar40Ar	argide
+92	Zr	Ar	52Cr40Ar	argide
+92	Mo	Ar	54Fe38Ar	argide
+92	Zr	Ar	54Fe38Ar	argide
+92	Mo	Ar	56Fe36Ar	argide
+92	Zr	Ar	56Fe36Ar	argide
+92	Mo	Ar	144Nd40Ar++	doubly charged polyatomic
+92	Mo	Ar	144Nd40Ar++	doubly charged polyatomic
+92	Zr	Ar	144Nd40Ar++	doubly charged polyatomic
+92	Zr	Ar	144Nd40Ar++	doubly charged polyatomic
+92	Zr	N	40Ar38Ar14N	nitride
+92	Mo	N	40Ar38Ar14N	nitride
+93	Nb	As	75As17O1H	hydroxide
+93	Nb	As	75As18O	oxide
+93	Nb	Cr	53Cr40Ar	argide
+93	Nb	Ge	76Ge16O1H	hydroxide
+93	Nb	Mo	92Mo1H	hydride
+93	Nb	Nd	146Nd40Ar++	doubly charged polyatomic
+93	Nb	Se	77Se16O	oxide
+93	Nb	W	186W++	doubly charged
+93	Nb	Zr	92Zr1H	hydride
+93	Nb	Cr	53Cr40Ar	argide
+93	Nb	Fe	57Fe36Ar	argide
+93	Nb	Os	186Os++	doubly charged
+93	Nb	Os	187Os++	doubly charged
+93	Nb	Mn	55Mn38Ar	argide
+93	Nb	Ar	53Cr40Ar	argide
+93	Nb	Ar	53Cr40Ar	argide
+93	Nb	Ar	57Fe36Ar	argide
+93	Nb	Ar	55Mn38Ar	argide
+93	Nb	Ar	146Nd40Ar++	doubly charged polyatomic
+94	Mo	As	75As18O1H	hydroxide
+94	Mo	Cr	54Cr40Ar	argide
+94	Mo	Fe	56Fe38Ar	argide
+94	Zr	Fe	56Fe38Ar	argide
+94	Zr	Fe	58Fe36Ar	argide
+94	Mo	Fe	58Fe36Ar	argide
+94	Mo	Fe	54Fe40Ar	argide
+94	Mo	Ar	40Ar40Ar14N	nitride
+94	Mo	Nb	93Nb1H	hydride
+94	Mo	Ni	58Ni36Ar	argide
+94	Zr	Os	187Os++	doubly charged
+94	Mo	Os	187Os++	doubly charged
+94	Zr	Os	189Os++	doubly charged
+94	Mo	Os	189Os++	doubly charged
+94	Mo	Os	188Os++	doubly charged
+94	Mo	Se	78Se16O	oxide
+94	Zr	As	75As18O1H	hydroxide
+94	Zr	Cr	54Cr40Ar	argide
+94	Zr	Fe	54Fe40Ar	argide
+94	Zr	Ar	40Ar40Ar14N	nitride
+94	Zr	Nb	93Nb1H	hydride
+94	Zr	Ni	58Ni36Ar	argide
+94	Zr	Os	188Os++	doubly charged
+94	Zr	Se	78Se16O	oxide
+94	Zr	Mo	94Mo	elemental
+94	Mo	Zr	94Zr	elemental
+94	Mo	Ar	54Cr40Ar	argide
+94	Mo	Ar	56Fe38Ar	argide
+94	Zr	Ar	56Fe38Ar	argide
+94	Zr	Ar	58Fe36Ar	argide
+94	Mo	Ar	58Fe36Ar	argide
+94	Mo	Ar	54Fe40Ar	argide
+94	Mo	Ar	58Ni36Ar	argide
+94	Zr	Ar	54Cr40Ar	argide
+94	Zr	Ar	54Fe40Ar	argide
+94	Zr	Ar	58Ni36Ar	argide
+94	Mo	N	40Ar40Ar14N	nitride
+94	Zr	N	40Ar40Ar14N	nitride
+95	Mo	Fe	57Fe38Ar	argide
+95	Mo	Os	189Os++	doubly charged
+95	Mo	Br	79Br16O	oxide
+95	Mo	Co	59Co36Ar	argide
+95	Mo	K	39K40Ar16O	argide
+95	Mo	Mn	55Mn40Ar	argide
+95	Mo	Mo	94Mo1H	hydride
+95	Mo	Nd	150Nd40Ar++	doubly charged polyatomic
+95	Mo	Os	190Os++	doubly charged
+95	Mo	Pt	190Pt++	doubly charged
+95	Mo	Zr	94Zr1H	hydride
+95	Mo	Lu	175Lu16O++	doubly charged polyatomic
+95	Mo	Ar	57Fe38Ar	argide
+95	Mo	Ar	59Co36Ar	argide
+95	Mo	Ar	39K40Ar16O	argide
+95	Mo	Ar	55Mn40Ar	argide
+95	Mo	Ar	150Nd40Ar++	doubly charged polyatomic
+95	Mo	O	175Lu16O++	doubly charged polyatomic
+96	Ru	Fe	58Fe38Ar	argide
+96	Mo	Fe	58Fe38Ar	argide
+96	Zr	Fe	58Fe38Ar	argide
+96	Mo	Fe	56Fe40Ar	argide
+96	Mo	Ar	40Ar40Ar16O	oxide
+96	Mo	Lu	176Lu16O++	doubly charged polyatomic
+96	Mo	Mo	95Mo1H	hydride
+96	Mo	Ni	58Ni38Ar	argide
+96	Mo	Ni	60Ni36Ar	argide
+96	Mo	Os	192Os++	doubly charged
+96	Mo	Pt	192Pt++	doubly charged
+96	Mo	Se	80Se16O	oxide
+96	Ru	Fe	56Fe40Ar	argide
+96	Ru	Ar	40Ar40Ar16O	oxide
+96	Ru	Lu	175Lu16O++	doubly charged polyatomic
+96	Ru	Mo	95Mo1H	hydride
+96	Ru	Ni	58Ni38Ar	argide
+96	Ru	Ni	60Ni36Ar	argide
+96	Ru	Os	192Os++	doubly charged
+96	Ru	Pt	192Pt++	doubly charged
+96	Ru	Se	80Se16O	oxide
+96	Zr	Br	79Br17O	oxide
+96	Mo	Br	79Br17O	oxide
+96	Ru	Br	79Br17O	oxide
+96	Zr	K	40K40Ar16O	argide
+96	Mo	K	40K40Ar16O	argide
+96	Ru	K	40K40Ar16O	argide
+96	Ru	Br	81Br17O	oxide
+96	Mo	Ru	96Ru	elemental
+96	Zr	Ru	96Ru	elemental
+96	Mo	Zr	96Zr	elemental
+96	Ru	Zr	96Zr	elemental
+96	Ru	Ar	58Fe38Ar	argide
+96	Mo	Ar	58Fe38Ar	argide
+96	Zr	Ar	58Fe38Ar	argide
+96	Mo	Ar	56Fe40Ar	argide
+96	Mo	Ar	58Ni38Ar	argide
+96	Mo	Ar	60Ni36Ar	argide
+96	Ru	Ar	56Fe40Ar	argide
+96	Ru	Ar	58Ni38Ar	argide
+96	Ru	Ar	60Ni36Ar	argide
+96	Zr	Ar	40K40Ar16O	argide
+96	Mo	Ar	40K40Ar16O	argide
+96	Ru	Ar	40K40Ar16O	argide
+96	Mo	O	176Lu16O++	doubly charged polyatomic
+96	Ru	O	175Lu16O++	doubly charged polyatomic
+97	Mo	Pt	195Pt++	doubly charged
+97	Mo	Br	79Br18O	oxide
+97	Mo	Br	81Br16O	oxide
+97	Mo	Co	59Co38Ar	argide
+97	Mo	Fe	57Fe40Ar	argide
+97	Mo	K	41K40Ar16O	argide
+97	Mo	Pt	194Pt++	doubly charged
+97	Mo	Mo	96Mo1H	hydride
+97	Mo	Ru	96Ru1H	hydride
+97	Mo	Zr	96Zr1H	hydride
+97	Mo	Ar	59Co38Ar	argide
+97	Mo	Ar	57Fe40Ar	argide
+97	Mo	Ar	41K40Ar16O	argide
+98	Mo	Pt	195Pt++	doubly charged
+98	Ru	Pt	195Pt++	doubly charged
+98	Ru	Fe	58Fe40Ar	argide
+98	Ru	Cr	50Cr16O16O16O	trioxide
+98	Ru	Mo	97Mo1H	hydride
+98	Ru	Ni	60Ni38Ar	argide
+98	Ru	Ni	58Ni40Ar	argide
+98	Ru	Br	81Br16O1H	hydroxide
+98	Ru	Hg	196Hg++	doubly charged
+98	Ru	Pt	196Pt++	doubly charged
+98	Ru	Se	82Se16O	oxide
+98	Mo	Fe	58Fe40Ar	argide
+98	Mo	Cr	50Cr16O16O16O	trioxide
+98	Mo	Mo	97Mo1H	hydride
+98	Mo	Ni	60Ni38Ar	argide
+98	Mo	Ni	58Ni40Ar	argide
+98	Mo	Br	81Br16O1H	hydroxide
+98	Mo	Br	81Br17O	oxide
+98	Mo	Hg	196Hg++	doubly charged
+98	Mo	Pt	196Pt++	doubly charged
+98	Mo	Se	82Se16O	oxide
+98	Mo	Dy	156Dy40Ar++	doubly charged polyatomic
+98	Ru	Dy	156Dy40Ar++	doubly charged polyatomic
+98	Mo	Ru	98Ru	elemental
+98	Ru	Ar	58Fe40Ar	argide
+98	Ru	Ar	60Ni38Ar	argide
+98	Ru	Ar	58Ni40Ar	argide
+98	Mo	Ar	58Fe40Ar	argide
+98	Mo	Ar	60Ni38Ar	argide
+98	Mo	Ar	58Ni40Ar	argide
+98	Mo	Ar	156Dy40Ar++	doubly charged polyatomic
+98	Ru	Ar	156Dy40Ar++	doubly charged polyatomic
+99	Ru	Pt	198Pt++	doubly charged
+99	Ru	Br	81Br18O	oxide
+99	Zr	Br	81Br17O1H	hydroxide
+99	Ru	Co	59Co40Ar	argide
+99	Ru	Cr	50Cr16O16O16O1H	other polyatomic
+99	Ru	Cu	63Cu36Ar	argide
+99	Rb	Mo	98Mo1H	hydride
+99	Rb	Ru	98Ru1H	hydride
+99	Ru	Dy	158Dy40Ar++	doubly charged polyatomic
+99	Ru	Hg	198Hg++	doubly charged
+99	Ru	Hg	199Hg++	doubly charged
+99	Ru	Ar	59Co40Ar	argide
+99	Ru	Ar	63Cu36Ar	argide
+99	Ru	Ar	158Dy40Ar++	doubly charged polyatomic
+100	Mo	Br	81Br18O1H	hydroxide
+100	Ru	Br	81Br18O1H	hydroxide
+100	Ru	Cr	50Cr16O16O16O1H1H	other polyatomic
+100	Ru	Cr	52Cr16O16O16O	trioxide
+100	Ru	Dy	160Dy40Ar++	doubly charged polyatomic
+100	Ru	Dy	161Dy40Ar++	doubly charged polyatomic
+100	Mo	Hg	199Hg++	doubly charged
+100	Ru	Hg	201Hg++	doubly charged
+100	Mo	Hg	199Hg++	doubly charged
+100	Ru	Hg	201Hg++	doubly charged
+100	Ru	Hg	200Hg++	doubly charged
+100	Ru	Ni	60Ni40Ar	argide
+100	Ru	Ru	99Ru1H	hydride
+100	Ru	Sr	84Sr16O	oxide
+100	Mo	Cr	50Cr16O16O16O1H1H	other polyatomic
+100	Mo	Cr	52Cr16O16O16O	trioxide
+100	Mo	Dy	160Dy40Ar++	doubly charged polyatomic
+100	Mo	Dy	161Dy40Ar++	doubly charged polyatomic
+100	Mo	Hg	200Hg++	doubly charged
+100	Mo	Ni	60Ni40Ar	argide
+100	Mo	Ru	99Ru1H	hydride
+100	Mo	Sr	84Sr16O	oxide
+100	Ru	Mo	100Mo	elemental
+100	Ru	Ar	60Ni40Ar	argide
+100	Mo	Ar	60Ni40Ar	argide
+100	Ru	Ar	160Dy40Ar++	doubly charged polyatomic
+100	Ru	Ar	161Dy40Ar++	doubly charged polyatomic
+100	Mo	Ar	160Dy40Ar++	doubly charged polyatomic
+100	Mo	Ar	161Dy40Ar++	doubly charged polyatomic
+101	Ru	Hg	201Hg++	doubly charged
+101	Ru	Hg	202Hg++	doubly charged
+101	Ru	Cr	52Cr16O16O16O1H	other polyatomic
+101	Ru	Cr	53Cr16O16O16O	trioxide
+101	Ru	Cu	63Cu38Ar	argide
+101	Ru	Dy	161Dy40Ar++	doubly charged polyatomic
+101	Ru	Dy	162Dy40Ar++	doubly charged polyatomic
+101	Ru	Dy	163Dy40Ar++	doubly charged polyatomic
+101	Rb	Mo	100Mo1H	hydride
+101	Ru	Ni	61Ni40Ar	argide
+101	Ru	Rb	85Rb16O	oxide
+101	Ru	Ru	100Ru1H	hydride
+101	Ru	Sr	84Sr16O1H	hydroxide
+101	Ru	Sr	84Sr17O	oxide
+101	Ru	Cu	65Cu36Ar	argide
+101	Ru	Ar	63Cu38Ar	argide
+101	Ru	Ar	61Ni40Ar	argide
+101	Ru	Ar	65Cu36Ar	argide
+101	Ru	Ar	161Dy40Ar++	doubly charged polyatomic
+101	Ru	Ar	162Dy40Ar++	doubly charged polyatomic
+101	Ru	Ar	163Dy40Ar++	doubly charged polyatomic
+102	Pd	Hg	204Hg++	doubly charged
+102	Ru	Hg	204Hg++	doubly charged
+102	Pd	Cr	52Cr16O16O16O1H1H	other polyatomic
+102	Pd	Cr	53Cr16O16O16O1H	other polyatomic
+102	Pd	Cr	54Cr16O16O16O	trioxide
+102	Pd	Dy	163Dy40Ar++	doubly charged polyatomic
+102	Pd	Dy	164Dy40Ar++	doubly charged polyatomic
+102	Pd	Ho	165Ho40Ar++	doubly charged polyatomic
+102	Pd	Ni	62Ni40Ar	argide
+102	Pd	Pb	204Pb++	doubly charged
+102	Pd	Rb	85Rb16O1H	hydroxide
+102	Pd	Ru	101Ru1H	hydride
+102	Pd	Sr	86Sr16O	oxide
+102	Pd	Sr	84Sr18O	oxide
+102	Pd	Sr	84Sr17O1H	hydroxide
+102	Ru	Cr	52Cr16O16O16O1H1H	other polyatomic
+102	Ru	Cr	53Cr16O16O16O1H	other polyatomic
+102	Ru	Cr	54Cr16O16O16O	trioxide
+102	Ru	Dy	163Dy40Ar++	doubly charged polyatomic
+102	Ru	Dy	164Dy40Ar++	doubly charged polyatomic
+102	Ru	Ho	165Ho40Ar++	doubly charged polyatomic
+102	Ru	Ni	62Ni40Ar	argide
+102	Ru	Pb	204Pb++	doubly charged
+102	Ru	Rb	85Rb16O1H	hydroxide
+102	Ru	Ru	101Ru1H	hydride
+102	Ru	Sr	86Sr16O	oxide
+102	Ru	Sr	84Sr18O	oxide
+102	Ru	Sr	84Sr17O1H	hydroxide
+102	Ru	Pd	102Pd	elemental
+102	Pd	Ar	62Ni40Ar	argide
+102	Ru	Ar	62Ni40Ar	argide
+102	Pd	Ar	163Dy40Ar++	doubly charged polyatomic
+102	Pd	Ar	164Dy40Ar++	doubly charged polyatomic
+102	Pd	Ar	165Ho40Ar++	doubly charged polyatomic
+102	Ru	Ar	163Dy40Ar++	doubly charged polyatomic
+102	Ru	Ar	164Dy40Ar++	doubly charged polyatomic
+102	Ru	Ar	165Ho40Ar++	doubly charged polyatomic
+103	Rh	Cr	53Cr16O16O16O1H1H	other polyatomic
+103	Rh	Cr	54Cr16O16O16O1H	other polyatomic
+103	Rh	Cu	63Cu40Ar	argide
+103	Rh	Pb	206Pb++	doubly charged
+103	Rh	Pb	207Pb++	doubly charged
+103	Rh	Pd	102Pd1H	hydride
+103	Rh	Rb	87Rb16O	oxide
+103	Rh	Ru	102Ru1H	hydride
+103	Rh	Sr	87Sr16O	oxide
+103	Rh	Sr	86Sr16O1H	hydroxide
+103	Rh	Sr	86Sr17O	oxide
+103	Rh	Sr	84Sr18O1H	hydroxide
+103	Rh	Cu	65Cu38Ar	argide
+103	Rh	Ho	165Ho40Ar++	doubly charged polyatomic
+103	Rh	Ar	63Cu40Ar	argide
+103	Rh	Ar	65Cu38Ar	argide
+103	Rh	Ar	165Ho40Ar++	doubly charged polyatomic
+104	Pd	Rb	87Rb16O1H	hydroxide
+104	Ru	Rb	87Rb16O1H	hydroxide
+104	Ru	Pb	207Pb++	doubly charged
+104	Pd	Pb	207Pb++	doubly charged
+104	Pd	Cr	54Cr16O16O16O1H1H	other polyatomic
+104	Pd	Ni	64Ni40Ar	argide
+104	Pd	Pb	208Pb++	doubly charged
+104	Pd	Rh	103Rh1H	hydride
+104	Pd	Sr	88Sr16O	oxide
+104	Pd	Sr	87Sr16O1H	hydroxide
+104	Pd	Sr	86Sr18O	oxide
+104	Pd	Sr	87Sr17O	oxide
+104	Pd	Sr	86Sr17O1H	hydroxide
+104	Pd	Tm	169Tm40Ar++	doubly charged polyatomic
+104	Pd	Zn	64Zn40Ar	argide
+104	Ru	Cr	54Cr16O16O16O1H1H	other polyatomic
+104	Ru	Ni	64Ni40Ar	argide
+104	Ru	Pb	208Pb++	doubly charged
+104	Ru	Rh	103Rh1H	hydride
+104	Ru	Sr	88Sr16O	oxide
+104	Ru	Sr	87Sr16O1H	hydroxide
+104	Ru	Sr	86Sr18O	oxide
+104	Ru	Sr	87Sr17O	oxide
+104	Ru	Sr	86Sr17O1H	hydroxide
+104	Ru	Tm	169Tm40Ar++	doubly charged polyatomic
+104	Ru	Zn	64Zn40Ar	argide
+104	Ru	Pd	104Pd	elemental
+104	Pd	Ru	104Ru	elemental
+104	Pd	Ar	64Ni40Ar	argide
+104	Pd	Ar	64Zn40Ar	argide
+104	Ru	Ar	64Ni40Ar	argide
+104	Ru	Ar	64Zn40Ar	argide
+104	Pd	Ar	169Tm40Ar++	doubly charged polyatomic
+104	Ru	Ar	169Tm40Ar++	doubly charged polyatomic
+105	Pd	Cu	65Cu40Ar	argide
+105	Pd	Pd	104Pd1H	hydride
+105	Pd	Ru	104Ru1H	hydride
+105	Pd	Sr	88Sr16O1H	hydroxide
+105	Pd	Sr	87Sr18O	oxide
+105	Pd	Sr	88Sr17O	oxide
+105	Pd	Sr	86Sr18O1H	hydroxide
+105	Pd	Y	89Y16O	oxide
+105	Pd	Yb	170Yb40Ar++	doubly charged polyatomic
+105	Pd	Ga	69Ga36Ar	argide
+105	Pd	Tm	169Tm40Ar++	doubly charged polyatomic
+105	Pd	Ar	65Cu40Ar	argide
+105	Pd	Ar	69Ga36Ar	argide
+105	Pd	Ar	170Yb40Ar++	doubly charged polyatomic
+105	Pd	Ar	169Tm40Ar++	doubly charged polyatomic
+106	Cd	Pd	105Pd1H	hydride
+106	Cd	Sr	88Sr18O	oxide
+106	Cd	Sr	88Sr17O1H	hydroxide
+106	Cd	Y	89Y17O	oxide
+106	Cd	Y	89Y16O1H	hydroxide
+106	Cd	Yb	171Yb40Ar++	doubly charged polyatomic
+106	Cd	Yb	172Yb40Ar++	doubly charged polyatomic
+106	Cd	Zn	66Zn40Ar	argide
+106	Cd	Zr	90Zr16O	oxide
+106	Pd	Pd	105Pd1H	hydride
+106	Pd	Sr	88Sr18O	oxide
+106	Pd	Sr	88Sr17O1H	hydroxide
+106	Pd	Y	89Y17O	oxide
+106	Pd	Y	89Y16O1H	hydroxide
+106	Pd	Yb	171Yb40Ar++	doubly charged polyatomic
+106	Pd	Yb	172Yb40Ar++	doubly charged polyatomic
+106	Pd	Zn	66Zn40Ar	argide
+106	Pd	Zr	90Zr16O	oxide
+106	Cd	Ge	70Ge36Ar	argide
+106	Pd	Ge	70Ge36Ar	argide
+106	Pd	Mo	92Mo14N	nitride
+106	Cd	Mo	92Mo14N	nitride
+106	Pd	Cd	106Cd	elemental
+106	Pd	Cr	50Cr40Ar16O	other polyatomic
+106	Cd	Cr	50Cr40Ar16O	other polyatomic
+106	Cd	Ar	66Zn40Ar	argide
+106	Pd	Ar	66Zn40Ar	argide
+106	Cd	Ar	70Ge36Ar	argide
+106	Pd	Ar	70Ge36Ar	argide
+106	Cd	Ar	171Yb40Ar++	doubly charged polyatomic
+106	Cd	Ar	172Yb40Ar++	doubly charged polyatomic
+106	Pd	Ar	171Yb40Ar++	doubly charged polyatomic
+106	Pd	Ar	172Yb40Ar++	doubly charged polyatomic
+106	Pd	N	92Mo14N	nitride
+106	Cd	N	92Mo14N	nitride
+106	Pd	Ar	50Cr40Ar16O	other polyatomic
+106	Cd	Ar	50Cr40Ar16O	other polyatomic
+107	Ag	Cd	106Cd1H	hydride
+107	Ag	Ga	69Ga38Ar	argide
+107	Ag	Ga	71Ga36Ar	argide
+107	Ag	Pd	106Pd1H	hydride
+107	Ag	Sr	88Sr18O1H	hydroxide
+107	Ag	Y	89Y18O	oxide
+107	Ag	Yb	173Yb40Ar++	doubly charged polyatomic
+107	Ag	Yb	174Yb40Ar++	doubly charged polyatomic
+107	Ag	Zn	67Zn40Ar	argide
+107	Ag	Zr	91Zr16O	oxide
+107	Ag	Zr	90Zr17O	oxide
+107	Ag	Zr	90Zr16O1H	hydroxide
+107	Ag	Y	89Y17O1H	hydroxide
+107	Ag	Zr	90Zr16O16O1H	dioxide
+107	Ag	Ar	69Ga38Ar	argide
+107	Ag	Ar	71Ga36Ar	argide
+107	Ag	Ar	67Zn40Ar	argide
+107	Ag	Ar	173Yb40Ar++	doubly charged polyatomic
+107	Ag	Ar	174Yb40Ar++	doubly charged polyatomic
+108	Cd	Ag	107Ag1H	hydride
+108	Cd	Cr	52Cr40Ar16O	other polyatomic
+108	Cd	Mo	92Mo16O	oxide
+108	Cd	Se	76Se16O16O	dioxide
+108	Cd	Y	89Y18O1H	hydroxide
+108	Cd	Yb	176Yb40Ar++	doubly charged polyatomic
+108	Cd	Zn	68Zn40Ar	argide
+108	Cd	Zr	92Zr16O	oxide
+108	Cd	Zr	91Zr16O1H	hydroxide
+108	Cd	Zr	90Zr18O	oxide
+108	Pd	Ag	107Ag1H	hydride
+108	Pd	Cr	52Cr40Ar16O	other polyatomic
+108	Pd	Mo	92Mo16O	oxide
+108	Pd	Se	76Se16O16O	dioxide
+108	Pd	Y	89Y18O1H	hydroxide
+108	Pd	Yb	176Yb40Ar++	doubly charged polyatomic
+108	Pd	Zn	68Zn40Ar	argide
+108	Pd	Zr	92Zr16O	oxide
+108	Pd	Zr	91Zr16O1H	hydroxide
+108	Pd	Zr	90Zr18O	oxide
+108	Pd	Zr	91Zr16O16O1H	dioxide
+108	Cd	Zr	91Zr16O16O1H	dioxide
+108	Cd	Ge	70Ge38Ar	argide
+108	Pd	Ge	70Ge38Ar	argide
+108	Cd	Ge	72Ge36Ar	argide
+108	Pd	Ge	72Ge36Ar	argide
+108	Pd	Mo	94Mo14N	nitride
+108	Cd	Mo	94Mo14N	nitride
+108	Pd	Cd	108Cd	elemental
+108	Cd	Pd	108Pd	elemental
+108	Cd	Ar	68Zn40Ar	argide
+108	Pd	Ar	68Zn40Ar	argide
+108	Cd	Ar	70Ge38Ar	argide
+108	Pd	Ar	70Ge38Ar	argide
+108	Cd	Ar	72Ge36Ar	argide
+108	Pd	Ar	72Ge36Ar	argide
+108	Cd	Ar	176Yb40Ar++	doubly charged polyatomic
+108	Pd	Ar	176Yb40Ar++	doubly charged polyatomic
+108	Pd	N	94Mo14N	nitride
+108	Cd	N	94Mo14N	nitride
+108	Cd	Ar	52Cr40Ar16O	other polyatomic
+108	Pd	Ar	52Cr40Ar16O	other polyatomic
+109	Ag	Cr	53Cr40Ar16O	other polyatomic
+109	Ag	Ga	69Ga40Ar	argide
+109	Ag	Cd	108Cd1H	hydride
+109	Ag	Mo	92Mo16O1H	hydroxide
+109	Ag	Nb	93Nb16O	oxide
+109	Ag	Pd	108Pd1H	hydride
+109	Ag	Se	77Se16O16O	dioxide
+109	Ag	Zr	91Zr18O	oxide
+109	Ag	Zr	92Zr16O1H	hydroxide
+109	Ag	Zr	92Zr16O16O1H	dioxide
+109	Ag	Ge	73Ge36Ar	argide
+109	Ag	Ga	71Ga38Ar	argide
+109	Ag	Mo	95Mo14N	nitride
+109	Ag	Ar	69Ga40Ar	argide
+109	Ag	Ar	73Ge36Ar	argide
+109	Ag	Ar	71Ga38Ar	argide
+109	Ag	N	95Mo14N	nitride
+109	Ag	Ar	53Cr40Ar16O	other polyatomic
+110	Pd	Cr	54Cr40Ar16O	other polyatomic
+110	Cd	Cr	54Cr40Ar16O	other polyatomic
+110	Cd	Ag	109Ag1H	hydride
+110	Pd	Ge	72Ge38Ar	argide
+110	Cd	Ge	72Ge38Ar	argide
+110	Cd	Ge	70Ge40Ar	argide
+110	Cd	Ge	74Ge36Ar	argide
+110	Cd	Mo	94Mo16O	oxide
+110	Cd	Nb	93Nb16O1H	hydroxide
+110	Cd	Nb	93Nb17O	oxide
+110	Cd	Se	78Se16O16O	dioxide
+110	Cd	Zn	70Zn40Ar	argide
+110	Cd	Zr	94Zr16O	oxide
+110	Cd	Zr	92Zr18O	oxide
+110	Pd	Ag	109Ag1H	hydride
+110	Pd	Ge	70Ge40Ar	argide
+110	Pd	Ge	74Ge36Ar	argide
+110	Pd	Mo	94Mo16O	oxide
+110	Pd	Nb	93Nb16O1H	hydroxide
+110	Pd	Nb	93Nb17O	oxide
+110	Pd	Se	78Se16O16O	dioxide
+110	Pd	Zn	70Zn40Ar	argide
+110	Pd	Zr	94Zr16O	oxide
+110	Pd	Zr	92Zr18O	oxide
+110	Pd	Mo	96Mo14N	nitride
+110	Cd	Mo	96Mo14N	nitride
+110	Pd	Se	74Se36Ar	argide
+110	Cd	Se	74Se36Ar	argide
+110	Pd	Cd	110Cd	elemental
+110	Cd	Pd	110Pd	elemental
+110	Pd	Ar	72Ge38Ar	argide
+110	Cd	Ar	72Ge38Ar	argide
+110	Cd	Ar	70Ge40Ar	argide
+110	Cd	Ar	74Ge36Ar	argide
+110	Cd	Ar	70Zn40Ar	argide
+110	Pd	Ar	70Ge40Ar	argide
+110	Pd	Ar	74Ge36Ar	argide
+110	Pd	Ar	70Zn40Ar	argide
+110	Pd	Ar	74Se36Ar	argide
+110	Cd	Ar	74Se36Ar	argide
+110	Pd	N	96Mo14N	nitride
+110	Cd	N	96Mo14N	nitride
+110	Pd	Ar	54Cr40Ar16O	other polyatomic
+110	Cd	Ar	54Cr40Ar16O	other polyatomic
+111	Cd	Zr	94Zr16O16O1H	dioxide
+111	Cd	Ge	73Ge38Ar	argide
+111	Cd	Cd	110Cd1H	hydride
+111	Cd	As	75As36Ar	argide
+111	Cd	Ga	71Ga40Ar	argide
+111	Cd	Mo	95Mo16O	oxide
+111	Cd	Mo	94Mo16O1H	hydroxide
+111	Cd	Nb	93Nb18O	oxide
+111	Cd	Pd	110Pd1H	hydride
+111	Cd	Br	79Br32S	sulfide
+111	Cd	Zr	94Zr16O1H	hydroxide
+111	Cd	Nb	93Nb17O1H	hydroxide
+111	Cd	Mo	97Mo14N	nitride
+111	Cd	Ar	73Ge38Ar	argide
+111	Cd	Ar	75As36Ar	argide
+111	Cd	Ar	71Ga40Ar	argide
+111	Cd	N	97Mo14N	nitride
+112	Cd	Ge	74Ge38Ar	argide
+112	Sn	Ge	74Ge38Ar	argide
+112	Cd	Ge	76Ge36Ar	argide
+112	Sn	Ge	76Ge36Ar	argide
+112	Cd	Cd	111Cd1H	hydride
+112	Cd	Ge	72Ge40Ar	argide
+112	Cd	Mo	96Mo16O	oxide
+112	Cd	Mo	95Mo16O1H	hydroxide
+112	Cd	Nb	93Nb18O1H	hydroxide
+112	Cd	Ru	96Ru16O	oxide
+112	Cd	Se	80Se16O16O	dioxide
+112	Cd	Zr	96Zr16O	oxide
+112	Cd	Mo	98Mo14N	nitride
+112	Cd	Zr	94Zr18O	oxide
+112	Sn	Cd	111Cd1H	hydride
+112	Sn	Ge	72Ge40Ar	argide
+112	Sn	Mo	96Mo16O	oxide
+112	Sn	Mo	95Mo16O1H	hydroxide
+112	Sn	Nb	93Nb18O1H	hydroxide
+112	Sn	Ru	96Ru16O	oxide
+112	Sn	Se	80Se16O16O	dioxide
+112	Sn	Zr	96Zr16O	oxide
+112	Sn	Zr	94Zr17O1H	hydroxide
+112	Sn	Mo	98Mo14N	nitride
+112	Sn	Zr	94Zr18O	oxide
+112	Sn	Se	74Se38Ar	argide
+112	Sn	Se	76Se36Ar	argide
+112	Cd	Se	74Se38Ar	argide
+112	Cd	Se	76Se36Ar	argide
+112	Cd	Sn	112Sn	elemental
+112	Cd	Ar	74Ge38Ar	argide
+112	Sn	Ar	74Ge38Ar	argide
+112	Cd	Ar	76Ge36Ar	argide
+112	Sn	Ar	76Ge36Ar	argide
+112	Cd	Ar	72Ge40Ar	argide
+112	Sn	Ar	72Ge40Ar	argide
+112	Sn	Ar	74Se38Ar	argide
+112	Sn	Ar	76Se36Ar	argide
+112	Cd	Ar	74Se38Ar	argide
+112	Cd	Ar	76Se36Ar	argide
+112	Cd	N	98Mo14N	nitride
+112	Sn	N	98Mo14N	nitride
+113	Cd	Zr	96Zr16O16O1H	dioxide
+113	In	Zr	96Zr16O16O1H	dioxide
+113	Cd	Br	81Br32S	sulfide
+113	Cd	Ru	96Ru17O	oxide
+113	In	Ru	96Ru17O	oxide
+113	Sn	Mo	99Mo14N	nitride
+113	Cd	Mo	99Mo14N	nitride
+113	Cd	Cd	112Cd1H	hydride
+113	Cd	Ge	73Ge40Ar	argide
+113	Cd	Mo	97Mo16O	oxide
+113	Cd	Mo	96Mo16O1H	hydroxide
+113	Cd	Ru	96Ru16O1H	hydroxide
+113	Cd	Sn	112Sn1H	hydride
+113	Cd	Zr	96Zr16O1H	hydroxide
+113	In	Cd	112Cd1H	hydride
+113	In	Ge	73Ge40Ar	argide
+113	In	Mo	97Mo16O	oxide
+113	In	Mo	96Mo16O1H	hydroxide
+113	In	Ru	96Ru16O1H	hydroxide
+113	In	Sn	112Sn1H	hydride
+113	In	Zr	96Zr16O1H	hydroxide
+113	Cd	Se	77Se36Ar	argide
+113	In	Se	77Se36Ar	argide
+113	Cd	In	113In	elemental
+113	Cd	Ar	73Ge40Ar	argide
+113	In	Ar	73Ge40Ar	argide
+113	Cd	Ar	77Se36Ar	argide
+113	In	Ar	77Se36Ar	argide
+113	Sn	N	99Mo14N	nitride
+113	Cd	N	99Mo14N	nitride
+114	Cd	Cd	113Cd1H	hydride
+114	Cd	Ge	74Ge40Ar	argide
+114	Cd	Ge	76Ge38Ar	argide
+114	Cd	Mo	96Mo18O	oxide
+114	Cd	Mo	98Mo16O	oxide
+114	Cd	Mo	97Mo16O1H	hydroxide
+114	Cd	Ru	98Ru16O	oxide
+114	Cd	Ru	96Ru18O	oxide
+114	Cd	Se	82Se16O16O	dioxide
+114	Cd	Se	76Se38Ar	argide
+114	Cd	Se	78Se36Ar	argide
+114	Cd	Se	74Se40Ar	argide
+114	Cd	Zr	96Zr18O	oxide
+114	Sn	Cd	113Cd1H	hydride
+114	Sn	Ge	74Ge40Ar	argide
+114	Sn	Ge	76Ge38Ar	argide
+114	Sn	Mo	98Mo16O	oxide
+114	Sn	Mo	97Mo16O1H	hydroxide
+114	Sn	Ru	98Ru16O	oxide
+114	Sn	Ru	96Ru18O	oxide
+114	Sn	Se	82Se16O16O	dioxide
+114	Sn	Se	76Se38Ar	argide
+114	Sn	Se	78Se36Ar	argide
+114	Sn	Se	74Se40Ar	argide
+114	Sn	Zr	96Zr18O	oxide
+114	Cd	Sn	114Sn	elemental
+114	Cd	Ar	74Ge40Ar	argide
+114	Cd	Ar	76Ge38Ar	argide
+114	Cd	Ar	76Se38Ar	argide
+114	Cd	Ar	78Se36Ar	argide
+114	Cd	Ar	74Se40Ar	argide
+114	Sn	Ar	74Ge40Ar	argide
+114	Sn	Ar	76Ge38Ar	argide
+114	Sn	Ar	76Se38Ar	argide
+114	Sn	Ar	78Se36Ar	argide
+114	Sn	Ar	74Se40Ar	argide
+115	Sn	Ru	98Ru17O	oxide
+115	In	Ru	98Ru17O	oxide
+115	Sn	Mo	100Mo14N	nitride
+115	In	Mo	100Mo14N	nitride
+115	Sn	Se	77Se38Ar	argide
+115	In	Se	77Se38Ar	argide
+115	In	As	75As40Ar	argide
+115	In	Cd	114Cd1H	hydride
+115	In	Mo	98Mo16O1H	hydroxide
+115	In	Ru	99Ru16O	oxide
+115	In	Ru	98Ru16O1H	hydroxide
+115	In	Sn	114Sn1H	hydride
+115	Sn	As	75As40Ar	argide
+115	Sn	Cd	114Cd1H	hydride
+115	Sn	Mo	98Mo16O1H	hydroxide
+115	Sn	Ru	99Ru16O	oxide
+115	Sn	Ru	98Ru16O1H	hydroxide
+115	Sn	Sn	114Sn1H	hydride
+115	In	Br	79Br36Ar	argide
+115	Sn	Br	79Br36Ar	argide
+115	Sn	In	115In	elemental
+115	Sn	Ar	77Se38Ar	argide
+115	In	Ar	77Se38Ar	argide
+115	In	Ar	75As40Ar	argide
+115	Sn	Ar	75As40Ar	argide
+115	In	Ar	79Br36Ar	argide
+115	Sn	Ar	79Br36Ar	argide
+115	Sn	N	100Mo14N	nitride
+115	In	N	100Mo14N	nitride
+116	Sn	Ru	99Ru17O	oxide
+116	Cd	Ru	99Ru17O	oxide
+116	Sn	Ru	98Ru18O	oxide
+116	Cd	Ru	98Ru18O	oxide
+116	Sn	Se	78Se38Ar	argide
+116	Cd	Se	80Se36Ar	argide
+116	Sn	Se	78Se38Ar	argide
+116	Cd	Se	80Se36Ar	argide
+116	Cd	Ge	76Ge40Ar	argide
+116	Cd	Lu	175Lu40Ar16O++	doubly charged polyatomic
+116	Cd	Mo	100Mo16O	oxide
+116	Cd	Ru	100Ru16O	oxide
+116	Cd	Ru	99Ru16O1H	hydroxide
+116	Cd	Se	76Se40Ar	argide
+116	Cd	Sn	115Sn1H	hydride
+116	Cd	Th	232Th++	doubly charged
+116	Sn	Ge	76Ge40Ar	argide
+116	Sn	Lu	175Lu40Ar16O++	doubly charged polyatomic
+116	Sn	Mo	100Mo16O	oxide
+116	Sn	Ru	100Ru16O	oxide
+116	Sn	Ru	99Ru16O1H	hydroxide
+116	Sn	Se	76Se40Ar	argide
+116	Sn	Sn	115Sn1H	hydride
+116	Sn	Th	232Th++	doubly charged
+116	Sn	Cd	116Cd	elemental
+116	Sn	Ar	78Se38Ar	argide
+116	Cd	Ar	80Se36Ar	argide
+116	Sn	Ar	78Se38Ar	argide
+116	Cd	Ar	80Se36Ar	argide
+116	Cd	Ar	76Ge40Ar	argide
+116	Cd	Ar	76Se40Ar	argide
+116	Sn	Ar	76Ge40Ar	argide
+116	Sn	Ar	76Se40Ar	argide
+116	Cd	Ar	175Lu40Ar16O++	doubly charged polyatomic
+116	Sn	Ar	175Lu40Ar16O++	doubly charged polyatomic
+116	Cd	O	175Lu40Ar16O++	doubly charged polyatomic
+116	Sn	O	175Lu40Ar16O++	doubly charged polyatomic
+117	Sn	Ru	100Ru17O	oxide
+117	Sn	Ru	99Ru18O	oxide
+117	Sn	Cd	116Cd1H	hydride
+117	Sn	Mo	100Mo16O1H	hydroxide
+117	Sn	Ru	101Ru16O	oxide
+117	Sn	Ru	100Ru16O1H	hydroxide
+117	Sn	Se	77Se40Ar	argide
+117	Sn	Sn	116Sn1H	hydride
+117	Sn	U	234U++	doubly charged
+117	Sn	U	235U++	doubly charged
+117	Sn	Br	79Br38Ar	argide
+117	Sn	Br	81Br36Ar	argide
+117	Sn	Lu	176Lu40Ar16O++	doubly charged polyatomic
+117	Sn	Ar	77Se40Ar	argide
+117	Sn	Ar	79Br38Ar	argide
+117	Sn	Ar	81Br36Ar	argide
+117	Sn	Ar	176Lu40Ar16O++	doubly charged polyatomic
+117	Sn	O	176Lu40Ar16O++	doubly charged polyatomic
+118	Sn	Ru	101Ru17O	oxide
+118	Sn	Ru	100Ru18O	oxide
+118	Sn	Se	80Se38Ar	argide
+118	Sn	Se	82Se36Ar	argide
+118	Sn	Pd	102Pd16O	oxide
+118	Sn	Ru	102Ru16O	oxide
+118	Sn	Ru	101Ru16O1H	hydroxide
+118	Sn	Se	78Se40Ar	argide
+118	Sn	Sn	117Sn1H	hydride
+118	Sn	U	235U++	doubly charged
+118	Sn	Ar	80Se38Ar	argide
+118	Sn	Ar	82Se36Ar	argide
+118	Sn	Ar	78Se40Ar	argide
+119	Sn	Ru	102Ru17O	oxide
+119	Sn	Ru	101Ru18O	oxide
+119	Sn	Br	79Br40Ar	argide
+119	Sn	Rh	103Rh16O	oxide
+119	Sn	Ru	102Ru16O1H	hydroxide
+119	Sn	Sn	118Sn1H	hydride
+119	Sn	U	238U++	doubly charged
+119	Sn	Br	81Br38Ar	argide
+119	Sn	Ar	79Br40Ar	argide
+119	Sn	Ar	81Br38Ar	argide
+120	Sn	Ru	102Ru18O	oxide
+120	Te	Ru	102Ru18O	oxide
+120	Sn	Se	82Se38Ar	argide
+120	Te	Se	82Se38Ar	argide
+120	Te	Pd	104Pd16O	oxide
+120	Te	Ru	104Ru16O	oxide
+120	Te	Se	80Se40Ar	argide
+120	Te	Sn	119Sn1H	hydride
+120	Sn	Pd	104Pd16O	oxide
+120	Sn	Ru	104Ru16O	oxide
+120	Sn	Se	80Se40Ar	argide
+120	Sn	Sn	119Sn1H	hydride
+120	Sn	Te	120Te	elemental
+120	Sn	Ar	82Se38Ar	argide
+120	Te	Ar	82Se38Ar	argide
+120	Te	Ar	80Se40Ar	argide
+120	Sn	Ar	80Se40Ar	argide
+121	Sb	Ru	104Ru17O	oxide
+121	Sb	Br	81Br40Ar	argide
+121	Sb	Pd	105Pd16O	oxide
+121	Sb	Ru	104Ru16O1H	hydroxide
+121	Sb	Sn	120Sn1H	hydride
+121	Sb	Ar	81Br40Ar	argide
+122	Sn	Ru	104Ru18O	oxide
+122	Te	Ru	104Ru18O	oxide
+122	Te	Cd	106Cd16O	oxide
+122	Te	Pd	106Pd16O	oxide
+122	Te	Sb	121Sb1H	hydride
+122	Te	Se	82Se40Ar	argide
+122	Te	Zr	90Zr16O16O	dioxide
+122	Sn	Cd	106Cd16O	oxide
+122	Sn	Pd	106Pd16O	oxide
+122	Sn	Sb	121Sb1H	hydride
+122	Sn	Se	82Se40Ar	argide
+122	Sn	Zr	90Zr16O16O	dioxide
+122	Te	Sn	122Sn	elemental
+122	Sn	Te	122Te	elemental
+122	Te	Ar	82Se40Ar	argide
+122	Sn	Ar	82Se40Ar	argide
+123	Te	Cd	106Cd17O	oxide
+123	Sb	Cd	106Cd17O	oxide
+123	Te	Ag	107Ag16O	oxide
+123	Te	Sn	122Sn1H	hydride
+123	Te	Zr	91Zr16O16O	dioxide
+123	Te	Zr	90Zr16O16O1H	other polyatomic
+123	Sb	Ag	107Ag16O	oxide
+123	Sb	Sn	122Sn1H	hydride
+123	Sb	Zr	91Zr16O16O	dioxide
+123	Sb	Zr	90Zr16O16O1H	other polyatomic
+123	Te	Sb	123Sb	elemental
+123	Sb	Te	123Te	elemental
+124	Te	Cd	106Cd18O	oxide
+124	Sn	Cd	106Cd18O	oxide
+124	Te	Ag	107Ag16O1H	hydroxide
+124	Te	Cd	108Cd16O	oxide
+124	Te	Mo	92Mo16O16O	dioxide
+124	Te	Pd	108Pd16O	oxide
+124	Te	Sb	123Sb1H	hydride
+124	Te	Th	232Th16O++	doubly charged polyatomic
+124	Te	Xe	124Xe	plasma
+124	Te	Zr	92Zr16O16O	dioxide
+124	Te	Zr	91Zr16O16O1H	other polyatomic
+124	Sn	Ag	107Ag16O1H	hydroxide
+124	Sn	Cd	108Cd16O	oxide
+124	Sn	Mo	92Mo16O16O	dioxide
+124	Sn	Pd	108Pd16O	oxide
+124	Sn	Sb	123Sb1H	hydride
+124	Sn	Th	232Th16O++	doubly charged polyatomic
+124	Sn	Xe	124Xe	plasma
+124	Sn	Zr	92Zr16O16O	dioxide
+124	Sn	Zr	91Zr16O16O1H	other polyatomic
+124	Sn	Sr	84Sr40Ar	argide
+124	Te	Sr	84Sr40Ar	argide
+124	Te	Sn	124Sn	elemental
+124	Sn	Te	124Te	elemental
+124	Sn	Ar	84Sr40Ar	argide
+124	Te	Ar	84Sr40Ar	argide
+124	Te	O	232Th16O++	doubly charged polyatomic
+124	Sn	O	232Th16O++	doubly charged polyatomic
+125	Te	Cd	108Cd17O	oxide
+125	Te	Zr	92Zr16O16O1H	other polyatomic
+125	Te	Ag	109Ag16O	oxide
+125	Te	Mo	92Mo16O16O1H	other polyatomic
+125	Te	Nb	93Nb16O16O	dioxide
+125	Te	Rb	85Rb40Ar	argide
+125	Te	Sn	124Sn1H	hydride
+125	Te	Ar	85Rb40Ar	argide
+126	Te	Th	232Th16O1H++	doubly charged polyatomic
+126	Te	Cd	108Cd18O	oxide
+126	Te	Ag	109Ag16O1H	hydroxide
+126	Te	Cd	110Cd16O	oxide
+126	Te	Mo	94Mo16O16O	dioxide
+126	Te	Pd	110Pd16O	oxide
+126	Te	Sr	86Sr40Ar	argide
+126	Te	Xe	126Xe	plasma
+126	Te	Ar	86Sr40Ar	argide
+126	Te	O	232Th16O1H++	doubly charged polyatomic
+127	I	Cd	110Cd17O	oxide
+127	I	Zr	94Zr16O16O1H	other polyatomic
+127	I	Rb	87Rb40Ar	argide
+127	I	Mo	95Mo16O16O	dioxide
+127	I	Mo	94Mo16O16O1H	other polyatomic
+127	I	Sr	87Sr40Ar	argide
+127	I	Ar	87Rb40Ar	argide
+127	I	Ar	87Sr40Ar	argide
+128	Te	Cd	110Cd18O	oxide
+128	Te	Cd	112Cd16O	oxide
+128	Te	Mo	96Mo16O16O	dioxide
+128	Te	Mo	95Mo16O16O1H	other polyatomic
+128	Te	Ru	96Ru16O16O	dioxide
+128	Te	Sn	112Sn16O	oxide
+128	Te	Sr	88Sr40Ar	argide
+128	Te	Xe	128Xe	plasma
+128	Te	Zr	96Zr16O16O	dioxide
+128	Te	Mo	92Mo36Ar	argide
+128	Te	Ar	88Sr40Ar	argide
+128	Te	Ar	92Mo36Ar	argide
+129	Xe	Cd	112Cd17O	oxide
+129	Xe	Zr	96Zr16O16O1H	other polyatomic
+129	Xe	Xe	129Xe	plasma
+129	Xe	Cd	113Cd16O	oxide
+129	Xe	Nb	93Nb36Ar	argide
+129	Xe	Ar	93Nb36Ar	argide
+130	Ba	Cd	113Cd17O	oxide
+130	Te	Cd	113Cd17O	oxide
+130	Ba	Cd	112Cd18O	oxide
+130	Te	Cd	112Cd18O	oxide
+130	Ba	Cd	114Cd16O	oxide
+130	Ba	Mo	98Mo16O16O	dioxide
+130	Ba	Ru	98Ru16O16O	dioxide
+130	Ba	Sn	114Sn16O	oxide
+130	Ba	Xe	130Xe	plasma
+130	Te	Cd	114Cd16O	oxide
+130	Te	Mo	98Mo16O16O	dioxide
+130	Te	Ru	98Ru16O16O	dioxide
+130	Te	Sn	114Sn16O	oxide
+130	Te	Xe	130Xe	plasma
+130	Ba	Mo	94Mo36Ar	argide
+130	Te	Mo	94Mo36Ar	argide
+130	Te	Mo	92Mo38Ar	argide
+130	Te	Ba	130Ba	elemental
+130	Ba	Te	130Te	elemental
+130	Ba	Ar	94Mo36Ar	argide
+130	Te	Ar	94Mo36Ar	argide
+130	Te	Ar	92Mo38Ar	argide
+131	Xe	Cd	114Cd17O	oxide
+131	Xe	Cd	113Cd18O	oxide
+131	Xe	Xe	131Xe	plasma
+131	Xe	Mo	95Mo36Ar	argide
+131	Xe	Ba	130Ba1H	hydride
+131	Xe	Nb	93Nb38Ar	argide
+131	Xe	Ar	95Mo36Ar	argide
+131	Xe	Ar	93Nb38Ar	argide
+132	Ba	Cd	114Cd18O	oxide
+132	Ba	Cd	116Cd16O	oxide
+132	Ba	Mo	100Mo16O16O	dioxide
+132	Ba	Mo	96Mo36Ar	argide
+132	Ba	Mo	94Mo38Ar	argide
+132	Ba	Mo	92Mo40Ar	argide
+132	Ba	Ru	100Ru16O16O	dioxide
+132	Ba	Sn	116Sn16O	oxide
+132	Ba	Sn	115Sn16O1H	hydroxide
+132	Ba	Xe	132Xe	plasma
+132	Ba	Ar	96Mo36Ar	argide
+132	Ba	Ar	94Mo38Ar	argide
+132	Ba	Ar	92Mo40Ar	argide
+133	Cs	Cd	116Cd17O	oxide
+133	Cs	Mo	97Mo36Ar	argide
+133	Cs	Mo	95Mo38Ar	argide
+133	Cs	Ba	132Ba1H	hydride
+133	Cs	Mo	100Mo16O16O1H	other polyatomic
+133	Cs	Nb	93Nb40Ar	argide
+133	Cs	Ru	101Ru16O16O	dioxide
+133	Cs	Sn	117Sn16O	oxide
+133	Cs	Sn	116Sn16O1H	hydroxide
+133	Cs	Ar	97Mo36Ar	argide
+133	Cs	Ar	95Mo38Ar	argide
+133	Cs	Ar	93Nb40Ar	argide
+134	Ba	Cd	116Cd18O	oxide
+134	Ba	Mo	98Mo36Ar	argide
+134	Ba	Mo	98Mo36Ar	argide
+134	Ba	Mo	96Mo38Ar	argide
+134	Ba	Mo	94Mo40Ar	argide
+134	Ba	Ru	102Ru16O16O	dioxide
+134	Ba	Sn	118Sn16O	oxide
+134	Ba	Sn	117Sn16O1H	hydroxide
+134	Ba	Xe	134Xe	plasma
+134	Ba	Ru	96Ru38Ar	argide
+134	Ba	Ar	98Mo36Ar	argide
+134	Ba	Ar	98Mo36Ar	argide
+134	Ba	Ar	96Mo38Ar	argide
+134	Ba	Ar	94Mo40Ar	argide
+134	Ba	Ar	96Ru38Ar	argide
+135	Ba	Mo	97Mo38Ar	argide
+135	Ba	Mo	95Mo40Ar	argide
+135	Ba	Sn	119Sn16O	oxide
+135	Ba	Sn	118Sn16O1H	hydroxide
+135	Ba	Ba	134Ba1H	hydride
+135	Ba	Ar	97Mo38Ar	argide
+135	Ba	Ar	95Mo40Ar	argide
+136	Ce	Mo	100Mo36Ar	argide
+136	Ba	Mo	100Mo36Ar	argide
+136	Ba	Mo	98Mo38Ar	argide
+136	Ce	Mo	98Mo38Ar	argide
+136	Ce	Cr	50Cr54Cr16O16O	dioxide
+136	Ce	Cr	52Cr52Cr16O16O	dioxide
+136	Ce	Mo	96Mo40Ar	argide
+136	Ce	Ru	104Ru16O16O	dioxide
+136	Ba	Ru	98Ru38Ar	argide
+136	Ce	Ru	98Ru38Ar	argide
+136	Ba	Ru	96Ru36Ar	argide
+136	Ce	Ru	96Ru36Ar	argide
+136	Ce	Ru	96Ru40Ar	argide
+136	Ce	Sn	120Sn16O	oxide
+136	Ce	Sn	119Sn16O1H	hydroxide
+136	Ce	Xe	136Xe	plasma
+136	Ba	Cr	50Cr54Cr16O16O	dioxide
+136	Ba	Cr	52Cr52Cr16O16O	dioxide
+136	Ba	Mo	96Mo40Ar	argide
+136	Ba	Ru	104Ru16O16O	dioxide
+136	Ba	Ru	96Ru40Ar	argide
+136	Ba	Sn	120Sn16O	oxide
+136	Ba	Sn	119Sn16O1H	hydroxide
+136	Ba	Xe	136Xe	plasma
+136	Ce	Ba	135Ba1H	hydride
+136	Ba	Ba	135Ba1H	hydride
+136	Ce	Ba	136Ba	elemental
+136	Ba	Ce	136Ce	elemental
+136	Ce	Ar	100Mo36Ar	argide
+136	Ba	Ar	100Mo36Ar	argide
+136	Ba	Ar	98Mo38Ar	argide
+136	Ce	Ar	98Mo38Ar	argide
+136	Ce	Ar	96Mo40Ar	argide
+136	Ba	Ar	98Ru38Ar	argide
+136	Ce	Ar	98Ru38Ar	argide
+136	Ba	Ar	96Ru36Ar	argide
+136	Ce	Ar	96Ru36Ar	argide
+136	Ce	Ar	96Ru40Ar	argide
+136	Ba	Ar	96Mo40Ar	argide
+136	Ba	Ar	96Ru40Ar	argide
+137	Ba	Ru	99Ru38Ar	argide
+137	Ba	Ba	136Ba1H	hydride
+137	Ba	Ce	136Ce1H	hydride
+137	Ba	Cr	52Cr53Cr16O16O	dioxide
+137	Ba	Mo	97Mo40Ar	argide
+137	Ba	Sb	121Sb16O	oxide
+137	Ba	Sn	120Sn16O1H	hydroxide
+137	Ba	Ar	99Ru38Ar	argide
+137	Ba	Ar	97Mo40Ar	argide
+138	Ba	Ru	98Ru36Ar	argide
+138	Ba	Mo	100Mo38Ar	argide
+138	Ba	Ru	102Ru36Ar	argide
+138	Ba	Sn	120Sn18O	oxide
+138	Ba	Sb	121Sb17O	oxide
+138	Ba	Ru	100Ru38Ar	argide
+138	Ba	Cr	52Cr54Cr16O16O	dioxide
+138	Ba	Cr	53Cr53Cr16O16O	dioxide
+138	Ba	Mo	98Mo40Ar	argide
+138	Ba	Ru	98Ru40Ar	argide
+138	Ba	Sn	122Sn16O	oxide
+138	Ba	Te	122Te16O	oxide
+138	La	Mo	100Mo38Ar	argide
+138	La	Ru	102Ru36Ar	argide
+138	La	Sb	121Sb17O	oxide
+138	La	Ru	100Ru38Ar	argide
+138	La	Cr	52Cr54Cr16O16O	dioxide
+138	La	Cr	53Cr53Cr16O16O	dioxide
+138	La	Mo	98Mo40Ar	argide
+138	La	Ru	98Ru40Ar	argide
+138	La	Sn	122Sn16O	oxide
+138	La	Te	122Te16O	oxide
+138	Ce	Mo	100Mo38Ar	argide
+138	Ce	Ru	102Ru36Ar	argide
+138	Ce	Sb	121Sb17O	oxide
+138	Ce	Ru	100Ru38Ar	argide
+138	Ce	Cr	52Cr54Cr16O16O	dioxide
+138	Ce	Cr	53Cr53Cr16O16O	dioxide
+138	Ce	Mo	98Mo40Ar	argide
+138	Ce	Ru	98Ru40Ar	argide
+138	Ce	Sn	122Sn16O	oxide
+138	Ce	Te	122Te16O	oxide
+138	Ce	Ba	137Ba1H	hydride
+138	La	Ba	137Ba1H	hydride
+138	Ba	Ba	137Ba1H	hydride
+138	Ce	Ba	138Ba	elemental
+138	La	Ba	138Ba	elemental
+138	Ba	Ce	138Ce	elemental
+138	La	Ce	138Ce	elemental
+138	Ba	La	138La	elemental
+138	Ce	La	138La	elemental
+138	Ba	Ar	98Ru36Ar	argide
+138	Ba	Ar	100Mo38Ar	argide
+138	Ba	Ar	102Ru36Ar	argide
+138	Ba	Ar	100Ru38Ar	argide
+138	Ba	Ar	98Mo40Ar	argide
+138	Ba	Ar	98Ru40Ar	argide
+138	La	Ar	100Mo38Ar	argide
+138	La	Ar	102Ru36Ar	argide
+138	La	Ar	100Ru38Ar	argide
+138	La	Ar	98Mo40Ar	argide
+138	La	Ar	98Ru40Ar	argide
+138	Ce	Ar	100Mo38Ar	argide
+138	Ce	Ar	102Ru36Ar	argide
+138	Ce	Ar	100Ru38Ar	argide
+138	Ce	Ar	98Mo40Ar	argide
+138	Ce	Ar	98Ru40Ar	argide
+139	La	Ru	101Ru38Ar	argide
+139	La	Sb	121Sb18O	oxide
+139	La	Ba	138Ba1H	hydride
+139	La	Ce	138Ce1H	hydride
+139	La	Cr	53Cr54Cr16O16O	dioxide
+139	La	La	138La1H	hydride
+139	La	Ru	99Ru40Ar	argide
+139	La	Sb	123Sb16O	oxide
+139	La	Sn	122Sn16O1H	hydroxide
+139	La	Te	123Te16O	oxide
+139	La	Te	122Te16O1H	hydroxide
+139	La	Ar	101Ru38Ar	argide
+139	La	Ar	99Ru40Ar	argide
+140	Ce	Ru	102Ru38Ar	argide
+140	Ce	Ru	100Ru36Ar	argide
+140	Ce	Sb	123Sb17O	oxide
+140	Ce	La	139La1H	hydride
+140	Ce	Mo	92Mo16O16O16O	trioxide
+140	Ce	Mo	100Mo40Ar	argide
+140	Ce	Ru	100Ru40Ar	argide
+140	Ce	Sn	124Sn16O	oxide
+140	Ce	Te	124Te16O	oxide
+140	Ce	Te	123Te16O1H	hydroxide
+140	Ce	Ar	102Ru38Ar	argide
+140	Ce	Ar	100Ru36Ar	argide
+140	Ce	Ar	100Mo40Ar	argide
+140	Ce	Ar	100Ru40Ar	argide
+141	Pr	Ru	101Ru36Ar	argide
+141	Pr	Sb	123Sb18O	oxide
+141	Pr	Ce	140Ce1H	hydride
+141	Pr	Mo	92Mo16O16O16O1H	other polyatomic
+141	Pr	Ru	101Ru40Ar	argide
+141	Pr	Sn	124Sn16O1H	hydroxide
+141	Pr	Te	125Te16O	oxide
+141	Pr	Te	124Te16O1H	hydroxide
+141	Pr	Ar	101Ru36Ar	argide
+141	Pr	Ar	101Ru40Ar	argide
+142	Nd	Ru	104Ru38Ar	argide
+142	Ce	Ru	104Ru38Ar	argide
+142	Nd	Ru	102Ru36Ar	argide
+142	Ce	Ru	102Ru36Ar	argide
+142	Ce	Mo	94Mo16O16O16O	trioxide
+142	Ce	Pd	102Pd40Ar	argide
+142	Ce	Pr	141Pr1H	hydride
+142	Ce	Ru	102Ru40Ar	argide
+142	Ce	Te	126Te16O	oxide
+142	Ce	Te	125Te16O1H	hydroxide
+142	Nd	Mo	94Mo16O16O16O	trioxide
+142	Nd	Pd	102Pd40Ar	argide
+142	Nd	Pr	141Pr1H	hydride
+142	Nd	Ru	102Ru40Ar	argide
+142	Nd	Te	126Te16O	oxide
+142	Nd	Te	125Te16O1H	hydroxide
+142	Nd	Cd	106Cd36Ar	argide
+142	Ce	Cd	106Cd36Ar	argide
+142	Nd	Ce	142Ce	elemental
+142	Ce	Nd	142Nd	elemental
+142	Nd	Ar	104Ru38Ar	argide
+142	Ce	Ar	104Ru38Ar	argide
+142	Nd	Ar	102Ru36Ar	argide
+142	Ce	Ar	102Ru36Ar	argide
+142	Ce	Ar	102Pd40Ar	argide
+142	Ce	Ar	102Ru40Ar	argide
+142	Nd	Ar	102Pd40Ar	argide
+142	Nd	Ar	102Ru40Ar	argide
+142	Nd	Ar	106Cd36Ar	argide
+142	Ce	Ar	106Cd36Ar	argide
+143	Nd	Ag	107Ag36Ar	argide
+143	Nd	Ce	142Ce1H	hydride
+143	Nd	I	127I16O	oxide
+143	Nd	Mo	95Mo16O16O16O	trioxide
+143	Nd	Mo	94Mo16O16O16O1H	other polyatomic
+143	Nd	Nd	142Nd1H	hydride
+143	Nd	Rh	103Rh40Ar	argide
+143	Nd	Te	126Te16O1H	hydroxide
+143	Nd	Ar	107Ag36Ar	argide
+143	Nd	Ar	103Rh40Ar	argide
+144	Nd	Ru	104Ru36Ar	argide
+144	Sm	Ru	104Ru36Ar	argide
+144	Sm	I	127I17O	oxide
+144	Nd	I	127I17O	oxide
+144	Sm	Mo	96Mo16O16O16O	trioxide
+144	Sm	Mo	95Mo16O16O16O1H	other polyatomic
+144	Sm	Nd	143Nd1H	hydride
+144	Sm	Pd	104Pd40Ar	argide
+144	Sm	Ru	96Ru16O16O16O	trioxide
+144	Sm	Ru	104Ru40Ar	argide
+144	Sm	Te	128Te16O	oxide
+144	Nd	Mo	96Mo16O16O16O	trioxide
+144	Nd	Mo	95Mo16O16O16O1H	other polyatomic
+144	Nd	Nd	143Nd1H	hydride
+144	Nd	Pd	104Pd40Ar	argide
+144	Nd	Ru	96Ru16O16O16O	trioxide
+144	Nd	Ru	104Ru40Ar	argide
+144	Nd	Te	128Te16O	oxide
+144	Nd	Cd	108Cd36Ar	argide
+144	Sm	Cd	108Cd36Ar	argide
+144	Nd	Cd	106Cd38Ar	argide
+144	Sm	Cd	106Cd38Ar	argide
+144	Nd	Sm	144Sm	elemental
+144	Nd	Ar	104Ru36Ar	argide
+144	Sm	Ar	104Ru36Ar	argide
+144	Sm	Ar	104Pd40Ar	argide
+144	Sm	Ar	104Ru40Ar	argide
+144	Nd	Ar	104Pd40Ar	argide
+144	Nd	Ar	104Ru40Ar	argide
+144	Nd	Ar	108Cd36Ar	argide
+144	Sm	Ar	108Cd36Ar	argide
+144	Nd	Ar	106Cd38Ar	argide
+144	Sm	Ar	106Cd38Ar	argide
+145	Nd	I	127I18O	oxide
+145	Nd	Ag	109Ag36Ar	argide
+145	Nd	Ag	107Ag38Ar	argide
+145	Nd 	Mo	97Mo16O16O16O	trioxide
+145	Nd 	Mo	96Mo16O16O16O1H	other polyatomic
+145	Nd 	Nd	144Nd1H	hydride
+145	Nd 	Pd	105Pd40Ar	argide
+145	Nd 	Sm	144Sm1H	hydride
+145	Nd 	Te	128Te16O1H	hydroxide
+145	Nd	Ar	109Ag36Ar	argide
+145	Nd	Ar	107Ag38Ar	argide
+145	Nd 	Ar	105Pd40Ar	argide
+146	Nd	Ba	130Ba16O	oxide
+146	Nd	Cd	110Cd36Ar	argide
+146	Nd	Cd	108Cd38Ar	argide
+146	Nd	Cd	106Cd40Ar	argide
+146	Nd	Mo	98Mo16O16O16O	trioxide
+146	Nd	Mo	97Mo16O16O16O1H	other polyatomic
+146	Nd	Nd	145Nd1H	hydride
+146	Nd	Pd	106Pd40Ar	argide
+146	Nd	Ru	98Ru16O16O16O	trioxide
+146	Nd	Te	130Te16O	oxide
+146	Nd	Ar	110Cd36Ar	argide
+146	Nd	Ar	108Cd38Ar	argide
+146	Nd	Ar	106Cd40Ar	argide
+146	Nd	Ar	106Pd40Ar	argide
+147	Sm	Cd	111Cd36Ar	argide
+147	Sm	Ag	107Ag40Ar	argide
+147	Sm	Ba	130Ba16O1H	hydroxide
+147	Sm	Mo	98Mo16O16O16O1H	other polyatomic
+147	Sm	Nd	146Nd1H	hydride
+147	Sm	Ru	99Ru16O16O16O	trioxide
+147	Sm	Sn	112Sn35Cl	chloride
+147	Sm	Te	130Te16O1H	hydroxide
+147	Sm	Ar	111Cd36Ar	argide
+147	Sm	Ar	107Ag40Ar	argide
+147	Sm	Cl	112Sn35Cl	chloride
+148	Nd	Cd	112Cd36Ar	argide
+148	Sm	Cd	112Cd36Ar	argide
+148	Nd	Cd	110Cd38Ar	argide
+148	Sm	Cd	110Cd38Ar	argide
+148	Sm	Ba	132Ba16O	oxide
+148	Sm	Cd	108Cd40Ar	argide
+148	Sm	Mo	100Mo16O16O16O	trioxide
+148	Sm	Pd	108Pd40Ar	argide
+148	Sm	Ru	100Ru16O16O16O	trioxide
+148	Sm	Sm	147Sm1H	hydride
+148	Nd	Ba	132Ba16O	oxide
+148	Nd	Cd	108Cd40Ar	argide
+148	Nd	Mo	100Mo16O16O16O	trioxide
+148	Nd	Pd	108Pd40Ar	argide
+148	Nd	Ru	100Ru16O16O16O	trioxide
+148	Nd	Sm	147Sm1H	hydride
+148	Sm	Nd	148Nd	elemental
+148	Nd	Ar	112Cd36Ar	argide
+148	Sm	Ar	112Cd36Ar	argide
+148	Nd	Ar	110Cd38Ar	argide
+148	Sm	Ar	110Cd38Ar	argide
+148	Sm	Ar	108Cd40Ar	argide
+148	Sm	Ar	108Pd40Ar	argide
+148	Nd	Ar	108Cd40Ar	argide
+148	Nd	Ar	108Pd40Ar	argide
+149	Sm	Cd	113Cd36Ar	argide
+149	Sm	Cd	111Cd38Ar	argide
+149	Sm	Ag	109Ag40Ar	argide
+149	Sm	Ba	132Ba16O1H	hydroxide
+149	Sm	Cs	133Cs16O	oxide
+149	Sm	Mo	100Mo16O16O16O1H	other polyatomic
+149	Sm	Nd	148Nd1H	hydride
+149	Sm	Ru	101Ru16O16O16O	trioxide
+149	Sm	Sm	148Sm1H	hydride
+149	Sm	Sn	114Sn35Cl	chloride
+149	Sm	Sn	112Sn37Cl	chloride
+149	Sm	Ar	113Cd36Ar	argide
+149	Sm	Ar	111Cd38Ar	argide
+149	Sm	Ar	109Ag40Ar	argide
+149	Sm	Cl	114Sn35Cl	chloride
+149	Sm	Cl	112Sn37Cl	chloride
+150	Sm	Cd	114Cd36Ar	argide
+150	Nd	Cd	114Cd36Ar	argide
+150	Sm	Cd	112Cd38Ar	argide
+150	Nd	Cd	112Cd38Ar	argide
+150	Sm	Ba	132Ba18O	oxide
+150	Sm	Ba	134Ba16O	oxide
+150	Sm	Cd	110Cd40Ar	argide
+150	Sm	Cr	50Cr52Cr16O16O16O	trioxide
+150	Sm	Pd	110Pd40Ar	argide
+150	Sm	Ru	102Ru16O16O16O	trioxide
+150	Sm	Sm	149Sm1H	hydride
+150	Nd	Ba	132Ba18O	oxide
+150	Nd	Ba	134Ba16O	oxide
+150	Nd	Cd	110Cd40Ar	argide
+150	Nd	Cr	50Cr52Cr16O16O16O	trioxide
+150	Nd	Pd	110Pd40Ar	argide
+150	Nd	Ru	102Ru16O16O16O	trioxide
+150	Nd	Sm	149Sm1H	hydride
+150	Sm	Nd	150Nd	elemental
+150	Sm	Ar	114Cd36Ar	argide
+150	Nd	Ar	114Cd36Ar	argide
+150	Sm	Ar	112Cd38Ar	argide
+150	Nd	Ar	112Cd38Ar	argide
+150	Sm	Ar	110Cd40Ar	argide
+150	Sm	Ar	110Pd40Ar	argide
+150	Nd	Ar	110Cd40Ar	argide
+150	Nd	Ar	110Pd40Ar	argide
+151	Eu	Cd	113Cd38Ar	argide
+151	Eu	Ba	135Ba16O	oxide
+151	Eu	Ba	134Ba16O1H	hydroxide
+151	Eu	Ba	132Ba18O1H	hydroxide
+151	Eu	Cd	111Cd40Ar	argide
+151	Eu	Cr	50Cr53Cr16O16O16O	trioxide
+151	Eu	Nd	150Nd1H	hydride
+151	Eu	Sm	150Sm1H	hydride
+151	Eu	Sn	116Sn35Cl	chloride
+151	Eu	Sn	114Sn37Cl	chloride
+151	Eu	Ar	113Cd38Ar	argide
+151	Eu	Ar	111Cd40Ar	argide
+151	Eu	Cl	116Sn35Cl	chloride
+151	Eu	Cl	114Sn37Cl	chloride
+152	Gd	Cd	116Cd36Ar	argide
+152	Sm	Cd	116Cd36Ar	argide
+152	Gd	Cd	114Cd38Ar	argide
+152	Sm	Cd	114Cd38Ar	argide
+152	Sm	Ba	136Ba16O	oxide
+152	Sm	Ba	134Ba18O	oxide
+152	Sm	Ba	135Ba16O1H	hydroxide
+152	Sm	Cd	112Cd40Ar	argide
+152	Sm	Ce	136Ce16O	oxide
+152	Sm	Cr	50Cr54Cr16O16O16O	trioxide
+152	Sm	Cr	52Cr52Cr16O16O16O	trioxide
+152	Sm	Eu	151Eu1H	hydride
+152	Sm	Ru	104Ru16O16O16O	trioxide
+152	Sm	Sn	112Sn40Ar	argide
+152	Sm	Sn	117Sn35Cl	chloride
+152	Sm	Sn	115Sn37Cl	chloride
+152	Gd	Ba	136Ba16O	oxide
+152	Gd	Ba	134Ba18O	oxide
+152	Gd	Ba	135Ba16O1H	hydroxide
+152	Gd	Cd	112Cd40Ar	argide
+152	Gd	Ce	136Ce16O	oxide
+152	Gd	Cr	50Cr54Cr16O16O16O	trioxide
+152	Gd	Cr	52Cr52Cr16O16O16O	trioxide
+152	Gd	Eu	151Eu1H	hydride
+152	Gd	Ru	104Ru16O16O16O	trioxide
+152	Gd	Sn	112Sn40Ar	argide
+152	Gd	Sn	117Sn35Cl	chloride
+152	Gd	Sn	115Sn37Cl	chloride
+152	Gd	La	138La14N	nitride
+152	Sm	La	138La14N	nitride
+152	Sm	Gd	152Gd	elemental
+152	Gd	Sm	152Sm	elemental
+152	Gd	Ar	116Cd36Ar	argide
+152	Sm	Ar	116Cd36Ar	argide
+152	Gd	Ar	114Cd38Ar	argide
+152	Sm	Ar	114Cd38Ar	argide
+152	Sm	Ar	112Cd40Ar	argide
+152	Sm	Ar	112Sn40Ar	argide
+152	Gd	Ar	112Cd40Ar	argide
+152	Gd	Ar	112Sn40Ar	argide
+152	Sm	Cl	117Sn35Cl	chloride
+152	Sm	Cl	115Sn37Cl	chloride
+152	Gd	Cl	117Sn35Cl	chloride
+152	Gd	Cl	115Sn37Cl	chloride
+152	Gd	N	138La14N	nitride
+152	Sm	N	138La14N	nitride
+153	Eu	Ce	136Ce17O	oxide
+153	Eu	Ba	137Ba16O	oxide
+153	Eu	Ba	134Ba18O1H	hydroxide
+153	Eu	Ba	136Ba16O1H	hydroxide
+153	Eu	Ba	135Ba18O	oxide
+153	Eu	Cd	113Cd40Ar	argide
+153	Eu	Ce	136Ce16O1H	hydroxide
+153	Eu	Cr	52Cr53Cr16O16O16O	trioxide
+153	Eu	Gd	152Gd1H	hydride
+153	Eu	In	113In40Ar	argide
+153	Eu	La	139La14N	nitride
+153	Eu	Sm	152Sm1H	hydride
+153	Eu	Sn	118Sn35Cl	chloride
+153	Eu	Sn	116Sn37Cl	chloride
+153	Eu	Ar	113Cd40Ar	argide
+153	Eu	Ar	113In40Ar	argide
+153	Eu	Cl	118Sn35Cl	chloride
+153	Eu	Cl	116Sn37Cl	chloride
+153	Eu	N	139La14N	nitride
+154	Gd	Cd	116Cd38Ar	argide
+154	Sm	Cd	116Cd38Ar	argide
+154	Gd	Ce	136Ce18O	oxide
+154	Sm	Ce	136Ce18O	oxide
+154	Sm	Ba	138Ba16O	oxide
+154	Sm	Ba	137Ba16O1H	hydroxide
+154	Sm	Ba	136Ba18O	oxide
+154	Sm	Ba	135Ba18O1H	hydroxide
+154	Sm	Cd	114Cd40Ar	argide
+154	Sm	Ce	138Ce16O	oxide
+154	Sm	Cr	52Cr54Cr16O16O16O	trioxide
+154	Sm	Cr	53Cr53Cr16O16O16O	trioxide
+154	Sm	Eu	153Eu1H	hydride
+154	Sm	La	138La16O	oxide
+154	Sm	La	139La14N1H	hydride
+154	Sm	Sn	114Sn40Ar	argide
+154	Sm	Sn	119Sn35Cl	chloride
+154	Sm	Sn	117Sn37Cl	chloride
+154	Gd	Ba	138Ba16O	oxide
+154	Gd	Ba	137Ba16O1H	hydroxide
+154	Gd	Ba	136Ba18O	oxide
+154	Gd	Ba	135Ba18O1H	hydroxide
+154	Gd	Cd	114Cd40Ar	argide
+154	Gd	Ce	138Ce16O	oxide
+154	Gd	Cr	52Cr54Cr16O16O16O	trioxide
+154	Gd	Cr	53Cr53Cr16O16O16O	trioxide
+154	Gd	Eu	153Eu1H	hydride
+154	Gd	La	138La16O	oxide
+154	Gd	La	139La14N1H	hydride
+154	Gd	Sn	114Sn40Ar	argide
+154	Gd	Sn	119Sn35Cl	chloride
+154	Gd	Sn	117Sn37Cl	chloride
+154	Sm	Gd	154Gd	elemental
+154	Gd	Sm	154Sm	elemental
+154	Gd	Ar	116Cd38Ar	argide
+154	Sm	Ar	116Cd38Ar	argide
+154	Sm	Ar	114Cd40Ar	argide
+154	Sm	Ar	114Sn40Ar	argide
+154	Gd	Ar	114Cd40Ar	argide
+154	Gd	Ar	114Sn40Ar	argide
+154	Sm	Cl	119Sn35Cl	chloride
+154	Sm	Cl	117Sn37Cl	chloride
+154	Gd	Cl	119Sn35Cl	chloride
+154	Gd	Cl	117Sn37Cl	chloride
+155	Gd	Ce	138Ce17O	oxide
+155	Gd	Ba	138Ba16O1H	hydroxide
+155	Gd	Ba	137Ba18O	oxide
+155	Gd	Ba	136Ba18O1H	hydroxide
+155	Gd	Ce	138Ce16O1H	hydroxide
+155	Gd	In	115In40Ar	argide
+155	Gd	La	139La16O	oxide
+155	Gd	La	138La17O	oxide
+155	Gd	La	138La16O1H	hydroxide
+155	Gd	Sm	154Sm1H	hydride
+155	Gd	Sn	115Sn40Ar	argide
+155	Gd	Sn	120Sn35Cl	chloride
+155	Gd	Sn	118Sn37Cl	chloride
+155	Gd	Gd	154Gd1H	hydride
+155	Gd	Ar	115In40Ar	argide
+155	Gd	Ar	115Sn40Ar	argide
+155	Gd	Cl	120Sn35Cl	chloride
+155	Gd	Cl	118Sn37Cl	chloride
+156	Gd	Ce	138Ce18O	oxide
+156	Dy	Ce	138Ce18O	oxide
+156	Gd	Ba	138Ba18O	oxide
+156	Gd	Ba	137Ba18O1H	hydroxide
+156	Gd	Cd	116Cd40Ar	argide
+156	Gd	Ce	140Ce16O	oxide
+156	Gd	La	139La16O1H	hydroxide
+156	Gd	La	139La17O	oxide
+156	Gd	La	138La17O1H	hydroxide
+156	Gd	La	138La18O	oxide
+156	Gd	Sn	116Sn40Ar	argide
+156	Gd	Sn	119Sn37Cl	chloride
+156	Dy	Ba	138Ba18O	oxide
+156	Dy	Ba	137Ba18O1H	hydroxide
+156	Dy	Cd	116Cd40Ar	argide
+156	Dy	Ce	140Ce16O	oxide
+156	Dy	La	139La16O1H	hydroxide
+156	Dy	La	139La17O	oxide
+156	Dy	La	138La17O1H	hydroxide
+156	Dy	La	138La18O	oxide
+156	Dy	Sn	116Sn40Ar	argide
+156	Dy	Sn	119Sn37Cl	chloride
+156	Gd	Gd	155Gd1H	hydride
+156	Dy	Gd	155Gd1H	hydride
+156	Gd	Dy	156Dy	elemental
+156	Dy	Gd	156Gd	elemental
+156	Gd	Ar	116Cd40Ar	argide
+156	Gd	Ar	116Sn40Ar	argide
+156	Dy	Ar	116Cd40Ar	argide
+156	Dy	Ar	116Sn40Ar	argide
+156	Gd	Cl	119Sn37Cl	chloride
+156	Dy	Cl	119Sn37Cl	chloride
+157	Gd	Ce	140Ce17O	oxide
+157	Gd	Ba	138Ba18O1H	hydroxide
+157	Gd	Ce	140Ce16O1H	hydroxide
+157	Gd	Dy	156Dy1H	hydride
+157	Gd	La	139La18O	oxide
+157	Gd	La	139La17O1H	hydroxide
+157	Gd	La	139La18O	oxide
+157	Gd	La	138La18O1H	hydroxide
+157	Gd	Pr	141Pr16O	oxide
+157	Gd	Sn	117Sn40Ar	argide
+157	Gd	Sn	122Sn35Cl	chloride
+157	Gd	Sn	120Sn37Cl	chloride
+157	Gd	Gd	156Gd1H	hydride
+157	Gd	Ar	117Sn40Ar	argide
+157	Gd	Cl	122Sn35Cl	chloride
+157	Gd	Cl	120Sn37Cl	chloride
+158	Gd	Ce	140Ce18O	oxide
+158	Dy	Ce	140Ce18O	oxide
+158	Gd	Ce	142Ce16O	oxide
+158	Gd	La	139La18O1H	hydroxide
+158	Gd	Nd	142Nd16O	oxide
+158	Gd	Pr	141Pr16O1H	hydroxide
+158	Gd	Pr	141Pr17O	oxide
+158	Gd	Sn	118Sn40Ar	argide
+158	Dy	Ce	142Ce16O	oxide
+158	Dy	La	139La18O1H	hydroxide
+158	Dy	Nd	142Nd16O	oxide
+158	Dy	Pr	141Pr16O1H	hydroxide
+158	Dy	Pr	141Pr17O	oxide
+158	Dy	Sn	118Sn40Ar	argide
+158	Dy	Gd	157Gd1H	hydride
+158	Gd	Gd	157Gd1H	hydride
+158	Gd	Dy	158Dy	elemental
+158	Dy	Gd	158Gd	elemental
+158	Gd	Ar	118Sn40Ar	argide
+158	Dy	Ar	118Sn40Ar	argide
+159	Tb	Ce	142Ce17O	oxide
+159	Tb	Ce	142Ce16O1H	hydroxide
+159	Tb	Dy	158Dy1H	hydride
+159	Tb	Gd	158Gd1H	hydride
+159	Tb	Nd	143Nd16O	oxide
+159	Tb	Nd	142Nd17O	oxide
+159	Tb	Nd	142Nd16O1H	hydroxide
+159	Tb	Pr	141Pr18O	oxide
+159	Tb	Pr	141Pr17O1H	hydroxide
+159	Tb	Sn	119Sn40Ar	argide
+159	Tb	Sn	122Sn37Cl	chloride
+159	Tb	Ar	119Sn40Ar	argide
+159	Tb	Cl	122Sn37Cl	chloride
+160	Dy	Ce	142Ce18O	oxide
+160	Dy	Nd	144Nd16O	oxide
+160	Dy	Nd	143Nd17O	oxide
+160	Dy	Nd	142Nd18O	oxide
+160	Dy	Nd	143Nd16O1H	hydroxide
+160	Dy	Pr	141Pr18O1H	hydroxide
+160	Dy	Sm	144Sm16O	oxide
+160	Dy	Sn	120Sn40Ar	argide
+160	Dy	Tb	159Tb1H	hydride
+160	Dy	Nd	144Nd16O	oxide
+160	Gd	Ce	142Ce18O	oxide
+160	Gd	Nd	144Nd16O	oxide
+160	Gd	Nd	143Nd17O	oxide
+160	Gd	Nd	142Nd18O	oxide
+160	Gd	Nd	143Nd16O1H	hydroxide
+160	Gd	Pr	141Pr18O1H	hydroxide
+160	Gd	Sm	144Sm16O	oxide
+160	Gd	Sn	120Sn40Ar	argide
+160	Gd	Tb	159Tb1H	hydride
+160	Gd	Nd	144Nd16O	oxide
+160	Gd	Dy	160Dy	elemental
+160	Dy	Gd	160Gd	elemental
+160	Dy	Ar	120Sn40Ar	argide
+160	Gd	Ar	120Sn40Ar	argide
+161	Dy	Ce	142Ce18O1H	hydroxide
+161	Dy	Dy	160Dy1H	hydride
+161	Dy	Gd	160Gd1H	hydride
+161	Dy	Nd	145Nd16O	oxide
+161	Dy	Nd	144Nd17O	oxide
+161	Dy	Nd	143Nd18O	oxide
+161	Dy	Nd	144Nd16O1H	hydroxide
+161	Dy	Sb	121Sb40Ar	argide
+161	Dy	Sm	144Sm16O1H	hydroxide
+161	Dy	Sn	124Sn37Cl	chloride
+161	Dy	Ar	121Sb40Ar	argide
+161	Dy	Cl	124Sn37Cl	chloride
+162	Dy	Dy	161Dy1H	hydride
+162	Dy	Nd	146Nd16O	oxide
+162	Dy	Nd	145Nd17O	oxide
+162	Dy	Nd	144Nd18O	oxide
+162	Dy	Nd	145Nd16O1H	hydroxide
+162	Dy	Sn	122Sn40Ar	argide
+162	Er	Dy	161Dy1H	hydride
+162	Er	Nd	146Nd16O	oxide
+162	Er	Nd	145Nd17O	oxide
+162	Er	Nd	144Nd18O	oxide
+162	Er	Nd	145Nd16O1H	hydroxide
+162	Er	Sn	122Sn40Ar	argide
+162	Dy	Er	162Er	elemental
+162	Dy	Ar	122Sn40Ar	argide
+162	Er	Ar	122Sn40Ar	argide
+163	Dy	Dy	162Dy1H	hydride
+163	Dy	Er	162Er1H	hydride
+163	Dy	Nd	146Nd17O	oxide
+163	Dy	Nd	145Nd18O	oxide
+163	Dy	Nd	146Nd16O1H	hydroxide
+163	Dy	Sb	123Sb40Ar	argide
+163	Dy	Sm	147Sm16O	oxide
+163	Dy	I	127I36Ar	argide
+163	Dy	Ar	123Sb40Ar	argide
+163	Dy	Ar	127I36Ar	argide
+164	Dy	Dy	163Dy1H	hydride
+164	Dy	Nd	148Nd16O	oxide
+164	Dy	Nd	146Nd18O	oxide
+164	Dy	Sm	148Sm16O	oxide
+164	Dy	Sm	147Sm16O1H	hydroxide
+164	Dy	Sn	124Sn40Ar	argide
+164	Er	Dy	163Dy1H	hydride
+164	Er	Nd	148Nd16O	oxide
+164	Er	Nd	146Nd18O	oxide
+164	Er	Sm	148Sm16O	oxide
+164	Er	Sm	147Sm16O1H	hydroxide
+164	Er	Sn	124Sn40Ar	argide
+164	Dy	Er	164Er	elemental
+164	Dy	Ar	124Sn40Ar	argide
+164	Er	Ar	124Sn40Ar	argide
+165	Ho	Dy	164Dy1H	hydride
+165	Ho	Er	164Er1H	hydride
+165	Ho	Nd	148Nd16O1H	hydroxide
+165	Ho	Nd	148Nd17O	oxide
+165	Ho	Sm	149Sm16O	oxide
+165	Ho	Sm	148Sm16O1H	hydroxide
+165	Ho	I	127I38Ar	argide
+165	Ho	Ar	127I38Ar	argide
+166	Er	Cr	50Cr52Cr16O16O16O16O	other polyatomic
+166	Er	Ho	165Ho1H	hydride
+166	Er	Nd	150Nd16O	oxide
+166	Er	Nd	148Nd18O	oxide
+166	Er	Sm	150Sm16O	oxide
+166	Er	Sm	149Sm16O1H	hydroxide
+167	Er	Cr	50Cr52Cr16O16O16O16O1H	other polyatomic
+167	Er	Cr	50Cr53Cr16O16O16O16O	other polyatomic
+167	Er	Er	166Er1H	hydride
+167	Er	Eu	151Eu16O	oxide
+167	Er	I	127I40Ar	argide
+167	Er	Nd	150Nd16O1H	hydroxide
+167	Er	Nd	150Nd17O	oxide
+167	Er	Sm	150Sm16O1H	hydroxide
+167	Er	Ar	127I40Ar	argide
+168	Er	Cr	50Cr54Cr16O16O16O16O	other polyatomic
+168	Er	Cr	52Cr52Cr16O16O16O16O	other polyatomic
+168	Er	Er	167Er1H	hydride
+168	Er	Eu	151Eu16O1H	hydroxide
+168	Er	Eu	151Eu17O	oxide
+168	Er	Gd	152Gd16O	oxide
+168	Er	Nd	150Nd18O	oxide
+168	Er	Sm	152Sm16O	oxide
+168	Yb	Cr	50Cr54Cr16O16O16O16O	other polyatomic
+168	Yb	Cr	52Cr52Cr16O16O16O16O	other polyatomic
+168	Yb	Er	167Er1H	hydride
+168	Yb	Eu	151Eu16O1H	hydroxide
+168	Yb	Eu	151Eu17O	oxide
+168	Yb	Gd	152Gd16O	oxide
+168	Yb	Nd	150Nd18O	oxide
+168	Yb	Sm	152Sm16O	oxide
+168	Yb	Ce	136Ce16O16O	dioxide
+168	Er	Ce	136Ce16O16O	dioxide
+168	Er	Yb	168Yb	elemental
+169	Tm	Eu	151Eu17O1H	hydroxide
+169	Er	Gd	152Gd17O	oxide
+169	Tm	Cr	50Cr54Cr16O16O16O16O1H	other polyatomic
+169	Tm	Cr	52Cr52Cr16O16O16O16O1H	other polyatomic
+169	Tm	Cr	52Cr53Cr16O16O16O16O	other polyatomic
+169	Tm	Er	168Er1H	hydride
+169	Tm	Eu	153Eu16O	oxide
+169	Tm	Eu	151Eu18O	oxide
+169	Tm	Gd	152Gd16O1H	hydroxide
+169	Tm	Sm	152Sm16O1H	hydroxide
+169	Tm	Yb	168Yb1H	hydride
+170	Er	Eu	151Eu18O1H	hydroxide
+170	Yb	Eu	151Eu18O1H	hydroxide
+170	Er	Gd	152Gd18O	oxide
+170	Yb	Gd	152Gd18O	oxide
+170	Er	Gd	152Gd17O1H	hydroxide
+170	Yb	Gd	152Gd17O1H	hydroxide
+170	Er	Cr	52Cr53Cr16O16O16O16O1H	other polyatomic
+170	Er	Cr	52Cr54Cr16O16O16O16O	other polyatomic
+170	Er	Cr	53Cr53Cr16O16O16O16O	other polyatomic
+170	Er	Eu	153Eu16O1H	hydroxide
+170	Er	Eu	153Eu17O	oxide
+170	Er	Gd	154Gd16O	oxide
+170	Er	Sm	154Sm16O	oxide
+170	Er	Tm	169Tm1H	hydride
+170	Yb	Cr	52Cr53Cr16O16O16O16O1H	other polyatomic
+170	Yb	Cr	52Cr54Cr16O16O16O16O	other polyatomic
+170	Yb	Cr	53Cr53Cr16O16O16O16O	other polyatomic
+170	Yb	Eu	153Eu16O1H	hydroxide
+170	Yb	Eu	153Eu17O	oxide
+170	Yb	Gd	154Gd16O	oxide
+170	Yb	Sm	154Sm16O	oxide
+170	Yb	Tm	169Tm1H	hydride
+170	Yb	Ce	138Ce16O16O	dioxide
+170	Er	Ce	138Ce16O16O	dioxide
+170	Yb	Er	170Er	elemental
+170	Er	Yb	170Yb	elemental
+171	Yb	Eu	153Eu17O1H	hydroxide
+171	Yb	Gd	154Gd17O	oxide
+171	Yb	Gd	152Gd18O1H	hydroxide
+171	Yb	Er	170Er1H	hydride
+171	Yb	Eu	153Eu18O	oxide
+171	Yb	Gd	155Gd16O	oxide
+171	Yb	Gd	154Gd16O1H	hydroxide
+171	Yb	Sm	154Sm16O1H	hydroxide
+171	Yb	Yb	170Yb1H	hydride
+172	Yb	Gd	155Gd17O	oxide
+172	Yb	Gd	154Gd18O	oxide
+172	Yb	Gd	154Gd17O1H	hydroxide
+172	Yb	Ba	132Ba40Ar	argide
+172	Yb	Ce	140Ce16O16O	dioxide
+172	Yb	Dy	156Dy16O	oxide
+172	Yb	Eu	153Eu18O1H	hydroxide
+172	Yb	Gd	156Gd16O	oxide
+172	Yb	Gd	155Gd16O1H	hydroxide
+172	Yb	Yb	171Yb1H	hydride
+172	Yb	Ce	136Ce36Ar	argide
+172	Yb	Ar	132Ba40Ar	argide
+172	Yb	Ar	136Ce36Ar	argide
+173	Yb	Gd	156Gd17O	oxide
+173	Yb	Gd	155Gd18O	oxide
+173	Yb	Gd	155Gd17O1H	hydroxide
+173	Yb	Gd	154Gd18O1H	hydroxide
+173	Yb	Ce	140Ce16O16O1H	other polyatomic
+173	Yb	Cs	133Cs40Ar	argide
+173	Yb	Dy	156Dy16O1H	hydroxide
+173	Yb	Gd	156Gd16O1H	hydroxide
+173	Yb	Gd	157Gd16O	oxide
+173	Yb	Yb	172Yb1H	hydride
+173	Yb	Ar	133Cs40Ar	argide
+174	Hf	Gd	157Gd17O	oxide
+174	Yb	Gd	157Gd17O	oxide
+174	Yb	Gd	156Gd18O	oxide
+174	Hf	Gd	156Gd18O	oxide
+174	Yb	Gd	156Gd17O1H	hydroxide
+174	Hf	Gd	156Gd17O1H	hydroxide
+174	Yb	Gd	155Gd18O1H	hydroxide
+174	Hf	Gd	155Gd18O1H	hydroxide
+174	Hf	Ba	134Ba40Ar	argide
+174	Hf	Ce	142Ce16O16O	dioxide
+174	Hf	Dy	158Dy16O	oxide
+174	Hf	Gd	157Gd16O1H	hydroxide
+174	Hf	Gd	158Gd16O	oxide
+174	Hf	Yb	173Yb1H	hydride
+174	Yb	Ba	134Ba40Ar	argide
+174	Yb	Ce	142Ce16O16O	dioxide
+174	Yb	Dy	158Dy16O	oxide
+174	Yb	Gd	157Gd16O1H	hydroxide
+174	Yb	Gd	158Gd16O	oxide
+174	Yb	Yb	173Yb1H	hydride
+174	Hf	Ce	136Ce38Ar	argide
+174	Yb	Ce	136Ce38Ar	argide
+174	Hf	Ce	138Ce36Ar	argide
+174	Yb	Ce	138Ce36Ar	argide
+174	Yb	Hf	174Hf	elemental
+174	Hf	Ar	134Ba40Ar	argide
+174	Yb	Ar	134Ba40Ar	argide
+174	Hf	Ar	136Ce38Ar	argide
+174	Yb	Ar	136Ce38Ar	argide
+174	Hf	Ar	138Ce36Ar	argide
+174	Yb	Ar	138Ce36Ar	argide
+175	Lu	Gd	158Gd17O	oxide
+175	Lu	Gd	157Gd18O	oxide
+175	Lu	Gd	157Gd17O1H	hydroxide
+175	Lu	Gd	156Gd18O1H	hydroxide
+175	Lu	Ba	135Ba40Ar	argide
+175	Lu	Dy	158Dy16O1H	hydroxide
+175	Lu	Gd	158Gd16O1H	hydroxide
+175	Lu	Hf	174Hf1H	hydride
+175	Lu	Tb	159Tb16O	oxide
+175	Lu	Yb	174Yb1H	hydride
+175	Lu	Ar	135Ba40Ar	argide
+176	Lu	Gd	158Gd18O	oxide
+176	Yb	Gd	158Gd18O	oxide
+176	Hf	Gd	158Gd18O	oxide
+176	Lu	Gd	158Gd17O1H	hydroxide
+176	Yb	Gd	158Gd17O1H	hydroxide
+176	Lu	Gd	157Gd18O1H	hydroxide
+176	Hf	Gd	157Gd18O1H	hydroxide
+176	Yb	Gd	157Gd18O1H	hydroxide
+176	Lu	Ba	136Ba40Ar	argide
+176	Lu	Dy	160Dy16O	oxide
+176	Lu	Gd	160Gd16O	oxide
+176	Lu	Tb	159Tb16O1H	hydroxide
+176	Lu	Tb	159Tb17O	oxide
+176	Yb	Ba	136Ba40Ar	argide
+176	Yb	Dy	160Dy16O	oxide
+176	Yb	Gd	160Gd16O	oxide
+176	Yb	Tb	159Tb16O1H	hydroxide
+176	Yb	Tb	159Tb17O	oxide
+176	Hf	Ba	136Ba40Ar	argide
+176	Hf	Dy	160Dy16O	oxide
+176	Hf	Gd	160Gd16O	oxide
+176	Hf	Tb	159Tb16O1H	hydroxide
+176	Hf	Tb	159Tb17O	oxide
+176	Lu	Lu	175Lu1H	hydride
+176	Lu	Ce	140Ce36Ar	argide
+176	Yb	Ce	140Ce36Ar	argide
+176	Lu	Ce	136Ce40Ar	argide
+176	Yb	Ce	136Ce40Ar	argide
+176	Hf	Ce	136Ce40Ar	argide
+176	Lu	Ce	138Ce38Ar	argide
+176	Yb	Ce	138Ce38Ar	argide
+176	Hf	Ce	138Ce38Ar	argide
+176	Yb	Hf	176Hf	elemental
+176	Lu	Hf	176Hf	elemental
+176	Hf	Lu	176Lu	elemental
+176	Yb	Lu	176Lu	elemental
+176	Hf	Yb	176Yb	elemental
+176	Lu	Yb	176Yb	elemental
+176	Lu	Ar	136Ba40Ar	argide
+176	Yb	Ar	136Ba40Ar	argide
+176	Hf	Ar	136Ba40Ar	argide
+176	Lu	Ar	140Ce36Ar	argide
+176	Yb	Ar	140Ce36Ar	argide
+176	Lu	Ar	136Ce40Ar	argide
+176	Yb	Ar	136Ce40Ar	argide
+176	Hf	Ar	136Ce40Ar	argide
+176	Lu	Ar	138Ce38Ar	argide
+176	Yb	Ar	138Ce38Ar	argide
+176	Hf	Ar	138Ce38Ar	argide
+177	Hf	Gd	160Gd17O	oxide
+177	Hf	Gd	158Gd18O1H	hydroxide
+177	Hf	Ba	137Ba40Ar	argide
+177	Hf	Dy	161Dy16O	oxide
+177	Hf	Dy	160Dy16O1H	hydroxide
+177	Hf	Gd	160Gd16O1H	hydroxide
+177	Hf	Hf	176Hf1H	hydride
+177	Hf	Lu	176Lu1H	hydride
+177	Hf	Tb	159Tb18O	oxide
+177	Hf	Tb	159Tb17O1H	hydroxide
+177	Hf	Yb	176Yb1H	hydride
+177	Hf	Ar	137Ba40Ar	argide
+178	Hf	Ba	138Ba40Ar	argide
+178	Hf	Dy	162Dy16O	oxide
+178	Hf	Dy	161Dy16O1H	hydroxide
+178	Hf	Er	162Er16O	oxide
+178	Hf	Gd	160Gd17O1H	hydroxide
+178	Hf	Gd	160Gd18O	oxide
+178	Hf	Hf	177Hf1H	hydride
+178	Hf	Tb	159Tb18O1H	hydroxide
+178	Hf	La	138La40Ar	argide
+178	Hf	Ce	138Ce40Ar	argide
+178	Hf	Ce	142Ce36Ar	argide
+178	Hf	Er	162Er16O	oxide
+178	Hf	Ar	138Ba40Ar	argide
+178	Hf	Ar	138La40Ar	argide
+178	Hf	Ar	138Ce40Ar	argide
+178	Hf	Ar	142Ce36Ar	argide
+179	Hf	Gd	160Gd18O1H	hydroxide
+179	Hf	Dy	163Dy16O	oxide
+179	Hf	Dy	162Dy16O1H	hydroxide
+179	Hf	Er	162Er16O1H	hydroxide
+179	Hf	Hf	178Hf1H	hydride
+179	Hf	La	139La40Ar	argide
+179	Hf	Er	162Er17O	oxide
+179	Hf	Ar	139La40Ar	argide
+180	Ta	Er	162Er17O1H	hydroxide
+180	W	Er	162Er17O1H	hydroxide
+180	Hf	Er	162Er17O1H	hydroxide
+180	Ta	Ce	142Ce38Ar	argide
+180	W	Ce	142Ce38Ar	argide
+180	Hf	Ce	142Ce38Ar	argide
+180	Ta	Ce	140Ce40Ar	argide
+180	Ta	Dy	164Dy16O	oxide
+180	Ta	Dy	163Dy16O1H	hydroxide
+180	Ta	Er	164Er16O	oxide
+180	Ta	Er	162Er18O	oxide
+180	Ta	Hf	179Hf1H	hydride
+180	W	Ce	140Ce40Ar	argide
+180	W	Dy	164Dy16O	oxide
+180	W	Dy	163Dy16O1H	hydroxide
+180	W	Er	164Er16O	oxide
+180	W	Er	162Er18O	oxide
+180	W	Hf	179Hf1H	hydride
+180	Hf	Ce	140Ce40Ar	argide
+180	Hf	Dy	164Dy16O	oxide
+180	Hf	Dy	163Dy16O1H	hydroxide
+180	Hf	Er	164Er16O	oxide
+180	Hf	Er	162Er18O	oxide
+180	Hf	Hf	179Hf1H	hydride
+180	Hf	Ta	180Ta	elemental
+180	W	Ta	180Ta	elemental
+180	Ta	W	180W	elemental
+180	Hf	W	180W	elemental
+180	Ta	Ar	142Ce38Ar	argide
+180	W	Ar	142Ce38Ar	argide
+180	Hf	Ar	142Ce38Ar	argide
+180	Ta	Ar	140Ce40Ar	argide
+180	W	Ar	140Ce40Ar	argide
+180	Hf	Ar	140Ce40Ar	argide
+181	Ta	Er	162Er18O1H	hydroxide
+181	Ta	Er	164Er17O	oxide
+181	Ta	Dy	164Dy16O1H	hydroxide
+181	Ta	Er	164Er16O1H	hydroxide
+181	Ta	Hf	180Hf1H	hydride
+181	Ta	Ho	165Ho16O	oxide
+181	Ta	Pr	141Pr40Ar	argide
+181	Ta	Ta	180Ta1H	hydride
+181	Ta	W	180W1H	hydride
+181	Ta	Ar	141Pr40Ar	argide
+182	W	Er	164Er17O1H	hydroxide
+182	W	Ce	142Ce40Ar	argide
+182	W	Cr	50Cr52Cr16O16O16O16O16O	other polyatomic
+182	W	Dy	164Dy18O	oxide
+182	W	Er	166Er16O	oxide
+182	W	Er	164Er18O	oxide
+182	W	Ho	165Ho16O1H	hydroxide
+182	W	Ho	165Ho17O	oxide
+182	W	Nd	142Nd40Ar	argide
+182	W	Ta	181Ta1H	hydride
+182	W	Ar	142Ce40Ar	argide
+182	W	Ar	142Nd40Ar	argide
+183	W	Er	166Er17O	oxide
+183	W	Cr	50Cr53Cr16O16O16O16O16O	other polyatomic
+183	W	Er	167Er16O	oxide
+183	W	Er	166Er16O1H	hydroxide
+183	W	Er	164Er18O1H	hydroxide
+183	W	Ho	165Ho18O	oxide
+183	W	Ho	165Ho17O1H	hydroxide
+183	W	Nd	143Nd40Ar	argide
+183	W	W	182W1H	hydride
+183	W	Ar	143Nd40Ar	argide
+184	Os	Er	166Er17O1H	hydroxide
+184	W	Er	166Er17O1H	hydroxide
+184	Os	Er	167Er17O	oxide
+184	W	Er	167Er17O	oxide
+184	Os	Cr	50Cr54Cr16O16O16O16O16O	other polyatomic
+184	Os	Cr	52Cr52Cr16O16O16O16O16O	other polyatomic
+184	Os	Er	168Er16O	oxide
+184	Os	Er	167Er16O1H	hydroxide
+184	Os	Er	166Er18O	oxide
+184	Os	Ho	165Ho18O1H	hydroxide
+184	Os	Nd	144Nd40Ar	argide
+184	Os	W	183W1H	hydride
+184	Os	Yb	168Yb16O	oxide
+184	W	Cr	50Cr54Cr16O16O16O16O16O	other polyatomic
+184	W	Cr	52Cr52Cr16O16O16O16O16O	other polyatomic
+184	W	Er	168Er16O	oxide
+184	W	Er	167Er16O1H	hydroxide
+184	W	Er	166Er18O	oxide
+184	W	Ho	165Ho18O1H	hydroxide
+184	W	Nd	144Nd40Ar	argide
+184	W	W	183W1H	hydride
+184	W	Yb	168Yb16O	oxide
+184	W	Os	184Os	elemental
+184	Os	Ar	144Nd40Ar	argide
+184	W	Ar	144Nd40Ar	argide
+185	Re	Er	167Er17O1H	hydroxide
+185	Re	Er	168Er17O	oxide
+185	Re	Cr	52Cr53Cr16O16O16O16O16O	other polyatomic
+185	Re	Er	168Er16O1H	hydroxide
+185	Re	Er	167Er18O	oxide
+185	Re	Er	166Er18O1H	hydroxide
+185	Re	Nd	145Nd40Ar	argide
+185	Re	Os	184Os1H	hydride
+185	Re	Tm	169Tm16O	oxide
+185	Re	W	184W1H	hydride
+185	Re	Ar	145Nd40Ar	argide
+186	Os	Er	168Er17O1H	hydroxide
+186	W	Er	168Er17O1H	hydroxide
+186	Os	Cr	52Cr54Cr16O16O16O16O16O	other polyatomic
+186	Os	Cr	53Cr53Cr16O16O16O16O16O	other polyatomic
+186	Os	Er	170Er16O	oxide
+186	Os	Er	168Er18O	oxide
+186	Os	Er	167Er18O1H	hydroxide
+186	Os	Nd	146Nd40Ar	argide
+186	Os	Re	185Re1H	hydride
+186	Os	Tm	169Tm16O1H	hydroxide
+186	Os	Tm	169Tm17O	oxide
+186	Os	Yb	170Yb16O	oxide
+186	W	Cr	52Cr54Cr16O16O16O16O16O	other polyatomic
+186	W	Cr	53Cr53Cr16O16O16O16O16O	other polyatomic
+186	W	Er	170Er16O	oxide
+186	W	Er	168Er18O	oxide
+186	W	Er	167Er18O1H	hydroxide
+186	W	Nd	146Nd40Ar	argide
+186	W	Re	185Re1H	hydride
+186	W	Tm	169Tm16O1H	hydroxide
+186	W	Tm	169Tm17O	oxide
+186	W	Yb	170Yb16O	oxide
+186	W	Os	186Os	elemental
+186	Os	W	186W	elemental
+186	Os	Ar	146Nd40Ar	argide
+186	W	Ar	146Nd40Ar	argide
+187	Os	Er	170Er17O	oxide
+187	Re	Er	170Er17O	oxide
+187	Os	Er	170Er16O1H	hydroxide
+187	Os	Er	168Er18O1H	hydroxide
+187	Os	Os	186Os1H	hydride
+187	Os	Tm	169Tm18O	oxide
+187	Os	W	186W1H	hydride
+187	Os	Yb	171Yb16O	oxide
+187	Os	Yb	170Yb16O1H	hydroxide
+187	Re	Er	170Er16O1H	hydroxide
+187	Re	Er	168Er18O1H	hydroxide
+187	Re	Os	186Os1H	hydride
+187	Re	Tm	169Tm18O	oxide
+187	Re	W	186W1H	hydride
+187	Re	Yb	171Yb16O	oxide
+187	Re	Yb	170Yb16O1H	hydroxide
+187	Os	Eu	151Eu36Ar	argide
+187	Re	Eu	151Eu36Ar	argide
+187	Os	Re	187Re	elemental
+187	Os	Ar	151Eu36Ar	argide
+187	Re	Ar	151Eu36Ar	argide
+188	Os	Er	170Er17O1H	hydroxide
+188	Os	Er	170Er18O	oxide
+188	Os	Nd	148Nd40Ar	argide
+188	Os	Os	187Os1H	hydride
+188	Os	Re	187Re1H	hydride
+188	Os	Yb	172Yb16O	oxide
+188	Os	Yb	171Yb16O1H	hydroxide
+188	Os	Ar	148Nd40Ar	argide
+189	Os	Er	170Er18O1H	hydroxide
+189	Os	Os	188Os1H	hydride
+189	Os	Yb	173Yb16O	oxide
+189	Os	Yb	172Yb16O1H	hydroxide
+189	Os	Eu	153Eu36Ar	argide
+189	Os	Eu	151Eu38Ar	argide
+189	Os	Ar	153Eu36Ar	argide
+189	Os	Ar	151Eu38Ar	argide
+190	Pt	Hf	174Hf16O	oxide
+190	Pt	Nd	150Nd40Ar	argide
+190	Pt	Os	189Os1H	hydride
+190	Pt	Yb	174Yb16O	oxide
+190	Pt	Yb	173Yb16O1H	hydroxide
+190	Os	Hf	174Hf16O	oxide
+190	Os	Nd	150Nd40Ar	argide
+190	Os	Os	189Os1H	hydride
+190	Os	Yb	174Yb16O	oxide
+190	Os	Yb	173Yb16O1H	hydroxide
+190	Os	Pt	190Pt	elemental
+190	Pt	Ar	150Nd40Ar	argide
+190	Os	Ar	150Nd40Ar	argide
+191	Ir	Hf	174Hf17O	oxide
+191	Ir	Eu	153Eu38Ar	argide
+191	Ir	Eu	151Eu40Ar	argide
+191	Ir	Hf	174Hf16O1H	hydroxide
+191	Ir	Lu	175Lu16O	oxide
+191	Ir	Os	190Os1H	hydride
+191	Ir	Pt	190Pt1H	hydride
+191	Ir	Yb	174Yb16O1H	hydroxide
+191	Ir	Ar	153Eu38Ar	argide
+191	Ir	Ar	151Eu40Ar	argide
+192	Os	Hf	176Hf16O	oxide
+192	Os	Hf	174Hf18O	oxide
+192	Os	Ir	191Ir1H	hydride
+192	Pt	Lu	175Lu16O	oxide
+192	Os	Lu	175Lu16O	oxide
+192	Os	Lu	176Lu16O	oxide
+192	Os	Lu	175Lu16O1H	hydroxide
+192	Os	Yb	176Yb16O	oxide
+192	Pt	Hf	176Hf16O	oxide
+192	Pt	Hf	174Hf18O	oxide
+192	Pt	Ir	191Ir1H	hydride
+192	Pt	Lu	176Lu16O	oxide
+192	Pt	Lu	175Lu16O1H	hydroxide
+192	Pt	Yb	176Yb16O	oxide
+192	Pt	Os	192Os	elemental
+192	Os	Pt	192Pt	elemental
+193	Ir	Hf	176Hf17O	oxide
+193	Ir	Lu	175Lu16O	oxide
+193	Ir	Eu	153Eu40Ar	argide
+193	Ir	Hf	177Hf16O	oxide
+193	Ir	Hf	176Hf16O1H	hydroxide
+193	Ir	Lu	175Lu17O1H	hydroxide
+193	Ir	Lu	176Lu16O1H	hydroxide
+193	Ir	Lu	176Lu17O	oxide
+193	Ir	Os	192Os1H	hydride
+193	Ir	Pt	192Pt1H	hydride
+193	Ir	Yb	176Yb16O1H	hydroxide
+193	Ir	Ar	153Eu40Ar	argide
+194	Pt	Hf	177Hf17O	oxide
+194	Pt	Lu	175Lu18O1H	hydroxide
+194	Pt 	Hf	176Hf18O	oxide
+194	Pt 	Hf	178Hf16O	oxide
+194	Pt 	Hf	177Hf16O1H	hydroxide
+194	Pt	Ir	193Ir1H	hydride
+194	Pt	Lu	176Lu17O1H	hydroxide
+194	Pt	Lu	176Lu18O	oxide
+195	Pt	Hf	178Hf17O	oxide
+195	Pt 	Hf	178Hf16O1H	hydroxide
+195	Pt 	Hf	177Hf18O	oxide
+195	Pt 	Hf	179Hf16O	oxide
+195	Pt	Lu	176Lu18O1H	hydroxide
+195	Pt	Pt	194Pt1H	hydride
+195	Pt	Tb	159Tb36Ar	argide
+195	Pt	Ar	159Tb36Ar	argide
+196	Pt	Hf	179Hf17O	oxide
+196	Hg	Hf	179Hf17O	oxide
+196	Pt	Hf	180Hf16O	oxide
+196	Pt	Hf	178Hf18O	oxide
+196	Pt	Hf	179Hf16O1H	hydroxide
+196	Pt	Ta	180Ta16O	oxide
+196	Pt	W	180W16O	oxide
+196	Hg	Hf	180Hf16O	oxide
+196	Hg	Hf	178Hf18O	oxide
+196	Hg	Hf	179Hf16O1H	hydroxide
+196	Hg	Ta	180Ta16O	oxide
+196	Hg	W	180W16O	oxide
+196	Hg	Pt	195Pt1H	hydride
+196	Pt	Pt	195Pt1H	hydride
+196	Pt	Hg	196Hg	elemental
+196	Hg	Pt	196Pt	elemental
+197	Au	Hf	180Hf17O	oxide
+197	Au	Hf	180Hf16O1H	hydroxide
+197	Au	Hf	179Hf18O	oxide
+197	Au	Hg	196Hg1H	hydride
+197	Au	Pt	196Pt1H	hydride
+197	Au	Ta	181Ta16O	oxide
+197	Au	Ta	180Ta17O	oxide
+197	Au	Ta	180Ta16O1H	hydroxide
+197	Au	W	180W17O	oxide
+197	Au	W	180W16O1H	hydroxide
+197	Au	Tb	159Tb38Ar	argide
+197	Au	Er	162Er35Cl	chloride
+197	Au	Ar	159Tb38Ar	argide
+197	Au	Cl	162Er35Cl	chloride
+198	Pt	Hf	180Hf18O	oxide
+198	Pt	Ta	181Ta17O	oxide
+198	Pt	Ta	180Ta18O	oxide
+198	Pt	Ta	180Ta17O1H	hydroxide
+198	Pt	Ta	181Ta16O1H	hydroxide
+198	Pt	W	182W16O	oxide
+198	Pt	W	180W18O	oxide
+198	Pt	W	180W17O1H	hydroxide
+198	Hg	Hf	180Hf18O	oxide
+198	Hg	Ta	181Ta17O	oxide
+198	Hg	Ta	180Ta18O	oxide
+198	Hg	Ta	180Ta17O1H	hydroxide
+198	Hg	Ta	181Ta16O1H	hydroxide
+198	Hg	W	182W16O	oxide
+198	Hg	W	180W18O	oxide
+198	Hg	W	180W17O1H	hydroxide
+198	Pt	Hg	198Hg	elemental
+198	Hg	Pt	198Pt	elemental
+199	Hg	Hg	198Hg1H	hydride
+199	Hg	Pt	198Pt1H	hydride
+199	Hg	Ta	181Ta18O	oxide
+199	Hg	Ta	181Ta17O1H	hydroxide
+199	Hg	Ta	180Ta18O1H	hydroxide
+199	Hg	Tb	159Tb40Ar	argide
+199	Hg	W	183W16O	oxide
+199	Hg	W	182W17O	oxide
+199	Hg	W	182W16O1H	hydroxide
+199	Hg	W	180W18O1H	hydroxide
+199	Hg	Er	164Er35Cl	chloride
+199	Hg	Er	162Er37Cl	chloride
+199	Hg	Ar	159Tb40Ar	argide
+199	Hg	Cl	164Er35Cl	chloride
+199	Hg	Cl	162Er37Cl	chloride
+200	Hg	Hg	199Hg1H	hydride
+200	Hg	Os	184Os16O	oxide
+200	Hg	Os	186Os16O1H	hydroxide
+200	Hg	Ta	181Ta18O1H	hydroxide
+200	Hg	W	184W16O	oxide
+200	Hg	W	183W17O	oxide
+200	Hg	W	182W18O	oxide
+200	Hg	W	183W16O1H	hydroxide
+200	Hg	W	182W17O1H	hydroxide
+201	Hg	Dy	161Dy40Ar	argide
+201	Hg	Hg	200Hg1H	hydride
+201	Hg	Re	185Re16O	oxide
+201	Hg	W	184W17O	oxide
+201	Hg	W	183W18O	oxide
+201	Hg	W	184W16O1H	hydroxide
+201	Hg	W	183W17O1H	hydroxide
+201	Hg	W	182W18O1H	hydroxide
+201	Tl	Ho	165Ho36Ar	argide
+201	Hg	Er	166Er35Cl	chloride
+201	Hg	Er	164Er37Cl	chloride
+201	Hg	Ar	161Dy40Ar	argide
+201	Tl	Ar	165Ho36Ar	argide
+201	Hg	Cl	166Er35Cl	chloride
+201	Hg	Cl	164Er37Cl	chloride
+202	Hg	Dy	162Dy40Ar	argide
+202	Hg	Hg	201Hg1H	hydride
+202	Hg	Os	186Os16O	oxide
+202	Hg	Re	185Re16O1H	hydroxide
+202	Hg	Re	185Re17O	oxide
+202	Hg	W	186W16O	oxide
+202	Hg	W	184W18O	oxide
+202	Hg	W	184W17O1H	hydroxide
+202	Hg	W	183W18O1H	hydroxide
+202	Hg	Er	162Er40Ar	argide
+202	Hg	Er	167Er35Cl	chloride
+202	Hg	Ar	162Dy40Ar	argide
+202	Hg	Ar	162Er40Ar	argide
+202	Hg	Cl	167Er35Cl	chloride
+203	Tl	Dy	163Dy40Ar	argide
+203	Tl	Hg	202Hg1H	hydride
+203	Tl	Os	187Os16O	oxide
+203	Tl	Re	187Re16O	oxide
+203	Tl	Re	185Re17O1H	hydroxide
+203	Tl	Re	185Re18O	oxide
+203	Tl	W	186W17O	oxide
+203	Tl	W	186W16O1H	hydroxide
+203	Tl	W	184W18O1H	hydroxide
+203	Tl	Ho	165Ho38Ar	argide
+203	Tl	Er	168Er35Cl	chloride
+203	Tl	Er	166Er37Cl	chloride
+203	Tl	Ar	163Dy40Ar	argide
+203	Tl	Ar	165Ho38Ar	argide
+203	Tl	Cl	168Er35Cl	chloride
+203	Tl	Cl	166Er37Cl	chloride
+204	Hg	Dy	164Dy40Ar	argide
+204	Hg	Er	164Er40Ar	argide
+204	Hg	Os	188Os16O	oxide
+204	Hg	Os	187Os16O1H	hydroxide
+204	Hg	Re	187Re16O1H	hydroxide
+204	Hg	Re	185Re18O1H	hydroxide
+204	Hg	Re	187Re17O	oxide
+204	Hg	W	186W18O	oxide
+204	Hg	W	186W17O1H	hydroxide
+204	Hg	Tl	203Tl1H	hydride
+204	Pb	Dy	164Dy40Ar	argide
+204	Pb	Er	164Er40Ar	argide
+204	Pb	Os	188Os16O	oxide
+204	Pb	Os	187Os16O1H	hydroxide
+204	Pb	Re	187Re16O1H	hydroxide
+204	Pb	Re	185Re18O1H	hydroxide
+204	Pb	Re	187Re17O	oxide
+204	Pb	W	186W18O	oxide
+204	Pb	W	186W17O1H	hydroxide
+204	Pb	Tl	203Tl1H	hydride
+204	Hg	Er	167Er37Cl	chloride
+204	Pb	Er	167Er37Cl	chloride
+204	Pb	Hg	204Hg	elemental
+204	Hg	Pb	204Pb	elemental
+204	Hg	Ar	164Dy40Ar	argide
+204	Hg	Ar	164Er40Ar	argide
+204	Pb	Ar	164Dy40Ar	argide
+204	Pb	Ar	164Er40Ar	argide
+204	Hg	Cl	167Er37Cl	chloride
+204	Pb	Cl	167Er37Cl	chloride
+205	Tl	Hg	204Hg1H	hydride
+205	Tl	Ho	165Ho40Ar	argide
+205	Tl	Os	189Os16O	oxide
+205	Tl	Os	188Os16O1H	hydroxide
+205	Tl	Pb	204Pb1H	hydride
+205	Tl	Re	187Re18O	oxide
+205	Tl	Re	187Re17O1H	hydroxide
+205	Tl	W	186W18O1H	hydroxide
+205	Tl	Er	170Er35Cl	chloride
+205	Tl	Er	168Er37Cl	chloride
+205	Tl	Ar	165Ho40Ar	argide
+205	Tl	Cl	170Er35Cl	chloride
+205	Tl	Cl	168Er37Cl	chloride
+206	Pb	Tl	205Tl1H	hydride
+206	Pb	Er	166Er40Ar	argide
+206	Pb	Os	190Os16O	oxide
+206	Pb	Os	189Os16O1H	hydroxide
+206	Pb	Yb	171Yb35Cl	chloride
+206	Pb	Pt	190Pt16O	oxide
+206	Pb	Re	187Re18O1H	hydroxide
+206	Pb	Ar	166Er40Ar	argide
+206	Pb	Cl	171Yb35Cl	chloride
+207	Pb	Er	167Er40Ar	argide
+207	Pb	Ir	191Ir16O	oxide
+207	Pb	Os	190Os16O1H	hydroxide
+207	Pb	Er	170Er37Cl	chloride
+207	Pb	Pb	206Pb1H	hydride
+207	Pb	Ar	167Er40Ar	argide
+207	Pb	Cl	170Er37Cl	chloride
+208	Pb	Er	168Er40Ar	argide
+208	Pb	Yb	168Yb40Ar	argide
+208	Pb	Os	192Os16O	oxide
+208	Pb	Pb	207Pb1H	hydride
+208	Pb	Yb	171Yb37Cl	chloride
+208	Pb	Er	170Er38Ar	argide
+208	Pb	Yb	172Yb36Ar	argide
+208	Pb	Os	190Os18O	oxide
+208	Pb	Ir	191Ir17O	oxide
+208	Pb	Ir	191Ir16O1H	hydroxide
+208	Pb	Pt	192Pt16O	oxide
+208	Pb	Ar	168Er40Ar	argide
+208	Pb	Ar	168Yb40Ar	argide
+208	Pb	Ar	170Er38Ar	argide
+208	Pb	Ar	172Yb36Ar	argide
+208	Pb	Cl	171Yb37Cl	chloride
+209	Bi	Ir	191Ir18O	oxide
+209	Bi	Ir	193Ir16O	oxide
+209	Bi	Os	192Os16O1H	hydroxide
+209	Bi	Pb	208Pb1H	hydride
+232	Th	Os	192Os40Ar	argide
+232	Th	Pt	192Pt40Ar	argide
+232	Th	Ar	192Os40Ar	argide
+232	Th	Ar	192Pt40Ar	argide
+234	U	Pt	194Pt40Ar	argide
+234	U	Re	185Re16O16O16O1H	other polyatomic
+234	U	Pb	206Pb14N14N	other polyatomic
+234	U	Pb	204Pb14N16O	other polyatomic
+234	U	Ar	194Pt40Ar	argide
+234	U	N	206Pb14N14N	other polyatomic
+234	U	N	204Pb14N16O	other polyatomic
+234	U	O	204Pb14N16O	other polyatomic
+235	U	Pb	207Pb14N14N	other polyatomic
+235	U	Pt	195Pt40Ar	argide
+235	U	Re	187Re16O16O16O	trioxide
+235	U	Ar	195Pt40Ar	argide
+235	U	N	207Pb14N14N	other polyatomic
+236	U	Pt	196Pt40Ar	argide
+236	U	Pb	204Pb16O16O	dioxide
+236	U	Pb	208Pb14N14N	other polyatomic
+236	U	Pb	206Pb14N16O	other polyatomic
+236	U	Hg	196Hg40Ar	argide
+236	U	Ar	196Pt40Ar	argide
+236	U	Ar	196Hg40Ar	argide
+236	U	N	208Pb14N14N	other polyatomic
+236	U	N	206Pb14N16O	other polyatomic
+236	U	O	206Pb14N16O	other polyatomic
+238	U	Hg	198Hg40Ar	argide
+238	U	Pb	206Pb16O16O	dioxide
+238	U	Pb	208Pb14N16O	other polyatomic
+238	U	Ar	198Hg40Ar	argide
+238	U	N	208Pb14N16O	other polyatomic
+238	U	O	208Pb14N16O	other polyatomic

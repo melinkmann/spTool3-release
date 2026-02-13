@@ -1,0 +1,56 @@
+/*
+ *  Copyright 2026 Matthias Elinkmann, spTool3
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ *
+ */
+
+package analysis;
+
+import java.io.Serializable;
+
+public interface StatCollection extends Serializable {
+
+  StatCollection copy();
+
+  public StatDataSet getSlice(int sliceIndex);
+
+  int size();
+
+  int getSliceLength();
+
+  int getLastSliceLength();
+
+  double getSiaShape();
+
+  double getContinuityEpsilon();
+
+  public default int getSegmentIndex(int rawDataIndex) {
+    return rawDataIndex / getSliceLength();
+  }
+
+  public double[] getLocation();
+
+  public double[] getSpread();
+
+  public int[] getDistrKey();
+
+  public double[] getOutlierFactor();
+
+  /**
+   * Interpolates the underlying statistics (µ, SD) to generate a new distribution.
+   * This is needed for the interpolating p value computation.
+   */
+  public StatDataSet interpolate(int dpIdx, int rawLength);
+
+}
