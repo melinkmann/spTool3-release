@@ -30,6 +30,7 @@ import gui.dialog.DialogUtil;
 import gui.dialog.FxStage;
 import gui.dialog.FxStageButton;
 import gui.dialog.notification.NotificationFactory;
+import gui.table.TableUtils;
 import gui.util.UiUtil;
 import io.GlobalIO;
 import io.PathUtil;
@@ -55,6 +56,7 @@ import io.fastExport.TabCol;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.geometry.Orientation;
+import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.input.KeyEvent;
@@ -81,6 +83,8 @@ import tasks.results.EmptyTaskResult;
 import tasks.results.FunctionalTaskResult;
 import tasks.single.FunctionalTask;
 import util.*;
+import visualizer.ResultTableData;
+import visualizer.ResultsTable;
 
 import static math.stat.MeasureOfLocation.MEAN;
 import static math.stat.MeasureOfSpread.SD;
@@ -104,10 +108,12 @@ public class ExportViewController implements ParameterView, FxStage, Hotkeyable 
   private final Button exportPrecRecallBtn = new Button("Export precision/recall");
   private final Button exportEMDBtn = new Button("Export EMD comparison");
   private final Button exportExpectedValuesBtn = new Button("Export expected values");
-  private final Button exportPopulationsBtn = new Button("Export events");
-  private final Button exportCustomEventDataBtn = new Button("Export event data");
+  private final Button exportPopulationsBtn = new Button("Export event data");
+  private final Button exportCustomEventDataBtn = new Button("Export custom event data");
   private final Button exportMethodBtn = new Button("Export method as csv");
   private final Button exportMethodSpmBtn = new Button("Export method as spm");
+  private final Button exportResultsTable = new Button("Export results table");
+
 
   protected final ExporterParams exportParamSet;
   protected final FxParamSet fxParamSet;
@@ -134,6 +140,37 @@ public class ExportViewController implements ParameterView, FxStage, Hotkeyable 
       Path defPath = SpTool3Main.getRunTime().getConfParams().getDefaultProjectPath();
       this.exportParamSet.getCurrentExportPath().setValue(defPath.toString());
     }
+
+    // tooltips:
+    UiUtil.tooltip(exportPopulationsBtn,
+        """
+            Export values for each event including height, area, width, ...""");
+
+    UiUtil.tooltip(exportExpectedValuesBtn,
+        """
+            For the in-silico data generator: Export expected values of central parameters.
+            These values represent the expected outcome of an analysis under ideal conditions.""");
+
+    UiUtil.tooltip(exportPrecRecallBtn,
+        """
+            Export precision recall curves to compare the results of a data evaluation method
+            with the expected values from the in-silico data.""");
+
+    UiUtil.tooltip(exportPValuesBtn,
+        """
+            Export the p-value matrix.""");
+
+    UiUtil.tooltip(exportMethodSpmBtn,
+        """
+            Export the method as a .spm file that can be re-loaded later.""");
+
+    UiUtil.tooltip(exportMethodBtn,
+        """
+            Export the method as a human-readable .csv file that can be loaded into MS excel.""");
+
+    UiUtil.tooltip(exportResultsTable,
+        """
+            Export the results table as a human-readable .csv file that can be loaded into MS excel.""");
 
     this.fxParamSet = this.exportParamSet.getObservableInstance();
 
@@ -179,15 +216,29 @@ public class ExportViewController implements ParameterView, FxStage, Hotkeyable 
     borderPane.setBottom(UiUtil.putOnAnchorWithInsets(buttonBar));
 
     // Export buttons
-    final VBox btnBox = new VBox(10,
-        new Label("Exporters without parameters"),
-        exportPopulationsBtn,
-        exportExpectedValuesBtn,
-        exportMethodBtn,
-        exportMethodSpmBtn,
-        exportPValuesBtn,
-        exportPrecRecallBtn
-    );
+    List<Node> buttonBoxItems = new ArrayList<>();
+    Label mainBtnLbl = new Label("Exporters without settings");
+    mainBtnLbl.setStyle("-fx-font-weight: bold");
+    mainBtnLbl.setPrefWidth(180);
+    buttonBoxItems.add(mainBtnLbl);
+    buttonBoxItems.add(exportPopulationsBtn);
+    buttonBoxItems.add(exportResultsTable);
+    buttonBoxItems.add(new Separator(Orientation.HORIZONTAL));
+    buttonBoxItems.add(exportExpectedValuesBtn);
+    if (SpTool3Main.SHOW_PVALUE_EXPORT) {
+      buttonBoxItems.add(new Separator(Orientation.HORIZONTAL));
+      buttonBoxItems.add(exportPValuesBtn);
+    }
+    if (SpTool3Main.SHOW_PRECISION_RECALL_EXPORT) {
+      buttonBoxItems.add(new Separator(Orientation.HORIZONTAL));
+      buttonBoxItems.add(exportPrecRecallBtn);
+    }
+    buttonBoxItems.add(new Separator(Orientation.HORIZONTAL));
+    buttonBoxItems.add(exportMethodBtn);
+    buttonBoxItems.add(exportMethodSpmBtn);
+
+    final VBox btnBox = new VBox(10);
+    btnBox.getChildren().addAll(buttonBoxItems);
 
     btnBox.getChildren().stream()
         .filter(n -> n instanceof Button)
@@ -272,11 +323,55 @@ public class ExportViewController implements ParameterView, FxStage, Hotkeyable 
 
     });
 
+    exportResultsTable.setOnAction(e -> {
+      FunctionalTask task = new FunctionalTask("Export",
+          () -> {
+
+            // Check which type of events to show?
+            List<PopulationID> selPops = SpTool3Main.getRunTime().getMainWindowCtl().getSelPops();
+            List<Sample> samples = SpTool3Main.getRunTime().getMainWindowCtl().getSelSamples();
+            List<Isotope> selIsotopes = SpTool3Main.getRunTime().getMainWindowCtl().getSelIsotopes();
+            if (samples != null && !samples.isEmpty() && selIsotopes != null && !selIsotopes.isEmpty()) {
+
+              ResultTableData tableData = new ResultTableData(samples, selIsotopes, selPops, true);
+
+              TableView<ResultsTable.TableRowData> table =
+                  ResultsTable.buildNestedTable(tableData.getEntryMap());
+
+              ExportWriter writer = new ClipboardWriter();
+              if (exportParamSet.getExportFormat().getValue().equals(ExportTarget.CSV)) {
+                String dateTag = Util.getYearMonthDateDayHourMinuteSecond();
+                String pathStr = exportParamSet.getCurrentExportPath().getValue();
+                Path path = Paths.get(pathStr);
+                path = PathUtil.addDir(path, "Data");
+                PathUtil.createDir(path);
+                if (Files.isDirectory(path)) {
+                  path = path.resolve(dateTag + "ResultsTable" + ".csv");
+                  File file = path.toFile();
+                  writer = new CsvExportWriter(file);
+                }
+              }
+
+              writer.writeLine(DataExport.getShortMeta(null));
+              TableUtils.exportNestedTableViewToCsv(table, writer);
+              writer.close();
+
+            }
+          }, new FunctionalTaskResult(() -> {
+        Platform.runLater(() -> {
+          NotificationFactory.openAutocloseInfo("Export finished");
+        });
+      }));
+
+      BatchTask parallel = new SimpleLinearBatch<>("Export",
+          task, false, new EmptyTaskResult());
+      SpTool3Main.getRunTime().getTaskManager().queueToHousekeepingPool(parallel);
+    });
+
     exportPValuesBtn.setOnAction(e -> {
 
       FunctionalTask task = new FunctionalTask("Export",
           () -> {
-
 
             List<Sample> selSamples = SpTool3Main.getRunTime().getMainWindowCtl().getSelSamples();
             List<Isotope> selIsotopes = SpTool3Main.getRunTime().getMainWindowCtl().getSelIsotopes();

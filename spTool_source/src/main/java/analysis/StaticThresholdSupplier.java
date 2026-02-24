@@ -42,16 +42,16 @@ public class StaticThresholdSupplier implements ThresholdSupplier, Serializable 
   @Override
   public double getSliceValue(int index) {
     // Yield at least 0.1. There are issues with e.g. CompoundPoisson where 0 may be returned.
-    // return Math.max(staticThresholdValue, LEAST_THR);
-    return staticThresholdValue;
+    return Math.max(staticThresholdValue, LEAST_THR);
+    // return staticThresholdValue;
   }
 
 
   @Override
   public double interpolate(int i, int rawLength) {
     // Yield at least 0.1. There are issues with e.g. CompoundPoisson where 0 may be returned.
-    // return Math.max(staticThresholdValue, LEAST_THR);
-    return staticThresholdValue;
+     return Math.max(staticThresholdValue, LEAST_THR);
+    // return staticThresholdValue;
   }
 
   @Override

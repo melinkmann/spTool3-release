@@ -304,6 +304,29 @@ public abstract class UiUtil {
             + "-fx-border-radius: 3; ");
   }
 
+
+  public static void formatElementFieldBlue(Label label){
+    label.setStyle(
+        "-fx-font-weight: bold;" +
+            "-fx-text-fill: white;" +       // text color
+            "-fx-font-size: 18;" +
+            "-fx-background-color: #332288;" + // background color
+            "-fx-padding: 1 1 1 1;" +       // top right bottom left
+            "-fx-background-radius: 5;"   // makes corners rounded
+    );
+  }
+
+  public static void formatElementFieldGreen(Label label){
+    label.setStyle(
+        "-fx-font-weight: bold;" +
+            "-fx-text-fill: white;" +       // text color
+            "-fx-font-size: 18;" +
+            "-fx-background-color: #117733;" + // background color
+            "-fx-padding: 1 1 1 1;" +       // top right bottom left
+            "-fx-background-radius: 5;"   // makes corners rounded
+    );
+  }
+
   public static void shrinkScrollBar(Control pane) {
     pane.getChildrenUnmodifiable().addListener(new ListChangeListener<Node>() {
       @Override

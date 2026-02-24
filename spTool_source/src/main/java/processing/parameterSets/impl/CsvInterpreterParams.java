@@ -154,7 +154,7 @@ public class CsvInterpreterParams extends AbstractParamSet implements Serializab
 
     this.rawUnitSource = new ComboEnumParameter<>(
         "Unit source",
-        "Specify how the raw data uni is determined",
+        "Specify how the raw data unit is determined",
         Source.FROM_FILE,
         Source.values(),
         Source.class,

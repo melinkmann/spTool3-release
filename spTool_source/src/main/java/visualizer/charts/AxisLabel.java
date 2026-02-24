@@ -125,6 +125,9 @@ public interface AxisLabel {
       } else if (quantUnit instanceof MassUnit) {
         label = "Elemental mass";
         unit = quantUnit;
+      } else if (quantUnit instanceof MolarUnit){
+        label = "Number of moles";
+        unit = quantUnit;
       }
     }
     return new PlainLabel(label, unit);

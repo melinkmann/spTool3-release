@@ -52,6 +52,30 @@ public class TableIO {
   public TableIO() {
     this.filePath = GlobalIO.makeResultsTableFile();
     this.activeParameters = new ArrayList<>(read());
+    if (this.activeParameters.isEmpty()) {
+      activeParameters.add(TablePar.SAMPLE_NICK_NAME);
+      activeParameters.add(TablePar.SAMPLE_FULL_PATH);
+      activeParameters.add(TablePar.TRACE_MZ);
+      activeParameters.add(TablePar.DWELL_TIME);
+      activeParameters.add(TablePar.DURATION);
+      activeParameters.add(TablePar.RAW_MEAN);
+      activeParameters.add(TablePar.RAW_SD);
+      activeParameters.add(TablePar.BLN_DISTR);
+      activeParameters.add(TablePar.BLN_MEAN);
+      activeParameters.add(TablePar.AEROSOL_TE);
+      activeParameters.add(TablePar.POPULATION_NAME);
+      activeParameters.add(TablePar.PNC);
+      activeParameters.add(TablePar.NP_RATE);
+      activeParameters.add(TablePar.NP_MEAN);
+      activeParameters.add(TablePar.NP_MEAN_MASS);
+      activeParameters.add(TablePar.NP_MEAN_SIZE);
+      activeParameters.add(TablePar.LOD_AG);
+      activeParameters.add(TablePar.LOD_NM);
+      activeParameters.add(TablePar.SEARCH_HEIGHT);
+      activeParameters.add(TablePar.SEARCH_HEIGHT_META);
+      activeParameters.add(TablePar.GATES);
+      activeParameters.add(TablePar.GATES_META);
+    }
   }
 
   public List<TablePar> getActiveParameters() {

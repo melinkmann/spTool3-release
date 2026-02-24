@@ -583,7 +583,8 @@ public abstract class BaselineGenerator {
 
       // get limits
       statData.setZ(currentFactor);
-      double lower = statData.calcLowerOutlierLimit() + offset;
+      // I guess offset should be subtracted or else zero is never allowed (biasing!)
+      double lower = statData.calcLowerOutlierLimit() - offset;
       double upper = statData.calcCriticalLimit() + offset;
 
       // remove outlier

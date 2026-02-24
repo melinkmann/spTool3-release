@@ -349,7 +349,12 @@ public class IncompleteSample implements Sample, Serializable {
   }
 
   @Override
-  public double getMaxThr(@Nullable Isotope isotope, PopulationID populationID) {
+  public double getMaxThr(@Nullable Isotope isotope, PopulationID populationID, boolean netSignal) {
+    return 0;
+  }
+
+  @Override
+  public double getMaxThr(@Nullable Isotope isotope, PopulationID populationID, boolean netSignal, Unit unit) {
     return 0;
   }
 
@@ -517,6 +522,26 @@ public class IncompleteSample implements Sample, Serializable {
   }
 
   @Override
+  public String tabLodCts(Isotope isotope, PopulationID populationID) {
+    return EMPTY_CELL;
+  }
+
+  @Override
+  public String tabLodAg(Isotope isotope, PopulationID populationID) {
+    return EMPTY_CELL;
+  }
+
+  @Override
+  public String tabLodNm(Isotope isotope, PopulationID populationID) {
+    return EMPTY_CELL;
+  }
+
+  @Override
+  public String tabLodAmol(Isotope isotope, PopulationID populationID) {
+    return EMPTY_CELL;
+  }
+
+  @Override
   public String tabPNC(Isotope isotope, PopulationID populationID) {
     return EMPTY_CELL;
   }
@@ -660,6 +685,21 @@ public class IncompleteSample implements Sample, Serializable {
   }
 
   @Override
+  public String tabMeanMol(Isotope isotope, PopulationID populationID) {
+    return EMPTY_CELL;
+  }
+
+  @Override
+  public String tabMolSD(Isotope isotope, PopulationID populationID) {
+    return EMPTY_CELL;
+  }
+
+  @Override
+  public String tabMedianMol(Isotope isotope, PopulationID populationID) {
+    return EMPTY_CELL;
+  }
+
+  @Override
   public String tabPopBgMean(Isotope isotope, PopulationID populationID) {
     String val = EMPTY_CELL;
     Trace t = getTrace(isotope);
@@ -711,6 +751,11 @@ public class IncompleteSample implements Sample, Serializable {
 
   @Override
   public String tabBlnOutlierZ(Isotope isotope, PopulationID populationID) {
+    return EMPTY_CELL;
+  }
+
+  @Override
+  public String tabEquivBGConc(Isotope isotope) {
     return EMPTY_CELL;
   }
 

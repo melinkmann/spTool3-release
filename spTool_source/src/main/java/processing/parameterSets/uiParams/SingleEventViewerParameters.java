@@ -107,7 +107,7 @@ public class SingleEventViewerParameters extends AbstractParamSet implements Par
         "Sort events in ascending order according to the chosen parameter",
         false,
         false,
-        "sortEvents");
+        "sortBoolean");
 
     this.eventParameter = new ComboEnumParameter<>(
         "Sort by",

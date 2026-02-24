@@ -131,16 +131,16 @@ public class FixedStatDataSet implements StatDataSet, Serializable {
   public double calcCriticalLimit() {
     double lim = 0;
     if (distrID == Poisson.getID()) {
-      lim = Poisson.poissonCriticalLimit(alpha, location);
+      lim = Poisson.poissonCriticalLimit(alpha, location+ continuityEpsilon);
     }
     if (distrID == Gaussian.getID()) {
       lim = Gaussian.gaussianCriticalLimit(z, location, spread);
     }
     if (distrID == PoissonNormal.getID()) {
-      lim = PoissonNormal.normalApproximationCriticalLimit(z, location+ continuityEpsilon);
+      lim = PoissonNormal.normalApproximationCriticalLimit(z, location + continuityEpsilon);
     }
     if (distrID == CurriePoisson.getID()) {
-      lim = CurriePoisson.currieCriticalLimit(z, location+ continuityEpsilon);
+      lim = CurriePoisson.currieCriticalLimit(z, location + continuityEpsilon);
     }
     if (distrID == CompoundPoissonApprox.getID()) {
       lim = CompoundPoissonApprox.compoundCriticalLimit(alpha, location, siaShape);
@@ -154,16 +154,16 @@ public class FixedStatDataSet implements StatDataSet, Serializable {
   public double calcDetectionLimit() {
     double lim = 0;
     if (distrID == Poisson.getID()) {
-      lim = Poisson.poissonDetectionLimit(z, location);
+      lim = Poisson.poissonDetectionLimit(z, location+ continuityEpsilon);
     }
     if (distrID == Gaussian.getID()) {
       lim = Gaussian.gaussianDetectionLimit(z, location, spread);
     }
     if (distrID == PoissonNormal.getID()) {
-      lim = PoissonNormal.normalApproximationDetectionLimit(z, location+ continuityEpsilon);
+      lim = PoissonNormal.normalApproximationDetectionLimit(z, location + continuityEpsilon);
     }
     if (distrID == CurriePoisson.getID()) {
-      lim = CurriePoisson.currieDetectionLimit(z, location+ continuityEpsilon);
+      lim = CurriePoisson.currieDetectionLimit(z, location + continuityEpsilon);
     }
     if (distrID == CompoundPoissonApprox.getID()) {
       lim = CompoundPoissonApprox.compoundDetectionLimit(z, location, siaShape);
@@ -178,16 +178,16 @@ public class FixedStatDataSet implements StatDataSet, Serializable {
   public double calcLowerOutlierLimit() {
     double lim = 0;
     if (distrID == Poisson.getID()) {
-      lim = Poisson.poissonLowerOutlierLimit(alpha, location);
+      lim = Poisson.poissonLowerOutlierLimit(alpha, location+ continuityEpsilon);
     }
     if (distrID == Gaussian.getID()) {
       lim = Gaussian.gaussianLowerOutlierLimit(z, location, spread);
     }
     if (distrID == PoissonNormal.getID()) {
-      lim = PoissonNormal.normalApproximationLowerOutlierLimit(z, location+ continuityEpsilon);
+      lim = PoissonNormal.normalApproximationLowerOutlierLimit(z, location + continuityEpsilon);
     }
     if (distrID == CurriePoisson.getID()) {
-      lim = CurriePoisson.currieLowerOutlierLimit(z, location+ continuityEpsilon);
+      lim = CurriePoisson.currieLowerOutlierLimit(z, location + continuityEpsilon);
     }
     if (distrID == CompoundPoissonApprox.getID()) {
       lim = CompoundPoissonApprox.compoundLowerOutlierLimit(alpha, location, siaShape);
@@ -208,7 +208,7 @@ public class FixedStatDataSet implements StatDataSet, Serializable {
       pValue = Gaussian.calcSurvival(location, spread, intensity);
     }
     if (distrID == PoissonNormal.getID()) {
-      pValue = PoissonNormal.calcSurvival(location+ continuityEpsilon, intensity);
+      pValue = PoissonNormal.calcSurvival(location + continuityEpsilon, intensity);
     }
     if (distrID == CurriePoisson.getID()) {
       /*

@@ -32,7 +32,7 @@ public class DataDependentThresholdSupplier implements ThresholdSupplier, Serial
   private final int lastSliceLength; // may be 998 or 1002 @ length = 1000 ...
 
   public DataDependentThresholdSupplier(StatCollection backgroundDistribution,
-      double[] thresholdSlices, double offset) {
+                                        double[] thresholdSlices, double offset) {
     this.sliceLength = backgroundDistribution.getSliceLength();
     this.lastSliceLength = backgroundDistribution.getLastSliceLength();
     this.thresholdSlices = thresholdSlices;
@@ -75,8 +75,8 @@ public class DataDependentThresholdSupplier implements ThresholdSupplier, Serial
     sliceIndex = Math.min(sliceIndex, thresholdSlices.length - 1);
 
     // Yield at least 0.1. There are issues with e.g. CompoundPoisson where 0 may be returned.
-    // return Math.max(thresholdSlices[sliceIndex], LEAST_THR);
-    return thresholdSlices[sliceIndex];
+    return Math.max(thresholdSlices[sliceIndex], LEAST_THR);
+    // return thresholdSlices[sliceIndex];
   }
 
 
@@ -150,8 +150,8 @@ public class DataDependentThresholdSupplier implements ThresholdSupplier, Serial
     }
 
     // Yield at least 0.1. There are issues with e.g. CompoundPoisson where 0 may be returned.
-    // return Math.max(thr, LEAST_THR);
-    return thr;
+    return Math.max(thr, LEAST_THR);
+    // return thr;
   }
 
   // For plotting

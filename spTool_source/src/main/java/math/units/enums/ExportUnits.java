@@ -93,6 +93,30 @@ public enum ExportUnits implements Unit, Serializable {
     public Unit getUnit() {
       return SizeUnit.NANO_METER;
     }
+  },
+
+  FEMTO_MOL {
+    @Override
+    public String getLiteralString() {
+      return getUnit().getLiteralString();
+    }
+
+    @Override
+    public Unit getUnit() {
+      return MolarUnit.FEMTO_MOL;
+    }
+  },
+
+  ATTO_MOL {
+    @Override
+    public String getLiteralString() {
+      return getUnit().getLiteralString();
+    }
+
+    @Override
+    public Unit getUnit() {
+      return MolarUnit.ATTO_MOL;
+    }
   };
 
 

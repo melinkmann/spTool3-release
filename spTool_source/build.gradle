@@ -107,7 +107,6 @@ javafx {
         implementation group: 'org.apache.commons', name: 'commons-math3', version: '3.6.1'
         // https://mvnrepository.com/artifact/org.apache.commons/commons-numbers-gamma
         implementation group: 'org.apache.commons', name: 'commons-numbers-gamma', version: '1.1'
-        // implementation group: 'com.esotericsoftware', name: 'kryo', version: '5.6.0' // deep copy
         // implementation 'com.google.code.gson:gson:2.10.1' // XML writer
         implementation 'org.apache.logging.log4j:log4j-core:2.23.1'
         implementation 'org.apache.logging.log4j:log4j-api:2.23.1'
@@ -179,7 +178,7 @@ application {
                                  "-Dprism.maxvram=2G",
                                  "-Djava.library.path=lib",
                                  "-enableassertions",
-                                 "-Dprism.order=sw", // Disable hardware acceleration may help with JFree bugs at high load
+                                 // "-Dprism.order=sw", // Disable hardware acceleration may help with JFree bugs at high load--bug was due to multithreading in visualizer
                                  "-Dapple.awt.application.name=spTool3 ${version}",
                                  // "-XX:+UnlockExperimentalVMOptions", // v39 recommended by SH
                                  // "-XX:+UseZGC", // v39 recommended by SH

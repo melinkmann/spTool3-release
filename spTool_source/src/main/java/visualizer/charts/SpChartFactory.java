@@ -98,6 +98,7 @@ import org.jfree.data.xy.XYSeries;
 import org.jfree.data.xy.XYSeriesCollection;
 import processing.options.BinWidthEstimator;
 import processing.options.HistogramNormalization;
+import processing.options.MathMod;
 import util.ArrUtils;
 import util.NF;
 import visualizer.charts.JFreeUtil.ExtendedHistogramDataSet;
@@ -998,14 +999,16 @@ public abstract class SpChartFactory {
     private final String yLbl;
     private final Unit xUnit;
     private final Unit yUnit;
+    private final MathMod xMath;
+    private final MathMod yMath;
 
     public ChartData(String seriesName, double[] x, double[] y,
-                     String xLbl, Unit xUnit, String yLbl, Unit yUnit) {
-      this(seriesName, seriesName, x, y, xLbl, xUnit, yLbl, yUnit);
+                     String xLbl, Unit xUnit, MathMod xMath, String yLbl, Unit yUnit, MathMod yMath) {
+      this(seriesName, seriesName, x, y, xLbl, xUnit, xMath, yLbl, yUnit, yMath);
     }
 
     public ChartData(String seriesName, String seriesShortname, double[] x, double[] y,
-                     String xLbl, Unit xUnit, String yLbl, Unit yUnit) {
+                     String xLbl, Unit xUnit, MathMod xMath, String yLbl, Unit yUnit, MathMod yMath) {
       this.seriesName = seriesName;
       this.seriesShortname = seriesShortname;
       this.x = x;
@@ -1014,12 +1017,14 @@ public abstract class SpChartFactory {
       this.yLbl = yLbl;
       this.xUnit = xUnit;
       this.yUnit = yUnit;
+      this.xMath = xMath;
+      this.yMath = yMath;
       this.tiSeries = null;
       this.xySeries = null;
     }
 
     public ChartData(String seriesName, List<Double> x, List<Double> y,
-                     String xLbl, Unit xUnit, String yLbl, Unit yUnit) {
+                     String xLbl, Unit xUnit, MathMod xMath, String yLbl, Unit yUnit, MathMod yMath) {
       this.seriesName = seriesName;
       this.seriesShortname = seriesName;
       this.x = ArrUtils.doubleListToArr(x);
@@ -1028,12 +1033,14 @@ public abstract class SpChartFactory {
       this.yLbl = yLbl;
       this.xUnit = xUnit;
       this.yUnit = yUnit;
+      this.xMath = xMath;
+      this.yMath = yMath;
       this.tiSeries = null;
       this.xySeries = null;
     }
 
     public ChartData(String seriesName, TISeries tiSeries,
-                     String xLbl, Unit xUnit, String yLbl, Unit yUnit) {
+                     String xLbl, Unit xUnit, MathMod xMath, String yLbl, Unit yUnit, MathMod yMath) {
       this.seriesName = seriesName;
       this.seriesShortname = seriesName;
       this.x = tiSeries.getX();
@@ -1042,12 +1049,14 @@ public abstract class SpChartFactory {
       this.yLbl = yLbl;
       this.xUnit = xUnit;
       this.yUnit = yUnit;
+      this.xMath = xMath;
+      this.yMath = yMath;
       this.tiSeries = tiSeries;
       this.xySeries = null;
     }
 
     public ChartData(XYSeries xySeries,
-                     String xLbl, Unit xUnit, String yLbl, Unit yUnit) {
+                     String xLbl, Unit xUnit, MathMod xMath, String yLbl, Unit yUnit, MathMod yMath) {
       this.seriesName = xySeries.getKey().toString();
       this.seriesShortname = seriesName;
       this.x = new double[0];
@@ -1056,6 +1065,8 @@ public abstract class SpChartFactory {
       this.yLbl = yLbl;
       this.xUnit = xUnit;
       this.yUnit = yUnit;
+      this.xMath = xMath;
+      this.yMath = yMath;
       this.tiSeries = null;
       this.xySeries = xySeries;
     }
@@ -1070,6 +1081,8 @@ public abstract class SpChartFactory {
       this.yLbl = data.yLbl;
       this.xUnit = data.xUnit;
       this.yUnit = data.yUnit;
+      this.xMath = data.xMath;
+      this.yMath = data.yMath;
       this.tiSeries = null;
       this.xySeries = null;
     }
@@ -1091,7 +1104,11 @@ public abstract class SpChartFactory {
     }
 
     public String translateXLbl() {
-      return xLbl + " /" + xUnit.getAxisString();
+      if (xMath.equals(MathMod.NONE)) {
+        return xLbl + " /" + xUnit.getAxisString();
+      } else {
+        return xMath.getUiString() + "(" + xLbl + " /" + xUnit.getAxisString() + ")";
+      }
     }
 
     public String getxLbl() {
@@ -1102,8 +1119,16 @@ public abstract class SpChartFactory {
       return xUnit;
     }
 
+    public MathMod getxMath() {
+      return xMath;
+    }
+
     public String translateYLbl() {
-      return yLbl + " /" + yUnit.getAxisString();
+      if (yMath.equals(MathMod.NONE)) {
+        return yLbl + " /" + yUnit.getAxisString();
+      } else {
+        return yMath.getUiString() + "(" + yLbl + " /" + yUnit.getAxisString() + ")";
+      }
     }
 
     public String getyLbl() {
@@ -1114,6 +1139,9 @@ public abstract class SpChartFactory {
       return yUnit;
     }
 
+    public MathMod getyMath() {
+      return yMath;
+    }
 
     @Nullable
     public TISeries getTiSeries() {
@@ -1131,16 +1159,16 @@ public abstract class SpChartFactory {
     private final double thrLOD;
 
     public HistogramChartData(String seriesName, double[] y,
-                              String xLbl, Unit xUnit, String yLbl, Unit yUnit,
+                              String xLbl, Unit xUnit, MathMod xMath, String yLbl, Unit yUnit, MathMod yMath,
                               double thrLOD) {
-      super(seriesName, seriesName, y, y, xLbl, xUnit, yLbl, yUnit);
+      super(seriesName, seriesName, y, y, xLbl, xUnit, xMath, yLbl, yUnit, yMath);
       this.thrLOD = thrLOD;
     }
 
     public HistogramChartData(String seriesName, String seriesShortname, double[] y,
-                              String xLbl, Unit xUnit, String yLbl, Unit yUnit
-        , double thrLOD) {
-      super(seriesName, seriesShortname, y, y, xLbl, xUnit, yLbl, yUnit);
+                              String xLbl, Unit xUnit, MathMod xMath, String yLbl, Unit yUnit, MathMod yMath,
+                              double thrLOD) {
+      super(seriesName, seriesShortname, y, y, xLbl, xUnit, xMath, yLbl, yUnit, yMath);
       this.thrLOD = thrLOD;
     }
 

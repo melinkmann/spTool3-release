@@ -26,6 +26,7 @@ import io.export.ExportSimulationEventContainer;
 import java.awt.Color;
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 import javax.annotation.Nullable;
@@ -134,6 +135,11 @@ public interface Sample extends Serializable {
    */
   List<PopulationID> listPopulations(List<Isotope> isotopes);
 
+  default boolean hasPopulation(PopulationID id, Isotope isotope) {
+    List<PopulationID> availablePops = listPopulations(Arrays.asList(isotope));
+    return availablePops.contains(id);
+  }
+
   void removePopulations(List<Isotope> isotopes, PopulationID populationID);
 
   void addTrace(Trace trace);
@@ -173,7 +179,9 @@ public interface Sample extends Serializable {
   /**
    * Returns the highest intensity height threshold used to mark a peak height LD.
    */
-  double getMaxThr(@Nullable Isotope isotope, PopulationID populationID);
+  double getMaxThr(@Nullable Isotope isotope, PopulationID populationID, boolean netSignal);
+
+  double getMaxThr(@Nullable Isotope isotope, PopulationID populationID, boolean netSignal, Unit unit);
 
   List<Event> getNPEvents(Isotope isotope, PopulationID popID);
 
@@ -243,6 +251,14 @@ public interface Sample extends Serializable {
 
   String tabPopAdditional(Isotope isotope, PopulationID populationID);
 
+  String tabLodCts(Isotope isotope, PopulationID populationID);
+
+  String tabLodAg(Isotope isotope, PopulationID populationID);
+
+  String tabLodNm(Isotope isotope, PopulationID populationID);
+
+  String tabLodAmol(Isotope isotope, PopulationID populationID);
+
   String tabPopNpCount(Isotope isotope, PopulationID populationID);
 
   String tabPNC(Isotope isotope, PopulationID populationID);
@@ -275,6 +291,12 @@ public interface Sample extends Serializable {
 
   String tabMedianMass(Isotope isotope, PopulationID populationID);
 
+  String tabMeanMol(Isotope isotope, PopulationID populationID);
+
+  String tabMolSD(Isotope isotope, PopulationID populationID);
+
+  String tabMedianMol(Isotope isotope, PopulationID populationID);
+
   String tabPopNpCustomParamMean(Isotope isotope, PopulationID populationID, EventParameter par,
                                  MathMod math);
 
@@ -297,6 +319,8 @@ public interface Sample extends Serializable {
   String tabBlnSD(Isotope isotope, PopulationID populationID);
 
   String tabBlnOutlierZ(Isotope isotope, PopulationID populationID);
+
+  String tabEquivBGConc(Isotope isotope);
 
   String tabSearchStart(Isotope isotope, PopulationID populationID);
 

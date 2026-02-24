@@ -17,12 +17,22 @@
 
 package gui.table;
 
+import com.fasterxml.jackson.databind.util.ExceptionUtil;
+import com.opencsv.CSVWriter;
 import core.SpTool3Main;
 import io.SampleSet;
+
+import java.io.BufferedWriter;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
+
+import io.export.ExportWriter;
 import javafx.application.Platform;
 import javafx.beans.property.StringProperty;
 import javafx.beans.value.ObservableValue;
@@ -52,6 +62,7 @@ import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.scene.text.Text;
 import javafx.util.Callback;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -145,7 +156,7 @@ public class TableUtils {
 
   // Specify how the TableEntry shall be converted into a string.
   public static <T> void installSimpleCellValueFactory(TableColumn<FxTableEntry<T>, String> col,
-      FxTableLabelGenerator<T> stringPropertyGenerator) {
+                                                       FxTableLabelGenerator<T> stringPropertyGenerator) {
     col.setCellValueFactory(
         new Callback<CellDataFeatures<FxTableEntry<T>, String>, ObservableValue<String>>() {
           @Override
@@ -160,7 +171,7 @@ public class TableUtils {
 
   // Note: This has to be installed in addition to the cellValueFactory!
   public static <T> void installEditableNameOnCommit(TableColumn<FxTableEntry<T>, String> col,
-      FxTableEditableLabelHandler<T> stringPropertyGenerator) {
+                                                     FxTableEditableLabelHandler<T> stringPropertyGenerator) {
     col.setOnEditCommit((CellEditEvent<FxTableEntry<T>, String> editEvent) -> {
       FxTableEntry<T> entry = editEvent.getTableView()
           .getItems()
@@ -387,7 +398,8 @@ public class TableUtils {
   // ChatGPT4:
   /*
   tableView.getColumns() only returns the top-level columns, not recursively all nested children.
-  In JavaFX, a TableColumn can itself contain other columns via getColumns(), which is why your method misses them.
+  In JavaFX, a TableColumn can itself contain other columns via getColumns(), which is why your method
+  misses them.
   To fix this, you need to flatten the column hierarchy before processing.
    */
   public static <T> void extractNestedTableViewData(TableView<T> tableView) {
@@ -424,10 +436,46 @@ public class TableUtils {
     Clipboard.getSystemClipboard().setContent(content);
   }
 
-  /** Builds header rows where:
-   *  - Row 0 repeats each top-level header once per leaf it spans.
-   *  - Deeper rows contain child headers; if a branch ends earlier, blanks are inserted.
-   *  This guarantees an empty cell under a single-leaf top-level column (e.g., "Parameter").
+  // modified chatGPT
+  public static <T> void exportNestedTableViewToCsv(TableView<T> tableView, ExportWriter writer) {
+
+    // Flatten leaf columns for data extraction
+    List<TableColumn<T, ?>> flatColumns = getLeafColumns(tableView.getColumns());
+
+    // Build aligned header rows (each row has #leafColumns cells)
+    List<List<String>> headerRows = buildAlignedHeaderRows(tableView.getColumns());
+
+    try {
+      // Write header rows
+      for (List<String> headerRow : headerRows) {
+        writer.writeLine(headerRow.toArray(new String[0]));
+      }
+
+      // Selected rows
+      List<T> selectedItems = tableView.getItems();
+
+      for (T item : selectedItems) {
+        String[] row = flatColumns.stream()
+            .map(col -> {
+              Object val = col.getCellData(item);
+              return val != null ? val.toString() : "";
+            })
+            .toArray(String[]::new);
+
+        writer.writeLine(row);
+      }
+    } catch (Exception e) {
+      LOGGER.error("Cannot write table to csv file!" +
+          " Message: " + ExceptionUtils.getMessage(e)
+          + "Stack trace: " + ExceptionUtils.getStackTrace(e));
+    }
+  }
+
+  /**
+   * Builds header rows where:
+   * - Row 0 repeats each top-level header once per leaf it spans.
+   * - Deeper rows contain child headers; if a branch ends earlier, blanks are inserted.
+   * This guarantees an empty cell under a single-leaf top-level column (e.g., "Parameter").
    */
   private static <T> List<List<String>> buildAlignedHeaderRows(List<TableColumn<T, ?>> roots) {
     // 1) Collect paths (root -> leaf) in left-to-right order
@@ -454,10 +502,12 @@ public class TableUtils {
     return rows;
   }
 
-  /** Collects (root..leaf) header text path for each leaf column, preserving visual order. */
+  /**
+   * Collects (root..leaf) header text path for each leaf column, preserving visual order.
+   */
   private static <T> void collectLeafPaths(TableColumn<T, ?> col,
-      List<String> prefix,
-      List<List<String>> out) {
+                                           List<String> prefix,
+                                           List<List<String>> out) {
     List<String> cur = new ArrayList<>(prefix);
     cur.add(safe(col.getText()));
     if (col.getColumns().isEmpty()) {
@@ -469,7 +519,9 @@ public class TableUtils {
     }
   }
 
-  /** Returns leaf columns left-to-right. */
+  /**
+   * Returns leaf columns left-to-right.
+   */
   private static <T> List<TableColumn<T, ?>> getLeafColumns(List<TableColumn<T, ?>> columns) {
     List<TableColumn<T, ?>> result = new ArrayList<>();
     for (TableColumn<T, ?> c : columns) {

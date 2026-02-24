@@ -27,6 +27,10 @@ public class SeparatorParameter extends AbstractParameter<String> implements Ser
   @Serial
   private static final long serialVersionUID = 1_000_000L;
 
+  public SeparatorParameter(boolean isLimitedToExport) {
+    super("", "", "", isLimitedToExport, "sepPar");
+  }
+
   public SeparatorParameter() {
     super("", "", "", false, "sepPar");
   }

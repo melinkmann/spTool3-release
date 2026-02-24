@@ -33,25 +33,25 @@ public enum QuantParam {
   NP_AREA_MEAN {
     @Override
     public String toString() {
-      return "Particle area mean";
+      return "Particle net area mean";
     }
   },
   NP_AREA_MEDIAN {
     @Override
     public String toString() {
-      return "Particle area median";
+      return "Particle net area median";
     }
   },
   NP_HEIGHT_MEAN {
     @Override
     public String toString() {
-      return "Particle height mean";
+      return "Particle net height mean";
     }
   },
   NP_HEIGHT_MEDIAN {
     @Override
     public String toString() {
-      return "Particle height median";
+      return "Particle net height median";
     }
   };
 

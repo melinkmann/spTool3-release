@@ -17,15 +17,7 @@
 
 package processing.parameterSets.uiParams;
 
-import analysis.AnalysisUtils;
-import analysis.Event;
-import analysis.PlottableEventMarkers;
-import analysis.PlottableSubPopulation;
-import analysis.Population;
-import analysis.PopulationID;
-import analysis.StatCollection;
-import analysis.ThresholdSupplier;
-import analysis.ThresholdSupplierInstructions;
+import analysis.*;
 import analysis.quant.*;
 import com.google.common.util.concurrent.AtomicDouble;
 import core.SpTool3Main;
@@ -39,7 +31,6 @@ import gui.MethodView;
 import gui.ParameterView;
 import gui.StageFactory;
 import gui.dialog.notification.NotificationFactory;
-import gui.dialog.notification.PopupFactory;
 import gui.util.NumberIterator;
 import gui.util.UiUtil;
 
@@ -195,7 +186,7 @@ public abstract class Viewers {
             List<Isotope> selIsotopes = SpTool3Main.getRunTime().getMainWindowCtl().getSelIsotopes();
             if (samples != null && !samples.isEmpty() && selIsotopes != null && !selIsotopes.isEmpty()) {
 
-              ResultTableData tableData = new ResultTableData(samples, selIsotopes, selPops);
+              ResultTableData tableData = new ResultTableData(samples, selIsotopes, selPops, false);
               progress.set(0.4);
 
 
@@ -236,12 +227,14 @@ public abstract class Viewers {
   public static class QuantificationViewer extends ViewerFXParamSet implements ParameterView {
 
     // container for data
-    private SpCalibrationSet responses = new SpCalibrationSet();
+    private SpCalibrationSet spCalSet = new SpCalibrationSet();
     private final Button loadCalFromSampleBtn = new Button();
     private final Button sendCalToSamplesBtn = new Button("Apply");
+    private final Button clearSpCalSetBtn = new Button("");
     private final ComboBox<LinRegType> regTypeComboBox =
         new ComboBox<>(FXCollections.observableArrayList(LinRegType.values()));
-    RegressionViewContainer currentData = new RegressionViewContainer(responses, LinRegType.OLS);
+    RegressionViewContainer currentRegressionDataContainer = new RegressionViewContainer(spCalSet,
+        LinRegType.OLS);
 
     // enable copy-pasting of calibration parameters to other samples
     private final AtomicReference<Cal> clipboardCal = new AtomicReference<>(null);
@@ -257,20 +250,21 @@ public abstract class Viewers {
     private final BorderPane subLevelParPane = new BorderPane();
     private final BorderPane graphPane = new BorderPane();
     private final VBox setBox = new VBox(8);
+    private final Label sampleNameLbl = new Label("Sample...");
     private final ScrollPane paramScroll = new ScrollPane(UiUtil.putOnAnchorWithoutInsets(setBox));
 
     private final VBox subQuantBox = new VBox(5);
     private final ScrollPane subQuantScroll = new ScrollPane(UiUtil.putOnAnchorWithoutInsets(subQuantBox));
 
     // FxSets keep FxParams alive internally to keep focus
-    private FxParamSet sampleLevelFxSet;
+    private FxParamSet sampleLevelConditionsFxSet;
     private ExperimentalConditions sampleLevelConditions;
     private final HashMap<Element, FxParamSet> eleParamFxSets = new LinkedHashMap<>();
     private final HashMap<FxParamSet, ListView<FxParameter<?>>> eleViewMap = new LinkedHashMap<>();
 
     // Table
     private final TableView<ResponseTableRow> table;
-    private final ResponseTableModel tableModel;
+    private final FxSpCalibrationSetTableModel tableModel;
 
     // in table split: organize the model and send to table button
     private final ComboBox<CalibrationStrategy> calibrationStrategyComboBox =
@@ -279,12 +273,14 @@ public abstract class Viewers {
     private final ToggleButton ionicResponseActiveToggle = new ToggleButton();
     private final ToggleButton teActiveToggle = new ToggleButton();
     private final ToggleButton pnTeActiveToggle = new ToggleButton();
-    private final Button acceptCalibrationToTableBtn = new Button("Fill column");
+    private final Button fillTableWithCalBtn = new Button("Fill column");
 
     final Button copyCalBtn = UiUtil.getSquareImageButton("Copy", "/img/copy.png",
         "Copy current calibration parameters");
+
     final Button pasteCalBtn = UiUtil.getSquareImageButton("Paste", "/img/paste.png",
         "Paste copied calibration parameters to all selected samples");
+
     final Button refreshBtn = UiUtil.getImageButton("", "/img/refresh.png",
         """
             Refresh with updated data: Use this button when you change sample parameters
@@ -318,9 +314,10 @@ public abstract class Viewers {
           UiUtil.putOnAnchorWithoutInsets(subLevelParPane));
       paramSplitTD.setDividerPositions(0.4);
 
-      // samle section
+      // sample section
       sampleSectionLabel.setStyle("-fx-font-weight: bold;");
       sampleSectionLabel.setMinWidth(85);
+
       // load/send button
       loadCalFromSampleBtn.setGraphic(UiUtil.getViewer("/img/extract.png"));
       UiUtil.tooltip(loadCalFromSampleBtn, "Load calibration table from the selected sample.");
@@ -334,13 +331,16 @@ public abstract class Viewers {
       );
       UiUtil.tooltip(sendCalToSamplesBtn, "Send calibration table to all selected samples.");
 
+      clearSpCalSetBtn.setGraphic(UiUtil.getViewer("/img/delete.png"));
+      UiUtil.tooltip(clearSpCalSetBtn, "Clear current calibration table.");
+
       loadCalFromSampleBtn.setPrefWidth(35);
       loadCalFromSampleBtn.setOnAction(e -> {
         List<Sample> selSamples = SpTool3Main.getRunTime().getMainWindowCtl().getSelSamples();
         if (!selSamples.isEmpty()) {
           // copy, or else changes propagate
-          this.responses = selSamples.get(0).getQuant().getResponses().copy();
-          calibrationStrategyComboBox.getSelectionModel().select(this.responses.getCalibrationStrategy());
+          this.spCalSet = selSamples.get(0).getQuant().getResponses().copy();
+          calibrationStrategyComboBox.getSelectionModel().select(this.spCalSet.getCalibrationStrategy());
         }
         refreshGraph();
       });
@@ -350,8 +350,17 @@ public abstract class Viewers {
         List<Sample> selSamples = SpTool3Main.getRunTime().getMainWindowCtl().getSelSamples();
         for (Sample selSample : selSamples) {
           // copy, or else changes propagate back
-          selSample.getQuant().setResponses(responses.copy());
+          selSample.getQuant().setResponses(spCalSet.copy());
         }
+      });
+
+      clearSpCalSetBtn.setOnAction(e -> {
+        spCalSet = new SpCalibrationSet();
+        List<Sample> selSamples = SpTool3Main.getRunTime().getMainWindowCtl().getSelSamples();
+        if (!selSamples.isEmpty()) {
+          selSamples.get(0).getQuant().setResponses(spCalSet);
+        }
+        refreshGraph();
       });
 
       UiUtil.tooltip(regTypeComboBox, "Linear regression: weighted or ordinary.");
@@ -368,7 +377,7 @@ public abstract class Viewers {
 
       // Table
       table = new TableView<>();
-      tableModel = new ResponseTableModel();
+      tableModel = new FxSpCalibrationSetTableModel();
       table.setEditable(true);
       table.setItems(tableModel.getRows());
 
@@ -388,14 +397,19 @@ public abstract class Viewers {
       UiUtil.tooltip(teActiveToggle, toggleString);
       UiUtil.tooltip(pnTeActiveToggle, toggleString);
 
-      UiUtil.tooltip(acceptCalibrationToTableBtn, "Based on the selected samples, isotopes and populations," +
-          "the graph is updated to calculate instrument response and/or transport efficiency." +
-          "This button transfers the currently selected data (which are shown in the graph) into the table.");
-      acceptCalibrationToTableBtn.setGraphic(UiUtil.getSquareViewer("/img/fillActive.png"));
-      acceptCalibrationToTableBtn.setPrefWidth(100);
-      acceptCalibrationToTableBtn.setOnAction(e -> {
-        currentData.sendValuesToTable(
-            table, tableModel,
+      UiUtil.tooltip(fillTableWithCalBtn,
+          """
+              Based on the selected samples, isotopes and populations,
+              the graph is updated to calculate instrument response and/or transport efficiency.
+              This button transfers the currently selected data (which are shown in the graph) into the table.""");
+      fillTableWithCalBtn.setGraphic(UiUtil.getSquareViewer("/img/fillActive.png"));
+      fillTableWithCalBtn.setPrefWidth(100);
+
+      fillTableWithCalBtn.setOnAction(e -> {
+        // make sure that the calibration set has elements in it
+        currentRegressionDataContainer.sendSlopesToCalSetAndTable(
+            table,
+            tableModel,
             npResponseActiveToggle,
             ionicResponseActiveToggle,
             teActiveToggle,
@@ -404,13 +418,13 @@ public abstract class Viewers {
       });
 
 
-      calibrationStrategyComboBox.getSelectionModel().selectedItemProperty().addListener(new ChangeListener<CalibrationStrategy>() {
+      calibrationStrategyComboBox.getSelectionModel().selectedItemProperty().addListener(new ChangeListener<>() {
         @Override
         public void changed(ObservableValue<? extends CalibrationStrategy> observable,
                             CalibrationStrategy oldValue, CalibrationStrategy newValue) {
 
           // store
-          responses.setCalibrationStrategy(newValue);
+          spCalSet.setCalibrationStrategy(newValue);
 
           if (newValue.equals(oldValue)) {
             // nada
@@ -436,28 +450,28 @@ public abstract class Viewers {
             });
             table.getColumns().add(isotopeCol);
 
-            table.getColumns().add(ResponseTableModel.quantityColumn(
+            table.getColumns().add(FxSpCalibrationSetTableModel.quantityColumn(
                 "Ionic response",
                 ResponseTableRow::getIonicResponse,
                 ionicResponseActiveToggle));
 
-            table.getColumns().add(ResponseTableModel.quantityColumn(
+            table.getColumns().add(FxSpCalibrationSetTableModel.quantityColumn(
                 "NP response",
                 ResponseTableRow::getNpResponse,
                 npResponseActiveToggle));
 
-            table.getColumns().add(ResponseTableModel.numericColumn(
+            table.getColumns().add(FxSpCalibrationSetTableModel.numericColumn(
                 "TE [%]",
                 ResponseTableRow::getAerosolTEPct,
                 null,
-                80));
+                90));
 
-            table.getColumns().add(ResponseTableModel.numericColumn("Number TE [%]",
+            table.getColumns().add(FxSpCalibrationSetTableModel.numericColumn("Number TE [%]",
                 ResponseTableRow::getParticleNumberTEPct,
                 pnTeActiveToggle,
                 105));
 
-            teActiveToggle.setSelected(false);
+            teActiveToggle.setSelected(false); // not available here
 
           } else if (newValue.equals(CalibrationStrategy.FREQUENCY_METHOD)) {
             // when updating, remove cols
@@ -481,23 +495,23 @@ public abstract class Viewers {
             });
             table.getColumns().add(isotopeCol);
 
-            table.getColumns().add(ResponseTableModel.quantityColumn(
+            table.getColumns().add(FxSpCalibrationSetTableModel.quantityColumn(
                 "Ionic response",
                 ResponseTableRow::getIonicResponse,
                 ionicResponseActiveToggle));
 
-            table.getColumns().add(ResponseTableModel.numericColumn(
+            table.getColumns().add(FxSpCalibrationSetTableModel.numericColumn(
                 "TE [%]",
                 ResponseTableRow::getAerosolTEPct,
                 teActiveToggle,
-                80));
+                90));
 
-            table.getColumns().add(ResponseTableModel.numericColumn("Number TE [%]",
+            table.getColumns().add(FxSpCalibrationSetTableModel.numericColumn("Number TE [%]",
                 ResponseTableRow::getParticleNumberTEPct,
                 pnTeActiveToggle,
                 105));
 
-            npResponseActiveToggle.setSelected(false);
+            npResponseActiveToggle.setSelected(false); // not available here
 
           } else if (newValue.equals(CalibrationStrategy.MASS)) {
             // when updating, remove cols
@@ -521,35 +535,38 @@ public abstract class Viewers {
             });
             table.getColumns().add(isotopeCol);
 
-            table.getColumns().add(ResponseTableModel.quantityColumn(
+            table.getColumns().add(FxSpCalibrationSetTableModel.quantityColumn(
                 "NP response",
                 ResponseTableRow::getNpResponse,
                 npResponseActiveToggle));
 
             npResponseActiveToggle.setSelected(true);
-            ionicResponseActiveToggle.setSelected(false);
-            teActiveToggle.setSelected(false);
-            pnTeActiveToggle.setSelected(false);
+            ionicResponseActiveToggle.setSelected(false); // not available here
+            teActiveToggle.setSelected(false); // not available here
+            pnTeActiveToggle.setSelected(false); // not available here
           }
         }
       });
+
+      // this should trigger filling the table
       calibrationStrategyComboBox.getSelectionModel().select(CalibrationStrategy.SIZE_METHOD);
 
       // Calibration strategy box
-
       Label calSectionLabel = new Label("Calibration");
       calSectionLabel.setStyle("-fx-font-weight: bold;");
       HBox calibrationStrategyContainer = new HBox(5,
           calSectionLabel,
           calibrationStrategyComboBox,
           regTypeComboBox,
-          acceptCalibrationToTableBtn,
+          fillTableWithCalBtn,
           new Separator(Orientation.VERTICAL),
           sendCalToSamplesBtn,
-          loadCalFromSampleBtn
+          loadCalFromSampleBtn,
+          clearSpCalSetBtn
       );
       calibrationStrategyContainer.setAlignment(Pos.CENTER_LEFT);
 
+      /// manage toggle buttons
       ImageView npResponseActiveToggleImageOn = UiUtil.getSquareViewer("/img/active.png");
       ImageView npResponseActiveToggleImageOff = UiUtil.getSquareViewer("/img/notActive.png");
       ImageView ionicResponseActiveToggleImageOn = UiUtil.getSquareViewer("/img/active.png");
@@ -559,7 +576,7 @@ public abstract class Viewers {
       ImageView pnTeActiveToggleImageOn = UiUtil.getSquareViewer("/img/active.png");
       ImageView pnTeActiveToggleImageOff = UiUtil.getSquareViewer("/img/notActive.png");
 
-      // manage toggling
+      // manage toggling: images
       npResponseActiveToggle.graphicProperty().bind(
           Bindings.when(npResponseActiveToggle.selectedProperty())
               .then(npResponseActiveToggleImageOn)
@@ -584,6 +601,7 @@ public abstract class Viewers {
               .otherwise(pnTeActiveToggleImageOff)
       );
 
+      // manage toggling: change behavior
       npResponseActiveToggle.selectedProperty().addListener(new ChangeListener<Boolean>() {
         @Override
         public void changed(ObservableValue<? extends Boolean> observable, Boolean oldValue,
@@ -591,6 +609,7 @@ public abstract class Viewers {
           refreshGraph();
         }
       });
+
       ionicResponseActiveToggle.selectedProperty().addListener(new ChangeListener<Boolean>() {
         @Override
         public void changed(ObservableValue<? extends Boolean> observable, Boolean oldValue,
@@ -598,6 +617,7 @@ public abstract class Viewers {
           refreshGraph();
         }
       });
+
       teActiveToggle.selectedProperty().addListener(new ChangeListener<Boolean>() {
         @Override
         public void changed(ObservableValue<? extends Boolean> observable, Boolean oldValue,
@@ -605,6 +625,7 @@ public abstract class Viewers {
           refreshGraph();
         }
       });
+
       pnTeActiveToggle.selectedProperty().addListener(new ChangeListener<Boolean>() {
         @Override
         public void changed(ObservableValue<? extends Boolean> observable, Boolean oldValue,
@@ -613,6 +634,7 @@ public abstract class Viewers {
         }
       });
 
+      // inner split panes
       SplitPane tableGraphSplit = new SplitPane();
       tableGraphSplit.setOrientation(Orientation.VERTICAL);
       tableGraphSplit.setDividerPositions(0.4);
@@ -634,7 +656,6 @@ public abstract class Viewers {
 
       //
       subQuantBox.setPadding(new Insets(0, 0, 0, 5));
-
 
       copyCalBtn.setOnAction(e -> {
         List<Sample> selSamples = SpTool3Main.getRunTime().getMainWindowCtl().getSelSamples();
@@ -658,11 +679,10 @@ public abstract class Viewers {
       });
       pasteCalBtn.setPrefWidth(80);
 
-      refreshBtn.setPrefWidth(50);
-
       refreshBtn.setOnAction(e -> {
         refreshGraph();
       });
+      refreshBtn.setPrefWidth(50);
 
       sumFormulaBtn.setOnAction(e -> {
         TextInputDialog dialog = new TextInputDialog();
@@ -726,13 +746,15 @@ public abstract class Viewers {
       refreshParameterView();
     }
 
-    /// Handles value/item change
+    /// Handles value/item change -> changing sample role, ...
     @Override
     public void refreshParameterView() {
 
-      responses.setCalibrationStrategy(calibrationStrategyComboBox.getSelectionModel().getSelectedItem());
+      // make sure this is updated
+      spCalSet.setCalibrationStrategy(calibrationStrategyComboBox.getSelectionModel().getSelectedItem());
 
-      if (sampleLevelConditions != null && sampleLevelFxSet != null && !eleParamFxSets.isEmpty()) {
+      /// (1) Create the typical ListView for a ParameterSet to be shown
+      if (sampleLevelConditions != null && sampleLevelConditionsFxSet != null && !eleParamFxSets.isEmpty()) {
         // (1) Show the sample's general settings at the left
         // (code is essentially refreshParameterView() from super)
         ///
@@ -742,19 +764,21 @@ public abstract class Viewers {
         // final double valueWidth = 90 + 5 - hSpace;
         final double paneWidth = valueWidth + 12;
 
-        List<FxParameter<?>> sampleLevelFxPars = sampleLevelFxSet.getActiveFxParametersWithoutMeta();
+        List<FxParameter<?>> sampleLevelFxPars =
+            sampleLevelConditionsFxSet.getActiveFxParametersWithoutMeta();
         sampleLevelFxPars.forEach(FxParameter::clearViewerBox); // I hope this is a good choice to include
         // it here.
 
+        sendParamButtonBox.setAlignment(Pos.CENTER_LEFT);
         setBox.getChildren().clear();
         setBox.getChildren().addAll(sendParamButtonBox, new Separator(Orientation.HORIZONTAL));
-
-        sendParamButtonBox.setAlignment(Pos.CENTER_LEFT);
+        setBox.getChildren().add(sampleNameLbl);
 
         UiUtil.makePaneBright(setBox);
         UiUtil.formatScrollPane(paramScroll);
         UiUtil.makePaneBrightAndRound(paramScroll);
 
+        // Populate the list view
         for (FxParameter<?> fxPar : sampleLevelFxPars) {
           HBox parBox = new HBox(hSpace);
           parBox.setAlignment(Pos.CENTER_LEFT);
@@ -784,17 +808,19 @@ public abstract class Viewers {
           setBox.getChildren().add(parBox);
         }
         sampleLevelParPane.setCenter(UiUtil.putOnAnchorWithInsets(paramScroll));
-        ///
+        // END of populating main param set list view
 
+        /// (2) Create the typical ListView for each  ParameterSet
+        // --> Show the element-specific settings in the middle
 
-        // (2) Show the element-specific settings in the middle
-        // force update on subSet
+        // force update on subSet to reflect current selection in sample-level set.
         sampleLevelConditions.organizeSubParams();
 
         UiUtil.formatScrollPane(subQuantScroll);
         UiUtil.installFastScroll(subQuantScroll);
         subQuantBox.getChildren().clear();
 
+        // Populate the list views
         for (Element element : eleParamFxSets.keySet()) {
           FxParamSet fxEleSet = eleParamFxSets.get(element);
 
@@ -819,8 +845,13 @@ public abstract class Viewers {
 
           Label elementLabel = new Label(element.getShortName());
           elementLabel.setStyle("-fx-font-weight: bold; -fx-text-fill: black; -fx-font-size: 18");
-          elementLabel.setMinWidth(25); // does not shrink
-          elementLabel.setPrefWidth(25);
+          elementLabel.setMinWidth(35); // does not shrink  //32 without color and padding
+          elementLabel.setPrefWidth(35); // 32 without color and padding
+          if (fxEleSet.getPlainSet() instanceof ExperimentalSubConditions) {
+            ExperimentalSubConditions expSub = ((ExperimentalSubConditions) fxEleSet.getPlainSet());
+            expSub.setStyle(sampleLevelConditions.getCalibratorRole().getValue(),
+                sampleLevelConditions.getSampleType().getValue(), elementLabel);
+          }
 
           final Button sendToSubSets = UiUtil.getSquareImageButton("", "/img/copyMZ.png",
               "Copy element-specific parameters from this element to the other selected elements.");
@@ -854,7 +885,7 @@ public abstract class Viewers {
           HBox eleBox = new HBox(5, lblBtnBox, UiUtil.putOnAnchorWithoutInsets(eleViewAnchor));
           eleBox.setAlignment(Pos.CENTER_LEFT);
           subQuantBox.getChildren().add(eleBox);
-        }
+        } // end of populating listview of sub param sets
 
         subLevelParPane.setCenter(UiUtil.putOnAnchorWithoutInsets(subQuantScroll));
       }
@@ -864,7 +895,8 @@ public abstract class Viewers {
     @Override
     public void refreshGraph() {
 
-      responses.setCalibrationStrategy(calibrationStrategyComboBox.getSelectionModel().getSelectedItem());
+      // make sure this is updated
+      spCalSet.setCalibrationStrategy(calibrationStrategyComboBox.getSelectionModel().getSelectedItem());
 
       // PREPARE
       // Check which type of events to show?
@@ -875,14 +907,16 @@ public abstract class Viewers {
           .map(Isotope::getElement)
           .distinct().collect(Collectors.toList());
 
+      // just make sure elements are present
       if (!samples.isEmpty() && !selElements.isEmpty()) {
-        // CREATE
 
-        // just make sure elements are there
+        // update sample lable on the left
+        sampleNameLbl.setText("Sample: " + samples.get(0).getNickName());
+
+        // load the param sets
         sampleLevelConditions = samples.get(0).getQuant().getExperimentalConditions();
-        sampleLevelFxSet = sampleLevelConditions.getObservableInstance();
-        sampleLevelFxSet.setController(this); // funnel changes to this viewer
-
+        sampleLevelConditionsFxSet = sampleLevelConditions.getObservableInstance();
+        sampleLevelConditionsFxSet.setController(this); // funnel changes to this viewer
 
         // Prefill the quantification class in the sample with the elements (could be done after
         // processing, too)
@@ -893,7 +927,7 @@ public abstract class Viewers {
           samples.get(0).getQuant().getExperimentalConditions().getOrCreateElementSpecificQuantParams(element);
         }
 
-        // clear old element
+        // clear maps with old element-specific subsample level experimental condition parameter set
         eleParamFxSets.clear();
         eleViewMap.clear();
         for (Element selElement : selElements) {
@@ -906,38 +940,41 @@ public abstract class Viewers {
           }
         }
 
-        // Only call the refresh on the parameters when sample sel change fires refreshGraph().
+        // parameters have been updated, call refresh
         refreshParameterView();
 
         /// refresh the graph and fill the table
-        tableModel.fill(responses, selIsotopes);
+        tableModel.fill(spCalSet);  // removed "selIsotopes"
 
         // refresh the graph/containers
-        currentData = new RegressionViewContainer(responses,
+        currentRegressionDataContainer = new RegressionViewContainer(
+            spCalSet,
             regTypeComboBox.getValue(),
             samples, selIsotopes, selPops);
 
         // internally checks which data are needed
-        currentData.refreshDataModel(
+        currentRegressionDataContainer.refreshSlopes(
             npResponseActiveToggle,
             ionicResponseActiveToggle,
             teActiveToggle,
             pnTeActiveToggle);
 
         // important: set new values
-        currentData.refreshAndPopulatePanes(graphPane, table);
+        currentRegressionDataContainer.refreshTableAndGraph(graphPane, table);
       } else {
         // invalidate
         sampleLevelParPane.setCenter(null);
         subLevelParPane.setCenter(null);
         graphPane.setCenter(null);
-        eleParamFxSets.clear(); // else, secondary call that checks for parameter pane would trigger refill
-        sampleLevelFxSet = null; // else, secondary call that checks for parameter pane would trigger refill
-        sampleLevelConditions = null;
+        eleParamFxSets.clear();
+        sampleLevelConditionsFxSet = null; // else, secondary call that checks for parameter pane would
+        // trigger refill
+        sampleLevelConditions = null; // else, secondary call that checks for parameter pane would trigger
+        // refill
         eleViewMap.clear();
         // refresh the graph/containers
-        currentData = new RegressionViewContainer(responses, LinRegType.OLS);
-        currentData.refreshAndPopulatePanes(graphPane, table);
+        currentRegressionDataContainer = new RegressionViewContainer(spCalSet, LinRegType.OLS);
+        currentRegressionDataContainer.refreshTableAndGraph(graphPane, table);
       }
 
       // make sure pane is in place
@@ -1131,8 +1168,8 @@ public abstract class Viewers {
               trace.getMzValue().getName() + "_" + trace.getSample().getNickName(),
               average.getTime(),
               average.getIntensity(),
-              "Time", TimeUnit.SECOND,
-              "Intensity", IntensityUnit.CTS),
+              "Time", TimeUnit.SECOND, MathMod.NONE,
+              "Intensity", IntensityUnit.CTS, MathMod.NONE),
           new ChartStyle(color, 1,
               LineWidthDefaults.MEDIUM_THICK,
               LineLineDashDefaults.STRAIGHT,
@@ -1158,8 +1195,8 @@ public abstract class Viewers {
                     + ")",
                 npReg.x,
                 npReg.y,
-                "Time", TimeUnit.SECOND,
-                "Intensity", IntensityUnit.CTS),
+                "Time", TimeUnit.SECOND, MathMod.NONE,
+                "Intensity", IntensityUnit.CTS, MathMod.NONE),
             new ChartStyle(color, 0.75,
                 LineWidthDefaults.THINNER,
                 LineLineDashDefaults.STRAIGHT,
@@ -1227,8 +1264,8 @@ public abstract class Viewers {
                     + " in " + trace.getSample().getNickName(),
                 npAverage.getTime(),
                 npAverage.getIntensity(),
-                "Time", TimeUnit.SECOND,
-                yAxisLabel.getLabel(), yAxisLabel.getUnit()),
+                "Time", TimeUnit.SECOND, MathMod.NONE,
+                yAxisLabel.getLabel(), yAxisLabel.getUnit(), MathMod.NONE),
             new ChartStyle(color, 1,
                 LineWidthDefaults.MEDIUM_THICK,
                 LineLineDashDefaults.STRAIGHT,
@@ -1255,8 +1292,8 @@ public abstract class Viewers {
                       + ")",
                   npReg.x,
                   npReg.y,
-                  "Time", TimeUnit.SECOND,
-                  yAxisLabel.getLabel(), yAxisLabel.getUnit()),
+                  "Time", TimeUnit.SECOND, MathMod.NONE,
+                  yAxisLabel.getLabel(), yAxisLabel.getUnit(), MathMod.NONE),
               new ChartStyle(color, 0.75,
                   LineWidthDefaults.THINNER,
                   LineLineDashDefaults.STRAIGHT,
@@ -1287,8 +1324,8 @@ public abstract class Viewers {
                     + " in " + trace.getSample().getNickName(),
                 bgAverage.getTime(),
                 bgAverage.getIntensity(),
-                "Time", TimeUnit.SECOND,
-                yAxisLabel.getLabel(), yAxisLabel.getUnit()),
+                "Time", TimeUnit.SECOND, MathMod.NONE,
+                yAxisLabel.getLabel(), yAxisLabel.getUnit(), MathMod.NONE),
             new ChartStyle(color, 1,
                 LineWidthDefaults.MEDIUM_THICK,
                 LineLineDashDefaults.STRAIGHT,
@@ -1314,8 +1351,8 @@ public abstract class Viewers {
                       + ")",
                   bgReg.x,
                   bgReg.y,
-                  "Time", TimeUnit.SECOND,
-                  yAxisLabel.getLabel(), yAxisLabel.getUnit()),
+                  "Time", TimeUnit.SECOND, MathMod.NONE,
+                  yAxisLabel.getLabel(), yAxisLabel.getUnit(), MathMod.NONE),
               new ChartStyle(color, 0.75,
                   LineWidthDefaults.THINNER,
                   LineLineDashDefaults.STRAIGHT,
@@ -1516,8 +1553,8 @@ public abstract class Viewers {
             comp = new ChartComponent(
                 new ChartData("Evt # " + (globalEvtIndex.get(i) + 1) + " - " + isotope.getName(),
                     eventData,
-                    "Time", TimeUnit.SECOND,
-                    "Intensity", IntensityUnit.CTS),
+                    "Time", TimeUnit.SECOND, MathMod.NONE,
+                    "Intensity", IntensityUnit.CTS, MathMod.NONE),
                 new ChartStyle(color, 1,
                     LineWidthDefaults.MEDIUM_THICK,
                     LineLineDashDefaults.STRAIGHT,
@@ -1531,8 +1568,8 @@ public abstract class Viewers {
             comp = new ChartComponent(
                 new ChartData("Evt # " + (globalEvtIndex.get(i) + 1) + " - " + isotope.getName(),
                     eventData,
-                    "Time", TimeUnit.SECOND,
-                    "Intensity", IntensityUnit.CTS),
+                    "Time", TimeUnit.SECOND, MathMod.NONE,
+                    "Intensity", IntensityUnit.CTS, MathMod.NONE),
                 new ChartStyle(color, 1,
                     LineWidthDefaults.MEDIUM_THICK,
                     LineLineDashDefaults.STRAIGHT,
@@ -1550,8 +1587,8 @@ public abstract class Viewers {
           comp = new ChartComponent(
               new ChartData("BG",
                   prevData,
-                  "Time", TimeUnit.SECOND,
-                  "Intensity", IntensityUnit.CTS),
+                  "Time", TimeUnit.SECOND, MathMod.NONE,
+                  "Intensity", IntensityUnit.CTS, MathMod.NONE),
               new ChartStyle(OkabeItoColors.BLACK_DARK, 1,
                   LineWidthDefaults.MEDIUM,
                   LineLineDashDefaults.STRAIGHT,
@@ -1567,8 +1604,8 @@ public abstract class Viewers {
           chartComponents.add(new ChartComponent(
               new ChartData("BG",
                   postData,
-                  "Time", TimeUnit.SECOND,
-                  "Intensity", IntensityUnit.CTS),
+                  "Time", TimeUnit.SECOND, MathMod.NONE,
+                  "Intensity", IntensityUnit.CTS, MathMod.NONE),
               new ChartStyle(OkabeItoColors.BLACK_DARK, 1,
                   LineWidthDefaults.MEDIUM,
                   LineLineDashDefaults.STRAIGHT,
@@ -1723,8 +1760,8 @@ public abstract class Viewers {
 
                       mainCharts.add(new ChartComponent(
                           new ChartData(trace.getXYSeries(),
-                              "Time", TimeUnit.SECOND,
-                              "Intensity", IntensityUnit.CTS),
+                              "Time", TimeUnit.SECOND, MathMod.NONE,
+                              "Intensity", IntensityUnit.CTS, MathMod.NONE),
                           new ChartStyle(color, 1,
                               LineWidthDefaults.MEDIUM_THICK,
                               LineLineDashDefaults.STRAIGHT,
@@ -1772,8 +1809,8 @@ public abstract class Viewers {
                                   plotPop.getTimerMarkers(),
                                   ArrUtils.fillArray(-(2 + 2 * i),
                                       plotPop.size()),
-                                  "Time", TimeUnit.SECOND,
-                                  "Intensity", IntensityUnit.CTS),
+                                  "Time", TimeUnit.SECOND, MathMod.NONE,
+                                  "Intensity", IntensityUnit.CTS, MathMod.NONE),
                               new ChartStyle(
                                   plotPop.getColor() != null ? plotPop.getColor() : colorIterator.next(),
                                   1,
@@ -1807,8 +1844,8 @@ public abstract class Viewers {
                               new ChartData(eventMarkerData.getSeriesLabel(),
                                   eventMarkerData.getEventMarkerData().getTime(),
                                   eventMarkerData.getEventMarkerData().getIntensity(),
-                                  "Time", TimeUnit.SECOND,
-                                  "Intensity", IntensityUnit.CTS),
+                                  "Time", TimeUnit.SECOND, MathMod.NONE,
+                                  "Intensity", IntensityUnit.CTS, MathMod.NONE),
                               new ChartStyle(Colors.variationHSB(eventMarkerData.getColor(),
                                   eventMarkerData.getColor(), i - 1), 0.8,
                                   LineWidthDefaults.NONE,
@@ -1863,8 +1900,8 @@ public abstract class Viewers {
                                 new ChartData("Search height",
                                     xyData.getTime(),
                                     xyData.getIntensity(),
-                                    "Time", TimeUnit.SECOND,
-                                    "Intensity", IntensityUnit.CTS),
+                                    "Time", TimeUnit.SECOND, MathMod.NONE,
+                                    "Intensity", IntensityUnit.CTS, MathMod.NONE),
                                 new ChartStyle(UiColors.SEARCH_RED, 0.95,
                                     LineWidthDefaults.THICKER,
                                     LineLineDashDefaults.L,
@@ -1886,8 +1923,8 @@ public abstract class Viewers {
                                 new ChartData(startLabel,
                                     xyData.getTime(),
                                     xyData.getIntensity(),
-                                    "Time", TimeUnit.SECOND,
-                                    "Intensity", IntensityUnit.CTS),
+                                    "Time", TimeUnit.SECOND, MathMod.NONE,
+                                    "Intensity", IntensityUnit.CTS, MathMod.NONE),
                                 new ChartStyle(UiColors.BASELINE_BLUE, 0.7,
                                     LineWidthDefaults.THICKER,
                                     LineLineDashDefaults.L_2,
@@ -1906,8 +1943,8 @@ public abstract class Viewers {
                                   new ChartData("Search stop",
                                       xyData.getTime(),
                                       xyData.getIntensity(),
-                                      "Time", TimeUnit.SECOND,
-                                      "Intensity", IntensityUnit.CTS),
+                                      "Time", TimeUnit.SECOND, MathMod.NONE,
+                                      "Intensity", IntensityUnit.CTS, MathMod.NONE),
                                   new ChartStyle(OkabeItoColors.BLACK_DARK, 0.5,
                                       LineWidthDefaults.THICKER,
                                       LineLineDashDefaults.L_2,
@@ -1933,8 +1970,8 @@ public abstract class Viewers {
                                   new ChartData(instr.getDescription(),
                                       xyData.getTime(),
                                       xyData.getIntensity(),
-                                      "Time", TimeUnit.SECOND,
-                                      "Intensity", IntensityUnit.CTS),
+                                      "Time", TimeUnit.SECOND, MathMod.NONE,
+                                      "Intensity", IntensityUnit.CTS, MathMod.NONE),
                                   new ChartStyle(gateColor, 0.6,
                                       LineWidthDefaults.THICKER,
                                       LineLineDashDefaults.L_3,
@@ -2104,8 +2141,8 @@ public abstract class Viewers {
                     + SnF.doubleToString(skew, NF.D1C2),
                 integTime,
                 signal,
-                "Time", TimeUnit.MILLISECOND,
-                "Intensity", IntensityUnit.CTS
+                "Time", TimeUnit.MILLISECOND, MathMod.NONE,
+                "Intensity", IntensityUnit.CTS, MathMod.NONE
             ),
             new ChartStyle(OkabeItoColors.ORANGE_DARK, 1,
                 LineWidthDefaults.THICKER, //MEDIUM_THICK
@@ -2155,8 +2192,8 @@ public abstract class Viewers {
                     "'True' peak shape.",
                     integTimeMicro,
                     signalMicro,
-                    "Time", TimeUnit.MILLISECOND,
-                    "Intensity", IntensityUnit.CTS
+                    "Time", TimeUnit.MILLISECOND, MathMod.NONE,
+                    "Intensity", IntensityUnit.CTS, MathMod.NONE
                 ),
                 new ChartStyle(
                     OkabeItoColors.VIOLET_DARK, 0.4,
@@ -2198,8 +2235,8 @@ public abstract class Viewers {
                     "Dwell time limits.",
                     ArrUtils.doubleListToArr(xMarker),
                     ArrUtils.doubleListToArr(yMarker),
-                    "Time", TimeUnit.MILLISECOND,
-                    "Intensity", IntensityUnit.CTS
+                    "Time", TimeUnit.MILLISECOND, MathMod.NONE,
+                    "Intensity", IntensityUnit.CTS, MathMod.NONE
                 ),
                 new ChartStyle(
                     UiColors.PLOT_ANY_AXIS_MARKER, 0.75,
@@ -2351,8 +2388,8 @@ public abstract class Viewers {
                               populationID,
                               EventType.NP),
                               xData, yData,
-                              xLabel, xUnit,
-                              yLabel, yUnit),
+                              xLabel, xUnit, plainSet.getMathModificationX().getValue(),
+                              yLabel, yUnit, plainSet.getMathModificationY().getValue()),
                           new ChartStyle(color, plainSet.getColorAlpha().getValue(),
                               LineWidthDefaults.MEDIUM_THICK,
                               LineLineDashDefaults.STRAIGHT,
@@ -2531,11 +2568,10 @@ public abstract class Viewers {
                 ChartComponent component = new ChartComponent(
                     new HistogramChartData(
                         AnalysisUtils.getLabelForPlots(sample, new IsotopeMZ(iso), popID, evtType),
-                        AnalysisUtils
-                            .getShortCodeNameForPlots(sample, selSamples, iso, popID, selPops),
+                        AnalysisUtils.getShortCodeNameForPlots(sample, selSamples, iso, popID, selPops),
                         data,
-                        xLabel, xUnit,
-                        yLabel, yUnit, 0d),
+                        xLabel, xUnit, MathMod.NONE,
+                        yLabel, yUnit, plainSet.getMathModification().getValue(), 0d),
                     new ChartStyle(color, 0.95,
                         LineWidthDefaults.THICKER,
                         LineLineDashDefaults.L,
@@ -2645,10 +2681,10 @@ public abstract class Viewers {
                 }
               }
 
-              Unit unit = SpTool3Main.getRunTime().getMainWindowCtl().getUnit();
+              Unit qUnit = SpTool3Main.getRunTime().getMainWindowCtl().getUnit();
 
               // Define labels
-              AxisLabel xAxisLabel = AxisLabel.getUnit(plainSet.getEventParameter(), unit);
+              AxisLabel xAxisLabel = AxisLabel.getUnit(plainSet.getEventParameter(), qUnit);
               AxisLabel yAxisLabel = AxisLabel.getYUnit(plainSet.getHistoNormalization());
               String yLabel = yAxisLabel.getLabel();
               Unit yUnit = yAxisLabel.getUnit();
@@ -2677,7 +2713,9 @@ public abstract class Viewers {
 
                   for (PopulationID populationID : selPops) {
                     // calc LOD
-                    double maxThrLOD = sample.getMaxThr(isotope, populationID);
+                    boolean isNet = plainSet.getEventParameter().equals(EventParameter.NET_AREA)
+                        || plainSet.getEventParameter().equals(EventParameter.NET_HEIGHT);
+                    double maxThrLOD = sample.getMaxThr(isotope, populationID, isNet, qUnit);
                     maxThrLOD = plainSet.getMathMod().calc(maxThrLOD);
 
                     EventType eventType = plainSet.getEventType();
@@ -2689,7 +2727,7 @@ public abstract class Viewers {
                       eventType = EventType.NP;
 
                       double[] data = sample.getData(isotope, populationID, EventType.BG,
-                          plainSet.getEventParameter(), unit);
+                          plainSet.getEventParameter(), qUnit);
 
                       if (plainSet.isJitterBG()) {
                         data = Statistics.quantileSampleWithMurmurHashedJitter(data,
@@ -2708,8 +2746,8 @@ public abstract class Viewers {
                                 populationID,
                                 EventType.BG),
                                 data,
-                                xLabel, xUnit,
-                                yLabel, yUnit,
+                                xLabel, xUnit, plainSet.getMathMod(),
+                                yLabel, yUnit, MathMod.NONE,
                                 maxThrLOD),
                             new HistoChartStyle(
                                 plainSet.bgHighlight().getValue().getCol(EventType.BG, color),
@@ -2721,7 +2759,7 @@ public abstract class Viewers {
 
                     // Default way to retrieve data.
                     double[] data = sample.getData(isotope, populationID, eventType,
-                        plainSet.getEventParameter(), unit);
+                        plainSet.getEventParameter(), qUnit);
                     // check math operations
                     data = plainSet.getMathMod().calc(data);
 
@@ -2733,8 +2771,8 @@ public abstract class Viewers {
                               populationID,
                               EventType.NP),
                               data,
-                              xLabel, xUnit,
-                              yLabel, yUnit,
+                              xLabel, xUnit, plainSet.getMathMod(),
+                              yLabel, yUnit, MathMod.NONE,
                               maxThrLOD),
                           new HistoChartStyle(
                               plainSet.bgHighlight().getValue().getCol(EventType.NP, color),
@@ -2793,8 +2831,10 @@ public abstract class Viewers {
                         x, y,
                         chartComponent.getData().getxLbl(),
                         chartComponent.getData().getxUnit(),
+                        chartComponent.getData().getxMath(),
                         "Probability density",
-                        ViewUnits.NONE),
+                        ViewUnits.NONE,
+                        chartComponent.getData().getyMath()),
                         new ChartStyle(new SpColor(chartComponent.getStyle().getColorFX()), 1,
                             LineWidthDefaults.THICKER,
                             LineLineDashDefaults.STRAIGHT,
@@ -2824,8 +2864,10 @@ public abstract class Viewers {
                         x, y,
                         chartComponent.getData().getxLbl(),
                         chartComponent.getData().getxUnit(),
+                        chartComponent.getData().getxMath(),
                         "Cumulative probability",
-                        ViewUnits.NONE),
+                        ViewUnits.NONE,
+                        chartComponent.getData().getyMath()),
                         new ChartStyle(new SpColor(chartComponent.getStyle().getColorFX()), 1,
                             LineWidthDefaults.THICK,
                             LineLineDashDefaults.STRAIGHT,
@@ -3081,8 +3123,8 @@ public abstract class Viewers {
       List<Double> percentiles = new ArrayList<>();
 
       // Define labels
-      Unit unit = SpTool3Main.getRunTime().getMainWindowCtl().getUnit();
-      AxisLabel xAxisLabel = AxisLabel.getUnit(par, unit);
+      Unit unitQ = SpTool3Main.getRunTime().getMainWindowCtl().getUnit();
+      AxisLabel xAxisLabel = AxisLabel.getUnit(par, unitQ);
       AxisLabel yAxisLabel = AxisLabel.getYUnit(plainSet.getHistoNormalization());
       String yLabel = yAxisLabel.getLabel();
       Unit yUnit = yAxisLabel.getUnit();
@@ -3110,7 +3152,7 @@ public abstract class Viewers {
               // Set event type to NP in order to plot NP outside if this if statement!
               eventType = EventType.NP;
 
-              double[] data = sample.getData(isotope, populationID, EventType.BG, par, unit);
+              double[] data = sample.getData(isotope, populationID, EventType.BG, par, unitQ);
 
               // check math operations
               data = plainSet.getMathMod().calc(data);
@@ -3123,8 +3165,8 @@ public abstract class Viewers {
                         populationID,
                         EventType.BG),
                         data,
-                        xLabel, xUnit,
-                        yLabel, yUnit,
+                        xLabel, xUnit, plainSet.getMathMod(),
+                        yLabel, yUnit, MathMod.NONE,
                         maxThrLOD),
                     new HistoChartStyle(
                         BackgroundHighlight.DARKER.getCol(EventType.BG, color),
@@ -3135,7 +3177,7 @@ public abstract class Viewers {
             }
 
             // Default way to retrieve data.
-            double[] data = sample.getData(isotope, populationID, eventType, par, unit);
+            double[] data = sample.getData(isotope, populationID, eventType, par, unitQ);
             // check math operations
             data = plainSet.getMathMod().calc(data);
 
@@ -3148,8 +3190,8 @@ public abstract class Viewers {
                           populationID,
                           EventType.NP),
                       data,
-                      xLabel, xUnit,
-                      yLabel, yUnit,
+                      xLabel, xUnit, plainSet.getMathMod(),
+                      yLabel, yUnit, MathMod.NONE,
                       maxThrLOD),
                   new HistoChartStyle(
                       BackgroundHighlight.DARKER.getCol(EventType.NP, color),
@@ -3201,8 +3243,10 @@ public abstract class Viewers {
                 x, y,
                 chartComponent.getData().getxLbl(),
                 chartComponent.getData().getxUnit(),
+                chartComponent.getData().getxMath(),
                 "Probability density",
-                ViewUnits.NONE),
+                ViewUnits.NONE,
+                chartComponent.getData().getyMath()),
                 new ChartStyle(new SpColor(chartComponent.getStyle().getColorFX()), 1,
                     LineWidthDefaults.THICKER,
                     LineLineDashDefaults.STRAIGHT,
@@ -3232,8 +3276,10 @@ public abstract class Viewers {
                 x, y,
                 chartComponent.getData().getxLbl(),
                 chartComponent.getData().getxUnit(),
+                chartComponent.getData().getxMath(),
                 "Cumulative probability",
-                ViewUnits.NONE),
+                ViewUnits.NONE,
+                chartComponent.getData().getyMath()),
                 new ChartStyle(new SpColor(chartComponent.getStyle().getColorFX()), 1,
                     LineWidthDefaults.THICK,
                     LineLineDashDefaults.STRAIGHT,

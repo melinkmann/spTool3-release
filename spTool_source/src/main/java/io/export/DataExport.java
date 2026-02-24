@@ -44,6 +44,9 @@ import java.util.stream.Collectors;
 import javax.annotation.Nullable;
 
 import math.units.enums.ExportUnits;
+import math.units.enums.IntensityUnit;
+import math.units.enums.TimeUnit;
+import math.units.enums.ViewUnits;
 import org.apache.commons.math3.distribution.ChiSquaredDistribution;
 import org.apache.commons.math3.stat.StatUtils;
 import org.apache.commons.math3.stat.descriptive.moment.StandardDeviation;
@@ -194,19 +197,19 @@ public abstract class DataExport {
     hBlock.addColumn(elementLabel,
         "Peak time [s]", peakTime);
     hBlock.addColumn(elementLabel,
-        "Gross area [cts]", grossArea);
+        "Gross area ["+ IntensityUnit.CTS.getLiteralString()+"]", grossArea);
     hBlock.addColumn(elementLabel,
-        "Net area [cts]", netArea);
+        "Net area ["+ IntensityUnit.CTS.getLiteralString()+"]", netArea);
     hBlock.addColumn(elementLabel,
-        "Gross height [cts]", grossHeight);
+        "Gross height ["+ IntensityUnit.CTS.getLiteralString()+"]", grossHeight);
     hBlock.addColumn(elementLabel,
-        "Net height [cts]", netHeight);
+        "Net height ["+ IntensityUnit.CTS.getLiteralString()+"]", netHeight);
     hBlock.addColumn(elementLabel,
-        "Width [µs]", duration);
+        "Width ["+ TimeUnit.MICROSECOND.getLiteralString()+"]", duration);
     hBlock.addColumn(elementLabel,
-        "Number of points [-]", noOfPoints);
+        "Number of points ["+ ViewUnits.NONE.getLiteralString()+"]", noOfPoints);
     hBlock.addColumn(elementLabel,
-        "BG per NP [cts]", bgPerNP);
+        "BG per NP ["+ IntensityUnit.CTS.getLiteralString()+"]", bgPerNP);
 
     blockList.add(hBlock);
     return blockList;
@@ -314,42 +317,42 @@ public abstract class DataExport {
         for (Isotope isotope : isotopes) {
 
           hBlock.addColumn(Arrays.asList(element.getSymbol(), isotope.getName()),
-              "Initial net signal [cts/DT]",
+              "Initial net signal ["+ IntensityUnit.CTS.getLiteralString()+"]",
               SnF.doubleToStrArr(cont.getRandNetSignal().get(isotope), NF.D1C6));
 
           if (cont.getDataMap().containsKey(isotope)) {
             hBlock.addColumn(Arrays.asList(element.getSymbol(), isotope.getName()),
-                "Gross area (integrated at >1cts & calculated) [cts]",
+                "Gross area (integrated at >1cts & calculated) ["+ IntensityUnit.CTS.getLiteralString()+"]",
                 SnF.doubleToStrArr(cont.getDataMap().get(isotope).get(EventParameter.AREA),
                     NF.D1C6));
 
             hBlock.addColumn(Arrays.asList(element.getSymbol(), isotope.getName()),
-                "Net area (integrated at >1cts) [cts]",
+                "Net area (integrated at >1cts) ["+ IntensityUnit.CTS.getLiteralString()+"]",
                 SnF.doubleToStrArr(cont.getDataMap().get(isotope).get(EventParameter.NET_AREA),
                     NF.D1C6));
 
             hBlock.addColumn(Arrays.asList(element.getSymbol(), isotope.getName()),
-                "Gross height (integrated at >1cts & calculated) [cts]",
+                "Gross height (integrated at >1cts & calculated) ["+ IntensityUnit.CTS.getLiteralString()+"]",
                 SnF.doubleToStrArr(cont.getDataMap().get(isotope).get(EventParameter.HEIGHT),
                     NF.D1C6));
 
             hBlock.addColumn(Arrays.asList(element.getSymbol(), isotope.getName()),
-                "Net height (integrated at >1cts [cts])",
+                "Net height (integrated at >1cts) ["+ IntensityUnit.CTS.getLiteralString()+"]",
                 SnF.doubleToStrArr(cont.getDataMap().get(isotope).get(EventParameter.NET_HEIGHT),
                     NF.D1C6));
 
             hBlock.addColumn(Arrays.asList(element.getSymbol(), isotope.getName()),
-                "Width (integrated at >1cts) [µs]",
+                "Width (integrated at >1cts) ["+ TimeUnit.MICROSECOND.getLiteralString()+"]",
                 SnF.doubleToStrArr(cont.getDataMap().get(isotope).get(EventParameter.DURATION),
                     NF.D1C6));
 
             hBlock.addColumn(Arrays.asList(element.getSymbol(), isotope.getName()),
-                "Number of points (integrated at >1cts) [-]",
+                "Number of points (integrated at >1cts) ["+ ViewUnits.NONE.getLiteralString()+"]",
                 SnF.doubleToStrArr(cont.getDataMap().get(isotope).get(EventParameter.NO_OF_POINTS),
                     NF.D1C6));
 
             hBlock.addColumn(Arrays.asList(element.getSymbol(), isotope.getName()),
-                "BG per NP (summed at >1cts) [cts]",
+                "BG per NP (summed at >1cts) ["+ IntensityUnit.CTS.getLiteralString()+"]",
                 SnF.doubleToStrArr(
                     cont.getDataMap().get(isotope).get(EventParameter.BACKGROUND_PER_NP),
                     NF.D1C6));
@@ -725,9 +728,9 @@ public abstract class DataExport {
       popBlock.addColumn("Input BG mean [cts/DT]", muTrue);
       popBlock.addColumn("Empirical BG mean [cts/DT]", muTrueObsv);
 
-      popBlock.addColumn("Mean NP signal [cts]", muNP);
-      popBlock.addColumn("Median NP signal [cts]", medianNP);
-      popBlock.addColumn("NP Signal StdDev [cts]", sdNP);
+      popBlock.addColumn("Mean NP signal [cts/DT]", muNP);
+      popBlock.addColumn("Median NP signal [cts/DT]", medianNP);
+      popBlock.addColumn("NP Signal StdDev [cts/DT]", sdNP);
 
       popBlock.addColumn("Mean FWHM [µs]", fwhmNP);
       popBlock.addColumn("Median FWHM [µs]", fwhmNPMedian);

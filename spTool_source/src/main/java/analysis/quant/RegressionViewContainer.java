@@ -25,7 +25,6 @@ import dataModelNew.mz.Element;
 import gui.dialog.notification.NotificationFactory;
 import gui.util.UiUtil;
 import javafx.geometry.Orientation;
-import javafx.scene.control.Label;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.ToggleButton;
@@ -50,23 +49,21 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
-
-import static math.regression.RegressionUtils.addPlotsToListAndRegression;
+import java.util.stream.Collectors;
 
 public class RegressionViewContainer {
 
   private static final Logger LOGGER = LogManager.getLogger(RegressionViewContainer.class);
 
-  private final SpCalibrationSet responses;
+  private final SpCalibrationSet responseCalibrationSet;
   private final List<Sample> selSamples;
   private final List<Isotope> selIsotopes;
   private final List<PopulationID> selPops;
   private final HashMap<Isotope, List<Double>> xData;
   private final HashMap<Isotope, List<Double>> yData;
 
-
-  private String xLbl ="";
-  private String yLbl ="";
+  private String xLbl = "";
+  private String yLbl = "";
   private Unit xUnit = ViewUnits.NONE;
   private Unit yUnit = ViewUnits.NONE;
 
@@ -79,17 +76,17 @@ public class RegressionViewContainer {
 
   private final LinRegType linRegType;
 
-  public RegressionViewContainer(SpCalibrationSet responses, LinRegType linRegType) {
-    this(responses, linRegType, new ArrayList<>(), new ArrayList<>(), new ArrayList<>());
+  public RegressionViewContainer(SpCalibrationSet responseCalibrationSet, LinRegType linRegType) {
+    this(responseCalibrationSet, linRegType, new ArrayList<>(), new ArrayList<>(), new ArrayList<>());
   }
 
-  public RegressionViewContainer(SpCalibrationSet responses,
+  public RegressionViewContainer(SpCalibrationSet responseCalibrationSet,
                                  LinRegType linRegType,
                                  List<Sample> selSamples,
                                  List<Isotope> selIsotopes,
                                  List<PopulationID> selPops) {
 
-    this.responses = responses;
+    this.responseCalibrationSet = responseCalibrationSet;
     this.linRegType = linRegType;
     this.selIsotopes = selIsotopes;
     this.selSamples = selSamples;
@@ -104,7 +101,7 @@ public class RegressionViewContainer {
   }
 
 
-  public void refreshAndPopulatePanes(BorderPane graphPane, TableView<ResponseTableRow> table) {
+  public void refreshTableAndGraph(BorderPane graphPane, TableView<ResponseTableRow> table) {
     // refresh graph (if empty, nothing happens)
     JFreeChart chart = SpChartFactory.createLineChart(graphComponents);
 
@@ -120,48 +117,52 @@ public class RegressionViewContainer {
     table.refresh();
   }
 
-  public void sendValuesToTable(TableView<ResponseTableRow> table,
-                                ResponseTableModel tableModel,
-                                ToggleButton npResponseActiveToggle,
-                                ToggleButton ionicResponseActiveToggle,
-                                ToggleButton teActiveToggle,
-                                ToggleButton pnTeActiveToggle) {
+  public void sendSlopesToCalSetAndTable(TableView<ResponseTableRow> table,
+                                         FxSpCalibrationSetTableModel tableModel,
+                                         ToggleButton npResponseActiveToggle,
+                                         ToggleButton ionicResponseActiveToggle,
+                                         ToggleButton teActiveToggle,
+                                         ToggleButton pnTeActiveToggle) {
 
-    List<Isotope> isotopes = responses.listIsotopes();
+    // All currently selected isotopes will be added
+    List<Isotope> isotopes = new ArrayList<>(selIsotopes);
+    responseCalibrationSet.populateWithIsotopes(isotopes);
 
     ///  PARTICLE RESPONSE
     if (npResponseActiveToggle.isSelected()) {
       for (Isotope isotope : isotopes) {
-        if (responses.hasNpResponse(isotope) && slopes.containsKey(isotope)) {
+        if (responseCalibrationSet.hasNpResponse(isotope) && slopes.containsKey(isotope)) {
           double s = slopes.get(isotope);
           if (Doubles.isFinite(s)) {
-            responses.getNpResponse(isotope).change(slopes.get(isotope),SensitivityUnit.CTS_PER_FEMTOGRAM);
+            responseCalibrationSet.getOrCreateNpResponse(isotope).change(slopes.get(isotope),
+                SensitivityUnit.CTS_PER_FEMTOGRAM);
           }
         }
       }
-      responses.deriveAerosolTE();
+      responseCalibrationSet.deriveAerosolTE();
 
       /// IONIC RESPONSE
     } else if (ionicResponseActiveToggle.isSelected()) {
       for (Isotope isotope : isotopes) {
-        if (responses.hasIonicResponse(isotope) && slopes.containsKey(isotope)) {
+        if (responseCalibrationSet.hasIonicResponse(isotope) && slopes.containsKey(isotope)) {
           double s = slopes.get(isotope);
           if (Doubles.isFinite(s)) {
-            responses.getIonicResponse(isotope).change(s, SensitivityUnit.CTS_PER_FEMTOGRAM);
+            responseCalibrationSet.getOrCreateIonicResponse(isotope).change(s,
+                SensitivityUnit.CTS_PER_FEMTOGRAM);
           }
         }
       }
-      responses.deriveAerosolTE();
+      responseCalibrationSet.deriveAerosolTE();
 
       /// AEROSOL TRANSPORT EFFICIENCY
     } else if (teActiveToggle.isSelected()) {
       for (Isotope isotope : isotopes) {
-        if (responses.hasAerosolTE(isotope) && slopes.containsKey(isotope)) {
+        if (responseCalibrationSet.hasAerosolTE(isotope) && slopes.containsKey(isotope)) {
           double s = 100 * slopes.get(isotope);
-          if (Double.isInfinite(s)) {
-            responses.getAerosolTE(isotope).change(s);
-            if (responses.hasParticleNumberTE(isotope)) {
-              responses.getParticleNumberTE(isotope).change(s);
+          if (Double.isFinite(s)) {
+            responseCalibrationSet.getOrCreateAerosolTE(isotope).change(s);
+            if (responseCalibrationSet.hasParticleNumberTE(isotope)) {
+              responseCalibrationSet.getOrCreateParticleNumberTE(isotope).change(s);
             }
           }
         }
@@ -170,17 +171,17 @@ public class RegressionViewContainer {
       /// PARTICLE NUMBER TRANSPORT EFFICIENCY
     } else if (pnTeActiveToggle.isSelected()) {
       for (Isotope isotope : isotopes) {
-        if (responses.hasParticleNumberTE(isotope) && slopes.containsKey(isotope)) {
+        if (responseCalibrationSet.hasParticleNumberTE(isotope) && slopes.containsKey(isotope)) {
           double s = 100 * slopes.get(isotope);
-          if (Double.isInfinite(s)) {
-            responses.getParticleNumberTE(isotope).change(s);
+          if (Double.isFinite(s)) {
+            responseCalibrationSet.getOrCreateParticleNumberTE(isotope).change(s);
           }
         }
       }
     }
 
     /// Fill (and sort: apparently order changes here)
-    tableModel.fill(responses);
+    tableModel.fill(responseCalibrationSet);
     table.refresh();
     // sort by isotope column
     TableColumn<ResponseTableRow, ?> retrievedColumn = null;
@@ -199,7 +200,7 @@ public class RegressionViewContainer {
     }
   }
 
-  public void refreshDataModel(
+  public void refreshSlopes(
       ToggleButton npResponseActiveToggle,
       ToggleButton ionicResponseActiveToggle,
       ToggleButton teActiveToggle,
@@ -256,16 +257,6 @@ public class RegressionViewContainer {
   private void computeResponseForNP() {
     // get data
     if (!selPops.isEmpty()) {
-      PopulationID pop = selPops.get(0);
-
-      if (selPops.size() > 1) {
-        LOGGER.info(
-            "More than one population is selected! Quantification step was calculated using: {}",
-            pop.toString());
-        NotificationFactory.openAutocloseInfo("More than one population is selected! " +
-            "Quantification step was calculated using: " + pop);
-      }
-
       for (Sample sample : selSamples) {
         ExperimentalConditions mainQuant = sample.getQuant().getExperimentalConditions();
         HashMap<Element, ExperimentalSubConditions> subQuants = mainQuant.getElementSpecificQuantParams();
@@ -286,67 +277,83 @@ public class RegressionViewContainer {
           for (Isotope selIsotope : selIsotopes) {
             Element element = selIsotope.getElement();
             ExperimentalSubConditions subQuant = subQuants.get(element);
-
             if (subQuant != null) {
 
-              // find x value
-              ParticleQuantApproach quantApproach = subQuant.getNpQuantificationApproach().getValue();
+              // find correct population: it is possible that we have different IDs (e.g. gating on/off)
+              List<PopulationID> selAndAvailablePops = selPops.stream()
+                  .filter(id -> sample.hasPopulation(id, selIsotope))
+                  .collect(Collectors.toList());
 
-              // case A: we are given the mass (including fraction)
-              double elementalMass = subQuant.getNpElementMass().getValue();
-              MassUnit elementalMassUnit = subQuant.getNpElementMassUnit();
+              if (!selAndAvailablePops.isEmpty()) {
+                PopulationID pop = selAndAvailablePops.get(0);
 
-              // case B: we are given a size
-              double diameter = subQuant.getNpSphericalDiameter().getValue();
-              SizeUnit diameterUnit = subQuant.getNpSphericalDiameterUnit();
-              double massFrac = subQuant.getNpMassFraction().getValue();
-              double density = subQuant.getNpDensity().getValue();
-              DensityUnit densityUnit = subQuant.getNpDensityUnit();
+                if (selAndAvailablePops.size() > 1) {
+                  LOGGER.info(
+                      "More than one population is selected! Quantification step was calculated using: {}",
+                      pop.toString());
+                  NotificationFactory.openAutocloseInfo("More than one population is selected! " +
+                      "Quantification step was calculated using: " + pop);
+                }
 
-              if (quantApproach.equals(ParticleQuantApproach.ESD)) {
-                // override the elemental mass
-                double umDiameter = diameterUnit.convert(diameter, SizeUnit.MICRO_METER);
+                // find x value
+                ParticleQuantApproach quantApproach = subQuant.getNpQuantificationApproach().getValue();
 
-                // g -> fg (gain 1E15)
-                // m-3 -> µm-3 (· (1E-6)^3
-                double fgUm3Density = 1E15 * Math.pow(1E-6, 3) * densityUnit.convert(density,
-                    DensityUnit.GRAM_PER_M3);
+                // case A: we are given the mass (including fraction)
+                double elementalMass = subQuant.getNpElementMass().getValue();
+                MassUnit elementalMassUnit = subQuant.getNpElementMassUnit();
 
-                double massFg = Math.PI / 6 * Math.pow(umDiameter, 3) * fgUm3Density;
-                massFg = massFrac * massFg;
+                // case B: we are given a size
+                double diameter = subQuant.getNpSphericalDiameter().getValue();
+                SizeUnit diameterUnit = subQuant.getNpSphericalDiameterUnit();
+                double massFrac = subQuant.getNpMassFraction().getValue();
+                double density = subQuant.getNpDensity().getValue();
+                DensityUnit densityUnit = subQuant.getNpDensityUnit();
 
-                elementalMass = massFg;
-                elementalMassUnit = MassUnit.FEMTO_GRAM;
+                if (quantApproach.equals(ParticleQuantApproach.ESD)) {
+                  // override the elemental mass
+                  double umDiameter = diameterUnit.convert(diameter, SizeUnit.MICRO_METER);
+
+                  // g -> fg (gain 1E15)
+                  // m-3 -> µm-3 (· (1E-6)^3
+                  double fgUm3Density = 1E15 * Math.pow(1E-6, 3) * densityUnit.convert(density,
+                      DensityUnit.GRAM_PER_M3);
+
+                  double massFg = Math.PI / 6 * Math.pow(umDiameter, 3) * fgUm3Density;
+                  massFg = massFrac * massFg;
+
+                  elementalMass = massFg;
+                  elementalMassUnit = MassUnit.FEMTO_GRAM;
+                }
+
+                double xVal = elementalMass;
+
+                // find y value
+                EventParameter eventPar;
+                MeasureOfLocation loc;
+                if (targetEventPar.equals(QuantParam.NP_AREA_MEAN)) {
+                  eventPar = EventParameter.NET_AREA;
+                  loc = MeasureOfLocation.MEAN;
+                } else if (targetEventPar.equals(QuantParam.NP_AREA_MEDIAN)) {
+                  eventPar = EventParameter.NET_AREA;
+                  loc = MeasureOfLocation.MEDIAN;
+                } else if (targetEventPar.equals(QuantParam.NP_HEIGHT_MEAN)) {
+                  eventPar = EventParameter.NET_HEIGHT;
+                  loc = MeasureOfLocation.MEAN;
+                } else {
+                  eventPar = EventParameter.NET_HEIGHT;
+                  loc = MeasureOfLocation.MEDIAN;
+                }
+                double[] npData = sample.getData(selIsotope, pop, EventType.NP, eventPar);
+                double yVal = loc.calc(npData);
+
+                xData.get(selIsotope).add(xVal);
+                xUnit = elementalMassUnit;
+                xLbl = "Elemental mass";
+
+                yData.get(selIsotope).add(yVal);
+                yUnit = (IntensityUnit.JUST_CTS);
+                yLbl = "Intensity";
               }
-
-              double xVal = elementalMass;
-
-              // find y value
-              EventParameter eventPar;
-              MeasureOfLocation loc;
-              if (targetEventPar.equals(QuantParam.NP_AREA_MEAN)) {
-                eventPar = EventParameter.NET_AREA;
-                loc = MeasureOfLocation.MEAN;
-              } else if (targetEventPar.equals(QuantParam.NP_AREA_MEDIAN)) {
-                eventPar = EventParameter.NET_AREA;
-                loc = MeasureOfLocation.MEDIAN;
-              } else if (targetEventPar.equals(QuantParam.NP_HEIGHT_MEAN)) {
-                eventPar = EventParameter.NET_HEIGHT;
-                loc = MeasureOfLocation.MEAN;
-              } else {
-                eventPar = EventParameter.NET_HEIGHT;
-                loc = MeasureOfLocation.MEDIAN;
-              }
-              double[] npData = sample.getData(selIsotope, pop, EventType.NP, eventPar);
-              double yVal = loc.calc(npData);
-
-              xData.get(selIsotope).add(xVal);
-              xUnit = elementalMassUnit;
-              xLbl = "Elemental mass";
-
-              yData.get(selIsotope).add(yVal);
-              yUnit = (IntensityUnit.JUST_CTS);
-              yLbl = "Intensity";
             }
           }
         }
@@ -408,17 +415,6 @@ public class RegressionViewContainer {
   private void computeTE() {
     // get data
     if (!selPops.isEmpty()) {
-      PopulationID pop = selPops.get(0);
-
-      if (selPops.size() > 1) {
-        LOGGER.info(
-            "More than one population is selected! Quantification step was calculated using: {}",
-            pop.toString());
-        NotificationFactory.openAutocloseInfo("More than one population is selected! " +
-            "Quantification step was calculated using: " + pop);
-
-      }
-
       for (Sample sample : selSamples) {
         ExperimentalConditions mainQuant = sample.getQuant().getExperimentalConditions();
         HashMap<Element, ExperimentalSubConditions> subQuants = mainQuant.getElementSpecificQuantParams();
@@ -445,24 +441,41 @@ public class RegressionViewContainer {
             // Make sure the element has data assigned and that we actually have NP conc
             if (subQuant != null) {
 
-              // find x value
-              ConcentrationUnit targetConcUnit = ConcentrationUnit.NP_PER_LITRE;
-              double npNumConc = subQuant.getNpConcentration().getValue();
-              ConcentrationUnit npNumConcUnit = subQuant.getNpConcentrationUnit();
-              double npNumConcPerLitre = npNumConcUnit.convert(npNumConc, targetConcUnit);
-              double npRatePerSec = npNumConcPerLitre * flowLitrePerSec;
-              double xVal = npRatePerSec;
+              // find correct population: it is possible that we have different IDs (e.g. gating on/off)
+              List<PopulationID> selAndAvailablePops = selPops.stream()
+                  .filter(id -> sample.hasPopulation(id, selIsotope))
+                  .collect(Collectors.toList());
 
-              // find y val
-              double npPerSecDetected = sample.getEventRate(selIsotope, pop);
+              if (!selAndAvailablePops.isEmpty()) {
+                PopulationID pop = selAndAvailablePops.get(0);
 
-              xData.get(selIsotope).add(xVal);
-              xUnit = ViewUnits.NP_PER_SECOND;
-              xLbl = "Delivered NP rate";
+                if (selAndAvailablePops.size() > 1) {
+                  LOGGER.info(
+                      "More than one population is selected! Quantification step was calculated using: {}",
+                      pop.toString());
+                  NotificationFactory.openAutocloseInfo("More than one population is selected! " +
+                      "Quantification step was calculated using: " + pop);
+                }
 
-              yData.get(selIsotope).add(npPerSecDetected);
-              yUnit = ViewUnits.NP_PER_SECOND;
-              yLbl = "Detected NP rate";
+                // find x value
+                ConcentrationUnit targetConcUnit = ConcentrationUnit.NP_PER_LITRE;
+                double npNumConc = subQuant.getNpConcentration().getValue();
+                ConcentrationUnit npNumConcUnit = subQuant.getNpConcentrationUnit();
+                double npNumConcPerLitre = npNumConcUnit.convert(npNumConc, targetConcUnit);
+                double npRatePerSec = npNumConcPerLitre * flowLitrePerSec;
+                double xVal = npRatePerSec;
+
+                // find y val
+                double npPerSecDetected = sample.getEventRate(selIsotope, pop);
+
+                xData.get(selIsotope).add(xVal);
+                xUnit = ViewUnits.NP_PER_SECOND;
+                xLbl = "Delivered NP rate";
+
+                yData.get(selIsotope).add(npPerSecDetected);
+                yUnit = ViewUnits.NP_PER_SECOND;
+                yLbl = "Detected NP rate";
+              }
             }
           }
         }
@@ -475,16 +488,6 @@ public class RegressionViewContainer {
   private void computeParticleNumberTE() {
     // get data
     if (!selPops.isEmpty()) {
-      PopulationID pop = selPops.get(0);
-
-      if (selPops.size() > 1) {
-        LOGGER.info(
-            "More than one population is selected! Quantification step was calculated using: {}",
-            pop.toString());
-        NotificationFactory.openAutocloseInfo("More than one population is selected! " +
-            "Quantification step was calculated using: " + pop);
-      }
-
       for (Sample sample : selSamples) {
         ExperimentalConditions mainQuant = sample.getQuant().getExperimentalConditions();
         HashMap<Element, ExperimentalSubConditions> subQuants = mainQuant.getElementSpecificQuantParams();
@@ -511,24 +514,41 @@ public class RegressionViewContainer {
             // Make sure the element has data assigned and that we actually have NP conc
             if (subQuant != null) {
 
-              // find x value
-              ConcentrationUnit targetConcUnit = ConcentrationUnit.NP_PER_LITRE;
-              double npNumConc = subQuant.getNpConcentration().getValue();
-              ConcentrationUnit npNumConcUnit = subQuant.getNpConcentrationUnit();
-              double npNumConcPerLitre = npNumConcUnit.convert(npNumConc, targetConcUnit);
-              double npRatePerSec = npNumConcPerLitre * flowLitrePerSec;
-              double xVal = npRatePerSec;
+              // find correct population: it is possible that we have different IDs (e.g. gating on/off)
+              List<PopulationID> selAndAvailablePops = selPops.stream()
+                  .filter(id -> sample.hasPopulation(id, selIsotope))
+                  .collect(Collectors.toList());
 
-              // find y val
-              double npPerSecDetected = sample.getEventRate(selIsotope, pop);
+              if (!selAndAvailablePops.isEmpty()) {
+                PopulationID pop = selAndAvailablePops.get(0);
 
-              xData.get(selIsotope).add(xVal);
-              xUnit = ViewUnits.NP_PER_SECOND;
-              xLbl = "Delivered NP rate";
+                if (selAndAvailablePops.size() > 1) {
+                  LOGGER.info(
+                      "More than one population is selected! Quantification step was calculated using: {}",
+                      pop.toString());
+                  NotificationFactory.openAutocloseInfo("More than one population is selected! " +
+                      "Quantification step was calculated using: " + pop);
+                }
 
-              yData.get(selIsotope).add(npPerSecDetected);
-              yUnit = ViewUnits.NP_PER_SECOND;
-              yLbl = "Detected NP rate";
+                // find x value
+                ConcentrationUnit targetConcUnit = ConcentrationUnit.NP_PER_LITRE;
+                double npNumConc = subQuant.getNpConcentration().getValue();
+                ConcentrationUnit npNumConcUnit = subQuant.getNpConcentrationUnit();
+                double npNumConcPerLitre = npNumConcUnit.convert(npNumConc, targetConcUnit);
+                double npRatePerSec = npNumConcPerLitre * flowLitrePerSec;
+                double xVal = npRatePerSec;
+
+                // find y val
+                double npPerSecDetected = sample.getEventRate(selIsotope, pop);
+
+                xData.get(selIsotope).add(xVal);
+                xUnit = ViewUnits.NP_PER_SECOND;
+                xLbl = "Delivered NP rate";
+
+                yData.get(selIsotope).add(npPerSecDetected);
+                yUnit = ViewUnits.NP_PER_SECOND;
+                yLbl = "Detected NP rate";
+              }
             }
           }
         }

@@ -15,20 +15,21 @@
  *
  */
 
-package analysis;
+package processing.options;
 
-public interface ThresholdSupplier {
+public enum OverlapSmoothOption {
 
-  public static final double LEAST_THR = 0.1;
+  RAW_DATA {
+    @Override
+    public String toString() {
+      return "Smooth raw data";
+    }
+  },
 
-  double[] getThresholdSlices();
-
-  double getSliceValue(int index);
-
-  double interpolate(int i, int rawLength);
-
-  public int[] getAnchorIndices(int rawLength);
-
-  int getSliceCount();
-
+  DERIVATIVE {
+    @Override
+    public String toString() {
+      return "Smooth derivative (differences)";
+    }
+  }
 }

@@ -35,8 +35,6 @@ import sandbox.montecarlo.Isotope;
 import visualizer.styles.Colors;
 import visualizer.styles.Colors.SpColor;
 
-import javax.annotation.Nullable;
-
 public interface Trace extends Serializable {
 
   Trace copy(Sample newSample);
@@ -80,7 +78,7 @@ public interface Trace extends Serializable {
 
   boolean hasLimits();
 
-  public void voidClearEvaluation();
+  public void clearEvaluation();
 
   XYSeries getXYSeries();
 

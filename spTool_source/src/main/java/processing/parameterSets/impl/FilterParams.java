@@ -26,6 +26,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.checkerframework.checker.units.qual.C;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
@@ -55,6 +56,7 @@ public class FilterParams extends AbstractParamSet implements ParamSet {
   private final Parameter<Double> zIntensity;
   private final Parameter<Double> zSegment;
   private Parameter<Integer> moavPeriod;
+  private Parameter<OverlapSmoothOption> smoothTargetOption;
   private final Parameter<Boolean> listNumberOfEvents;
 
   // ROI
@@ -112,18 +114,26 @@ public class FilterParams extends AbstractParamSet implements ParamSet {
 
     this.zIntensity = new DoubleParameter(
         "z-Diff",
-        "Magnitude of the threshold for the differences",
-        1.5, //1.5
+        "Magnitude of the threshold for the differences." +
+            "Usually between 0.5 - 2",
+        1.0, //1.5
         NF.D1C2,
-        TextFormatterOption.ASSURE_NONZERO_POS_EXP_DOUBLE,
+        TextFormatterOption.ASSURE_POSITIVE_DOUBLE,
         false,
         "zIntensity"
     );
 
     this.zSegment = new DoubleParameter(
         "z-Seg",
-        "Magnitude of the threshold for the segments",
-        1.0d, //1.0
+        """
+            Magnitude of the threshold for the segments. Usually between 1 - 5.
+            When z-Diff is (too low), z-Seg may require larger values of up to 10 - 50.
+            
+            z-Seg is computed from the background level.
+            It may depend on detector gain and noise levels, instrument properties
+            and in particular overdispersion from the ion source and sample introduction.
+            Thus, z-seg may change depending on instrument, method and sample""",
+        3.0d, //1.0
         NF.D1C3,
         TextFormatterOption.ASSURE_POSITIVE_DOUBLE,
         false,
@@ -138,6 +148,23 @@ public class FilterParams extends AbstractParamSet implements ParamSet {
         true,
         "moavPeriod"
     );
+
+    this.smoothTargetOption = new ComboEnumParameter<>(
+        "Smoothing",
+        """
+            Decide whether smoothing is applied to the difference between data points ('derivative')
+            or the raw data. In case of very noisy peaks and/or flat and wider peak shapes,
+            it may help to smooth the raw data and not the derivative.
+            
+            Smoothing makes data points depend on each other and thus affects statistics!
+            When smoothing raw data, consider adjusting z-Diff and z-Seg""",
+        OverlapSmoothOption.DERIVATIVE,
+        OverlapSmoothOption.values(),
+        OverlapSmoothOption.class,
+        false,
+        "smoothTargetOption"
+    );
+
 
     this.listNumberOfEvents = new BooleanParameter(
         "Detail",
@@ -307,6 +334,7 @@ public class FilterParams extends AbstractParamSet implements ParamSet {
     this.zSegment = gatingParams.zSegment.copyWithoutChildren();
     this.listNumberOfEvents = gatingParams.listNumberOfEvents.copyWithoutChildren();
     this.moavPeriod = gatingParams.moavPeriod.copyWithoutChildren();
+    this.smoothTargetOption = gatingParams.smoothTargetOption.copyWithoutChildren();
     //////////////////////
     this.roiID = gatingParams.roiID.copyWithoutChildren();
     this.roiCategory = gatingParams.roiCategory.copyWithoutChildren();
@@ -356,7 +384,9 @@ public class FilterParams extends AbstractParamSet implements ParamSet {
     // Depending children
     filterOption.addConditionalChild(
         FilterOptions.OVERLAP,
-        zIntensity, zSegment, moavPeriod, listNumberOfEvents);
+        zIntensity, zSegment, smoothTargetOption, listNumberOfEvents);
+
+    smoothTargetOption.addUnconditionalChild(moavPeriod);
 
     filterOption.addConditionalChild(
         FilterOptions.ROI_REGION,
@@ -404,6 +434,7 @@ public class FilterParams extends AbstractParamSet implements ParamSet {
           case "zSegment" -> zSegment;
           case "moavPeriod" -> moavPeriod;
           case "listNumberOfEvents" -> listNumberOfEvents;
+          case "smoothTargetOption" -> smoothTargetOption;
           /// ///////////////////////
           case "roiID" -> roiID;
           case "roiCategory" -> roiCategory;
@@ -469,6 +500,10 @@ public class FilterParams extends AbstractParamSet implements ParamSet {
 
   public Parameter<Integer> getMoavPeriod() {
     return moavPeriod;
+  }
+
+  public Parameter<OverlapSmoothOption> getSmoothTargetOption() {
+    return smoothTargetOption;
   }
 
   public Parameter<String> getRoiID() {
@@ -568,6 +603,9 @@ public class FilterParams extends AbstractParamSet implements ParamSet {
     // Fix missing fields from old serialized versions: we have to use
     if (moavPeriod == null) {
       this.moavPeriod = defaults.moavPeriod;
+    }
+    if (smoothTargetOption == null) {
+      this.smoothTargetOption = defaults.smoothTargetOption;
     }
     /////////////////////////////////////
     if (roiCategory == null) {

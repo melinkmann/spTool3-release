@@ -117,7 +117,7 @@ public class ExporterParams extends AbstractParamSet implements ParamSet {
         false,
         "exportFormat");
 
-    this.exportRawDataBtnPar = new ButtonParameter("Export",
+    this.exportRawDataBtnPar = new ButtonParameter("Action",
         "Run export of raw data",
         new SupplierSerializable<Button>() {
           @Override
@@ -185,7 +185,7 @@ public class ExporterParams extends AbstractParamSet implements ParamSet {
         "spCalHeight"
     );
 
-    this.exportCustomEventDataBtnPar = new ButtonParameter("Export",
+    this.exportCustomEventDataBtnPar = new ButtonParameter("Action",
         "Run export of raw data",
         new SupplierSerializable<Button>() {
           @Override
@@ -260,16 +260,15 @@ public class ExporterParams extends AbstractParamSet implements ParamSet {
         "particleUnitParameter"
     );
 
-
-    this.exportEMDBtnPar = new ButtonParameter("Export",
-        "Run export of raw data",
+    this.exportEMDBtnPar = new ButtonParameter("Action",
+        "Run export of EMD",
         new SupplierSerializable<Button>() {
           @Override
           public Button get() {
-            return new Button("Export raw data");
+            return new Button("Export EMD comparison");
           }
         },
-        false,
+        true,
         "exportEMDBtnPar"
     );
 
@@ -279,7 +278,7 @@ public class ExporterParams extends AbstractParamSet implements ParamSet {
         MathMod.NONE,
         MathMod.values(),
         MathMod.class,
-        false,
+        true,
         "emdMathParameter"
     );
 
@@ -289,7 +288,7 @@ public class ExporterParams extends AbstractParamSet implements ParamSet {
         EventParameter.NET_AREA,
         EventParameter.histo(),
         EventParameter.class,
-        false,
+        true,
         "emdEventParameter"
     );
 
@@ -350,12 +349,24 @@ public class ExporterParams extends AbstractParamSet implements ParamSet {
 
   private void organize() {
     // Register Parents
-    super.setParentParameters(
-        exportFormat,
-        exportRawDataBtnPar,
-        exportCustomEventDataBtnPar,
-        exportEMDBtnPar
-    );
+    List<Parameter<?>> validParameters = new ArrayList<>();
+    validParameters.add(exportFormat);
+    validParameters.add(new SeparatorParameter());
+
+    validParameters.add(new ReadOnlyTextParameter("Exporters with settings", "", "Click on button to execute export"));
+
+    validParameters.add(exportRawDataBtnPar);
+    validParameters.add(new SeparatorParameter());
+
+    validParameters.add(exportCustomEventDataBtnPar);
+    validParameters.add(new SeparatorParameter());
+
+    if (SpTool3Main.SHOW_EMD_EXPORT) {
+      validParameters.add(exportEMDBtnPar);
+      validParameters.add(new SeparatorParameter(true));
+    }
+
+    super.setParentParameters(validParameters.toArray(new Parameter<?>[]{}));
 
     // Attach Children.
     exportFormat.addConditionalChild(ExportTarget.CSV, currentExportPath);
@@ -379,7 +390,7 @@ public class ExporterParams extends AbstractParamSet implements ParamSet {
 
     exportBackgroundData.addConditionalChild(true, applyJitterSampling);
     applyJitterSampling.addConditionalChild(true, jitterDataPoints);
-    exportParticleData.addUnconditionalChild(particleEventParameter,particleUnitParameter);
+    exportParticleData.addConditionalChild(true, particleEventParameter, particleUnitParameter);
 
     exportEMDBtnPar.addUnconditionalChild(emdEventParameter, emdMathParameter);
 
@@ -531,7 +542,6 @@ public class ExporterParams extends AbstractParamSet implements ParamSet {
   public Parameter<MathMod> getEmdMathParameter() {
     return emdMathParameter;
   }
-
 
 
   ////////////////////////////////////////////////////////////

@@ -98,7 +98,7 @@ public class TraceMC extends TraceImpl implements Trace, Serializable {
   }
 
   @Override
-  public void voidClearEvaluation() {
+  public void clearEvaluation() {
     // make sure to keep the simulation populations as these are not generated during reprocessing
     HashMap<PopulationID, Population> mcPops = new LinkedHashMap<>();
     for (PopulationID id : populations.keySet()) {
@@ -106,7 +106,7 @@ public class TraceMC extends TraceImpl implements Trace, Serializable {
         mcPops.put(id, populations.get(id));
       }
     }
-    super.voidClearEvaluation();
+    super.clearEvaluation();
     super.populations.putAll(mcPops);
   }
 

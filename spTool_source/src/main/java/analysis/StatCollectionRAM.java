@@ -242,7 +242,6 @@ public class StatCollectionRAM implements StatCollection, Serializable {
       }
     }
 
-    // Yield at least 0.1. There are issues with e.g. CompoundPoisson where 0 may be returned.
     return interpolatedDataSet;
   }
 }

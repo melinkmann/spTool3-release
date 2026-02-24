@@ -43,6 +43,7 @@ import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+import javafx.event.EventHandler;
 import javafx.geometry.Pos;
 import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
@@ -66,6 +67,7 @@ import javafx.scene.image.ImageView;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyCombination;
 import javafx.scene.input.KeyEvent;
+import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
@@ -1018,8 +1020,7 @@ public class TableFactory {
 
     // enable copy and paste
     TableUtils.installCopyPasteHandler(table);
-    // double click select
-    // TableUtils.installDoubleClickSelect(table);
+    // double click select: no, when too many isotopes are present, this crashed the UI
 
     TableUtils.installHeaderLeft(table);
 

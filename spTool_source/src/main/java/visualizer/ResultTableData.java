@@ -40,13 +40,28 @@ public class ResultTableData {
   private final HashMap<Sample, List<TraceCol>> entryMap = new LinkedHashMap<>();
 
   public ResultTableData(List<Sample> samples, List<Isotope> isotopes,
-                         List<PopulationID> popIDs) {
+                         List<PopulationID> popIDs, boolean showAllParameters) {
 
-    List<TablePar> sampleLevelPars = filterSelected(TablePar.getSampleInfo());
-    List<TablePar> traceLevelPars = filterSelected(TablePar.getTraceInfo());
-    List<TablePar> quantLevelPars = filterSelected(TablePar.getQuantInfo());
-    List<TablePar> populationLevelPars = filterSelected(TablePar.getPopulationInfo());
-    List<TablePar> populationBLNLevelPars = filterSelected(TablePar.getPopulationBLNInfo());
+    List<TablePar> sampleLevelPars;
+    List<TablePar> traceLevelPars;
+    List<TablePar> quantLevelPars;
+    List<TablePar> populationLevelPars;
+    List<TablePar> populationBLNLevelPars;
+
+    if (showAllParameters) {
+      sampleLevelPars = new ArrayList<>(TablePar.getSampleInfo());
+      traceLevelPars = new ArrayList<>(TablePar.getTraceInfo());
+      quantLevelPars = new ArrayList<>(TablePar.getQuantInfo());
+      populationLevelPars = new ArrayList<>(TablePar.getPopulationInfo());
+      populationBLNLevelPars = new ArrayList<>(TablePar.getPopulationBLNInfo());
+    } else {
+      sampleLevelPars = filterSelected(TablePar.getSampleInfo());
+      traceLevelPars = filterSelected(TablePar.getTraceInfo());
+      quantLevelPars = filterSelected(TablePar.getQuantInfo());
+      populationLevelPars = filterSelected(TablePar.getPopulationInfo());
+      populationBLNLevelPars = filterSelected(TablePar.getPopulationBLNInfo());
+    }
+
 
     // gates may have different row counts depending on number of gates
     HashMap<PopulationID, Integer> gateRowCounts = new HashMap<>();
@@ -114,16 +129,18 @@ public class ResultTableData {
   public List<TablePar> filterSelected(List<TablePar> inputPars) {
     List<TablePar> allPars = new ArrayList<>(inputPars);
     TableIO tableDefaults = RunTimeInstance.getParamTableDefaults();
+    List<TablePar> parsToShow;
     if (tableDefaults != null) {
       if (!tableDefaults.getActiveParameters().isEmpty()) {
         // only show what is selected
-        List<TablePar> parsToShow = new ArrayList<>(tableDefaults.getActiveParameters());
-        allPars.removeIf(tp -> !parsToShow.contains(tp));
+        parsToShow = new ArrayList<>(tableDefaults.getActiveParameters());
       } else {
-        LOGGER.info("Empty table was filled with all available options.");
+        parsToShow = new ArrayList<>();
+        LOGGER.info("Empty selection of table parameters from user. Continue with hard-coded default state.");
       }
+      allPars.removeIf(tp -> !parsToShow.contains(tp));
     } else {
-      LOGGER.info("Selected table entries were not available - used all available options.");
+      LOGGER.info("Stored selected table entries were not available.");
     }
     /*
      * THIS IS WHERE WE DECIDE ORDER!

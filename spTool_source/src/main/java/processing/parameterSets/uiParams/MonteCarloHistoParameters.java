@@ -202,7 +202,7 @@ public class MonteCarloHistoParameters extends AbstractParamSet implements Param
     this.backgroundHighlightOption = new ComboEnumParameter<>(
         "BG highlight",
         "Show particles or background",
-        BackgroundHighlight.STRIPES,
+        BackgroundHighlight.DARKER,
         BackgroundHighlight.values(),
         BackgroundHighlight.class,
         true,
@@ -233,17 +233,17 @@ public class MonteCarloHistoParameters extends AbstractParamSet implements Param
         "Reduce BG",
         "Limit",
         "Reduce the number of background data points, i.e., n(BG) to be shown",
-        false,
         true,
+        false,
         "jitterBackground"
     );
 
     numberOfBackgroundEvents = new IntegerParameter(
         "# of BG",
         "Number of background (BG) events to be shown",
-        500,
+        5000,
         TextFormatterOption.ASSURE_NONZERO_POSITIVE_INTEGER,
-        true,
+        false,
         "numberOfBackgroundEvents");
 
     this.showMaxThrLOD = new BooleanParameter(

@@ -422,6 +422,12 @@ public abstract class ResultsTable {
       }
     },
 
+    BG_EQUIV_CONC {
+      public String getValue(Sample s, Isotope i, PopulationID p) {
+        return s.tabEquivBGConc(i);
+      }
+    },
+
     POPULATION_NAME {
       public String getValue(Sample s, Isotope i, PopulationID p) {
         return s.tabPopName(i, p);
@@ -431,6 +437,34 @@ public abstract class ResultsTable {
     POPULATION_ADDITIONAL {
       public String getValue(Sample s, Isotope i, PopulationID p) {
         return s.tabPopAdditional(i, p);
+      }
+    },
+
+    LOD_CTS {
+      @Override
+      protected String getValue(Sample s, Isotope i, PopulationID p) {
+        return s.tabLodCts(i, p);
+      }
+    },
+
+    LOD_AG {
+      @Override
+      protected String getValue(Sample s, Isotope i, PopulationID p) {
+        return s.tabLodAg(i, p);
+      }
+    },
+
+    LOD_AMOL {
+      @Override
+      protected String getValue(Sample s, Isotope i, PopulationID p) {
+        return s.tabLodAmol(i, p);
+      }
+    },
+
+    LOD_NM {
+      @Override
+      protected String getValue(Sample s, Isotope i, PopulationID p) {
+        return s.tabLodNm(i, p);
       }
     },
 
@@ -526,6 +560,22 @@ public abstract class ResultsTable {
         return s.tabMassSD(i, p);
       }
     },
+    NP_MEAN_MOL {
+      public String getValue(Sample s, Isotope i, PopulationID p) {
+        return s.tabMeanMol(i, p);
+      }
+    },
+    NP_MEDIAN_MOL {
+      public String getValue(Sample s, Isotope i, PopulationID p) {
+        return s.tabMedianMol(i, p);
+      }
+    },
+    NP_SD_MOL {
+      public String getValue(Sample s, Isotope i, PopulationID p) {
+        return s.tabMolSD(i, p);
+      }
+    },
+
 
     NP_CUSTOM_MEAN {
       public String getValue(Sample s, Isotope i, PopulationID p) {
@@ -767,7 +817,11 @@ public abstract class ResultsTable {
             POP_BG_MEAN,
             POP_BG_SD,
             POP_BG_N,
-            POP_DRIFT
+            POP_DRIFT,
+            LOD_CTS,
+            LOD_NM,
+            LOD_AG,
+            LOD_AMOL
         ));
         if (!SpTool3Main.SHOW_DRIFT) {
           pars.remove(POP_DRIFT);
@@ -817,7 +871,8 @@ public abstract class ResultsTable {
       if (SpTool3Main.getANALYZER()) {
         return new ArrayList<>(Arrays.asList(
             AEROSOL_TE,
-            PNC_TE
+            PNC_TE,
+            BG_EQUIV_CONC
         ));
       } else {
         return new ArrayList<>(Arrays.asList(
@@ -885,10 +940,11 @@ public abstract class ResultsTable {
 
         case AEROSOL_TE -> "TE [%]";
         case PNC_TE -> "PNC TE [%]";
+        case BG_EQUIV_CONC -> "BG conc. [µg/L]";
         case POPULATION_NAME -> "Population";
         case POPULATION_ADDITIONAL -> "Input parameters";
         case NP_COUNT -> "NP number [-]";
-        case PNC -> "PNC [1/mL]";
+        case PNC -> "PNC [NP/mL]";
         case NP_RATE -> "NP rate [NP/s]";
         case NP_MEAN -> "NP mean net area [cts]";
         case NP_SD -> "NP net area SD [cts]";
@@ -904,6 +960,10 @@ public abstract class ResultsTable {
         case NP_MEAN_MASS -> "Mean elemental mass [fg]";
         case NP_MEDIAN_MASS -> "Median elemental mass [fg]";
         case NP_SD_MASS -> "Elemental mass SD [fg]";
+
+        case NP_SD_MOL -> "Number of moles SD [amol]";
+        case NP_MEAN_MOL -> "Mean number of moles [amol]";
+        case NP_MEDIAN_MOL -> "Median number of moles [amol]";
 
         case NP_CUSTOM_MEAN -> {
           EventParameter p = SpTool3Main.getRunTime().getConfParams().getEventParameter().getValue();
@@ -922,6 +982,10 @@ public abstract class ResultsTable {
           yield "Custom NP SD " + math.toString() + " " + p.toString() + " [" + AxisLabel.getUnit(p).getUnit().getUiString() + "]";
         }
 
+        case LOD_AG -> "LOD [ag/NP]";
+        case LOD_NM -> "LOD [nm]";
+        case LOD_CTS -> "LOD [cts/NP]";
+        case LOD_AMOL -> "LOD [amol/NP]";
 
         case POP_BG_MEAN -> "BG mean height [cts]";
         case POP_BG_SD -> "BG height SD [cts]";

@@ -29,6 +29,11 @@ public enum MathMod {
     }
 
     @Override
+    public String getUiString() {
+      return "plain";
+    }
+
+    @Override
     public double calc(double val) {
       return val;
     }
@@ -43,13 +48,17 @@ public enum MathMod {
       return values;
     }
 
-
   },
 
   CUBEROOT {
     @Override
     public String toString() {
       return "Cuberoot";
+    }
+
+    @Override
+    public String getUiString() {
+      return "cubicroot";
     }
 
     @Override
@@ -78,6 +87,10 @@ public enum MathMod {
       return "Log10";
     }
 
+    @Override
+    public String getUiString() {
+      return "log10";
+    }
 
     /**
      * Forward log10 transform.
@@ -121,7 +134,7 @@ public enum MathMod {
       for (int i = 0; i < values.length; i++) {
         if (values[i] <= 0) {
           // Input is zero or negative
-          conv[i] =LOG_ZERO;
+          conv[i] = LOG_ZERO;
         } else {
           // Normal positive input: calc log10
           conv[i] = Math.log10(values[i]);
@@ -136,6 +149,8 @@ public enum MathMod {
   public abstract double invert(double val);
 
   public abstract double[] calc(double[] values);
+
+  public abstract String getUiString();
 
   // Smallest positive double to use as a finite substitute for log10(0)
   private static final double LOG_ZERO = Math.log10(Math.nextUp(0.0));

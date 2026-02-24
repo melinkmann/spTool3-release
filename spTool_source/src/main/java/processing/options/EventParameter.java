@@ -123,9 +123,13 @@ public enum EventParameter {
   }
 
   public static boolean canQuantify(EventParameter par) {
-    return par.equals(AREA)
-        || par.equals(NET_AREA)
-        || par.equals(HEIGHT)
+//    return par.equals(AREA)
+//        || par.equals(NET_AREA)
+//        || par.equals(HEIGHT)
+//        || par.equals(NET_HEIGHT);
+
+    // prevent quantification based on gross values to avoid confusion
+    return par.equals(NET_AREA)
         || par.equals(NET_HEIGHT);
   }
 }

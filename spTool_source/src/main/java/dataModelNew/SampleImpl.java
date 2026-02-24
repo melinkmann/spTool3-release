@@ -438,136 +438,184 @@ public class SampleImpl implements Sample, Serializable {
     // call getter (possibly null)
     Trace trace = getTrace(isotope);
     if (trace != null) {
+      // cts (or duration, ...) data
       data = trace.get(populationID, eventType, param);
-
-      //  check conversion
-      if (IntensityUnit.CTS.equals(unit) || !EventParameter.canQuantify(param)) {
-        // do nothing
-      } else if (quant.getExperimentalConditions().getCalibratorRole().getValue().equals(CalibratorRole.SAMPLE)) {
-
-        // find the quant
-        double ctsPerFg = 0;
-
-        switch (quant.getCalibrationStrategy()) {
-          case MASS -> {
-            Quantity npResp = quant.getResponses().getNpResponse(isotope);
-            if (npResp != null && npResp.getValue() > 0) {
-              ctsPerFg = npResp.getUnit().convert(npResp.getValue(), SensitivityUnit.CTS_PER_FEMTOGRAM);
-            } else {
-              data = new double[0];
-            }
-            break;
-          }
-
-          case SIZE_METHOD, FREQUENCY_METHOD -> {
-
-            Quantity ionResp = quant.getResponses().getIonicResponse(isotope);
-
-            // check if TE was determined elsewhere
-            double tePct = getAerosolTEConvention(isotope);
-
-            if (tePct > 0 && ionResp != null && ionResp.getValue() > 0) {
-              ctsPerFg = ionResp.getUnit().convert(ionResp.getValue(), SensitivityUnit.CTS_PER_FEMTOGRAM);
-              // we get more cts for NP as no losses (divide by TE)
-              ctsPerFg = ctsPerFg / (tePct / 100d);
-            } else {
-              data = new double[0];
-            }
-            break;
-          }
-        }
-
-        // check conversion
-        ExperimentalSubConditions subPar =
-            quant.getExperimentalConditions().getElementSpecificQuantParams().get(isotope.getElement());
-
-        if (subPar != null && ctsPerFg > 0) {
-          // diameter?
-          if ((unit.equals(SizeUnit.NANO_METER) || unit.equals(SizeUnit.MICRO_METER))) {
-
-            if (subPar.getNpQuantificationApproach().getValue().equals(ParticleQuantApproach.ESD)) {
-              double density = subPar.getNpDensity().getValue();
-              density = subPar.getNpDensityUnit().convert(density, DensityUnit.GRAM_PER_CM3);
-              double massFrac = subPar.getNpMassFraction().getValue();
-
-              if (density > 0 && massFrac > 0) {
-                for (int i = 0; i < data.length; i++) {
-                  double counts = data[i];
-
-                  // counts → mass (fg)
-                  double massFg = counts / ctsPerFg;
-
-                  /*
-                   adjust mass:
-                   - this is for the case, where e.g., Au@Ag is calibrated for and based on
-                   total particle size
-                   - for all other, mass fraction should just be left at 1
-                   */
-                  massFg = massFg / massFrac;
-
-                  // µg → g
-                  double massGrams = massFg * 1e-15;
-
-                  // mass → volume (cm^3)
-                  double volumeCm3 = massGrams / density;
-
-                  // volume → diameter (cm)
-                  double diameterCm = Math.cbrt((6.0 * volumeCm3) / Math.PI);
-
-                  if (unit.equals(SizeUnit.NANO_METER)) {
-                    // cm → nm
-                    data[i] = diameterCm * 1e7;
-                  } else {
-                    // cm -> µm
-                    data[i] = diameterCm * 1e4;
-                  }
-                }
-              } else {
-                data = new double[0];
-              }
-
-
-            } else {
-              // return empty array: we don't' have a sample that qualifies for sphere
-              data = new double[0];
-            }
-
-          } else {
-            double factor;
-            if (unit.equals(MassUnit.FEMTO_GRAM)) {
-              factor = ctsPerFg;
-            } else if (unit.equals(MassUnit.ATTO_GRAM)) {
-              factor = ctsPerFg / 1E3; // fewer counts per attogram
-            } else {
-              factor = ctsPerFg * 1E3; // more counts per pg
-            }
-
-            data = ArrUtils.divide(data, factor);
-          }
-        } else {
-          data = new double[0];
-        }
-
-      } else {
-        data = new double[0];
-      }
+      // conversion
+      data = applyQuant(data, isotope, param, unit);
     }
     return data;
+  }
+
+  /**
+   * Uses the event parameter stored in the Experiment. This getter works, e.g., for the LOD calculation in
+   * the table where no event parameter input is needed. We need to pass the parameter as an argument to
+   * check if quantification can be calculated or not.
+   */
+  public double[] applyQuant(double[] dataInput, Isotope isotope, Unit unit) {
+    return applyQuant(
+        dataInput,
+        isotope,
+        quant.getExperimentalConditions().getEventPar(),
+        unit);
+  }
+
+  public double[] applyQuant(double[] dataInput, Isotope isotope, EventParameter param, Unit unit) {
+
+    double[] result = ArrUtils.copy(dataInput);
+
+    // Check: request = cts || EventParameter is duration,...  || EventParameter is not what was used to
+    // quantify?  --> do nothing and return cts
+    if (IntensityUnit.CTS.equals(unit) || !EventParameter.canQuantify(param)
+        || !quant.getExperimentalConditions().getEventPar().equals(param)) {
+      // do nothing: return the copy of the data
+
+      // Else: check if sample instance is set as sample
+    } else if (quant.getExperimentalConditions().getCalibratorRole().getValue().equals(CalibratorRole.SAMPLE)) {
+
+      // find the response
+      double ctsPerFg = 0;
+
+      // ########################## APPLY PACE-style QUANT ###########################################
+      switch (quant.getCalibrationStrategy()) {
+        // ########################## REFERENCE PARTICLE with known mass ###############################
+        case MASS -> {
+          Quantity npResp = quant.getResponses().getOrCreateNpResponse(isotope);
+
+          if (npResp != null && npResp.getValue() > 0) {
+            ctsPerFg = npResp.getUnit().convert(npResp.getValue(), SensitivityUnit.CTS_PER_FEMTOGRAM);
+          } else {
+            // no valid quantification data --> invalidate the result array
+            result = new double[0];
+          }
+          break;
+        }
+
+        // ########################## FREQUENCY or SIZE method ###########################################
+        case SIZE_METHOD, FREQUENCY_METHOD -> {
+          Quantity ionResp = quant.getResponses().getOrCreateIonicResponse(isotope);
+
+          // check if TE was determined elsewhere
+          double tePct = getAerosolTEConvention(isotope);
+
+          if (tePct > 0 && ionResp != null && ionResp.getValue() > 0) {
+            ctsPerFg = ionResp.getUnit().convert(ionResp.getValue(), SensitivityUnit.CTS_PER_FEMTOGRAM);
+            // we get more cts for NP as no losses (divide by TE)
+            ctsPerFg = ctsPerFg / (tePct / 100d);
+          } else {
+            // no valid quantification data --> invalidate the result array
+            result = new double[0];
+          }
+          break;
+        }
+      }
+
+      // ########################## FIND TARGET UNIT (above we calculated cts/fg)############################
+      ExperimentalSubConditions subPar =
+          quant.getExperimentalConditions().getElementSpecificQuantParams().get(isotope.getElement());
+
+      if (subPar != null && ctsPerFg > 0) {
+
+        // ########################## TARGET: DIAMETER ###########################################
+        if ((unit.equals(SizeUnit.NANO_METER) || unit.equals(SizeUnit.MICRO_METER))) {
+
+          if (subPar.getNpQuantificationApproach().getValue().equals(ParticleQuantApproach.ESD)) {
+            double density = subPar.getNpDensity().getValue();
+            density = subPar.getNpDensityUnit().convert(density, DensityUnit.GRAM_PER_CM3);
+            double massFrac = subPar.getNpMassFraction().getValue();
+
+            if (density > 0 && massFrac > 0) {
+              for (int i = 0; i < result.length; i++) {
+                double counts = result[i]; // result is a copy of the input data and carries cts intensity
+
+                // counts -> mass (fg)
+                double massFg = counts / ctsPerFg;
+
+                /*
+                 adjust mass: Why? Example: Polystyrene.
+                 Density is based on the material PS. Mass from ICP is for C only.
+                 Hence, the whole NP should be more massive as we need to add mass of H to get mass of PS.
+                 */
+                massFg = massFg / massFrac;
+
+                // µg -> g
+                double massGrams = massFg * 1e-15;
+
+                // mass -> volume (cm^3)
+                double volumeCm3 = massGrams / density;
+
+                // volume -> diameter (cm)
+                double diameterCm = Math.cbrt((6.0 * volumeCm3) / Math.PI);
+
+                if (unit.equals(SizeUnit.NANO_METER)) {
+                  // cm -> nm
+                  result[i] = diameterCm * 1e7;
+                } else {
+                  // cm -> µm
+                  result[i] = diameterCm * 1e4;
+                }
+              }
+              // density or mass frac are <= 0
+            } else {
+              result = new double[0];
+            }
+            // subparameter set is not ESD
+          } else {
+            result = new double[0];
+          }
+
+          // ########################## TARGET: MASS or MOL ###########################################
+        } else {
+          double ctsPerTargetUnit;
+          if (unit.equals(MassUnit.FEMTO_GRAM)) {
+            ctsPerTargetUnit = ctsPerFg;
+          } else if (unit.equals(MassUnit.ATTO_GRAM)) {
+            ctsPerTargetUnit = ctsPerFg / 1E3; // fewer counts per attogram --> smaller number
+          } else if (unit.equals(MassUnit.PICO_GRAM)) {
+            ctsPerTargetUnit = ctsPerFg * 1E3; // more counts per pg --> larger number
+          } else if (unit.equals(MolarUnit.FEMTO_MOL)) {
+            // molar mass g/mol == fg/fmol
+            double gPerMol = isotope.getElement().calcMolarMass();
+            ctsPerTargetUnit = ctsPerFg * gPerMol; // cts/fg * fg/fmol --> cts/fmol
+          } else {
+            // attogram
+            // molar mass g/mol == fg/fmol
+            double gPerMol = isotope.getElement().calcMolarMass();
+            ctsPerTargetUnit = ctsPerFg * gPerMol / 1E3; // cts/fg * fg/fmol / 1E3 --> cts/amol
+          }
+
+          // divide cts array by "cts/target" --> target array
+          result = ArrUtils.divide(result, ctsPerTargetUnit);
+        }
+
+        // subparameter was null or sensitivity was zero
+      } else {
+        result = new double[0];
+      }
+
+      // sample instance is not a "sample" role
+    } else {
+      result = new double[0];
+    }
+
+    return result;
   }
 
   @Override
   public double getAerosolTEConvention(Isotope isotope) {
     double tePct = 0;
-    Quantity te = quant.getResponses().getAerosolTE(isotope);
+    Quantity te = quant.getResponses().getOrCreateAerosolTE(isotope);
+    // no TE data for the isotope
     if (te != null && te.getValue() <= 0) {
       List<Isotope> isotopes = quant.listIsotopes();
       for (Isotope iso : isotopes) {
-        Quantity testTE = quant.getResponses().getAerosolTE(iso);
+        Quantity testTE = quant.getResponses().getOrCreateAerosolTE(iso);
         if (testTE != null && testTE.getValue() > 0) {
           tePct = testTE.getValue();
           break;
         }
       }
+
+      // isotope has specific TE data
     } else if (te != null) {
       tePct = te.getValue();
     }
@@ -577,16 +625,18 @@ public class SampleImpl implements Sample, Serializable {
   @Override
   public double getPncTEConvention(Isotope isotope) {
     double tePct = 0;
-    Quantity te = quant.getResponses().getParticleNumberTE(isotope);
+    Quantity te = quant.getResponses().getOrCreateParticleNumberTE(isotope);
+    // no TE data for the isotope
     if (te != null && te.getValue() <= 0) {
       List<Isotope> isotopes = quant.listIsotopes();
       for (Isotope iso : isotopes) {
-        Quantity testTE = quant.getResponses().getParticleNumberTE(iso);
+        Quantity testTE = quant.getResponses().getOrCreateParticleNumberTE(iso);
         if (testTE != null && testTE.getValue() > 0) {
           tePct = testTE.getValue();
           break;
         }
       }
+      // isotope has specific TE data
     } else if (te != null) {
       tePct = te.getValue();
     }
@@ -599,7 +649,7 @@ public class SampleImpl implements Sample, Serializable {
   }
 
   @Override
-  public double getMaxThr(@Nullable Isotope isotope, PopulationID populationID) {
+  public double getMaxThr(@Nullable Isotope isotope, PopulationID populationID, boolean netSignal) {
     double maxThr = 0;
     // call getter (possibly null)
     Trace trace = getTrace(isotope);
@@ -613,11 +663,20 @@ public class SampleImpl implements Sample, Serializable {
           maxThr = Math.max(maxThr, mu(supplier.getThresholdSlices()));
           // Gate height
           List<ThresholdSupplier> gateSuppliers = population.getGatingInstr().stream()
-              .filter(ThresholdSupplierInstructions::isHeight)
+              /*
+              Changed this to "any intensity". Why? In the limit, at LOD, convention is that
+              peak has just one data point, i.e., height=area, anyway.
+              In addition, for LODs, it makes no sense to set threshold but not use it.
+              Note that this justifies distinction between ROI and Gate.
+               */
+              .filter(ThresholdSupplierInstructions::isIntensity)
               .map(gInstr -> gInstr.get(blnStats))
               .collect(Collectors.toList());
           for (ThresholdSupplier suppl : gateSuppliers) {
             maxThr = Math.max(maxThr, mu(suppl.getThresholdSlices()));
+          }
+          if (netSignal) {
+            maxThr = maxThr - mu(blnStats.getLocation());
           }
         }
       }
@@ -625,6 +684,13 @@ public class SampleImpl implements Sample, Serializable {
     return maxThr;
   }
 
+  @Override
+  public double getMaxThr(@Nullable Isotope isotope, PopulationID populationID, boolean netSignal,
+                          Unit unit) {
+    double thr = getMaxThr(isotope, populationID, netSignal);
+    double[] qThr = applyQuant(new double[]{thr}, isotope, EventParameter.NET_AREA, unit);
+    return qThr.length > 0 ? qThr[0] : 0;
+  }
 
   @Override
   public List<Event> getNPEvents(Isotope isotope, PopulationID popID) {
@@ -904,6 +970,34 @@ public class SampleImpl implements Sample, Serializable {
   }
 
   @Override
+  public String tabLodCts(Isotope isotope, PopulationID populationID) {
+    return str(getMaxThr(isotope, populationID, true), NF.D1C2);
+  }
+
+  @Override
+  public String tabLodAg(Isotope isotope, PopulationID populationID) {
+    double[] cts = new double[]{getMaxThr(isotope, populationID, true)};
+
+    double[] quant = applyQuant(cts, isotope, MassUnit.ATTO_GRAM);
+    return quant.length > 0 ? str(quant[0], NF.D1C2, NF.D1C2Exp) : EMPTY_CELL;
+
+  }
+
+  @Override
+  public String tabLodNm(Isotope isotope, PopulationID populationID) {
+    double[] cts = new double[]{getMaxThr(isotope, populationID, true)};
+    double[] quant = applyQuant(cts, isotope, SizeUnit.NANO_METER);
+    return quant.length > 0 ? str(quant[0], NF.D1C2, NF.D1C2Exp) : EMPTY_CELL;
+  }
+
+  @Override
+  public String tabLodAmol(Isotope isotope, PopulationID populationID) {
+    double[] cts = new double[]{getMaxThr(isotope, populationID, true)};
+    double[] quant = applyQuant(cts, isotope, MolarUnit.ATTO_MOL);
+    return quant.length > 0 ? str(quant[0], NF.D1C2, NF.D1C2Exp) : EMPTY_CELL;
+  }
+
+  @Override
   public String tabPopNpCount(Isotope isotope, PopulationID populationID) {
     return check(isotope, populationID) ?
         str(getTrace(isotope).getPopulation(populationID).getEvents().size(), NF.D1C0) : EMPTY_CELL;
@@ -1135,6 +1229,46 @@ public class SampleImpl implements Sample, Serializable {
   }
 
   @Override
+  public String tabMeanMol(Isotope isotope, PopulationID populationID) {
+    String val = EMPTY_CELL;
+    Trace t = getTrace(isotope);
+    if (t != null && t.hasType(populationID)) {
+      val = str(mu(getData(isotope, populationID, EventType.NP,
+              quant.getExperimentalConditions().getEventPar(),
+              MolarUnit.ATTO_MOL)),
+          NF.D1C3Exp);
+    }
+    return val;
+  }
+
+
+  @Override
+  public String tabMedianMol(Isotope isotope, PopulationID populationID) {
+    String val = EMPTY_CELL;
+    Trace t = getTrace(isotope);
+    if (t != null && t.hasType(populationID)) {
+      val = str(md(getData(isotope, populationID, EventType.NP,
+              quant.getExperimentalConditions().getEventPar(),
+              MolarUnit.ATTO_MOL)),
+          NF.D1C3Exp);
+    }
+    return val;
+  }
+
+  @Override
+  public String tabMolSD(Isotope isotope, PopulationID populationID) {
+    String val = EMPTY_CELL;
+    Trace t = getTrace(isotope);
+    if (t != null && t.hasType(populationID)) {
+      val = str(sd(getData(isotope, populationID, EventType.NP,
+              quant.getExperimentalConditions().getEventPar(),
+              MolarUnit.ATTO_MOL)),
+          NF.D1C3Exp);
+    }
+    return val;
+  }
+
+  @Override
   public String tabPopBgMean(Isotope isotope, PopulationID populationID) {
     String val = EMPTY_CELL;
     Trace t = getTrace(isotope);
@@ -1219,6 +1353,50 @@ public class SampleImpl implements Sample, Serializable {
     Trace t = getTrace(isotope);
     if (t != null && t.getBaseline() != null && t.getBaseline().hasBaseline()) {
       val = str(mu(t.getBaseline().getBackgroundDistribution().getOutlierFactor()), NF.D1C3);
+    }
+    return val;
+  }
+
+  @Override
+  public String tabEquivBGConc(Isotope isotope) {
+    String val = EMPTY_CELL;
+    double bgConc = calcEquivBGConc(isotope);
+    if (bgConc > 0) {
+      val = str(bgConc, NF.D1C3, NF.D1C3Exp);
+    }
+    return val;
+  }
+
+  public double calcEquivBGConc(Isotope isotope) {
+    double val = 0d;
+    Trace t = getTrace(isotope);
+    if (t != null) {
+      double signalCtsPerDT = t.getTISeries().getMeanIntensity();
+      if (t.getBaseline() != null && t.getBaseline().hasBaseline()) {
+        signalCtsPerDT = mu(t.getBaseline().getBackgroundDistribution().getLocation());
+      }
+      double flowRateUllPerMin =
+          quant.getExperimentalConditions().getFlowRate(FlowUnit.MICROLITRE_PER_MINUTE);
+      double dwellTimeSec = t.getTISeries().getDT();
+      Quantity sensitivity = quant.getResponses().getOrCreateIonicResponse(isotope);
+      if (sensitivity.getValue() > 0) {
+        double sensitivityCtsPerFg = sensitivity.getUnit().convert(sensitivity.getValue(),
+            SensitivityUnit.CTS_PER_FEMTOGRAM);
+
+        // Step 1: convert signal to mass flow rate (fg/sec)
+        double massRateFgPerSec = signalCtsPerDT / (sensitivityCtsPerFg * dwellTimeSec);
+
+        // Step 2: convert flow rate to µL/sec
+        double flowRateUllPerSec = flowRateUllPerMin / 60.0;
+
+        // Step 3: compute concentration in fg/µL
+        double concFgPerUll = massRateFgPerSec / flowRateUllPerSec;
+
+        // Step 4: convert fg/µL to µg/L (1 fg/µL = 1e-3 µg/L)
+        double concUgPerL = concFgPerUll * 1e-3;
+
+        val = concUgPerL;
+      }
     }
     return val;
   }

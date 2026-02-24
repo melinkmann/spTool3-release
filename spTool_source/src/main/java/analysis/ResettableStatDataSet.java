@@ -178,7 +178,7 @@ public class ResettableStatDataSet implements StatDataSet, Serializable {
   public double calcCriticalLimit() {
     double lim = 0;
     if (distrID == Poisson.getID()) {
-      lim = Poisson.poissonCriticalLimit(alpha, location);
+      lim = Poisson.poissonCriticalLimit(alpha, location+ continuityEpsilon);
     }
     if (distrID == Gaussian.getID()) {
       lim = Gaussian.gaussianCriticalLimit(z, location, spread);
@@ -203,7 +203,7 @@ public class ResettableStatDataSet implements StatDataSet, Serializable {
   public double calcDetectionLimit() {
     double lim = 0;
     if (distrID == Poisson.getID()) {
-      lim = Poisson.poissonDetectionLimit(alpha, location);
+      lim = Poisson.poissonDetectionLimit(alpha, location+ continuityEpsilon);
     }
     if (distrID == Gaussian.getID()) {
       lim = Gaussian.gaussianDetectionLimit(z, location, spread);
@@ -227,7 +227,7 @@ public class ResettableStatDataSet implements StatDataSet, Serializable {
   public double calcLowerOutlierLimit() {
     double lim = 0;
     if (distrID == Poisson.getID()) {
-      lim = Poisson.poissonLowerOutlierLimit(alpha, location);
+      lim = Poisson.poissonLowerOutlierLimit(alpha, location+ continuityEpsilon);
     }
     if (distrID == Gaussian.getID()) {
       lim = Gaussian.gaussianLowerOutlierLimit(z, location, spread);

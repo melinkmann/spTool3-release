@@ -362,7 +362,8 @@ public class RawProcessingUtils {
 //      final HashMap<Element, double[]> cutPlasmaDiffusionDMap = matrix.getPlasmaDiffusionDMap();
 //      final HashMap<Isotope, double[]> cutIntensityMap = matrix.getIntensityMap();
 //
-  // To-do: figure out, how we make sure that we get the longest time strech, i.e., end up with equal length in all doule[] and also that this matches exactly the TISeries length??
+  // To-do: figure out, how we make sure that we get the longest time strech, i.e., end up with equal
+  // length in all doule[] and also that this matches exactly the TISeries length??
 //      // cut time
 //      for (Element element : arrivalTimeMap.keySet()) {
 //        int inclusiveStartIdx = -1;
@@ -388,7 +389,8 @@ public class RawProcessingUtils {
 //        // Ensure if successful identification
 //        if (inclusiveStartIdx < inclusiveStopIdx) {
 //          // get sub arrays
-//          arrivalTimeStamps = Arrays.copyOfRange(arrivalTimeStamps, inclusiveStartIdx, inclusiveStopIdx + 1);
+//          arrivalTimeStamps = Arrays.copyOfRange(arrivalTimeStamps, inclusiveStartIdx, inclusiveStopIdx +
+//          1);
 //          cutArrivalTimeMap.put(element, arrivalTimeStamps);
 //        }
 //

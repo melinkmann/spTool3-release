@@ -32,6 +32,7 @@ import org.apache.commons.math3.distribution.PoissonDistribution;
 import org.jfree.chart.JFreeChart;
 import processing.options.BinWidthEstimator;
 import processing.options.HistogramNormalization;
+import processing.options.MathMod;
 import tasks.BatchTask;
 import tasks.Task;
 import tasks.batch.SimpleLinearBatch;
@@ -93,8 +94,8 @@ public class DemoPlot {
         new ChartData("A relatively long sample name may lead to issues with readability.",
             t,
             ArrUtils.intArrToDoubleArr(cts),
-            "Some value on the X axis", MassUnit.FEMTO_GRAM,
-            "Some other value on the y", ViewUnits.NP_PER_SECOND),
+            "Some value on the X axis", MassUnit.FEMTO_GRAM, MathMod.NONE,
+            "Some other value on the y", ViewUnits.NP_PER_SECOND,MathMod.NONE),
         new ChartStyle(OkabeItoColors.VERMILION, 0.1,
             LineWidthDefaults.MEDIUM,
             LineLineDashDefaults.STRAIGHT,
@@ -109,8 +110,8 @@ public class DemoPlot {
         new ChartData("Another series.",
             t,
             ArrUtils.intArrToDoubleArr(ArrUtils.add(cts2, 50)),
-            "", MassUnit.FEMTO_GRAM,
-            "", ViewUnits.NP_PER_SECOND),
+            "", MassUnit.FEMTO_GRAM,MathMod.NONE,
+            "", ViewUnits.NP_PER_SECOND,MathMod.NONE),
         new ChartStyle(OkabeItoColors.PINK, 0.3,
             LineWidthDefaults.MEDIUM,
             LineLineDashDefaults.STRAIGHT,
@@ -124,8 +125,8 @@ public class DemoPlot {
         new ChartData("Another series.",
             t,
             ArrUtils.add(cts2, 100d),
-            "", MassUnit.FEMTO_GRAM,
-            "", ViewUnits.NP_PER_SECOND),
+            "", MassUnit.FEMTO_GRAM,MathMod.NONE,
+            "", ViewUnits.NP_PER_SECOND,MathMod.NONE),
         new ChartStyle(OkabeItoColors.GREEN_BLUE, 0.3,
             LineWidthDefaults.MEDIUM,
             LineLineDashDefaults.STRAIGHT,
@@ -139,8 +140,8 @@ public class DemoPlot {
         new ChartData("Pre Smooth.",
             t,
             ArrUtils.add(cts2, 15d),
-            "", MassUnit.FEMTO_GRAM,
-            "", ViewUnits.NP_PER_SECOND),
+            "", MassUnit.FEMTO_GRAM,MathMod.NONE,
+            "", ViewUnits.NP_PER_SECOND,MathMod.NONE),
         new ChartStyle(OkabeItoColors.ORANGE, 0.75,
             LineWidthDefaults.THIN,
             LineLineDashDefaults.STRAIGHT,
@@ -157,8 +158,8 @@ public class DemoPlot {
         new ChartData("Smooth.",
             averager.getCenterTime(),
             SavitzkyGolay.smoothSG(averager.getDataCTS(), 4, 3),
-            "", MassUnit.FEMTO_GRAM,
-            "", ViewUnits.NP_PER_SECOND),
+            "", MassUnit.FEMTO_GRAM,MathMod.NONE,
+            "", ViewUnits.NP_PER_SECOND,MathMod.NONE),
         new ChartStyle(OkabeItoColors.BLACK, 0.95,
             LineWidthDefaults.THICKER,
             LineLineDashDefaults.STRAIGHT,
@@ -175,8 +176,8 @@ public class DemoPlot {
         new ChartData("AV SM.",
             averager.getCenterTime(),
             SavitzkyGolay.smoothSG(averager.getDataCTS(), 4, 3),
-            "USA", MassUnit.FEMTO_GRAM,
-            "Depending Stuff", ViewUnits.NP_PER_SECOND),
+            "USA", MassUnit.FEMTO_GRAM,MathMod.NONE,
+            "Depending Stuff", ViewUnits.NP_PER_SECOND,MathMod.NONE),
         new ChartStyle(OkabeItoColors.BLACK, 1,
             LineWidthDefaults.MEDIUM,
             LineLineDashDefaults.STRAIGHT,

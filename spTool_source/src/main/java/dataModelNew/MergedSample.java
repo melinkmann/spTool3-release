@@ -36,14 +36,17 @@ import java.io.ObjectOutputStream;
 import java.io.Serial;
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
+import javafx.print.Collation;
 import math.stat.DriftFactor;
 import math.units.Unit;
 import math.units.enums.FlowUnit;
 import math.units.enums.MassUnit;
+import math.units.enums.MolarUnit;
 import math.units.enums.SizeUnit;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.logging.log4j.LogManager;
@@ -410,12 +413,29 @@ public class MergedSample implements Sample, Serializable {
   }
 
   @Override
-  public double getMaxThr(@Nullable Isotope isotope, PopulationID populationID) {
+  public double getMaxThr(@Nullable Isotope isotope, PopulationID populationID, boolean netSignal) {
     double maxThr = 0;
     for (Sample sample : samples) {
-      maxThr = Math.max(maxThr, sample.getMaxThr(isotope, populationID));
+      maxThr = Math.max(maxThr, sample.getMaxThr(isotope, populationID, netSignal));
     }
     return maxThr;
+  }
+
+  @Override
+  public double getMaxThr(@Nullable Isotope isotope, PopulationID populationID, boolean netSignal,
+                          Unit unit) {
+    double maxThrQ = 0;
+    for (Sample sample : samples) {
+      if (sample instanceof SampleImpl) {
+        double thr = sample.getMaxThr(isotope, populationID, netSignal);
+        double[] qThr = ((SampleImpl) sample).applyQuant(new double[]{thr}, isotope,
+            EventParameter.NET_AREA, unit);
+        if (qThr.length > 0) {
+          maxThrQ = Math.max(maxThrQ, qThr[0]);
+        }
+      }
+    }
+    return maxThrQ;
   }
 
   @Override
@@ -716,6 +736,80 @@ public class MergedSample implements Sample, Serializable {
         .sum();
     val = str(sum, NF.D1C0);
     return val;
+  }
+
+  @Override
+  public String tabLodCts(Isotope isotope, PopulationID populationID) {
+    String result = EMPTY_CELL;
+    List<Double> lodList = new ArrayList<>();
+    for (Sample sample : samples) {
+      lodList.add(sample.getMaxThr(isotope, populationID, true));
+    }
+    if (!lodList.isEmpty()) {
+      double worstLD = Collections.max(lodList);
+      result = str(worstLD, NF.D1C2);
+    }
+    return result;
+  }
+
+  @Override
+  public String tabLodAg(Isotope isotope, PopulationID populationID) {
+    String result = EMPTY_CELL;
+    List<Double> lodList = new ArrayList<>();
+    for (Sample sample : samples) {
+      if (sample instanceof SampleImpl) {
+        double[] cts = new double[]{getMaxThr(isotope, populationID, true)};
+        double[] quant = ((SampleImpl) sample).applyQuant(cts, isotope, MassUnit.ATTO_GRAM);
+        if (quant.length > 0) {
+          lodList.add(quant[0]);
+        }
+      }
+    }
+    if (!lodList.isEmpty()) {
+      double worstLD = Collections.max(lodList);
+      result = str(worstLD, NF.D1C2, NF.D1C2Exp);
+    }
+    return result;
+  }
+
+  @Override
+  public String tabLodNm(Isotope isotope, PopulationID populationID) {
+    String result = EMPTY_CELL;
+    List<Double> lodList = new ArrayList<>();
+    for (Sample sample : samples) {
+      if (sample instanceof SampleImpl) {
+        double[] cts = new double[]{getMaxThr(isotope, populationID, true)};
+        double[] quant = ((SampleImpl) sample).applyQuant(cts, isotope, SizeUnit.NANO_METER);
+        if (quant.length > 0) {
+          lodList.add(quant[0]);
+        }
+      }
+    }
+    if (!lodList.isEmpty()) {
+      double worstLD = Collections.max(lodList);
+      result = str(worstLD, NF.D1C2, NF.D1C2Exp);
+    }
+    return result;
+  }
+
+  @Override
+  public String tabLodAmol(Isotope isotope, PopulationID populationID) {
+    String result = EMPTY_CELL;
+    List<Double> lodList = new ArrayList<>();
+    for (Sample sample : samples) {
+      if (sample instanceof SampleImpl) {
+        double[] cts = new double[]{getMaxThr(isotope, populationID, true)};
+        double[] quant = ((SampleImpl) sample).applyQuant(cts, isotope, MolarUnit.ATTO_MOL);
+        if (quant.length > 0) {
+          lodList.add(quant[0]);
+        }
+      }
+    }
+    if (!lodList.isEmpty()) {
+      double worstLD = Collections.max(lodList);
+      result = str(worstLD, NF.D1C2, NF.D1C2Exp);
+    }
+    return result;
   }
 
   @Override
@@ -1051,6 +1145,64 @@ public class MergedSample implements Sample, Serializable {
     return val;
   }
 
+
+  @Override
+  public String tabMeanMol(Isotope isotope, PopulationID populationID) {
+    String val = EMPTY_CELL;
+    List<double[]> data = new ArrayList<>();
+    for (Sample sample : samples) {
+      Trace t = sample.getTrace(isotope);
+      if (t != null && t.hasType(populationID)) {
+        data.add(getData(isotope, populationID, EventType.NP,
+            quant.getExperimentalConditions().getEventPar(),
+            MolarUnit.ATTO_MOL));
+      }
+    }
+    double[] allData = ArrUtils.merge(data);
+    if (allData.length > 0) {
+      val = str(mu(allData), NF.D1C3, NF.D1C3Exp);
+    }
+    return val;
+  }
+
+
+  @Override
+  public String tabMedianMol(Isotope isotope, PopulationID populationID) {
+    String val = EMPTY_CELL;
+    List<double[]> data = new ArrayList<>();
+    for (Sample sample : samples) {
+      Trace t = sample.getTrace(isotope);
+      if (t != null && t.hasType(populationID)) {
+        data.add(getData(isotope, populationID, EventType.NP,
+            quant.getExperimentalConditions().getEventPar(),
+            MolarUnit.ATTO_MOL));
+      }
+    }
+    double[] allData = ArrUtils.merge(data);
+    if (allData.length > 0) {
+      val = str(md(allData), NF.D1C3, NF.D1C3Exp);
+    }
+    return val;
+  }
+
+  @Override
+  public String tabMolSD(Isotope isotope, PopulationID populationID) {
+    String val = EMPTY_CELL;
+    List<double[]> data = new ArrayList<>();
+    for (Sample sample : samples) {
+      Trace t = sample.getTrace(isotope);
+      if (t != null && t.hasType(populationID)) {
+        data.add(getData(isotope, populationID, EventType.NP,
+            quant.getExperimentalConditions().getEventPar(), MolarUnit.ATTO_MOL));
+      }
+    }
+    double[] allData = ArrUtils.merge(data);
+    if (allData.length > 0) {
+      val = str(sd(allData), NF.D1C4, NF.D1C3Exp);
+    }
+    return val;
+  }
+
   @Override
   public String tabPopBgMean(Isotope isotope, PopulationID populationID) {
     String val = EMPTY_CELL;
@@ -1167,6 +1319,29 @@ public class MergedSample implements Sample, Serializable {
     return getAllSamples().stream()
         .map(s -> s.tabBlnOutlierZ(isotope, populationID))
         .collect(Collectors.joining(" --- "));
+  }
+
+  @Override
+  public String tabEquivBGConc(Isotope isotope) {
+    String val = EMPTY_CELL;
+    double sumBG = 0;
+    int counter = 0;
+    for (Sample sample : samples) {
+      if (sample instanceof SampleImpl) {
+        double bgConc = ((SampleImpl) sample).calcEquivBGConc(isotope);
+        if (bgConc > 0) {
+          sumBG += bgConc;
+          counter++;
+        }
+      }
+    }
+
+    // calc mean conc
+    if (counter > 0 && sumBG > 0) {
+      val = str(sumBG / counter, NF.D1C3, NF.D1C3Exp);
+    }
+
+    return val;
   }
 
   @Override

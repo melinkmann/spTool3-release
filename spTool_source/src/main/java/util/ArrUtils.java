@@ -18,17 +18,10 @@
 package util;
 
 import java.lang.reflect.Array;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Random;
+import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+
 import javafx.util.Pair;
 import math.Arithmetic;
 import org.apache.logging.log4j.LogManager;
@@ -432,6 +425,17 @@ public abstract class ArrUtils {
     return product;
   }
 
+  // --------------------------- Miscellaneous ------------------------------------------
+
+
+  public static Pair<Integer, Integer> countTrue(boolean... booleans) {
+    int count = 0;
+    for (boolean b : booleans) {
+      if (b) count++;
+    }
+    return new Pair<>(booleans.length, count);
+  }
+
   // --------------------------- Array vs.function ------------------------------------------
 
   // e.g. exp(a), sine(a), ...
@@ -765,7 +769,6 @@ public abstract class ArrUtils {
     return nzList;
   }
 
-
   /**
    * @param targetValues e.g. time values
    * @param thresholds   e.g. data based on which we decide whether to include or exclude the time.
@@ -811,8 +814,7 @@ public abstract class ArrUtils {
   }
 
   /**
-   * @param targetValues e.g. time values
-   * @param thresholds   e.g. data based on which we decide whether to include or exclude the time.
+   *
    */
   public static boolean isZero(double[] array) {
     boolean allZero = true;
@@ -823,6 +825,18 @@ public abstract class ArrUtils {
       }
     }
     return allZero;
+  }
+
+  public static boolean hasDuplicates(double[] arr) {
+    Set<Double> seen = new HashSet<>();
+    for (double value : arr) {
+      // seen.add(value) -- Returns: true if this set did not already contain the specified element
+      if (!seen.add(value)) {
+        // found duplicate
+        return true;
+      }
+    }
+    return false;
   }
 
   /**
@@ -1143,7 +1157,7 @@ public abstract class ArrUtils {
    * @return
    */
   public static int[] continueIndices(int[] firstArray, int lengthOfFirstRefFrame,
-      int[] secondArray) {
+                                      int[] secondArray) {
     int[] resultArr = firstArray;
     if (secondArray.length > 0) {
       int[] adjustedSecondArray = new int[secondArray.length];
@@ -1237,7 +1251,7 @@ public abstract class ArrUtils {
   }
 
   public static double[] exclude(double[] excludeFromThisArray,
-      double[] thrArray, double thr, Comparators comparator) {
+                                 double[] thrArray, double thr, Comparators comparator) {
     List<Double> trimmed = new ArrayList<>();
     for (int i = 0; i < thrArray.length; i++) {
       if (!comparator.is(thrArray[i], thr)) {
@@ -1287,7 +1301,8 @@ public abstract class ArrUtils {
        1) no index check needed as before we made sure we are not at the edges
        2) Why check at insertionPoint-1 and insertionPoint???
         --> GPT: "If value were inserted into the array to keep it sorted, at which index would it go?"
-            So if we look at the situation around insertionPoint, the two nearest candidates for "closest value" are:
+            So if we look at the situation around insertionPoint, the two nearest candidates for "closest
+            value" are:
             - sorted[insertionPoint - 1] (the last value smaller than value)
             - sorted[insertionPoint] (the first value greater than value)
        */

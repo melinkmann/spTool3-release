@@ -23,7 +23,6 @@ import dataModelNew.Sample;
 import dataModelNew.SampleImpl;
 import dataModelNew.Trace;
 import dataModelNew.fxImpl.FxSample;
-import dataModelNew.mz.MZValue;
 import gui.dialog.FxEntry;
 import gui.dialog.FxEntryFactory;
 import gui.dialog.FxStageButton;
@@ -37,7 +36,6 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 import gui.dialog.mainImpl.ViewListDialog;
-import gui.util.UiUtil;
 import javafx.scene.control.Menu;
 import javafx.scene.control.MenuItem;
 import org.apache.commons.lang3.exception.ExceptionUtils;
@@ -76,8 +74,6 @@ import tasks.single.SearchTask;
 import tasks.single.TimeRoiTask;
 import util.NF;
 import util.SnF;
-
-import static dataModelNew.mz.Element.Au;
 
 /*
 - save processing history (at least store the method!)
@@ -139,11 +135,11 @@ public abstract class Actions {
   }
 
 
-  public static void reprocess(Method method, List<FxSample> fxSamples) {
+  public static void reprocess(Method currentMethodOnUI, List<FxSample> fxSamples) {
 
     // Make sure to copy the method: otherwise, we only store a pointer.
     // Use copy without file to keep sync with method file on drive
-    method = method.getCopyWithoutFile();
+    currentMethodOnUI = currentMethodOnUI.getCopyWithoutFile();
 
     List<Sample> samples = new ArrayList<>();
 
@@ -153,7 +149,7 @@ public abstract class Actions {
 
     for (Sample s : samples) {
       for (Trace trace : s.getTraces()) {
-        trace.voidClearEvaluation();
+        trace.clearEvaluation();
       }
     }
 
@@ -166,7 +162,7 @@ public abstract class Actions {
 
         AtomicReference<Sample> sampleRef = new AtomicReference<>(sample);
 
-        List<Task> sampleSubTasks = new ArrayList<>(getProcessingSteps(method, sampleRef));
+        List<Task> sampleSubTasks = new ArrayList<>(getProcessingSteps(currentMethodOnUI, sampleRef));
 
         // Skip reprocessing of raw data, else: unnecessary calc and Buffers)
         // sampleSubTasks.removeIf(t -> t instanceof RawDataProcessingTask); REALLY?
@@ -181,20 +177,21 @@ public abstract class Actions {
          Use try/catch: deserialization may fail when sample has older version of ParamSet.
          */
 
-        Method oldMethod;
+        Method oldMethodFromSample;
         try {
-          oldMethod = sample.getMethod().getCopyWithoutFile();
+          oldMethodFromSample = sample.getMethod().getCopyWithoutFile();
         } catch (Exception e) {
-          oldMethod = new ListMethod();
+          oldMethodFromSample = new ListMethod();
           LOGGER.error("Cannot copy method. Likely cause: sample is from project of older version."
               + " Message: " + ExceptionUtils.getMessage(e)
               + ". Details:" + ExceptionUtils.getStackTrace(e));
         }
 
-        Method newMethod = method.getCopyWithoutFile();
+        Method newMethod = currentMethodOnUI.getCopyWithoutFile();
         newMethod.clearSets();
-        // refill with old generator methods and new all other methods
-        for (ParamSet oldSet : oldMethod.getSets()) {
+
+        // refill with old generator methods and new all later other methods
+        for (ParamSet oldSet : oldMethodFromSample.getSets()) {
           if (oldSet instanceof CsvInterpreterParams
               || oldSet instanceof MCSimGeneralParams
               || oldSet instanceof MCSimParticleParams
@@ -202,7 +199,19 @@ public abstract class Actions {
             newMethod.addSet(oldSet);
           }
         }
-        for (ParamSet currentSet : method.getSets()) {
+
+        // Special case: when processing a real, i.e., loaded sample for the FIRST time, we should add csv!
+        // This must be done before adding the other processing methods to have csv at the top
+        if (newMethod.getSets().stream().noneMatch(s -> s instanceof CsvInterpreterParams)) {
+          for (ParamSet currentSet : currentMethodOnUI.getSets()) {
+            if (currentSet instanceof CsvInterpreterParams)
+              newMethod.addSet(currentSet);
+          }
+        }
+
+        // add all processing param sets but not the Csv/Sim, ... sets. Why?
+        // When the method in the UI changes, the sample is still made/loaded with the old param settings!!
+        for (ParamSet currentSet : currentMethodOnUI.getSets()) {
           if (!(currentSet instanceof CsvInterpreterParams)
               && !(currentSet instanceof MCSimGeneralParams)
               && !(currentSet instanceof MCSimParticleParams)
@@ -210,6 +219,7 @@ public abstract class Actions {
             newMethod.addSet(currentSet);
           }
         }
+
 
         sample.setMethod(newMethod);
       }
@@ -480,7 +490,6 @@ public abstract class Actions {
 
     });
   }
-
 
 
   private static @NotNull ViewListDialog<String> getStringViewListDialog(List<String> info) {

@@ -20,8 +20,10 @@ package processing.parameters;
 import gui.util.TextFormatterOption;
 import gui.util.TextFormatterSupplier;
 import io.XmlUtil;
+
 import java.io.Serial;
 import java.io.Serializable;
+
 import javafx.scene.control.TextFormatter;
 import org.apache.commons.text.StringEscapeUtils;
 import org.w3c.dom.Element;
@@ -33,15 +35,25 @@ public class ReadOnlyTextParameter extends AbstractParameter<String> implements 
   private static final long serialVersionUID = 1_000_000L;
 
   private String value;
-  // Supplier allows to call the same method again. Otherwise, the same formatter will be used in various UI controls at the same time.
+  // Supplier allows to call the same method again. Otherwise, the same formatter will be used in various
+  // UI controls at the same time.
   private final TextFormatterOption textFormatterOption; // has to be a SOURCE, i.e. a method reference!
 
   public ReadOnlyTextParameter(String label,
-      String explanation,
-      String value,
-      TextFormatterOption textFormatterOption,
-      boolean isLimitedToExperts,
-      String xmlLabel) {
+                               String explanation,
+                               String value) {
+    super(label, explanation, value, false, "StaticReadOnlyTextParameter");
+    this.value = value;
+    this.textFormatterOption = TextFormatterOption.ALL_PASS;
+  }
+
+
+  public ReadOnlyTextParameter(String label,
+                               String explanation,
+                               String value,
+                               TextFormatterOption textFormatterOption,
+                               boolean isLimitedToExperts,
+                               String xmlLabel) {
     super(label, explanation, value, isLimitedToExperts, xmlLabel);
     this.value = value;
     this.textFormatterOption = textFormatterOption;

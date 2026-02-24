@@ -42,6 +42,7 @@ import org.jfree.data.statistics.HistogramDataset;
 import org.jfree.data.xy.XYDataset;
 import processing.options.BinWidthEstimator;
 import processing.options.HistogramNormalization;
+import processing.options.MathMod;
 import util.ArrUtils;
 import visualizer.charts.BarFillPattern;
 import visualizer.charts.SpChartFactory;
@@ -141,7 +142,7 @@ public abstract class EMD {
     // Compute exponential similarity: y = (e^{-b x} - e^{-b}) / (1 - e^{-b})
     double decay = Math.E; // other values possible, larger values scaler decay stronger
     double expMinusB = Math.exp(-decay);
-    double similarity = (Math.exp(-decay * emd1D(arr1, arr2) ) - expMinusB) / (1 - expMinusB);
+    double similarity = (Math.exp(-decay * emd1D(arr1, arr2)) - expMinusB) / (1 - expMinusB);
     return similarity;
   }
 
@@ -261,8 +262,8 @@ public abstract class EMD {
         new HistogramChartData(
             "Dummy",
             x,
-            "X", ViewUnits.NONE,
-            "Y", ViewUnits.NONE, 0d),
+            "X", ViewUnits.NONE,MathMod.NONE,
+            "Y", ViewUnits.NONE,MathMod.NONE, 0d),
         new HistoChartStyle(OkabeItoColors.BLACK,
             1, BarFillPattern.NONE)
     ));
@@ -271,8 +272,8 @@ public abstract class EMD {
         new HistogramChartData(
             "Dummy",
             y,
-            "X", ViewUnits.NONE,
-            "Y", ViewUnits.NONE, 0d),
+            "X", ViewUnits.NONE, MathMod.NONE,
+            "Y", ViewUnits.NONE, MathMod.NONE, 0d),
         new HistoChartStyle(OkabeItoColors.BLACK,
             1, BarFillPattern.NONE)
     ));

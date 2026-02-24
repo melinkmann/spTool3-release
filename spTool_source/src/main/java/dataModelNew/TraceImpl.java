@@ -113,7 +113,7 @@ public class TraceImpl implements Trace, Serializable {
   @Override
   public Trace copy(Sample newSample) {
     Trace newTrace = new TraceImpl(newSample,
-        mzValue, tiSeries, tiSeries, rawDataFlags, baseline, populations);
+        mzValue, tiSeries, tiSeriesCopy, rawDataFlags, baseline, populations);
     return newTrace;
   }
 
@@ -300,7 +300,7 @@ public class TraceImpl implements Trace, Serializable {
   }
 
   @Override
-  public void voidClearEvaluation() {
+  public void clearEvaluation() {
     this.baseline = new Baseline();
     this.populations.clear();
     this.xySeriesPlotCache = new SoftReference<>(null);
@@ -337,16 +337,32 @@ public class TraceImpl implements Trace, Serializable {
   }
 
   public void setTISeriesLimits(double lower, double upper) {
-    this.tiSeriesCopy = tiSeries;
+    /*
+    IMPORTANT: initially, tiSeries and tiSeriesCopy are THE SAME OBJECT.
+    The copy is always the "full & initial" series.
+    When cutting time series here, we must not call: tiSeriesCopy = tiSeries.copy().
+    When setting time limit twice in succession, the copy is replaced with the cut instance stored in
+    tiSeries!
+    So, what should we do?
+    1) When tiSeries is the same object as tiSeriesCopy, they are ref to the same object.
+    In that case, we must create a copy or else the time cutting would affect the shared object.
+    2) Otherwise, the copy is not the same ref and not copy needs to be created.
+       This could be the case, a. when initial state or b. after resetting.
+    3) In any case, always call tiSeriesCopy = copy of the copy.
+     */
+
+    if (tiSeries == tiSeriesCopy) {
+      this.tiSeriesCopy = tiSeriesCopy.copy();
+    }
     this.tiSeries = RawProcessingUtils.cutTime(tiSeries, lower, upper);
     // when we do this, full reset has to occur!
-    voidClearEvaluation();
+    clearEvaluation();
   }
 
   public void resetTISeriesLimits() {
     this.tiSeries = tiSeriesCopy;
     // when we do this, full reset has to occur!
-    voidClearEvaluation();
+    clearEvaluation();
   }
 
   @Override

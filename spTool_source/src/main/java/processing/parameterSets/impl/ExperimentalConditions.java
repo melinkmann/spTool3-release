@@ -103,21 +103,28 @@ public class ExperimentalConditions extends AbstractParamSet implements ParamSet
 
     this.sampleWideNPSourceParam = new ComboEnumParameter<>(
         "Particle",
-        "Decide which parameter is used for intensity calibration",
+        """
+            Decide which parameter is used for intensity:
+            Whenever a 'particle signal' is needed, e.g., to create a calibration curve
+            based on particle intensity or to calculate particle masses/sizes, ...
+            this parameter defines how the particulate signal is estimated""",
         QuantParam.NP_AREA_MEAN,
         QuantParam.getNP(),
         QuantParam.class,
-        false,
+        true,
         "sampleWideNPSourceParam"
     );
 
     this.sampleWideIonicSourceParam = new ComboEnumParameter<>(
         "Ionic",
-        "Decide which parameter is used for intensity calibration",
+        """
+            Decide which parameter is used for intensity:
+            Whenever an 'ionic signal' is needed, e.g., to create a calibration curve
+            this parameter defines how the ionic signal is estimated""",
         QuantParam.RAW_MEAN,
         QuantParam.getIonic(),
         QuantParam.class,
-        false,
+        true,
         "sampleWideIonicSourceParam"
     );
 

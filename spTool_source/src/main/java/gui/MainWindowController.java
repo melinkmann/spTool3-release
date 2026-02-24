@@ -87,10 +87,7 @@ import javax.annotation.Nullable;
 
 import javafx.util.StringConverter;
 import math.units.Unit;
-import math.units.enums.IntensityUnit;
-import math.units.enums.MassUnit;
-import math.units.enums.SizeUnit;
-import math.units.enums.ViewUnits;
+import math.units.enums.*;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -166,7 +163,9 @@ public class MainWindowController {
           MassUnit.FEMTO_GRAM,
           MassUnit.ATTO_GRAM,
           SizeUnit.MICRO_METER,
-          SizeUnit.NANO_METER);
+          SizeUnit.NANO_METER,
+          MolarUnit.FEMTO_MOL,
+          MolarUnit.ATTO_MOL);
     } else {
       availableUnits = FXCollections.observableArrayList(IntensityUnit.CTS);
     }
@@ -178,7 +177,17 @@ public class MainWindowController {
       public String toString(Unit u) {
         String value = "N/A";
         if (u != null) {
-          value = u.getUiString();
+          String prefix = "";
+          if (u instanceof MassUnit) {
+            prefix = "Mass";
+          } else if (u instanceof SizeUnit) {
+            prefix = "Size";
+          } else if (u instanceof MolarUnit) {
+            prefix = "Mol";
+          } else if (u instanceof IntensityUnit) {
+            prefix = "Intensity";
+          }
+          value = prefix + ": " + u.getUiString();
         }
         return value;
       }

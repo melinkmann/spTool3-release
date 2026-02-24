@@ -48,7 +48,6 @@ public class BaselineParams extends AbstractParamSet implements ParamSet {
   @Serial
   private static final long serialVersionUID = 1000_000_000;
 
-
   public static final String XML_ELEMENT_TAG = "BaselineParams";
 
   private final Parameter<BaselineDynamic> baselineDynamics;
@@ -134,7 +133,7 @@ public class BaselineParams extends AbstractParamSet implements ParamSet {
     this.poissonChoice = new ComboEnumParameter<>(
         "Poisson model",
         "Baseline model in case Poisson distribution is chosen",
-        DistributionModel.POISSON,
+        DistributionModel.POISSON_CURRIE,
         DistributionModel.listOptionsForPoisson(),
         DistributionModel.class,
         false,
@@ -272,7 +271,9 @@ public class BaselineParams extends AbstractParamSet implements ParamSet {
         """
             This value specifies a smallest accepted value for the mean (location).
             If the empirical location is smaller than this value, no smart incrementation is carried out.
-            If iteration fails entirely, this µ will be tested as a default mean in case of failure""",
+            If iteration fails entirely, this µ will be tested as a default mean in case of failure.
+            
+            For the Poisson model, this behavior is enforced using the epsilon continuity correction""",
         0.1,
         NF.D1C2,
         TextFormatterOption.ASSURE_POSITIVE_DOUBLE,
@@ -326,9 +327,31 @@ public class BaselineParams extends AbstractParamSet implements ParamSet {
 
     this.outlierPoissonOffsetBoolean = new BooleanParameter(
         "Apply constant offset",
-        "Similar to Currie's YD-type formula. Adding a constant stabilizes convergence.",
-        false,
+        """
+            Adding a constant stabilizes convergence during outlier testing.
+            This approach is very similar to Currie's YD-type formula which has a constant offset (z^2)
+            as described in https://doi.org/10.1039/D3JA00292F
+            'Improving detection thresholds and robust event filtering in single-particle and single-cell ICP-MS analysis'
+            by Elinkmann et al 2023.
+            
+            In spTool3, the outlier test is carried out based on left and right sided critical limits.
+            In that case, the Currie formulae do not propose a z^2 constant offset.
+            However, the stabilizing effect on outlier removal is desired and useful. As such, the implementation
+            for spTool3 computes Yc and the computes
+            lower outlier limit (LOL): LOL = Yc -  offset.
+            upper outlier limit (UOL): UOL = Yc + offset.
+            This differs from the original Currie publication in that sense that it does not consider
+            a lower limit as the critical limit to distinguish between background and 'true positive events'
+            is strictly on the upper limit. However, to avoid biasing the mean towards larger values,
+            here the offset is subtracted for LOL.
+            
+            This is intended for 'Poisson' and 'Poisson Currie-1968'
+            as well as the 'Poisson normal-approximation' modelling.
+            
+            The compound Poisson model does not seem to require is, as noise levels are generally higher
+            on time-of-flight machines""",
         true,
+        false,
         "outlierPoissonOffsetBoolean"
     );
 
@@ -338,7 +361,7 @@ public class BaselineParams extends AbstractParamSet implements ParamSet {
         2.71,
         NF.D1C2,
         TextFormatterOption.ASSURE_NONZERO_POSITIVE_DOUBLE,
-        true,
+        false,
         "outlierPoissonOffsetValue"
     );
 
@@ -378,9 +401,15 @@ public class BaselineParams extends AbstractParamSet implements ParamSet {
         "Epsilon",
         "Apply continuity correction",
         """
-            Apply continuity correction ('epsilon')""",
-        false,
+            Apply continuity correction ('epsilon'): µBG' = µBG + e.
+            
+            This option is particularly helpful when the mean background signal is very low.
+            Then, outlier may yield µ=0, which results in thresholds that are too low.
+            While it's mathematical origin comes from the fact that the Poisson distribution is discrete
+            (i.e., it only allows integer numbers), it's effect on data processing is similar to the
+            parameter 'default µ' which is used for the Gaussian when the background approaches 0""",
         true,
+        false,
         "applyPoissonContinuityCorrection"
     );
     this.poissonContinuityCorrection = new DoubleParameter(
@@ -390,7 +419,7 @@ public class BaselineParams extends AbstractParamSet implements ParamSet {
         0.5,
         NF.D1C2,
         TextFormatterOption.ASSURE_NONZERO_POSITIVE_DOUBLE,
-        true,
+        false,
         "poissonContinuityCorrection"
     );
 
@@ -498,9 +527,10 @@ public class BaselineParams extends AbstractParamSet implements ParamSet {
         applyPoissonContinuityCorrection);
     poissonChoice.addConditionalChild(DistributionModel.POISSON_APPROXIMATION,
         applyPoissonContinuityCorrection);
+    poissonChoice.addUnconditionalChild(outlierTestTypePoisson);
+
     applyPoissonContinuityCorrection.addConditionalChild(true,
         poissonContinuityCorrection);
-    poissonChoice.addUnconditionalChild(outlierTestTypePoisson);
 
     gaussianChoice.addUnconditionalChild(
         measureOfLocationGauss,

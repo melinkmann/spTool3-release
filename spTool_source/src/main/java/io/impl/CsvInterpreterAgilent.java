@@ -29,11 +29,11 @@ import dataModelNew.Trace;
 import dataModelNew.TraceImpl;
 import dataModelNew.mz.MZValue;
 import io.FileInterpreterUtils;
+
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Locale;
+import java.util.*;
 import java.util.stream.Collectors;
+
 import math.stat.Mode;
 import math.units.Unit;
 import math.units.enums.IntensityUnit;
@@ -74,6 +74,8 @@ public class CsvInterpreterAgilent implements CsvInterpreter {
     you get a csv with dT = DT
     one file for each mz
     second file starting at the continuous time, i.e, not zero
+
+  B1. special case: several gas modes but the same element (e.g., for TE calculation in different modes)
 
   C. just several isotopes, e.g., for calibration at longer DT
     you get a csv with dt = n · DT
@@ -141,7 +143,6 @@ public class CsvInterpreterAgilent implements CsvInterpreter {
           + ". Details: " + ExceptionUtils.getStackTrace(e));
     }
 
-    List<Trace> traces = new ArrayList<>();
     List<MZValue> mzValues = new ArrayList<>();
 
     /*
@@ -231,7 +232,8 @@ public class CsvInterpreterAgilent implements CsvInterpreter {
             String signalStr = row[colIdx];
             if (!signalStr.isEmpty() && SnF.isValidDoubleSilent(signalStr)) {
 
-              // The intensity is a valid value. Now, increment traceCounter (counting the series) and add value.
+              // The intensity is a valid value. Now, increment traceCounter (counting the series) and add
+              // value.
               traceCounter++;
               double signalValue = SnF.strToDouble(signalStr);
 
@@ -264,7 +266,6 @@ public class CsvInterpreterAgilent implements CsvInterpreter {
 
       if (equalLength) {
 
-        List<TISeries> tiSeriesList = new ArrayList<>();
 
         ///////////////////////////////////////////////////////////////////////
         // Check for gas mode gap
@@ -280,62 +281,115 @@ public class CsvInterpreterAgilent implements CsvInterpreter {
           }
         }
 
-        // Split if there is gap
+        /*
+        Top level map: each mz
+        Low level map: index of the section, i.e., which gas mode, i.e., which sample
+         */
+        Map<MZValue, HashMap<Integer, TISeries>> tiSeriesListMap = new LinkedHashMap<>();
+
+        // Split if there is gap:
         if (timeHasGasModeGap) {
           List<Section> sections = splitByTimeGap(time, allIntensitySeries, minSwitchTimeSec);
+          // When same isotope is in several sections: each section must be parsed as one sample!
 
           // For each intensity series, find the section where it has non-zero sum
           for (int i = 0; i < allIntensitySeries.size(); i++) {
-            for (Section section : sections) {
+            for (int j = 0; j < sections.size(); j++) {
+              Section section = sections.get(j);
               if (section.allSignalSeriesOfSection.size() == allIntensitySeries.size()) {
                 double sum = ArrUtils.doubleSum(section.getAllSignalSeriesOfSection().get(i));
                 if (sum > 0) {
                   double[] correctedTime = replaceTimeStamps(section.getTimeOfSection());
-                  tiSeriesList.add(new TISeriesRAM(
-                      correctedTime,
-                      section.getAllSignalSeriesOfSection().get(i)));
+                  // Make sure that we can call get on mz list without error
+                  if (mzValues.size() == allIntensitySeries.size()) {
+                    MZValue mz = mzValues.get(i);
+                    // add list
+                    if (!tiSeriesListMap.containsKey(mz)) tiSeriesListMap.put(mz, new LinkedHashMap<>());
+                    // put tiSeries to list
+                    tiSeriesListMap.get(mz).put(j, new TISeriesRAM(
+                        correctedTime,
+                        section.getAllSignalSeriesOfSection().get(i)));
+                  }
                   /*
                    If someone tries to have the same isotope in multiple gas modes,
                    we only use the first occurrence. This break statement enforces that.
+                   Edit: we switched to allow multiple gas modes for the same isotope
                    */
-                  break;
+                  // break;
                 }
               }
             }
           }
         } else {
-          for (List<Double> intensitySeries : allIntensitySeries) {
-            double[] correctedTime = replaceTimeStamps(time);
-            tiSeriesList.add(new TISeriesRAM(correctedTime, intensitySeries));
+          // Make sure that we can call get on mz list without error
+          if (mzValues.size() == allIntensitySeries.size()) {
+            for (int i = 0; i < allIntensitySeries.size(); i++) {
+              List<Double> intensitySeries = allIntensitySeries.get(i);
+              double[] correctedTime = replaceTimeStamps(time);
+              MZValue mz = mzValues.get(i);
+              // add list
+              if (!tiSeriesListMap.containsKey(mz)) tiSeriesListMap.put(mz, new LinkedHashMap<>());
+              tiSeriesListMap.get(mz).put(0, new TISeriesRAM(correctedTime, intensitySeries));
+            }
           }
         }
 
-        Sample sample = new SampleImpl(sampleName, new SampleFile(file, sampleName));
-        sample.setComment("Batch: " + batchName);
-        if (mzValues.size() == tiSeriesList.size()) {
-          for (int i = 0; i < mzValues.size(); i++) {
-            // Create sample.
-            TISeries tiSeries;
-            double[] x = tiSeriesList.get(i).getTime();
-            double[] y = tiSeriesList.get(i).getIntensity();
-            boolean convertToCts = RawProcessingUtils.checkConversion(conversion, unit, y);
-            if (isIonic) {
-              int nMZ = mzValues.size();
-              x = ArrUtils.divide(x, nMZ);
-              LOGGER.trace("Time stamps were divided by number of mz to account for QMS scan.");
-            }
-            if (convertToCts) {
-              LOGGER.trace("Check for unit conversion: applying conversion to counts.");
-              y = RawProcessingUtils.cpsToCts(x, y);
-            }
-            tiSeries = new TISeriesHDD(x, y);
-            Trace trace = new TraceImpl(sample, mzValues.get(i), tiSeries);
-            traces.add(trace);
+        // Determine how many samples to create; each section becomes one sample if an isotope occurs
+        // multiple times (e.g., measure Au in no gas and He mode)
+        int noOfSamples = 0;
+        for (HashMap<Integer, TISeries> innerMap : tiSeriesListMap.values()) {
+          for (Integer key : innerMap.keySet()) {
+            noOfSamples = Math.max(noOfSamples, key + 1); // number is index + 1
           }
         }
-        traces.forEach(sample::addTrace);
+
+        // make sure the list is cleared
         this.samples.clear();
-        this.samples.add(sample);
+
+        // iterate over the samples
+        for (int sIdx = 0; sIdx < noOfSamples; sIdx++) {
+
+          String sctID = noOfSamples > 1 ? "Gas mode " + (sIdx + 1) + " " : "";
+          Sample sample = new SampleImpl(sctID + sampleName, new SampleFile(file, sctID + sampleName));
+          sample.setComment("Batch: " + batchName);
+          List<Trace> traces = new ArrayList<>();
+
+          // iterate over all mz to fill the list of traces for the current sample
+          for (MZValue mzValue : tiSeriesListMap.keySet()) {
+            HashMap<Integer, TISeries> tiSeriesMap = tiSeriesListMap.get(mzValue);
+
+            // does this gas mode (=section = sample) have data for that isotope?
+            if (tiSeriesMap.containsKey(sIdx)) {
+              TISeries rawSeries = tiSeriesMap.get(sIdx);
+              TISeries tiSeries;
+              double[] x = rawSeries.getTime();
+              double[] y = rawSeries.getIntensity();
+              // convert units
+              boolean convertToCts = RawProcessingUtils.checkConversion(conversion, unit, y);
+              // Check if time needs to be divided
+              if (isIonic) {
+                /*
+                  TODO: Unsure about agilent data format: what happens for ionic, if certain elements are
+                   acquired in one gas mode only? Maybe, we'd have to divide by the number of nonzero mz
+                   in the section, i.e., tiSeriesMap.size() instead of mzValues.size()?
+                 */
+                int nMZ = mzValues.size();
+                x = ArrUtils.divide(x, nMZ);
+                LOGGER.trace("Time stamps were divided by number of mz to account for QMS scan.");
+              }
+              if (convertToCts) {
+                LOGGER.trace("Check for unit conversion: applying conversion to counts.");
+                y = RawProcessingUtils.cpsToCts(x, y);
+              }
+              tiSeries = new TISeriesHDD(x, y);
+              Trace trace = new TraceImpl(sample, mzValue, tiSeries);
+              traces.add(trace);
+            }
+          }
+          traces.forEach(sample::addTrace);
+          this.samples.add(sample);
+        }
+
         LOGGER.trace("Finished reading Agilent sample.");
 
 

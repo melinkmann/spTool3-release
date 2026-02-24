@@ -21,25 +21,45 @@ import visualizer.charts.BarFillPattern;
 import visualizer.styles.Colors;
 
 public enum BackgroundHighlight {
-
-  STRIPES {
+  DARKER {
     @Override
     public String toString() {
-      return "Stripes";
+      return "Darker color";
     }
 
     @Override
     public BarFillPattern getPattern(EventType eventType) {
-      if (eventType.equals(EventType.NP)) {
-        return BarFillPattern.NONE;
-      }else {
-        return BarFillPattern.STRIPES;
-      }
+      return BarFillPattern.NONE;
     }
 
     @Override
-    public Colors getCol(EventType eventType,Colors color) {
-      return color;
+    public Colors getCol(EventType eventType, Colors color) {
+      if (eventType.equals(EventType.NP)) {
+        return color;
+      } else {
+        return Colors.blacker(color);
+      }
+    }
+  },
+
+  BRIGHTER {
+    @Override
+    public String toString() {
+      return "Brighter color";
+    }
+
+    @Override
+    public BarFillPattern getPattern(EventType eventType) {
+      return BarFillPattern.NONE;
+    }
+
+    @Override
+    public Colors getCol(EventType eventType, Colors color) {
+      if (eventType.equals(EventType.NP)) {
+        return color;
+      } else {
+        return Colors.whiter(color);
+      }
     }
   },
 
@@ -53,13 +73,13 @@ public enum BackgroundHighlight {
     public BarFillPattern getPattern(EventType eventType) {
       if (eventType.equals(EventType.NP)) {
         return BarFillPattern.NONE;
-      }else {
+      } else {
         return BarFillPattern.DOTS;
       }
     }
 
     @Override
-    public Colors getCol(EventType eventType,Colors color) {
+    public Colors getCol(EventType eventType, Colors color) {
       return color;
     }
   },
@@ -74,58 +94,38 @@ public enum BackgroundHighlight {
     public BarFillPattern getPattern(EventType eventType) {
       if (eventType.equals(EventType.NP)) {
         return BarFillPattern.NONE;
-      }else {
+      } else {
         return BarFillPattern.DIAMONDS;
       }
     }
 
     @Override
-    public Colors getCol(EventType eventType,Colors color) {
+    public Colors getCol(EventType eventType, Colors color) {
       return color;
     }
   },
 
-  DARKER {
+  STRIPES {
     @Override
     public String toString() {
-      return "Darker color";
+      return "Stripes";
     }
 
     @Override
     public BarFillPattern getPattern(EventType eventType) {
-      return BarFillPattern.NONE;
-    }
-
-    @Override
-    public Colors getCol(EventType eventType,Colors color) {
       if (eventType.equals(EventType.NP)) {
-        return color;
-      }else {
-        return Colors.blacker(color);
+        return BarFillPattern.NONE;
+      } else {
+        return BarFillPattern.STRIPES;
       }
     }
-  },
-
-  BRIGHTER {
-    @Override
-    public String toString() {
-      return "Brighter";
-    }
 
     @Override
-    public BarFillPattern getPattern(EventType eventType) {
-      return BarFillPattern.NONE;
-    }
-
-    @Override
-    public Colors getCol(EventType eventType,Colors color) {
-      if (eventType.equals(EventType.NP)) {
-        return color;
-      }else {
-        return Colors.whiter(color);
-      }
+    public Colors getCol(EventType eventType, Colors color) {
+      return color;
     }
   };
+
 
   public abstract BarFillPattern getPattern(EventType eventType);
 

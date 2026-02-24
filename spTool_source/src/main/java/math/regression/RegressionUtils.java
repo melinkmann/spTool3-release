@@ -22,6 +22,7 @@ import math.units.Unit;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import processing.options.LinRegType;
+import processing.options.MathMod;
 import sandbox.montecarlo.Isotope;
 import util.ArrUtils;
 import util.NF;
@@ -125,8 +126,8 @@ public abstract class RegressionUtils {
             isotopeLbl,
             x,
             y,
-            xLbl, xUnit,
-            yLbl, yUnit),
+            xLbl, xUnit, MathMod.NONE,
+            yLbl, yUnit, MathMod.NONE),
         new SpChartFactory.ChartStyle(color, 1,
             LineWidthDefaults.MEDIUM_THICK,
             LineLineDashDefaults.STRAIGHT,
@@ -158,8 +159,8 @@ public abstract class RegressionUtils {
                 + "R2=" + SnF.doubleToString(linReg.rSquare, NF.D1C3),
             linReg.x,
             linReg.y,
-            xLbl, xUnit,
-            yLbl, yUnit),
+            xLbl, xUnit, MathMod.NONE,
+            yLbl, yUnit, MathMod.NONE),
         new SpChartFactory.ChartStyle(color, 0.75,
             LineWidthDefaults.THICK,
             LineLineDashDefaults.STRAIGHT,

@@ -205,7 +205,7 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
     logLevel = new ComboEnumParameter<>(
         "Logger level",
         "Initial level of the logger in the logger view",
-        LogLevel.INFO,
+        LogLevel.TRACE,
         LogLevel.values(),
         LogLevel.class,
         false,

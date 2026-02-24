@@ -205,7 +205,7 @@ public abstract class AbstractParamSet implements ParamSet {
           */
   @Override
   public FxParamSet getObservableInstance() {
-    return new FxParamSetImpl(this);
+    return new FxParamSetSlimImpl(this);
   }
 
   @Override

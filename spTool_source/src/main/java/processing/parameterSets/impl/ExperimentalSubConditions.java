@@ -27,9 +27,12 @@ import gui.util.UiUtil;
 import io.FxFileSet;
 import io.SpCalDensity;
 import io.XmlUtil;
+import javafx.geometry.Pos;
 import javafx.scene.control.Button;
 import javafx.scene.control.Dialog;
+import javafx.scene.control.Label;
 import javafx.scene.control.SelectionMode;
+import javafx.util.Pair;
 import math.units.enums.ConcentrationUnit;
 import math.units.enums.DensityUnit;
 import math.units.enums.MassUnit;
@@ -43,6 +46,7 @@ import processing.options.ParticleQuantApproach;
 import processing.options.SampleType;
 import processing.parameterSets.*;
 import processing.parameters.*;
+import util.ArrUtils;
 import util.Functional;
 import util.NF;
 
@@ -437,8 +441,61 @@ public class ExperimentalSubConditions extends AbstractParamSet implements Param
     return result;
   }
 
+
   public void setElement(dataModelNew.mz.Element element) {
     this.element = element;
+  }
+
+  ///  Check organize(CalibratorRole role, SampleType sampleType) as a reference what to cover here.
+  public void setStyle(CalibratorRole role, SampleType sampleType, Label elementLabel) {
+    elementLabel.setAlignment(Pos.CENTER);
+
+    if (CalibratorRole.SAMPLE.equals(role)) {
+      if (npQuantificationApproach.getValue().equals(ParticleQuantApproach.MASS)) {
+        UiUtil.formatElementFieldGreen(elementLabel);
+      } else {
+        if (npDensity.getValue() > 0) {
+          UiUtil.formatElementFieldGreen(elementLabel);
+        } else {
+          elementLabel.setStyle("-fx-font-weight: bold; -fx-text-fill: black; -fx-font-size: 18");
+        }
+      }
+
+    } else if (CalibratorRole.CALIBRATOR.equals(role)) {
+
+      if (SampleType.IONIC.equals(sampleType)) {
+        if (ionicConcentration.getValue() > 0) {
+          UiUtil.formatElementFieldGreen(elementLabel);
+        } else {
+          elementLabel.setStyle("-fx-font-weight: bold; -fx-text-fill: black; -fx-font-size: 18");
+        }
+
+      } else if (SampleType.PARTICLE.equals(sampleType)) {
+
+        setParentParameters(
+            npQuantificationApproach,
+            npConcentration
+        );
+
+        if (npQuantificationApproach.getValue().equals(ParticleQuantApproach.ESD)) {
+          if (npConcentration.getValue() > 0 && npSphericalDiameter.getValue() > 0 && npDensity.getValue() > 0) {
+            UiUtil.formatElementFieldGreen(elementLabel);
+          } else if (npSphericalDiameter.getValue() > 0 && npDensity.getValue() > 0) {
+            UiUtil.formatElementFieldBlue(elementLabel);
+          } else {
+            elementLabel.setStyle("-fx-font-weight: bold; -fx-text-fill: black; -fx-font-size: 18");
+          }
+        } else {
+          if (npConcentration.getValue() > 0 && npElementMass.getValue() > 0) {
+            UiUtil.formatElementFieldGreen(elementLabel);
+          } else if (npElementMass.getValue() > 0) {
+            UiUtil.formatElementFieldBlue(elementLabel);
+          } else {
+            elementLabel.setStyle("-fx-font-weight: bold; -fx-text-fill: black; -fx-font-size: 18");
+          }
+        }
+      }
+    }
   }
 
   /// /////////////////////////////////////////////////////////////////////////////////////////////

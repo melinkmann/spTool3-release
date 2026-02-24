@@ -27,10 +27,13 @@ import math.units.ConvertibleUnit;
 
 public class FxQuantity {
 
+  private final Quantity plainQuantity;
   private final DoubleProperty valueProperty;
   private final ObjectProperty<ConvertibleUnit> unitProperty;
 
   public FxQuantity(Quantity quantity) {
+    this.plainQuantity =quantity;
+
     this.valueProperty = new SimpleDoubleProperty(quantity.getValue());
     this.unitProperty = new SimpleObjectProperty<>(quantity.getUnit());
 
@@ -58,10 +61,8 @@ public class FxQuantity {
     });
   }
 
-  public FxQuantity(DoubleProperty valueProperty,
-      ObjectProperty<ConvertibleUnit> unitProperty) {
-    this.valueProperty = valueProperty;
-    this.unitProperty = unitProperty;
+  public Quantity getPlainQuantity() {
+    return plainQuantity;
   }
 
   public DoubleProperty getValueProperty() {

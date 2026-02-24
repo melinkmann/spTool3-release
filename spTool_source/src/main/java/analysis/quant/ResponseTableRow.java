@@ -19,17 +19,20 @@ package analysis.quant;
 
 import sandbox.montecarlo.Isotope;
 
-public final class ResponseTableRow {
+public class ResponseTableRow {
 
   private final Isotope isotope;
+
+  private final SpCalibrationSet spCalibrationSet; // to refresh TE on manual edit
 
   private FxQuantity ionicResponse;
   private FxQuantity npResponse;
   private FxQuantity aerosolTEPct;
   private FxQuantity particleNumberTEPct;
 
-  public ResponseTableRow(Isotope isotope) {
+  public ResponseTableRow(Isotope isotope, SpCalibrationSet spCalibrationSet) {
     this.isotope = isotope;
+    this.spCalibrationSet = spCalibrationSet;
   }
 
   public Isotope getIsotope() {
@@ -52,20 +55,23 @@ public final class ResponseTableRow {
     return particleNumberTEPct;
   }
 
-  /* package */ void setIonicResponse(Quantity q) {
-    this.ionicResponse = q == null ? null : new FxQuantity(q);
+  public void setIonicResponse(FxQuantity q) {
+    this.ionicResponse = q;
   }
 
-  /* package */ void setNpResponse(Quantity q) {
-    this.npResponse = q == null ? null : new FxQuantity(q);
+  public void setNpResponse(FxQuantity q) {
+    this.npResponse = q;
   }
 
-  /* package */ void setAerosolTEPct(Quantity q) {
-    this.aerosolTEPct = q == null ? null : new FxQuantity(q);
+  public void setAerosolTEPct(FxQuantity q) {
+    this.aerosolTEPct = q;
   }
 
-  /* package */ void setParticleNumberTEPct(Quantity q) {
-    this.particleNumberTEPct = q == null ? null : new FxQuantity(q);
+  public void setParticleNumberTEPct(FxQuantity q) {
+    this.particleNumberTEPct = q;
   }
 
+  public SpCalibrationSet getSpCalibrationSet() {
+    return spCalibrationSet;
+  }
 }

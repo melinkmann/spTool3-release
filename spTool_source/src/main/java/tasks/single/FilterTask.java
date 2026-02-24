@@ -104,6 +104,7 @@ public class FilterTask extends AbstractWorkingTask implements WorkingTask {
                   double zIntensity = params.getzIntensity().getValue();
                   double zSegment = params.getzSegment().getValue();
                   int moavPeriod = params.getMoavPeriod().getValue();
+                  OverlapSmoothOption smoothTarget = params.getSmoothTargetOption().getValue();
 
                   TISeries tiSeries = trace.getTISeries();
                   double[] intensity = tiSeries.getIntensity();
@@ -119,12 +120,22 @@ public class FilterTask extends AbstractWorkingTask implements WorkingTask {
                         break;
                       }
 
-                      int nEvents = EventFilterUtils.checkForMultiParticleEvent(
-                          intensity,
-                          event,
-                          zIntensity,
-                          zSegment,
-                          moavPeriod);
+                      int nEvents;
+                      if (smoothTarget.equals(OverlapSmoothOption.RAW_DATA)) {
+                        nEvents = EventFilterUtils.checkForMultiParticleEvent_rawSmooth(
+                            intensity,
+                            event,
+                            zIntensity,
+                            zSegment,
+                            moavPeriod);
+                      } else {
+                        nEvents = EventFilterUtils.checkForMultiParticleEvent_derivativeSmooth(
+                            intensity,
+                            event,
+                            zIntensity,
+                            zSegment,
+                            moavPeriod);
+                      }
 
                       // If it thinks its 0, likely should be overwritten with 1, i.e., normal peak.
                       nEvents = Math.max(nEvents, 1);
@@ -563,7 +574,8 @@ public class FilterTask extends AbstractWorkingTask implements WorkingTask {
                       // these events are defined from theory point of view with >1cts, hence adjust area
                       // correction; do this after creating the population
                       // as creating the pop sets the Collection and Trace
-                      // Note: BG is estimated as <event.setBgPerNP(trace.getEmpiricalMeanBG() * event.getNoOfPoints());>
+                      // Note: BG is estimated as <event.setBgPerNP(trace.getEmpiricalMeanBG() * event
+                      // .getNoOfPoints());>
                       if (setToZero) {
                         List<Event> falseNegCopy = new ArrayList<>(falseNegatives.getEvents().getNpEvents());
                         for (Event falseNegEvt : falseNegCopy) {

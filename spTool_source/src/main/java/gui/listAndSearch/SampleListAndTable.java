@@ -51,10 +51,12 @@ import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
 import javafx.collections.FXCollections;
 import javafx.collections.ListChangeListener;
+import javafx.event.EventHandler;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.*;
 import javafx.scene.image.ImageView;
+import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.StackPane;
 import javafx.scene.paint.Color;
 import javafx.scene.text.Text;
@@ -321,6 +323,16 @@ public class SampleListAndTable {
         this, sampleSearchField);
 
     TableFactory.setupIsotopeTable(isotopeTableView);
+    // this is the cleaner version of double click select:
+    isotopeTableView.setOnMouseClicked(new EventHandler<MouseEvent>() {
+      @Override
+      public void handle(MouseEvent click) {
+        // @ double click
+        if (click.getClickCount() == 2) {
+          selectDefaultIsotopes();
+        }
+      }
+    });
 
     provideContextMenu(isotopeTableView);
     addSelectMostAbundantMenu();

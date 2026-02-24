@@ -28,6 +28,7 @@ import dataModelNew.mz.MZValue;
 import dataModelNew.mz.SQmz;
 import dataModelNew.mz.TOFmz;
 import dataModelNew.mz.TQmz;
+
 import java.io.BufferedInputStream;
 import java.io.BufferedReader;
 import java.io.FileInputStream;
@@ -36,6 +37,7 @@ import java.io.InputStreamReader;
 import java.io.Reader;
 import java.nio.file.Path;
 import java.util.Locale;
+
 import javafx.util.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -128,7 +130,41 @@ public class FileInterpreterUtils {
         result = safelyGetMZ1(q3ExtractedMZ);
       }
     } else {
+      // check if simple parsing is possible:
       result = safelyGetMZ1(rawMzField.trim());
+
+      // parsing failed: try to decode isotope:
+      if (!result.getKey()) {
+
+        // Try to split TQ mz in case it is given as "28Si16O" without any separators
+        // Extract leading isotope like "28Si" from "28Si16O"
+        String leadingIsotope = "";
+
+        // chatGPT:
+        int i = 0;
+        int n = rawMzField.length();
+
+        // 1. Leading digits (mass number)
+        while (i < n && Character.isDigit(rawMzField.charAt(i))) {
+          i++;
+        }
+
+        // Must have at least one digit and an uppercase letter
+        if (i > 0 && i < n && Character.isUpperCase(rawMzField.charAt(i))) {
+          i++; // consume uppercase letter
+
+          // Optional lowercase letter: element symbols only have 2 letters!
+          if (i < n && Character.isLowerCase(rawMzField.charAt(i))) {
+            i++;
+          }
+
+          leadingIsotope = rawMzField.substring(0, i);
+        } else {
+          leadingIsotope = rawMzField; // fallback
+        }
+        // try parse isotope string to isotope object
+        result = safelyGetMZ1(leadingIsotope.trim());
+      }
     }
     return result;
   }
@@ -205,7 +241,7 @@ public class FileInterpreterUtils {
   public static Pair<Boolean, MZValue> safelyGetMZ1(String elementAndNumber) {
     boolean isValid = true;
     Isotope candidate = Isotope.getFromString(elementAndNumber);
-    if (candidate == null) {
+    if (candidate == null || !candidate.isValid()) {
       candidate = Element.UNKNOWN.getMostAbundant();
       isValid = false;
     }

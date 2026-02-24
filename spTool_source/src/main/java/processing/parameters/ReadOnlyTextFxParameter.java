@@ -17,6 +17,7 @@
 
 package processing.parameters;
 
+import gui.util.UiUtil;
 import javafx.scene.control.Control;
 import javafx.scene.control.TextField;
 import javafx.scene.control.TextFormatter;
@@ -33,6 +34,7 @@ public class ReadOnlyTextFxParameter extends AbstractFxParameter<String> impleme
     field = new TextField(super.plainParameter.getValue());
     field.setEditable(false);
     field.setTextFormatter(formatter);
+    UiUtil.makeLabelField(field); // hide
 
     // Tooltip
     super.addToolTip(field);
