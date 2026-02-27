@@ -62,15 +62,41 @@ public class PopParSummary implements Serializable {
     } else if (option.equals(FilterOptions.ROI_REGION)) {
       add("ROI", inputParams.roiCategory, inputParams.roiCategory.getValue().getShortLabel());
       add("Par", inputParams.eventParameter, inputParams.eventParameter.getValue().toString());
-      add("fun", inputParams.mathConversion, inputParams.mathConversion.getValue().toString());
+      add("unit", inputParams.unitConversion, inputParams.unitConversion.getValue().toString());
       add("InEx", inputParams.roiType, inputParams.roiType.getValue().toString());
+
       if (inputParams.roiCategory.getValue().equals(RoiCategory.IQR)
-          || inputParams.roiCategory.getValue().equals(RoiCategory.IQR)) {
+          || inputParams.roiCategory.getValue().equals(RoiCategory.MAD)) {
+        add("fun", inputParams.mathConversion, inputParams.mathConversion.getValue().toString());
         add("f", inputParams.sigFactor, inputParams.sigFactor.getValueAsString());
+
       } else if (inputParams.roiCategory.getValue().equals(RoiCategory.PERCENTILES)
           || inputParams.roiCategory.getValue().equals(RoiCategory.ABSOLUTE_VALUES)) {
+        add("fun", inputParams.mathConversion, inputParams.mathConversion.getValue().toString());
         add("start", inputParams.start, inputParams.start.getValueAsString());
         add("end", inputParams.end, inputParams.end.getValueAsString());
+
+      } else if (inputParams.roiCategory.getValue().equals(RoiCategory.OTSU)) {
+        add("fun", inputParams.mathConversion, inputParams.mathConversion.getValue().toString());
+        add("reg", inputParams.getOtsuRegion(),
+            inputParams.getOtsuRegion().getValueAsString());
+        add("bin", inputParams.getBinWidthEstimator(),
+            inputParams.getBinWidthEstimator().getValueAsString());
+        if (inputParams.getBinWidthEstimator().getValue().equals(BinWidthEstimator.CUSTOM)) {
+          add("bWidth", inputParams.getCustomBinWidth(),
+              SnF.doubleToString(inputParams.getCustomBinWidth().getValue(), NF.D1C3));
+        }
+      } else if (inputParams.roiCategory.getValue().equals(RoiCategory.CHANGE_POINT)) {
+        add("reg", inputParams.getOtsuRegion(),
+            inputParams.getOtsuRegion().getValueAsString());
+        add("bin", inputParams.getBinWidthEstimator(),
+            inputParams.getBinWidthEstimator().getValueAsString());
+        if (inputParams.getBinWidthEstimator().getValue().equals(BinWidthEstimator.CUSTOM)) {
+          add("bWidth", inputParams.getCustomBinWidth(),
+              SnF.doubleToString(inputParams.getCustomBinWidth().getValue(), NF.D1C3));
+        }
+        add("z", inputParams.getChangePointZ(),
+            inputParams.getChangePointZ().getValueAsString());
       }
     }
   }

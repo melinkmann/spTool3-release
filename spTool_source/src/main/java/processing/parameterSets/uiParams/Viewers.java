@@ -41,6 +41,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
+import io.QuantStringParser;
 import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
 import javafx.beans.property.ReadOnlyObjectWrapper;
@@ -281,6 +282,10 @@ public abstract class Viewers {
     final Button pasteCalBtn = UiUtil.getSquareImageButton("Paste", "/img/paste.png",
         "Paste copied calibration parameters to all selected samples");
 
+    final Button wizardConcSizeBtn = UiUtil.getImageButton("", "/img/wizard.png",
+        "Try to read concentration and size data from sample");
+
+
     final Button refreshBtn = UiUtil.getImageButton("", "/img/refresh.png",
         """
             Refresh with updated data: Use this button when you change sample parameters
@@ -297,6 +302,8 @@ public abstract class Viewers {
     final HBox sendParamButtonBox = new HBox(4,
         sampleSectionLabel,
         copyCalBtn, pasteCalBtn,
+        new Separator(Orientation.VERTICAL),
+        wizardConcSizeBtn,
         new Separator(Orientation.VERTICAL),
         refreshBtn,
         new Separator(Orientation.VERTICAL),
@@ -677,7 +684,53 @@ public abstract class Viewers {
         }
         refreshGraph();
       });
+
       pasteCalBtn.setPrefWidth(80);
+
+      wizardConcSizeBtn.setOnAction(e -> {
+        List<Sample> selSamples = SpTool3Main.getRunTime().getMainWindowCtl().getSelSamples();
+        for (Sample sample : selSamples) {
+          QuantStringParser.parseIntoSample(sample.getNickName(), sample);
+        }
+        refreshGraph();
+      });
+
+      String wizardTooltip = """
+          If sample label contains units, spTool tries to read these.
+          The naming convention supported is (numbers are just examples):
+          
+          1) All unit blocks must be separated by underscores.
+          2) Available units:
+          - Flow rate: µL/min and mL/min
+          - Particle size: µm and nm
+          - Ionic concentration: ppm [i.e., mg/L] and ppb [i.e., µg/L]
+          - Particle number concentration: NP/mL
+          
+          In order to be read, these have to be given as a block,
+          where the prefix 'q' indicates flow rate, 'd' indicates diameter,
+          'c' indicates ionic concentration and 'n' indicates particle number concentration.
+          
+          Examples:
+          - Flow rate:_q50µlmin_ _q50ulmin_ _q50mlmin_
+          - Particle size: _d3p6µm_ _d3p6nm_ _d3p6nm_
+          - Ionic conc.:  _c10ppb_ _c10ppm_
+          - Particle conc: _n1E5NPml_
+          
+          So an example in a sample name would be:
+          '2026_TestSample1_c20ppb_q10uLmin'
+          '2026_TestSample_NP_d100nm_n5p5E5NPmL_q10uLmin'
+          
+          Format hints:
+          Decimal: use 'p' as decimal separator, e.g. 3p6 = 3.6
+          Scientific: 1p5E5 = 1.5E5
+          
+          The parser is not case sensitive: all letters are converted to minor case.
+          
+          'µ' can also be written as 'u'
+          """;
+      UiUtil.tooltip(wizardConcSizeBtn, wizardTooltip);
+
+      wizardConcSizeBtn.setPrefWidth(50);
 
       refreshBtn.setOnAction(e -> {
         refreshGraph();
@@ -2338,8 +2391,10 @@ public abstract class Viewers {
             if (plainSet != null) {
               // Define axis labels
               Unit unit = SpTool3Main.getRunTime().getMainWindowCtl().getUnit();
-              AxisLabel xAxisLabel = AxisLabel.getUnit(plainSet.getEventParameterX().getValue(), unit);
-              AxisLabel yAxisLabel = AxisLabel.getUnit(plainSet.getEventParameterY().getValue(), unit);
+              AxisLabel xAxisLabel = AxisLabel.getUnit(plainSet.getEventParameterX().getValue(), unit,
+                  samples);
+              AxisLabel yAxisLabel = AxisLabel.getUnit(plainSet.getEventParameterY().getValue(), unit,
+                  samples);
               String yLabel = yAxisLabel.getLabel();
               Unit yUnit = yAxisLabel.getUnit();
               String xLabel = xAxisLabel.getLabel();
@@ -2509,7 +2564,7 @@ public abstract class Viewers {
 
           // Define labels
           Unit unit = SpTool3Main.getRunTime().getMainWindowCtl().getUnit();
-          AxisLabel yAxisLabel = AxisLabel.getUnit(plainSet.getEventParameter(), unit);
+          AxisLabel yAxisLabel = AxisLabel.getUnit(plainSet.getEventParameter(), unit, selSamples);
           AxisLabel xAxisLabel = new PlainLabel("Index", ViewUnits.NONE);
           String yLabel = yAxisLabel.getLabel();
           Unit yUnit = yAxisLabel.getUnit();
@@ -2684,7 +2739,7 @@ public abstract class Viewers {
               Unit qUnit = SpTool3Main.getRunTime().getMainWindowCtl().getUnit();
 
               // Define labels
-              AxisLabel xAxisLabel = AxisLabel.getUnit(plainSet.getEventParameter(), qUnit);
+              AxisLabel xAxisLabel = AxisLabel.getUnit(plainSet.getEventParameter(), qUnit, samples);
               AxisLabel yAxisLabel = AxisLabel.getYUnit(plainSet.getHistoNormalization());
               String yLabel = yAxisLabel.getLabel();
               Unit yUnit = yAxisLabel.getUnit();
@@ -3124,7 +3179,7 @@ public abstract class Viewers {
 
       // Define labels
       Unit unitQ = SpTool3Main.getRunTime().getMainWindowCtl().getUnit();
-      AxisLabel xAxisLabel = AxisLabel.getUnit(par, unitQ);
+      AxisLabel xAxisLabel = AxisLabel.getUnit(par, unitQ, samples);
       AxisLabel yAxisLabel = AxisLabel.getYUnit(plainSet.getHistoNormalization());
       String yLabel = yAxisLabel.getLabel();
       Unit yUnit = yAxisLabel.getUnit();

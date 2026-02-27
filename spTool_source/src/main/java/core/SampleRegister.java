@@ -19,6 +19,7 @@ package core;
 
 import dataModelNew.Sample;
 import io.SampleSet;
+
 import java.io.Serial;
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -76,13 +77,13 @@ public class SampleRegister implements Serializable {
     // check if already exists
     String incomingName = set.getLabel();
     List<SampleSet> setsWithSameName = customSets.stream()
-        .filter(s-> s.getLabel().equals(incomingName))
+        .filter(s -> s.getLabel().equals(incomingName))
         .collect(Collectors.toList());
 
     if (!setsWithSameName.isEmpty()) {
       SampleSet firstMatch = setsWithSameName.get(0);
       firstMatch.getSamples().addAll(set.getSamples());
-    }else {
+    } else {
       customSets.add(set);
     }
     // refresh UI
@@ -130,8 +131,32 @@ public class SampleRegister implements Serializable {
     synchronized (waitingSamples) {
       synchronized (customSets) {
         if (!waitingSamples.isEmpty()) {
-          customSets.add(new SampleSet(label + " " + counterOfImports.incrementAndGet(),
-              waitingSamples));
+
+          // check if creation of new set is desired
+          boolean addAsSet = SpTool3Main.getRunTime().getConfParams().getCreateNewSampleSet().getValue();
+          boolean increment = SpTool3Main.getRunTime().getConfParams().getIncrementNewSampleSet().getValue();
+
+          if (addAsSet) {
+            String labelStr = label;
+            if (increment) {
+              labelStr += (" " + counterOfImports.incrementAndGet());
+            }
+
+            // Check if set of that name already exists
+            boolean foundExistingSet = false;
+            for (SampleSet customSet : customSets) {
+              if (customSet.getLabel().equals(labelStr)) {
+                customSet.add(waitingSamples);
+                foundExistingSet = true;
+                break;
+              }
+            }
+
+            // was not added to old set -> add to new set
+            if (!foundExistingSet) {
+              customSets.add(new SampleSet(labelStr, waitingSamples));
+            }
+          }
           mainSet.getSamples().addAll(waitingSamples);
           waitingSamples.clear();
         }

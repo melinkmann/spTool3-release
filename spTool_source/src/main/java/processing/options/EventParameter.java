@@ -132,4 +132,13 @@ public enum EventParameter {
     return par.equals(NET_AREA)
         || par.equals(NET_HEIGHT);
   }
+
+  public static boolean isAreaOrHeight(EventParameter par) {
+    return par.equals(AREA)
+        || par.equals(NET_AREA)
+        || par.equals(HEIGHT)
+        || par.equals(NET_HEIGHT);
+  }
+
+
 }

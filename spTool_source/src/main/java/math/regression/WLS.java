@@ -48,24 +48,22 @@ public class WLS implements LinReg, Serializable {
     this.isSilent = isSilent;
     if (x.length != y.length || x.length != weight.length) {
       isValidInput = false;
-      LOGGER.info(
-          "Cannot regress unequal arrays: {xLen,yLen,wLen} "
-              + "= {" + x.length + "," + y.length + "," + weight.length + "}.");
+      LOGGER.info("Cannot regress unequal arrays: {xLen,yLen,wLen} "
+          + "= {" + x.length + "," + y.length + "," + weight.length + "}.");
     } else if (x.length < 2 || y.length < 2 || weight.length < 2) {
       isValidInput = false;
       if (!isSilent) {
-        LOGGER.info(
-            "Cannot do weighted regression of only 1 or less data points: {xLen,yLen,wLen} "
-                + "= {" + x.length + "," + y.length + "," + weight.length + "}.");
+        LOGGER.info("Cannot do weighted regression of only 1 or less data points: {xLen,yLen,wLen} "
+            + "= {" + x.length + "," + y.length + "," + weight.length + "}.");
       }
     } else {
       // check if single point calibration: add P(0,0) with weight w=1 as first point.
       if (x.length == 2) {
         if (!isSilent) {
-          LOGGER.info(
-              "Weighted regression of 2 data points was requested (algorithm needs 3). To make it 3 points," +
-                  " " +
-                  "added the data point P(0,0) with weight w=1 to the data set.");
+          LOGGER.info("Weighted regression of 2 data points was requested (algorithm needs 3). To make it 3" +
+              " points," +
+              " " +
+              "added the data point P(0,0) with weight w=1 to the data set.");
         }
         x = ArrUtils.concatWithCopy(new double[1], x);
         y = ArrUtils.concatWithCopy(new double[1], y);
@@ -84,14 +82,12 @@ public class WLS implements LinReg, Serializable {
   public void addObservations(double[] x, double[] y, double[] weight) {
     if (x.length != y.length || x.length != weight.length) {
       isValidInput = false;
-      LOGGER.info(
-          "Cannot regress unequal arrays: {xLen,yLen,wLen} "
-              + "= {" + x.length + "," + y.length + "," + weight.length + "}.");
+      LOGGER.info("Cannot regress unequal arrays: {xLen,yLen,wLen} "
+          + "= {" + x.length + "," + y.length + "," + weight.length + "}.");
     } else if (x.length < 2 || y.length < 2 || weight.length < 2) {
       isValidInput = false;
-      LOGGER.info(
-          "Cannot do weighted regression of only 1 or less data points: {xLen,yLen,wLen} "
-              + "= {" + x.length + "," + y.length + "," + weight.length + "}.");
+      LOGGER.info("Cannot do weighted regression of only 1 or less data points: {xLen,yLen,wLen} "
+          + "= {" + x.length + "," + y.length + "," + weight.length + "}.");
     } else {
       // check if single point calibration: add P(0,0) with weight w=1 as first point.
       if (x.length == 2) {

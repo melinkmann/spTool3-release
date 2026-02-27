@@ -25,7 +25,6 @@ import dataModelNew.TISeries;
 import dataModelNew.Trace;
 import dataModelNew.TraceMC;
 import dataModelNew.mz.Element;
-import dataModelNew.mz.MZValue;
 import gui.table.TableUtils;
 import io.fastExport.TabBlock;
 import io.fastExport.TabBlockColl;
@@ -33,7 +32,6 @@ import io.fastExport.TabCol;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -43,17 +41,15 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import javax.annotation.Nullable;
 
-import math.units.enums.ExportUnits;
+import math.units.enums.NMPUnit;
 import math.units.enums.IntensityUnit;
 import math.units.enums.TimeUnit;
 import math.units.enums.ViewUnits;
-import org.apache.commons.math3.distribution.ChiSquaredDistribution;
 import org.apache.commons.math3.stat.StatUtils;
 import org.apache.commons.math3.stat.descriptive.moment.StandardDeviation;
 import org.apache.commons.math3.stat.descriptive.rank.Percentile;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import processing.options.CombinedPStatistics;
 import processing.options.EventParameter;
 import processing.options.EventType;
 import processing.options.PopulationType;
@@ -223,7 +219,7 @@ public abstract class DataExport {
                                                                int noOfBgDP,
                                                                boolean exportNP,
                                                                EventParameter npPar,
-                                                               ExportUnits exportUnits) {
+                                                               NMPUnit NMPUnit) {
     List<TabularBlock> blockList = new ArrayList<>();
     TabularBlock hBlock = new TabularBlockHorizontal();
 
@@ -248,11 +244,11 @@ public abstract class DataExport {
           }
         }
         if (exportNP) {
-          double[] np = sample.getData(isotope, popID, EventType.NP, npPar,exportUnits.getUnit());
+          double[] np = sample.getData(isotope, popID, EventType.NP, npPar, NMPUnit.getUnit());
           AxisLabel npLabel = AxisLabel.getUnit(npPar);
           String unitStr = npLabel.getUnit().getLiteralString();
-          if (!exportUnits.equals(ExportUnits.CTS)){
-            unitStr = exportUnits.getLiteralString();
+          if (!NMPUnit.equals(NMPUnit.CTS)){
+            unitStr = NMPUnit.getLiteralString();
           }
           String label = "NMPs @ " + npLabel.getLabel() + " [" + unitStr + "]";
           hBlock.addColumn(populationOverheadDescriptors, label, SnF.doubleToStrList(np, NF.D1C6));

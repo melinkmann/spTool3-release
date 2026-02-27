@@ -61,6 +61,7 @@ import javafx.scene.layout.StackPane;
 import javafx.scene.paint.Color;
 import javafx.scene.text.Text;
 import javafx.util.Duration;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import sandbox.montecarlo.Isotope;
@@ -877,6 +878,48 @@ public class SampleListAndTable {
 
     if (populationListView.getSelectionModel().getSelectedItems().isEmpty()) {
       populationListView.getSelectionModel().selectFirst();
+    }
+  }
+
+  public void incrementSelectedSample() {
+    int prevSelIdx = sampleTableView.getSelectionModel().getSelectedIndex();
+    int selIdx = prevSelIdx;
+    selIdx--;
+    if (selIdx < 0) {
+      selIdx = sampleTableView.getItems().size() - 1;
+    }
+    try {
+      sampleTableView.getSelectionModel().clearSelection();
+      sampleTableView.getSelectionModel().select(selIdx);
+      // Force scroll to selected row
+      sampleTableView.scrollTo(selIdx);
+    } catch (Exception e) {
+      sampleTableView.getSelectionModel().select(prevSelIdx);
+      LOGGER.error("Cannot increment sample index. " +
+          "Message: " + ExceptionUtils.getMessage(e) +
+          " Message: " + ExceptionUtils.getStackTrace(e)
+      );
+    }
+  }
+
+  public void decrementSelectedSample() {
+    int prevSelIdx = sampleTableView.getSelectionModel().getSelectedIndex();
+    int selIdx = prevSelIdx;
+    selIdx++;
+    if (selIdx >= sampleTableView.getItems().size()) {
+      selIdx = 0;
+    }
+    try {
+      sampleTableView.getSelectionModel().clearSelection();
+      sampleTableView.getSelectionModel().select(selIdx);
+      // Force scroll to selected row
+      sampleTableView.scrollTo(selIdx);
+    } catch (Exception e) {
+      sampleTableView.getSelectionModel().select(prevSelIdx);
+      LOGGER.error("Cannot increment sample index. " +
+          "Message: " + ExceptionUtils.getMessage(e) +
+          " Message: " + ExceptionUtils.getStackTrace(e)
+      );
     }
   }
 

@@ -30,6 +30,7 @@ import gui.listAndSearch.SampleListAndTable;
 import gui.util.UiUtil;
 import io.GlobalIO;
 import io.SampleSet;
+
 import java.awt.MouseInfo;
 import java.awt.Point;
 import java.util.ArrayList;
@@ -37,6 +38,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
+
 import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.StringProperty;
 import javafx.beans.value.ChangeListener;
@@ -99,7 +101,7 @@ public class TableFactory {
   // https://stackoverflow.com/questions/24732883/javafx-table-cell-editing
 
   public static void setupSampleTable(TableView<FxSample> table,
-      SampleListAndTable sampleListAndTable, TextField sampleSearchField) {
+                                      SampleListAndTable sampleListAndTable, TextField sampleSearchField) {
 
     Label placeholderLabel = new Label("No samples available");
     table.setPlaceholder(placeholderLabel);
@@ -361,7 +363,7 @@ public class TableFactory {
                 new ChangeListener<Sample>() {
                   @Override
                   public void changed(ObservableValue<? extends Sample> observable, Sample oldValue,
-                      Sample newValue) {
+                                      Sample newValue) {
                     if (newValue != null) {
                       ((MergedSample) rowItem.getPlainSample()).setPrincipleSample(newValue);
                       sampleListAndTable.fireSampleChange();
@@ -483,7 +485,8 @@ public class TableFactory {
           }
         });
 
-    // drag drop: keeps this, as this column is quite wide and it feels nicer if dragging is possible from here
+    // drag drop: keeps this, as this column is quite wide and it feels nicer if dragging is possible from
+    // here
     col.setCellFactory(
         new Callback<TableColumn<FxSample, String>, TableCell<FxSample, String>>() {
           @Override
@@ -578,7 +581,8 @@ public class TableFactory {
     load.setOnAction(e -> {
 
       NotificationFactory.openYesNo(
-          "Replace current method in the method tab with the method from the selected sample? This is irreversible.",
+          "Replace current method in the method tab with the method from the selected sample? This is " +
+              "irreversible.",
           () -> {
             FxSample fxSample = table.getSelectionModel().getSelectedItem();
             if (fxSample != null) {
@@ -587,7 +591,8 @@ public class TableFactory {
                 sample = sample.getPrincipleSample();
 
                 Method method = sample.getMethod();
-                // otherwise a change would affect the method stored in the sample file (it is referenced by the pointer)
+                // otherwise a change would affect the method stored in the sample file (it is referenced
+                // by the pointer)
                 method = method.getCopyWithoutFile();
                 if (method != null) {
                   SpTool3Main.getRunTime().getMainWindowCtl().getMethodView().setMethod(method);
@@ -610,13 +615,12 @@ public class TableFactory {
           sample = sample.getPrincipleSample();
 
           Method method = sample.getMethod();
-          // otherwise a change would affect the method stored in the sample file (it is referenced by the pointer)
+          // otherwise a change would affect the method stored in the sample file (it is referenced by the
+          // pointer)
           method = method.getCopyWithoutFile();
           if (method != null) {
             ReadonlyMethodView viewer = new ReadonlyMethodView(method);
-            Stage popup = PopupFactory.showOnWindow(
-                UiUtil.putOnAnchorWithoutInsets(viewer.getBorderPane()),
-                SpTool3Main.getMainStage().getScene(), 1200d);
+            Stage popup = PopupFactory.showOnWindow(viewer, SpTool3Main.getMainStage().getScene(), 900d);
             viewer.setParentSceneForDialogs(popup.getScene());
           }
         }
@@ -636,13 +640,12 @@ public class TableFactory {
           sample = sample.getPrincipleSample();
 
           Method method = sample.getMethod();
-          // otherwise a change would affect the method stored in the sample file (it is referenced by the pointer)
+          // otherwise a change would affect the method stored in the sample file (it is referenced by the
+          // pointer)
           method = method.getCopyWithoutFile();
           if (method != null) {
             RerunMethodView viewer = new RerunMethodView(method, fxSample);
-            Stage popup = PopupFactory.showOnWindow(
-                UiUtil.putOnAnchorWithoutInsets(viewer.getBorderPane()),
-                SpTool3Main.getMainStage().getScene(), 1200d);
+            Stage popup = PopupFactory.showOnWindow(viewer, SpTool3Main.getMainStage().getScene(), 900d);
             viewer.setParentSceneForDialogs(popup.getScene());
           }
         }
@@ -714,7 +717,7 @@ public class TableFactory {
         textArea.textProperty().addListener(new ChangeListener<String>() {
           @Override
           public void changed(ObservableValue<? extends String> observable, String oldValue,
-              String newValue) {
+                              String newValue) {
             sample.setComment(newValue);
 
           }
@@ -922,11 +925,11 @@ public class TableFactory {
     });
   }
 
-  //////////////////////////////////////////////////////////////////////////////////////////
-  //////////////////////////////////////////////////////////////////////////////////////////
-  //////////////////////////////////////////////////////////////////////////////////////////
-  //////////////////////////////////////////////////////////////////////////////////////////
-  //////////////////////////////////////////////////////////////////////////////////////////
+  /// ///////////////////////////////////////////////////////////////////////////////////////
+  /// ///////////////////////////////////////////////////////////////////////////////////////
+  /// ///////////////////////////////////////////////////////////////////////////////////////
+  /// ///////////////////////////////////////////////////////////////////////////////////////
+  /// ///////////////////////////////////////////////////////////////////////////////////////
 
   public static void setupIsotopeTable(TableView<Isotope> table) {
 

@@ -251,7 +251,7 @@ public class CsvInterpreterAgilent implements CsvInterpreter {
         }
       }
 
-      LOGGER.trace("Finished parsing time and intensity data.");
+      LOGGER.trace("Finished parsing time and intensity data." + " File: " + file.toString());
 
       /*
        Now, we have to translate this to TISeries and Samples.
@@ -260,12 +260,43 @@ public class CsvInterpreterAgilent implements CsvInterpreter {
        Agilent has constant dwell time, so we can apply this here, by replacing time stamps.
        */
 
+      int timeSize = time.size();
       boolean equalLength = allIntensitySeries.stream()
           .map(List::size)
-          .allMatch(intensitySize -> time.size() == intensitySize);
+          .allMatch(intensitySize -> timeSize == intensitySize);
 
-      if (equalLength) {
+      // try to trim
+      int minSizeForTrim = 0;
+      if (!equalLength) {
+        minSizeForTrim = time.size();
+        // Report on what seems unequal
+        StringBuilder lengthInfo = new StringBuilder();
+        lengthInfo.append("Time length: " + time.size());
+        for (int i = 0; i < allIntensitySeries.size(); i++) {
+          lengthInfo.append("Intensity series #" + i + "length: "
+              + allIntensitySeries.get(i).size());
+        }
+        LOGGER.error("Time and intensity data did not have equal length." +
+            " Try to trim the time and intensity arrays to common length." +
+            " Details: " + lengthInfo.toString());
 
+        // find min size of all arrays
+        for (List<Double> intensitySeries : allIntensitySeries) {
+          minSizeForTrim = Math.min(minSizeForTrim, intensitySeries.size());
+        }
+
+        // trim
+        time = ArrUtils.trim(time, minSizeForTrim);
+        for (int i = 0; i < allIntensitySeries.size(); i++) {
+          List<Double> intensitySeries = allIntensitySeries.get(i);
+          intensitySeries = ArrUtils.trim(intensitySeries, minSizeForTrim);
+          allIntensitySeries.set(i, intensitySeries);
+        }
+      }
+
+
+      // Either equal length right away, or logic above triggered trim and we have to ensure trimLength > 0
+      if (equalLength || minSizeForTrim > 0) {
 
         ///////////////////////////////////////////////////////////////////////
         // Check for gas mode gap
@@ -390,16 +421,19 @@ public class CsvInterpreterAgilent implements CsvInterpreter {
           this.samples.add(sample);
         }
 
-        LOGGER.trace("Finished reading Agilent sample.");
+        LOGGER.trace("Finished reading Agilent sample. " + "File: " + file.toString());
 
 
       } else {
-        LOGGER.error("Time and intensity data did not have equal length.");
+        // Report on how the import failed
+        LOGGER.error("Time and intensity had unequal length. Attempted trimming but after trimming size was" +
+            " zero. File: " + file.toString());
       }
 
     } catch (Exception e) {
       LOGGER.error("CSV reader parsing was not successful."
           + " This error is likely due to wrong column order."
+          + " File: " + file.toString()
           + " Message: " + e.getMessage()
           + ". Details: " +
           ExceptionUtils.getStackTrace(e));
@@ -444,9 +478,9 @@ public class CsvInterpreterAgilent implements CsvInterpreter {
         && rawName.contains("Batch")) {
       try {
         // Find the start index of the filename
-        int start = rawName.indexOf("Batch ") + "using Batch ".length();
+        int start = rawName.indexOf("Batch ") + "Batch ".length();
 
-        // Find the end index at the last ".b" (or adjust as needed)
+        // Find the end index at the last ".b"
         int end = rawName.lastIndexOf(".b");
 
         // Extract the substring

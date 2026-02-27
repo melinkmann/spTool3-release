@@ -600,6 +600,130 @@ public class SampleImpl implements Sample, Serializable {
     return result;
   }
 
+  public double[] revertQuant(double[] quantifiedInput, Isotope isotope, EventParameter param, Unit unit) {
+
+    double[] result = ArrUtils.copy(quantifiedInput);
+
+    // Same early exit logic as applyQuant
+    if (IntensityUnit.CTS.equals(unit)
+        || !EventParameter.canQuantify(param)
+        || !quant.getExperimentalConditions().getEventPar().equals(param)) {
+      return result;
+    }
+
+    if (!quant.getExperimentalConditions().getCalibratorRole().getValue().equals(CalibratorRole.SAMPLE)) {
+      return new double[0];
+    }
+
+    double ctsPerFg = 0;
+
+    // --- Recompute sensitivity exactly as in applyQuant ---
+    switch (quant.getCalibrationStrategy()) {
+
+      case MASS -> {
+        Quantity npResp = quant.getResponses().getOrCreateNpResponse(isotope);
+        if (npResp != null && npResp.getValue() > 0) {
+          ctsPerFg = npResp.getUnit().convert(npResp.getValue(), SensitivityUnit.CTS_PER_FEMTOGRAM);
+        } else {
+          return new double[0];
+        }
+      }
+
+      case SIZE_METHOD, FREQUENCY_METHOD -> {
+        Quantity ionResp = quant.getResponses().getOrCreateIonicResponse(isotope);
+        double tePct = getAerosolTEConvention(isotope);
+
+        if (tePct > 0 && ionResp != null && ionResp.getValue() > 0) {
+          double ionicCtsPerFg = ionResp.getUnit().convert(ionResp.getValue(),
+              SensitivityUnit.CTS_PER_FEMTOGRAM);
+          ctsPerFg = ionicCtsPerFg / (tePct / 100d);
+        } else {
+          return new double[0];
+        }
+      }
+    }
+
+    ExperimentalSubConditions subPar = quant.getExperimentalConditions()
+        .getElementSpecificQuantParams()
+        .get(isotope.getElement());
+
+    if (subPar == null || ctsPerFg <= 0) {
+      return new double[0];
+    }
+
+    // ===================== SOURCE: DIAMETER =====================
+    if (unit.equals(SizeUnit.NANO_METER) || unit.equals(SizeUnit.MICRO_METER)) {
+
+      if (!subPar.getNpQuantificationApproach()
+          .getValue()
+          .equals(ParticleQuantApproach.ESD)) {
+        return new double[0];
+      }
+
+      double density = subPar.getNpDensityUnit().convert(subPar.getNpDensity().getValue(),
+          DensityUnit.GRAM_PER_CM3);
+      double massFrac = subPar.getNpMassFraction().getValue();
+
+      if (density <= 0 || massFrac <= 0) {
+        return new double[0];
+      }
+
+      for (int i = 0; i < result.length; i++) {
+
+        double diameter = result[i];
+
+        // convert diameter to cm
+        double diameterCm;
+        if (unit.equals(SizeUnit.NANO_METER)) {
+          diameterCm = diameter / 1e7;
+        } else {
+          diameterCm = diameter / 1e4;
+        }
+        // diameter → volume (cm³)
+        double volumeCm3 = (Math.PI / 6.0) * Math.pow(diameterCm, 3);
+
+        // volume → mass (g)
+        double massGrams = volumeCm3 * density;
+
+        // g → fg
+        double massFg = massGrams / 1e-15;
+
+        // apply mass fraction correction
+        massFg = massFg * massFrac;
+
+        // mass → counts
+        result[i] = massFg * ctsPerFg;
+      }
+
+    } else {
+      // ########################## SOURCE: MASS or MOL ###########################################
+      double ctsPerTargetUnit;
+
+      if (unit.equals(MassUnit.FEMTO_GRAM)) {
+        ctsPerTargetUnit = ctsPerFg;
+
+      } else if (unit.equals(MassUnit.ATTO_GRAM)) {
+        ctsPerTargetUnit = ctsPerFg / 1E3; // fewer cts per ag
+
+      } else if (unit.equals(MassUnit.PICO_GRAM)) {
+        ctsPerTargetUnit = ctsPerFg * 1E3; // more cts per fg
+
+      } else if (unit.equals(MolarUnit.FEMTO_MOL)) {
+        double gPerMol = isotope.getElement().calcMolarMass();
+        ctsPerTargetUnit = ctsPerFg * gPerMol; // g/mol = fg/fmol
+
+      } else { // amol
+        double gPerMol = isotope.getElement().calcMolarMass();
+        ctsPerTargetUnit = ctsPerFg * gPerMol / 1E3; // fewer cts per ag --> convert to fg as g/mol=fg/fmol
+      }
+
+      // multiply to get cts = unitValue * cts/unit
+      result = ArrUtils.multiply(result, ctsPerTargetUnit);
+    }
+
+    return result;
+  }
+
   @Override
   public double getAerosolTEConvention(Isotope isotope) {
     double tePct = 0;
@@ -858,8 +982,11 @@ public class SampleImpl implements Sample, Serializable {
 
     for (Trace trace : tracesWithIsotopes) {
       for (PopulationID popID : populations) {
-        sumEvents += trace.getNoOfEvents(popID);
-        counter++;
+        // if check is necessary. Else, pops that are simply not present reduce average no of events
+        if (trace.hasType(popID)){
+          sumEvents += trace.getNoOfEvents(popID);
+          counter++;
+        }
       }
     }
     return (int) Math.ceil(sumEvents / Math.max(1d, counter));

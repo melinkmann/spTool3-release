@@ -69,6 +69,32 @@ public enum RoiCategory {
     public String getShortLabel() {
       return "MAD";
     }
+  },
+
+  OTSU {
+    @Override
+    public String toString() {
+      return "Otsu method ";
+    }
+
+
+    @Override
+    public String getShortLabel() {
+      return "Otsu";
+    }
+  },
+
+  CHANGE_POINT {
+    @Override
+    public String toString() {
+      return "Log derivative change point (LDCP)";
+    }
+
+
+    @Override
+    public String getShortLabel() {
+      return "LDCP";
+    }
   };
 
 

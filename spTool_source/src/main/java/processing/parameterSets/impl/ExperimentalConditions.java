@@ -183,14 +183,10 @@ public class ExperimentalConditions extends AbstractParamSet implements ParamSet
     calibratorRole.addConditionalChild(CalibratorRole.CALIBRATOR,
         sampleType);
 
-    // setCopyDecoration(calibratorRole);
-    // setCopyDecoration(sampleType);
-    // setCopyDecoration(sampleWideIonicSourceParam);
-    // setCopyDecoration(sampleWideNPSourceParam);
-    // setCopyDecoration(sampleWideNPQuantApproachAsSample);
-    // setCopyDecoration(sampleWideNPQuantApproachAsCalibrator);
-    // setCopyDecoration(hasSampleWideNPQuantApproach);
-    // setCopyDecoration(hasSampleWideNPConcentration);
+    setCopyDecoration(calibratorRole);
+    setCopyDecoration(sampleType);
+    setCopyDecoration(sampleWideIonicSourceParam);
+    setCopyDecoration(sampleWideNPSourceParam);
   }
 
   public void organizeSubParams() {
@@ -316,6 +312,15 @@ just pass the hashmap as argument and add itself if found
     double value = sampleIntroductionFlowRate.getValue();
     double result = unit.convert(value, targetUnit);
     return result;
+  }
+
+
+  public Parameter<Double> getSampleIntroductionFlowRate() {
+    return sampleIntroductionFlowRate;
+  }
+
+  public void setSampleIntroductionFlowRate(FlowUnit unit) {
+    ((QuantParameter<FlowUnit>) sampleIntroductionFlowRate).setUnit(unit);
   }
 
   /// /////////////////////////////////////////////////////////////////////////////////////////////

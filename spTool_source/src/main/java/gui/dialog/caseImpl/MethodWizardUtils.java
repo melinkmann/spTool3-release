@@ -68,7 +68,7 @@ public abstract class MethodWizardUtils {
     box.setAlignment(Pos.CENTER_LEFT);
 
     // bind visibility
-    HBox popNumBox= new HBox(2, new Label("Number of populations"), numOfPopFld);
+    HBox popNumBox = new HBox(2, new Label("Number of populations"), numOfPopFld);
     popNumBox.visibleProperty().bind(addSimulation.selectedProperty());
 
     if (SpTool3Main.getANALYZER()) {
@@ -142,7 +142,7 @@ public abstract class MethodWizardUtils {
         if (Objects.equals(instrumentType.getSelectionModel().getSelectedItem(), "Time-of-flight (TOF)")) {
           baselineParams.getPoissonChoice().setValue(DistributionModel.POISSON_COMPOUND);
         } else {
-          baselineParams.getPoissonChoice().setValue(DistributionModel.POISSON);
+          baselineParams.getPoissonChoice().setValue(DistributionModel.POISSON_CURRIE);
         }
 
 

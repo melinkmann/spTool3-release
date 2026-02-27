@@ -38,7 +38,10 @@ public class BinConstraints {
   public BinConstraints(List<double[]> data, BinWidthEstimator estimator, double customWidth) {
 
     // Make a copy, else we cannot removeIf safely as the list is needed elsewhere.
-    List<double[]> dataCopy = new ArrayList<>(data);
+    List<double[]> dataCopy = new ArrayList<>();
+    for (double[] arr : data) {
+      dataCopy.add(ArrUtils.copy(arr));
+    }
 
     // Remove all empty data and n=1 as computing on these may lead to unwanted behavior (e.g., max-min=0 for n=1).
     dataCopy.removeIf(d -> d.length == 0);

@@ -18,6 +18,7 @@
 package processing.parameterSets;
 
 import gui.util.TextFormatterOption;
+
 import java.io.File;
 import java.io.Serial;
 import java.nio.file.Path;
@@ -27,6 +28,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+
 import processing.parameters.CommentParameter;
 import processing.parameters.LabelParameter;
 import processing.parameters.NoFieldTextParameter;
@@ -55,7 +57,8 @@ public abstract class AbstractParamSet implements ParamSet {
   protected final LabelParameter label;
   protected final CommentParameter comment;
   protected final NoFieldTextParameter dateCreated;
-  //Note that submethodCategory parameter needs no XML storage as it comes from an enum in respective implementation.
+  //Note that submethodCategory parameter needs no XML storage as it comes from an enum in respective
+  // implementation.
   protected final NoFieldTextParameter submethodCategory;
   protected final NoFieldTextParameter uuidString;
   protected final String xmlElementTag;
@@ -201,11 +204,12 @@ public abstract class AbstractParamSet implements ParamSet {
 
   /*
           Warning: This must create a new instance because otherwise FX and Plain would be mixed.
-          But this means, that all listener references are lost if no proper management like a hashmap is done.
+          But this means, that all listener references are lost if no proper management like a hashmap is
+          done.
           */
   @Override
   public FxParamSet getObservableInstance() {
-    return new FxParamSetSlimImpl(this);
+    return new FxParamSetImpl(this);
   }
 
   @Override
@@ -262,7 +266,7 @@ public abstract class AbstractParamSet implements ParamSet {
 
   @Override
   public Path getAssociatedFileOndDrive() {
-    if (associatedPathOnDrive != null){
+    if (associatedPathOnDrive != null) {
       return associatedPathOnDrive.toPath();
     } else {
       return null;

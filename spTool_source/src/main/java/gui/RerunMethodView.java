@@ -22,23 +22,27 @@ import dataModelNew.fxImpl.FxSample;
 import gui.dialog.FxEntry;
 import gui.dialog.FxEntryFactory;
 import gui.dialog.FxEntryFactory.SimpleEntryFactory;
+import gui.dialog.FxStageButton;
+import gui.dialog.caseImpl.CreateMultipleSubMethodDialog;
+import gui.dialog.caseImpl.SubmethodViewer;
+import gui.dialog.notification.NotificationFactory;
 import gui.util.GlobalFields;
 import gui.util.UiUtil;
 import gui.viewerCells.ParamSetListCell;
 import io.GlobalIO;
 import io.XmlUtil;
+
 import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
+
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.geometry.Orientation;
+import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.ContextMenu;
@@ -50,8 +54,10 @@ import javafx.scene.control.SelectionMode;
 import javafx.scene.control.Separator;
 import javafx.scene.control.SeparatorMenuItem;
 import javafx.scene.control.ToolBar;
+import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
 import javafx.stage.FileChooser.ExtensionFilter;
@@ -59,11 +65,7 @@ import javafx.util.Callback;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import processing.parameterSets.FxMethod;
-import processing.parameterSets.FxParamSet;
-import processing.parameterSets.ListMethod;
-import processing.parameterSets.Method;
-import processing.parameterSets.ParamSet;
+import processing.parameterSets.*;
 import processing.parameterSets.action.Actions;
 import processing.parameters.FxParameter;
 import util.ClipboardUtils;
@@ -83,6 +85,7 @@ public class RerunMethodView implements ParameterView {
   private final BorderPane methodBorderPane;
   private final ToolBar topToolbar = new ToolBar();
   private final VBox leftMethodMetaDataBox;
+  private final HBox subMethodUpDownBox;
 
   // only ever have a copy of the original method here to avoid changing
   // the method reference in the sample
@@ -99,7 +102,7 @@ public class RerunMethodView implements ParameterView {
   //Try to remember to scroll position and focus - works!!!
   private final HashMap<FxParamSet, ListView<FxParameter<?>>> viewMap = new HashMap<>();
 
-  public RerunMethodView(Method method, FxSample fxSample) {
+  public  RerunMethodView(Method method, FxSample fxSample) {
 
     this.parentSceneForDialogs = SpTool3Main.getMainStage().getScene();
 
@@ -137,6 +140,108 @@ public class RerunMethodView implements ParameterView {
 
     Label subMethodLbl = new Label("Sub-methods");
     subMethodLbl.setStyle("-fx-font-weight: bold");
+
+    // ####################### add/move ############################################
+
+    Button moveUpBtn = new Button("▲");
+    moveUpBtn.setOnAction(e -> {
+      List<FxEntry<FxParamSet>> prevSel =
+          new ArrayList<>(subMethodsListView.getSelectionModel().getSelectedItems());
+      moveUp(subMethodsListView, prevSel);
+      reselectByObjectEqualityOfPlain(subMethodsListView, prevSel);
+    });
+
+    Button moveDownBtn = new Button("▼");
+    moveDownBtn.setOnAction(e -> {
+      List<FxEntry<FxParamSet>> prevSel =
+          new ArrayList<>(subMethodsListView.getSelectionModel().getSelectedItems());
+      moveDown(subMethodsListView, prevSel);
+      reselectByObjectEqualityOfPlain(subMethodsListView, prevSel);
+    });
+
+    Button subMethodFromListBtn = UiUtil.getToolbarBtn("/img/searchList.png", "Add existing sub-method");
+    subMethodFromListBtn.setOnAction(e -> {
+
+      SubmethodViewer dialog = new SubmethodViewer(new FxEntryFactory.ParamSetWithDateEntryFactory(),
+          AvailableParameterSets.getAllowedOptions(), FxStageButton.SELECT, null, true);
+
+      Optional<List<FxParamSet>> result = dialog.showAndWait();
+
+      if (result != null && result.isPresent()) {
+        List<FxParamSet> results = result.get();
+        if (!results.isEmpty()) {
+          results.forEach(fx -> {
+            FxEntry<FxParamSet> entry = getFromMapOrCreate(fx.getPlainSet());
+            copyOfMethod.addSet(entry.unwrap().getPlainSet());
+            subMethodsListView.getItems().add(entry);
+          });
+        }
+      }
+    });
+
+    Button newSubMethodBtn = UiUtil.getToolbarBtn("/img/create.png", "Create new sub-method");
+
+    newSubMethodBtn.setOnAction(e -> {
+      CreateMultipleSubMethodDialog dialog =
+          new CreateMultipleSubMethodDialog(AvailableParameterSets.getAllowedInstances(), factory);
+
+      Optional<List<FxParamSet>> res = dialog.showAndWait();
+      if (res.isPresent() && !res.get().isEmpty()) {
+        List<FxParamSet> fxSets = res.get();
+        List<ParamSet> sets = fxSets.stream().map(FxParamSet::getPlainSet).collect(Collectors.toList());
+
+        copyOfMethod.addSets(sets);
+        List<FxEntry<FxParamSet>> newEntries =
+            sets.stream().map(this::getFromMapOrCreate).collect(Collectors.toList());
+        // List's change listener (selection change) will trigger the update of the viewers
+        subMethodsListView.getItems().addAll(newEntries);
+        subMethodsListView.getSelectionModel().clearSelection();
+        newEntries.forEach(entry -> {
+          subMethodsListView.getSelectionModel().select(entry);
+        });
+      }
+    });
+
+    subMethodUpDownBox = new HBox(10, subMethodLbl, moveUpBtn, moveDownBtn, newSubMethodBtn,
+        subMethodFromListBtn);
+    subMethodUpDownBox.setAlignment(Pos.CENTER_LEFT);
+
+    // context menu
+    MenuItem removeSubMethod = UiUtil.getImageMenuItem("Remove", "/img/remove.png");
+    removeSubMethod.setOnAction(e -> {
+      List<FxEntry<FxParamSet>> subMethods = getSelectedEntries();
+      if (!subMethods.isEmpty()) {
+        NotificationFactory.openYesCancel("Remove sub-methods from method? This is irreversible.", () -> {
+          copyOfMethod.removeSets(subMethods.stream().map(FxEntry::unwrap).filter(Predicate.not(Objects::isNull)).map(FxParamSet::getPlainSet).collect(Collectors.toList()));
+          subMethodsListView.getItems().removeAll(subMethods);
+        });
+      }
+    });
+
+    MenuItem cloneSubMethod = UiUtil.getImageMenuItem("Clone", "/img/clone.png");
+    cloneSubMethod.setOnAction(e -> {
+      List<FxEntry<FxParamSet>> subMethods = getSelectedEntries();
+      if (!subMethods.isEmpty()) {
+
+        // Make a new copy with new date (i.e., a new instance copy and not an exact copy)
+        List<ParamSet> sets =
+            subMethods.stream().map(FxEntry::unwrap).map(FxParamSet::getPlainSet).map(ParamSet::getCopyWithNewDate).collect(Collectors.toList());
+
+        // Add copies
+        copyOfMethod.addSets(sets);
+        List<FxEntry<FxParamSet>> newEntries =
+            sets.stream().map(this::getFromMapOrCreate).collect(Collectors.toList());
+        // List's change listener (selection change) will trigger the update of the viewers
+        subMethodsListView.getItems().addAll(newEntries);
+        subMethodsListView.getSelectionModel().clearSelection();
+        newEntries.forEach(entry -> {
+          subMethodsListView.getSelectionModel().select(entry);
+        });
+      }
+    });
+
+    subMethodsListView.getContextMenu().getItems().addAll(cloneSubMethod, new SeparatorMenuItem(),
+        removeSubMethod);
 
     // Box is filled in the set method call
     setMethod(copyOfMethod); // fills in the listviews
@@ -190,7 +295,7 @@ public class RerunMethodView implements ParameterView {
   }
 
 
-  private void process() {
+  public void process() {
     List<FxSample> placeholderList = new ArrayList<>();
     placeholderList.add(fxSample);
     Actions.reprocess(copyOfMethod, placeholderList);
@@ -250,7 +355,8 @@ public class RerunMethodView implements ParameterView {
             // Make BG always gray and text black
             UiUtil.formatListCellGray(this);
 
-            // NO!!! DO NOT EVER DO THIS! THIS CAUSES A VERY NASTY BUG! Sporadically you won't be able to select the nodes anymore!
+            // NO!!! DO NOT EVER DO THIS! THIS CAUSES A VERY NASTY BUG! Sporadically you won't be able to
+            // select the nodes anymore!
             // "Prevent cells from being selected which causes formatting issues (e.g. text gets white, ...)
             // updateSelected(false);"
 
@@ -304,7 +410,7 @@ public class RerunMethodView implements ParameterView {
    * equals() methods.
    */
   public static <T> void reselectByObjectEqualityOfPlain(ListView<FxEntry<T>> listView,
-      List<FxEntry<T>> oldFxEntries) {
+                                                         List<FxEntry<T>> oldFxEntries) {
     // Old instance of Selectable
     if (!oldFxEntries.isEmpty()) {
       // Clear the selection since the setMethod() call will always try to selectFirst()
@@ -362,6 +468,7 @@ public class RerunMethodView implements ParameterView {
       sampleLabel = new Label("Sample: -");
       UiUtil.tooltip(sampleLabel, "No valid sample is present.");
     }
+
     leftMethodMetaDataBox.getChildren().clear();
     leftMethodMetaDataBox.getChildren().addAll(
         fxCopyOfMethod.getFxLabel().getValueNode(),
@@ -372,9 +479,37 @@ public class RerunMethodView implements ParameterView {
         sampleLabel,
         fxCopyOfMethod.getFxDate().getValueNode(),
 
+        new Separator(Orientation.HORIZONTAL), subMethodUpDownBox,
+
         new Separator(Orientation.HORIZONTAL),
 
         subMethodsListView);
+  }
+
+  private void moveDown(ListView<FxEntry<FxParamSet>> view, List<FxEntry<FxParamSet>> moving) {
+    // Do not fire for listener for every change
+    List<FxEntry<FxParamSet>> setsInView = new ArrayList<>(view.getItems());
+    // Change order
+    MethodView.moveDown(setsInView, moving);
+    // Set to ListView
+    view.getItems().clear();
+    view.getItems().addAll(setsInView);
+    // Set to Method
+    copyOfMethod.clearSets();
+    copyOfMethod.addSets(setsInView.stream().map(FxEntry::unwrap).map(FxParamSet::getPlainSet).collect(Collectors.toList()));
+  }
+
+  private void moveUp(ListView<FxEntry<FxParamSet>> view, List<FxEntry<FxParamSet>> moving) {
+    // Do not fire for listener for every change
+    List<FxEntry<FxParamSet>> setsInView = new ArrayList<>(view.getItems());
+    // Change order
+    MethodView.moveUp(setsInView, moving);
+    // Set to ListView
+    view.getItems().clear();
+    view.getItems().addAll(setsInView);
+    // Set to Method
+    copyOfMethod.clearSets();
+    copyOfMethod.addSets(setsInView.stream().map(FxEntry::unwrap).map(FxParamSet::getPlainSet).collect(Collectors.toList()));
   }
 
   public BorderPane getBorderPane() {

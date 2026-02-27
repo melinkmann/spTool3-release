@@ -17,7 +17,9 @@
 
 package visualizer.charts;
 
+import analysis.quant.Cal;
 import core.SpTool3Main;
+import dataModelNew.Sample;
 import javafx.css.Size;
 import math.units.Unit;
 import math.units.enums.*;
@@ -25,6 +27,8 @@ import processing.options.EventParameter;
 import processing.options.HistogramNormalization;
 
 import javax.swing.text.View;
+import java.util.ArrayList;
+import java.util.List;
 
 public interface AxisLabel {
 
@@ -58,13 +62,24 @@ public interface AxisLabel {
   }
 
   static AxisLabel getUnit(EventParameter eventParameter) {
-    return getUnit(eventParameter, IntensityUnit.CTS);
+    return getUnit(eventParameter, IntensityUnit.CTS, new ArrayList<>());
   }
 
-  static AxisLabel getUnit(EventParameter eventParameter, Unit quantUnit) {
+  static AxisLabel getUnit(EventParameter eventParameter, Unit quantUnit, List<Sample> samples) {
     String label = "Unknown";
     Unit unit = ViewUnits.NONE;
-    if (IntensityUnit.CTS.equals(quantUnit) || !EventParameter.canQuantify(eventParameter)) {
+
+    // check if any of the samples suggest quant data
+    boolean sampleIndicatesQuantData = false;
+    // for loop only triggers if not empty
+    for (Sample sample : samples) {
+      sampleIndicatesQuantData = sample.getQuant()
+          .getExperimentalConditions().getEventPar().equals(eventParameter);
+      if (sampleIndicatesQuantData) break;
+    }
+
+    if (IntensityUnit.CTS.equals(quantUnit) || !EventParameter.canQuantify(eventParameter)
+        || !sampleIndicatesQuantData) {
       switch (eventParameter) {
         case AREA:
           label = "Gross area";
@@ -125,7 +140,7 @@ public interface AxisLabel {
       } else if (quantUnit instanceof MassUnit) {
         label = "Elemental mass";
         unit = quantUnit;
-      } else if (quantUnit instanceof MolarUnit){
+      } else if (quantUnit instanceof MolarUnit) {
         label = "Number of moles";
         unit = quantUnit;
       }

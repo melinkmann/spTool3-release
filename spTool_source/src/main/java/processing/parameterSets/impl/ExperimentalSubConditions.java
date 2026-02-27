@@ -397,6 +397,10 @@ public class ExperimentalSubConditions extends AbstractParamSet implements Param
     return ((QuantParameter<ConcentrationUnit>) npConcentration).getUnit();
   }
 
+  public void setNpConcentrationUnit(ConcentrationUnit unit) {
+    ((QuantParameter<ConcentrationUnit>) npConcentration).setUnit(unit);
+  }
+
   public Parameter<ParticleQuantApproach> getNpQuantificationApproach() {
     return npQuantificationApproach;
   }
@@ -417,6 +421,10 @@ public class ExperimentalSubConditions extends AbstractParamSet implements Param
     return ((QuantParameter<SizeUnit>) npSphericalDiameter).getUnit();
   }
 
+  public void setNpSphericalDiameterUnit(SizeUnit unit) {
+    ((QuantParameter<SizeUnit>) npSphericalDiameter).setUnit(unit);
+  }
+
   public Parameter<Double> getNpElementMass() {
     return npElementMass;
   }
@@ -425,13 +433,16 @@ public class ExperimentalSubConditions extends AbstractParamSet implements Param
     return ((QuantParameter<MassUnit>) npElementMass).getUnit();
   }
 
-
   public Parameter<Double> getNpMassFraction() {
     return npMassFraction;
   }
 
   public Parameter<Double> getIonicConcentration() {
     return ionicConcentration;
+  }
+
+  public void setIonicConcentration(ConcentrationUnit unit) {
+    ((QuantParameter<ConcentrationUnit>) ionicConcentration).setUnit(unit);
   }
 
   public double getIonicConc(ConcentrationUnit targetUnit) {

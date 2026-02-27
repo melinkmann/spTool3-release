@@ -607,7 +607,7 @@ public class MethodView implements ParameterView {
     return selEntries;
   }
 
-  private boolean executeSave() {
+  public boolean executeSave() {
     boolean wasSaved = false;
     if (currentMethod.hasAssociatedFileOnDrive()) {
       currentMethod.executeOverridingSave();

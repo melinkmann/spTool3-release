@@ -78,10 +78,14 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
   private final Parameter<String> defaultProjectPath;
   private final Parameter<String> defaultImportPath;
   private final Parameter<Boolean> useMethodsCsvReader;
+  private final Parameter<Boolean> createNewSampleSetOnImport;
+  private final Parameter<Boolean> incrementNewSampleSetOnImport;
   private final Parameter<String> defaultMethodPath;
   private final Parameter<String> currentMethodFile;
   private final Parameter<CpuThreadOption> numberOfThreadsModel;
   private final Parameter<Integer> numberOfThreads;
+  private final Parameter<Integer> dragDropImportFolderDepth;
+  private final Parameter<String> dragDropImportFileType;
   private final Parameter<LogLevel> logLevel;
 
   private final Parameter<Boolean> expertMode;
@@ -149,6 +153,24 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
         false,
         "useMethodsCsvReader");
 
+    this.createNewSampleSetOnImport = new BooleanParameter(
+        "Import",
+        "Create new 'Import' sample set",
+        "Activate this option to create a new sample set called 'Import' after import.",
+        true,
+        false,
+        "createNewSampleSetOnImport");
+
+    this.incrementNewSampleSetOnImport = new BooleanParameter(
+        "Name policy",
+        "Add incrementing number to each new import",
+        """
+            Everytime an import is executed, a new 'Import' sample set
+            with increasing counter will be created""",
+        false,
+        false,
+        "incrementNewSampleSetOnImport");
+
     this.defaultMethodPath = new PathParameter(
         "Method path",
         "Root path for methods",
@@ -183,6 +205,30 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
         TextFormatterOption.ASSURE_NONZERO_POSITIVE_INTEGER,
         false,
         "numberOfThreads");
+
+    this.dragDropImportFolderDepth = new IntegerParameter(
+        "Drop import depth",
+        """
+            When drag/dropping a folder into the main window,
+            content of the folder will be browsed to find importable files.
+            Here, specify how many folder levels you wish to traverse
+            """,
+        5,
+        TextFormatterOption.ASSURE_NONZERO_POSITIVE_INTEGER,
+        false,
+        "dragDropImportFolderDepth");
+
+    dragDropImportFileType = new StringParameter("File type",
+        """
+            Limit drag/drop import to a file of this type.
+            If you leave this empty, all files will be accepted.
+            spTool-specific files such as '.spm' are not affected by this filter""",
+        ".csv",
+        TextFormatterOption.ALL_PASS,
+        true,
+        false,
+        "dragDropImportFileType"
+    );
 
     this.axisFontSize = new IntegerParameter(
         "Axis font size",
@@ -524,7 +570,8 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
     this.defaultProjectPath = confParams.defaultProjectPath.copyWithoutChildren();
     this.defaultImportPath = confParams.defaultImportPath.copyWithoutChildren();
     useMethodsCsvReader = confParams.useMethodsCsvReader.copyWithoutChildren();
-
+    this.createNewSampleSetOnImport = confParams.createNewSampleSetOnImport.copyWithoutChildren();
+    this.incrementNewSampleSetOnImport = confParams.incrementNewSampleSetOnImport.copyWithoutChildren();
     this.defaultMethodPath = confParams.defaultMethodPath.copyWithoutChildren();
     this.currentMethodFile = confParams.currentMethodFile.copyWithoutChildren();
     ((FileParameter) this.currentMethodFile).addFileExtension(new ExtensionFilter("Method files",
@@ -532,6 +579,8 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
 
     this.numberOfThreadsModel = confParams.numberOfThreadsModel.copyWithoutChildren();
     this.numberOfThreads = confParams.numberOfThreads.copyWithoutChildren();
+    this.dragDropImportFolderDepth = confParams.dragDropImportFolderDepth.copyWithoutChildren();
+    this.dragDropImportFileType = confParams.dragDropImportFileType.copyWithoutChildren();
 
     this.logLevel = confParams.logLevel.copyWithoutChildren();
 
@@ -628,7 +677,10 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
           expertMode,
           defaultProjectPath,
           defaultImportPath,
+          dragDropImportFolderDepth,
+          dragDropImportFileType,
           useMethodsCsvReader,
+          createNewSampleSetOnImport,
           defaultMethodPath,
           currentMethodFile,
           isotopeColorIsotopePar,
@@ -704,6 +756,8 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
 
     // Attach Children.
     numberOfThreadsModel.addConditionalChild(CpuThreadOption.CUSTOM, numberOfThreads);
+
+    createNewSampleSetOnImport.addConditionalChild(true, incrementNewSampleSetOnImport);
 
     // RGB tuples
     for (Isotope isotope : dataModelNew.mz.Element.getAllIsotopes()) {
@@ -784,8 +838,12 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
           case "useMethodsCsvReader" -> useMethodsCsvReader;
           case "defaultMethodPath" -> defaultMethodPath;
           case "currentMethodFile" -> currentMethodFile;
+          case "createNewSampleSetOnImport" -> createNewSampleSetOnImport;
+          case "incrementNewSampleSetOnImport" -> incrementNewSampleSetOnImport;
           case "numberOfThreadsModel" -> numberOfThreadsModel;
           case "numberOfThreads" -> numberOfThreads;
+          case "dragDropImportFolderDepth" -> dragDropImportFolderDepth;
+          case "dragDropImportFileType" -> dragDropImportFileType;
           case "logLevel" -> logLevel;
           case "expertMode" -> expertMode;
           case "axisFontSize" -> axisFontSize;
@@ -918,6 +976,14 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
     return recommendedThreads;
   }
 
+  public Parameter<Integer> getDragDropFolderDepth() {
+    return dragDropImportFolderDepth;
+  }
+
+  public Parameter<String> getDragDropImportFileType() {
+    return dragDropImportFileType;
+  }
+
   public Path getDefaultImportPath() {
     Path path = Path.of(defaultImportPath.getValue());
     return path;
@@ -946,6 +1012,14 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
 
   public Parameter<Boolean> getUseMethodsCsvReader() {
     return useMethodsCsvReader;
+  }
+
+  public Parameter<Boolean> getCreateNewSampleSet() {
+    return createNewSampleSetOnImport;
+  }
+
+  public Parameter<Boolean> getIncrementNewSampleSet() {
+    return incrementNewSampleSetOnImport;
   }
 
   public LogLevel getLogLevel() {

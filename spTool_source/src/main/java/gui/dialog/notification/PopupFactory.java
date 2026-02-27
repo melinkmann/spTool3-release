@@ -18,6 +18,8 @@
 package gui.dialog.notification;
 
 import core.SpTool3Main;
+import gui.ReadonlyMethodView;
+import gui.RerunMethodView;
 import gui.StageFactory;
 import gui.util.UiUtil;
 
@@ -31,6 +33,8 @@ import javafx.geometry.Insets;
 import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
+import javafx.scene.input.KeyCode;
+import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.Pane;
 import javafx.scene.layout.VBox;
@@ -107,15 +111,58 @@ public class PopupFactory {
     return popup;
   }
 
-  public static Stage showOnWindow(Node control) {
-    return showOnWindow(control, null, null);
+  public static Stage showOnWindow(Node node) {
+    BorderPane mainPane = new BorderPane(node);
+    Scene scene = new Scene(UiUtil.putOnAnchorWithoutInsets(mainPane));
+    return showOnWindow(mainPane, scene, null, null);
   }
 
-  public static Stage showOnWindow(Node control, @Nullable Scene owner, @Nullable Double width) {
+  public static Stage showOnWindow(RerunMethodView methodView, @Nullable Scene owner,
+                                   @Nullable Double width) {
+    Node node = UiUtil.putOnAnchorWithoutInsets(methodView.getBorderPane());
+    BorderPane mainPane = new BorderPane(node);
+    Scene scene = new Scene(UiUtil.putOnAnchorWithoutInsets(mainPane));
+
+    // process with control enter
+    scene.addEventHandler(KeyEvent.KEY_PRESSED, (KeyEvent event) -> {
+      // Execute on ctl enter
+      if (StageFactory.KEY_CTL_ENTER.match(event)) {
+        methodView.process();
+      }
+    });
+
+    Stage stage = showOnWindow(mainPane, scene, owner, width);
+    return stage;
+  }
+
+  public static Stage showOnWindow(ReadonlyMethodView methodView, @Nullable Scene owner,
+                                   @Nullable Double width) {
+    Node node = UiUtil.putOnAnchorWithoutInsets(methodView.getBorderPane());
+    BorderPane mainPane = new BorderPane(node);
+    Scene scene = new Scene(UiUtil.putOnAnchorWithoutInsets(mainPane));
+
+    // exit with control enter
+    scene.addEventHandler(KeyEvent.KEY_PRESSED, (KeyEvent event) -> {
+      if (StageFactory.KEY_CTL_ENTER.match(event)) {
+        Stage stage = (Stage) scene.getWindow();
+        stage.close();
+      }
+    });
+
+    Stage stage = showOnWindow(mainPane, scene, owner, width);
+    return stage;
+  }
+
+  public static Stage showOnWindow(BorderPane mainPane, Scene scene, @Nullable Scene owner,
+                                   @Nullable Double width) {
     Stage stage = new Stage(); // Create a new window (Stage)
 
-    BorderPane mainPane = new BorderPane(control);
-    Scene scene = new Scene(UiUtil.putOnAnchorWithoutInsets(mainPane));
+    // Close on ESC
+    scene.addEventHandler(KeyEvent.KEY_RELEASED, (KeyEvent event) -> {
+      if (KeyCode.ESCAPE == event.getCode() && event.isShiftDown()) {
+        stage.close();
+      }
+    });
 
     UiUtil.formatPopup(mainPane);
 
@@ -218,7 +265,8 @@ public class PopupFactory {
     // bad: when selecting sth else, this one is closed, too.
     //    button.selectedProperty().addListener(new ChangeListener<Boolean>() {
     //      @Override
-    //      public void changed(ObservableValue<? extends Boolean> observableValue, Boolean aBoolean, Boolean t1) {
+    //      public void changed(ObservableValue<? extends Boolean> observableValue, Boolean aBoolean,
+    //      Boolean t1) {
     //        stage.close();
     //      }
     //    });

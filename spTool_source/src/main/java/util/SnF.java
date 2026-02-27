@@ -19,6 +19,7 @@ package util;
 
 import gui.util.ScientificDoubleStringConverter;
 import gui.util.ScientificIntegerStringConverter;
+
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.util.ArrayList;
@@ -26,8 +27,11 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+
 import javafx.util.Pair;
+
 import javax.annotation.Nonnull;
+
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -50,7 +54,8 @@ public abstract class SnF {
 
         // If we can remove a character and still get the same result, we are out of double precision
         if (string.length() > 15) {
-          // String addOne = string + "1"; // Check if we can make the String longer to check if we might me exceeding double precision.
+          // String addOne = string + "1"; // Check if we can make the String longer to check if we might
+          // me exceeding double precision.
           String workingString = string;
           if (string.contains("E")) {
 
@@ -279,7 +284,11 @@ public abstract class SnF {
     try {
       DecimalFormatSymbols decimalSymbols = DecimalFormatSymbols.getInstance();
       decimalSymbols.setDecimalSeparator('.');
-      if (num < ScientificDoubleStringConverter.SMALLEST_STANDARD_NUMERAL) {
+      double smallestNumeral = ScientificDoubleStringConverter.SMALLEST_STANDARD_NUMERAL; // 0.01
+      if (small.equals(NF.D1C1)) {
+        smallestNumeral = 0.1;
+      }
+      if (num < smallestNumeral) {
         return new DecimalFormat(large.pattern(), decimalSymbols).format(num);
       } else if (num < ScientificDoubleStringConverter.BIGGEST_STANDARD_NUMERAL) {
         return new DecimalFormat(small.pattern(), decimalSymbols).format(num);

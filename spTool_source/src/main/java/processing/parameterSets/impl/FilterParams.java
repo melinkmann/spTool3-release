@@ -26,7 +26,8 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.checkerframework.checker.units.qual.C;
+import math.units.Unit;
+import math.units.enums.NMPUnit;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
@@ -39,6 +40,7 @@ import processing.parameterSets.bundle.RoiSigFactorBundle;
 import processing.parameterSets.bundle.RoiStartStopBundle;
 import processing.parameters.*;
 import util.NF;
+import util.SnF;
 
 public class FilterParams extends AbstractParamSet implements ParamSet {
 
@@ -60,21 +62,18 @@ public class FilterParams extends AbstractParamSet implements ParamSet {
   private final Parameter<Boolean> listNumberOfEvents;
 
   // ROI
-  /*
-    ROI
-  - target parameter (area, height, ...)
-  - conversion (cuberoot, ...)
-  - include/exclude
-  - custom abs start/end
-  - custom percentiles start/end
-  - f IQR
-  - f MAD
-   */
+  private Parameter<Boolean> setAsMainBranch;
   public Parameter<String> roiID;
   public Parameter<RoiCategory> roiCategory;
   public Parameter<EventParameter> eventParameter;
   public Parameter<MathMod> mathConversion;
+  public Parameter<NMPUnit> unitConversion;
   public Parameter<RoiType> roiType;
+  private Parameter<BinWidthEstimator> binWidthEstimator; // for otsu
+  private Parameter<Double> customBinWidth; // for otsu
+  private Parameter<OtsuRegion> otsuRegion; // for otsu
+  private Parameter<Double> changePointZ; // for change point
+
 
   public Parameter<Double> start;
   public Parameter<Double> end;
@@ -177,6 +176,17 @@ public class FilterParams extends AbstractParamSet implements ParamSet {
 
     //////////////////////////// ROI /////////////////////////////////////
 
+    this.setAsMainBranch = new BooleanParameter(
+        "Branch",
+        "Set as new main population",
+        """
+            If selected, this population become the new main branch and further processing is applied to it
+            """,
+        false,
+        true,
+        "setAsMainBranch"
+    );
+
     this.roiID = new StringParameter(
         "ROI ID",
         "Assign a unique ID to the ROI to identify it in the UI",
@@ -204,12 +214,23 @@ public class FilterParams extends AbstractParamSet implements ParamSet {
         "eventParameter");
 
     mathConversion = new ComboEnumParameter<>("Math",
-        "Choose conversion",
+        """
+            Choose conversion.
+            For Otsu's method, it is recommended to test if log10 transformation
+            helps to remove remaining background.""",
         MathMod.NONE,
         MathMod.values(),
         MathMod.class,
         false,
         "mathConversion");
+
+    unitConversion = new ComboEnumParameter<>("Unit",
+        "Choose conversion",
+        NMPUnit.CTS,
+        NMPUnit.values(),
+        NMPUnit.class,
+        false,
+        "unitConversion");
 
     roiType = new ComboEnumParameter<>("Target",
         "Choose target of ROI",
@@ -218,6 +239,48 @@ public class FilterParams extends AbstractParamSet implements ParamSet {
         RoiType.class,
         false,
         "roiType");
+
+    binWidthEstimator = new ComboEnumParameter<>(
+        "Binning",
+        "Choose the model for calculating the histogram bin width",
+        BinWidthEstimator.SHIMAZAKI_AND_SHINOMOTO,
+        BinWidthEstimator.values(),
+        BinWidthEstimator.class,
+        false,
+        "binWidthEstimator"
+    );
+
+    this.customBinWidth = new DoubleParameter(
+        "Bin width",
+        "Choose the bin width",
+        0.05d,
+        NF.D1C3,
+        TextFormatterOption.ASSURE_NONZERO_POS_EXP_DOUBLE,
+        false,
+        "customBinWidth");
+
+    this.otsuRegion = new ComboEnumParameter<>(
+        "Threshold region",
+        """
+            Choose whether the left or right region of the threshold is kept.
+            This decision applies both for 'Otsu' and 'Change point'""",
+        OtsuRegion.UPPER,
+        OtsuRegion.values(),
+        OtsuRegion.class,
+        false,
+        "otsuRegion"
+    );
+
+    this.changePointZ = new DoubleParameter("Magnitude z",
+        """
+            Defines how strong the bar height needs to change before begin of particle mode is detected.
+            Higher values shift the split to thr right, lower shift it to the left.
+            If ROIs are empty, try z=0 and start incrementing in small steps such as 0.1""",
+        0.5d,
+        NF.D1C3,
+        TextFormatterOption.ASSURE_DOUBLE,
+        false,
+        "changePointZ");
 
     this.start = new DoubleParameter("Start",
         """
@@ -336,14 +399,20 @@ public class FilterParams extends AbstractParamSet implements ParamSet {
     this.moavPeriod = gatingParams.moavPeriod.copyWithoutChildren();
     this.smoothTargetOption = gatingParams.smoothTargetOption.copyWithoutChildren();
     //////////////////////
+    this.setAsMainBranch = gatingParams.setAsMainBranch.copyWithoutChildren();
     this.roiID = gatingParams.roiID.copyWithoutChildren();
     this.roiCategory = gatingParams.roiCategory.copyWithoutChildren();
     this.eventParameter = gatingParams.eventParameter.copyWithoutChildren();
     this.mathConversion = gatingParams.mathConversion.copyWithoutChildren();
+    this.unitConversion = gatingParams.unitConversion.copyWithoutChildren();
     this.roiType = gatingParams.roiType.copyWithoutChildren();
     this.start = gatingParams.start.copyWithoutChildren();
     this.end = gatingParams.end.copyWithoutChildren();
     this.sigFactor = gatingParams.sigFactor.copyWithoutChildren();
+    this.binWidthEstimator = gatingParams.binWidthEstimator.copyWithoutChildren();
+    this.customBinWidth = gatingParams.customBinWidth.copyWithoutChildren();
+    this.otsuRegion = gatingParams.otsuRegion.copyWithoutChildren();
+    this.changePointZ = gatingParams.changePointZ.copyWithoutChildren();
 
     this.roiExceptionsStartStop = gatingParams.roiExceptionsStartStop.copyWithoutChildren();
     this.roiExceptionsSigFactor = gatingParams.roiExceptionsSigFactor.copyWithoutChildren();
@@ -391,16 +460,24 @@ public class FilterParams extends AbstractParamSet implements ParamSet {
     filterOption.addConditionalChild(
         FilterOptions.ROI_REGION,
         roiID,
+        roiCategory,
         eventParameter,
         roiType,
-        roiCategory);
+        setAsMainBranch
+    );
+
+    // these are the only cases (so far) where we allow quantification
+    eventParameter.addConditionalChild(EventParameter.NET_AREA, unitConversion);
+    eventParameter.addConditionalChild(EventParameter.NET_HEIGHT, unitConversion);
 
     roiCategory.addConditionalChild(RoiCategory.ABSOLUTE_VALUES, mathConversion, start, end,
         roiExceptionsStartStop);
     roiCategory.addConditionalChild(RoiCategory.PERCENTILES, start, end, roiExceptionsStartStop);
     roiCategory.addConditionalChild(RoiCategory.IQR, mathConversion, sigFactor, roiExceptionsSigFactor);
     roiCategory.addConditionalChild(RoiCategory.MAD, mathConversion, sigFactor, roiExceptionsSigFactor);
-
+    roiCategory.addConditionalChild(RoiCategory.OTSU, mathConversion, binWidthEstimator, otsuRegion);
+    roiCategory.addConditionalChild(RoiCategory.CHANGE_POINT, binWidthEstimator, otsuRegion, changePointZ);
+    binWidthEstimator.addConditionalChild(BinWidthEstimator.CUSTOM, customBinWidth);
 
     filterOption.addConditionalChild(FilterOptions.MATCH_SIM,
         listMatches,
@@ -436,16 +513,22 @@ public class FilterParams extends AbstractParamSet implements ParamSet {
           case "listNumberOfEvents" -> listNumberOfEvents;
           case "smoothTargetOption" -> smoothTargetOption;
           /// ///////////////////////
+          case "setAsMainBranch" -> setAsMainBranch;
           case "roiID" -> roiID;
           case "roiCategory" -> roiCategory;
           case "eventParameter" -> eventParameter;
           case "mathConversion" -> mathConversion;
+          case "unitConversion" -> unitConversion;
           case "roiType" -> roiType;
           case "start" -> start;
           case "end" -> end;
           case "sigFactor" -> sigFactor;
           case "roiExceptionsStartStop" -> roiExceptionsStartStop;
           case "roiExceptionsSigFactor" -> roiExceptionsSigFactor;
+          case "binWidthEstimator" -> binWidthEstimator;
+          case "customBinWidth" -> customBinWidth;
+          case "otsuRegion" -> otsuRegion;
+          case "changePointZ" -> changePointZ;
           ///
           case "suppressNegativeValues" -> suppressNegativeValues;
           case "removeNegativeValues" -> removeNegativeValues;
@@ -510,6 +593,10 @@ public class FilterParams extends AbstractParamSet implements ParamSet {
     return roiID;
   }
 
+  public Parameter<Boolean> getSetAsMainBranch() {
+    return setAsMainBranch;
+  }
+
   public Parameter<RoiCategory> getRoiCategory() {
     return roiCategory;
   }
@@ -520,6 +607,10 @@ public class FilterParams extends AbstractParamSet implements ParamSet {
 
   public Parameter<MathMod> getMathConversion() {
     return mathConversion;
+  }
+
+  public Unit getUnitConversion() {
+    return unitConversion.getValue().getUnit();
   }
 
   public Parameter<RoiType> getRoiType() {
@@ -536,6 +627,22 @@ public class FilterParams extends AbstractParamSet implements ParamSet {
 
   public Parameter<Double> getSigFactor() {
     return sigFactor;
+  }
+
+  public Parameter<Double> getCustomBinWidth() {
+    return customBinWidth;
+  }
+
+  public Parameter<BinWidthEstimator> getBinWidthEstimator() {
+    return binWidthEstimator;
+  }
+
+  public Parameter<OtsuRegion> getOtsuRegion() {
+    return otsuRegion;
+  }
+
+  public Parameter<Double> getChangePointZ() {
+    return changePointZ;
   }
 
   public List<RoiStartStopBundle> getRoiStartStopBundles() {
@@ -616,12 +723,20 @@ public class FilterParams extends AbstractParamSet implements ParamSet {
       this.roiID = defaults.roiID;
     }
 
+    if (setAsMainBranch == null) {
+      this.setAsMainBranch = defaults.setAsMainBranch;
+    }
+
     if (eventParameter == null) {
       this.eventParameter = defaults.eventParameter;
     }
 
     if (mathConversion == null) {
       this.mathConversion = defaults.mathConversion;
+    }
+
+    if (unitConversion == null) {
+      this.unitConversion = defaults.unitConversion;
     }
 
     if (roiType == null) {
@@ -648,6 +763,21 @@ public class FilterParams extends AbstractParamSet implements ParamSet {
       this.roiExceptionsSigFactor = defaults.roiExceptionsSigFactor;
     }
 
+    if (binWidthEstimator == null) {
+      this.binWidthEstimator = defaults.binWidthEstimator;
+    }
+
+    if (customBinWidth == null) {
+      this.customBinWidth = defaults.customBinWidth;
+    }
+
+    if (otsuRegion == null) {
+      this.otsuRegion = defaults.otsuRegion;
+    }
+
+    if (changePointZ == null) {
+      this.changePointZ = defaults.changePointZ;
+    }
     ///
     if (suppressNegativeValues == null) {
       this.suppressNegativeValues = defaults.suppressNegativeValues;

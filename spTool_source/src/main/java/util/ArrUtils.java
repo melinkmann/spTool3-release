@@ -165,6 +165,35 @@ public abstract class ArrUtils {
     return result;
   }
 
+  public static double[] barCDF(double[] histBarHeights) {
+    double[] result = new double[histBarHeights.length];
+
+    if (histBarHeights.length > 0) {
+      int n = histBarHeights.length;
+      double[] cdf = new double[n];
+
+      // ensure positive bar heights
+      for (int i = 0; i < histBarHeights.length; i++) {
+        histBarHeights[i] = Math.max(0, histBarHeights[i]);
+      }
+
+      double total = 0.0;
+      for (double h : histBarHeights) {
+        total += h;
+      }
+
+      // ensure non degenerate distribution
+      if (total > 0) {
+        double cumulative = 0.0;
+        for (int i = 0; i < n; i++) {
+          cumulative += histBarHeights[i];
+          cdf[i] = cumulative / total;
+        }
+        result = cdf;
+      }
+    }
+    return result;
+  }
 
   public static double[] copy(double[] data) {
     double[] copy = new double[data.length];
@@ -1141,6 +1170,48 @@ public abstract class ArrUtils {
   }
 
 
+  // modified chatGPT
+  public static double[] trim(double[] data, int maxLen) {
+    double[] result = new double[0];
+
+    if (data != null) {
+
+      // If no trimming is needed, return a copy of the original array
+      if (data.length <= maxLen) {
+        double[] copy = new double[data.length];
+        System.arraycopy(data, 0, copy, 0, data.length);
+        result = copy;
+      } else {
+
+        // Otherwise, trim to maxLen
+        double[] trimmedArray = new double[maxLen];
+        System.arraycopy(data, 0, trimmedArray, 0, maxLen);
+        result = trimmedArray;
+      }
+    }
+    return result;
+  }
+
+  public static List<Double> trim(List<Double> data, int maxLen) {
+    List<Double> result = new ArrayList<>();
+
+    if (data != null) {
+
+      // If no trimming is needed, return a copy of the original list
+      if (data.size() <= maxLen) {
+        result = new ArrayList<>(data);
+      } else {
+
+        // Otherwise, trim to maxLen
+        result = new ArrayList<>(maxLen);
+        result.addAll(data.subList(0, maxLen));
+      }
+    }
+
+    return result;
+  }
+
+
   /*
   ----------------------------------------------------------------------------------------
   FILL ARRAYS WITH NUMBERS OR SERIES
@@ -1229,9 +1300,12 @@ public abstract class ArrUtils {
   }
 
 
-  public static double[] extendForRegression(double[] sortedValues, double ratio) {
+  public static double[] extendForRegression(double[] values, double ratio) {
     double[] result = new double[0];
     double valueWidth = 0;
+    double[] sortedValues = ArrUtils.copy(values);
+    Arrays.sort(sortedValues);
+
     if (sortedValues.length > 1) {
       valueWidth = sortedValues[sortedValues.length - 1] - sortedValues[0];
       valueWidth = valueWidth * ratio;

@@ -18,14 +18,11 @@
 package gui;
 
 import analysis.AlphaBetaEvaluation;
-import analysis.AnalysisUtils;
 import analysis.Event;
 import analysis.PopulationID;
 import core.SpTool3Main;
 import dataModelNew.Sample;
 import dataModelNew.SampleImpl;
-import dataModelNew.Trace;
-import dataModelNew.TraceMC;
 import gui.dialog.DialogUtil;
 import gui.dialog.FxStage;
 import gui.dialog.FxStageButton;
@@ -64,7 +61,7 @@ import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 import math.stat.sigTest.EMD;
-import math.units.enums.ExportUnits;
+import math.units.enums.NMPUnit;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import processing.options.*;
@@ -76,7 +73,6 @@ import processing.parameterSets.impl.ExporterParams.ExportTarget;
 import processing.parameterSets.impl.NormalSearchParams;
 import processing.parameters.FxParameter;
 import sandbox.montecarlo.Isotope;
-import sandbox.montecarlo.ParticlePopulationMatrix;
 import tasks.BatchTask;
 import tasks.batch.SimpleLinearBatch;
 import tasks.results.EmptyTaskResult;
@@ -787,7 +783,7 @@ public class ExportViewController implements ParameterView, FxStage, Hotkeyable 
       int noOfBgDP = exportParamSet.getJitterDataPoints().getValue();
       boolean exportNP = exportParamSet.getExportParticleData().getValue();
       EventParameter npPar = exportParamSet.getParticleEventParameter().getValue();
-      ExportUnits exportUnits = exportParamSet.getParticleUnitParameter().getValue();
+      NMPUnit NMPUnit = exportParamSet.getParticleUnitParameter().getValue();
       if (!samples.isEmpty() && !selIsotopes.isEmpty() && !selPops.isEmpty()) {
         String dateTag = Util.getYearMonthDateDayHourMinuteSecond();
         String fileName = dateTag + "EventData";
@@ -822,7 +818,7 @@ public class ExportViewController implements ParameterView, FxStage, Hotkeyable 
               noOfBgDP,
               exportNP,
               npPar,
-              exportUnits
+              NMPUnit
           ));
         }
 

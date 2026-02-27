@@ -37,7 +37,6 @@ import gui.dialog.caseImpl.SubmethodEditor;
 import gui.dialog.notification.NotificationFactory;
 import gui.listAndSearch.SampleListAndTable;
 import gui.util.TextFieldUtils;
-import gui.util.UiString;
 import gui.util.UiUtil;
 import io.FileSet;
 import io.FxFileSet;
@@ -122,7 +121,7 @@ public class MainWindowController {
   public Button reprocessSamplesBtn;
   public Spinner<Integer> repetitionSpinner;
   public MenuBar mainMenuBar;
-  public ComboBox<Unit> mainUnitComboBox;
+  public ComboBox<NMPUnit> mainUnitComboBox;
   private Menu fileMenu = new Menu("File");
   private Menu importMenu = new Menu("Import");
   private Menu exportMenu = new Menu("Export");
@@ -156,44 +155,27 @@ public class MainWindowController {
 
     // ################################# UNIT ######################
 
-    ObservableList<Unit> availableUnits;
+    ObservableList<NMPUnit> availableUnits;
     if (SpTool3Main.getANALYZER()) {
-      availableUnits = FXCollections.observableArrayList(IntensityUnit.CTS,
-          MassUnit.PICO_GRAM,
-          MassUnit.FEMTO_GRAM,
-          MassUnit.ATTO_GRAM,
-          SizeUnit.MICRO_METER,
-          SizeUnit.NANO_METER,
-          MolarUnit.FEMTO_MOL,
-          MolarUnit.ATTO_MOL);
+      availableUnits = FXCollections.observableArrayList(NMPUnit.values());
     } else {
-      availableUnits = FXCollections.observableArrayList(IntensityUnit.CTS);
+      availableUnits = FXCollections.observableArrayList(NMPUnit.CTS);
     }
     mainUnitComboBox.setItems(availableUnits);
-    mainUnitComboBox.getSelectionModel().select(IntensityUnit.CTS);
+    mainUnitComboBox.getSelectionModel().select(NMPUnit.CTS);
     // To String methods
     mainUnitComboBox.setConverter(new StringConverter<>() {
       @Override
-      public String toString(Unit u) {
+      public String toString(NMPUnit u) {
         String value = "N/A";
         if (u != null) {
-          String prefix = "";
-          if (u instanceof MassUnit) {
-            prefix = "Mass";
-          } else if (u instanceof SizeUnit) {
-            prefix = "Size";
-          } else if (u instanceof MolarUnit) {
-            prefix = "Mol";
-          } else if (u instanceof IntensityUnit) {
-            prefix = "Intensity";
-          }
-          value = prefix + ": " + u.getUiString();
+          value = NMPUnit.getPrefix(u) + ": " + u.getUiString();
         }
         return value;
       }
 
       @Override
-      public Unit fromString(String string) {
+      public NMPUnit fromString(String string) {
         return mainUnitComboBox.getSelectionModel().getSelectedItem();
       }
     });
@@ -561,7 +543,8 @@ public class MainWindowController {
                 if (fileFromClipboard.isDirectory() && fileFromClipboard.canRead()) {
 
                   // Check how deep to look
-                  int levels = Integer.MAX_VALUE; // else: levels =1 --> just the content
+                  // int levels = Integer.MAX_VALUE; // else: levels =1 --> just the content
+                  int levels = SpTool3Main.getRunTime().getConfParams().getDragDropFolderDepth().getValue();
 
                   // And look into the folder structure.
                   try {
@@ -578,6 +561,15 @@ public class MainWindowController {
                   recursivePaths.add(fileFromClipboard.toPath());
                 }
               }
+
+              // check file type
+              String limitingType = SpTool3Main.getRunTime().getConfParams()
+                  .getDragDropImportFileType().getValue();
+              // Check if limit is given
+              if (!limitingType.isEmpty()) {
+                recursivePaths.removeIf(p -> !PathUtil.getExtensionWithDot(p).equals(limitingType));
+              }
+
               Util.windowsSortFile(recursivePaths);
               startImport(recursivePaths);
               // store the previous files
@@ -642,6 +634,24 @@ public class MainWindowController {
         // Save project
         if (new KeyCodeCombination(KeyCode.S, KeyCombination.CONTROL_DOWN).match(ke)) {
           saveProject.fire();
+          ke.consume();
+        }
+
+        // Save method
+        if (new KeyCodeCombination(KeyCode.S, KeyCombination.SHIFT_ANY, KeyCombination.CONTROL_DOWN).match(ke)) {
+          methodView.executeSave();
+          ke.consume();
+        }
+
+        // Skim through samples
+        if (new KeyCodeCombination(KeyCode.N, KeyCombination.CONTROL_DOWN).match(ke)) {
+          combinedSampleListAndSearchView.decrementSelectedSample();
+          ke.consume();
+        }
+
+        // Skim through samples
+        if (new KeyCodeCombination(KeyCode.P, KeyCombination.CONTROL_DOWN).match(ke)) {
+          combinedSampleListAndSearchView.incrementSelectedSample();
           ke.consume();
         }
       }
@@ -839,7 +849,7 @@ public class MainWindowController {
   }
 
   public Unit getUnit() {
-    return mainUnitComboBox.getSelectionModel().getSelectedItem();
+    return mainUnitComboBox.getSelectionModel().getSelectedItem().getUnit();
   }
 }
 

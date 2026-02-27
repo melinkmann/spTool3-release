@@ -92,7 +92,7 @@ public interface PopulationStep extends Serializable {
     public boolean isEquivalent(PopulationStep other) {
       boolean isEquiv = false;
       if (other instanceof RoiSubtype) {
-        isEquiv = paramSetLabel == ((RoiSubtype) other).paramSetLabel;
+        isEquiv = Objects.equals(paramSetLabel, ((RoiSubtype) other).paramSetLabel);
       }
       return isEquiv;
     }
@@ -124,7 +124,7 @@ public interface PopulationStep extends Serializable {
       boolean isEquiv = false;
       if (other instanceof FilterSubtype) {
         isEquiv = true;
-        isEquiv = isEquiv && description == ((FilterSubtype) other).description;
+        isEquiv = isEquiv && Objects.equals(description, ((FilterSubtype) other).description);
       }
       return isEquiv;
     }
@@ -232,12 +232,13 @@ public interface PopulationStep extends Serializable {
       if (other instanceof SimMatchSubtype) {
         isEquiv = isEquiv && super.getDescription().equals(((SimMatchSubtype) other).getDescription());
         isEquiv = isEquiv && matchLabel.equals(((SimMatchSubtype) other).matchLabel);
-      }else {
+      } else {
         isEquiv = false;
       }
       return isEquiv;
     }
   }
+
   final class SearchSubtype implements PopulationStep, Serializable {
 
     @Serial

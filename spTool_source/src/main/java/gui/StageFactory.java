@@ -46,6 +46,9 @@ public class StageFactory {
   public static final KeyCombination KEY_CTL_ENTER = new KeyCodeCombination(
       KeyCode.ENTER, KeyCombination.CONTROL_DOWN);
 
+  public static final KeyCombination KEY_SHIFT_ESCAPE = new KeyCodeCombination(
+      KeyCode.ESCAPE, KeyCombination.SHIFT_DOWN);
+
   public static final KeyCombination KEY_CTL_UP = new KeyCodeCombination(
       KeyCode.UP, KeyCombination.CONTROL_DOWN);
 

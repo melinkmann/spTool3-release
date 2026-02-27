@@ -27,25 +27,16 @@ import java.io.File;
 import java.io.Serial;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
-import javafx.collections.FXCollections;
-import javafx.collections.ObservableList;
 import javafx.scene.control.Button;
-import math.units.Unit;
-import math.units.enums.ExportUnits;
-import math.units.enums.IntensityUnit;
-import math.units.enums.MassUnit;
-import math.units.enums.SizeUnit;
+import math.units.enums.NMPUnit;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import processing.options.EventParameter;
 import processing.options.MathMod;
-import processing.parameterSets.AbstractParamSet;
-import processing.parameterSets.AvailableParameterSets;
-import processing.parameterSets.ParamSet;
+import processing.parameterSets.*;
 import processing.parameters.*;
 import util.NF;
 import util.SupplierSerializable;
@@ -92,7 +83,7 @@ public class ExporterParams extends AbstractParamSet implements ParamSet {
   public final Parameter<Integer> jitterDataPoints;
   private final Parameter<Boolean> exportParticleData;
   private final Parameter<EventParameter> particleEventParameter;
-  private final Parameter<ExportUnits> particleUnitParameter;
+  private final Parameter<NMPUnit> particleUnitParameter;
 
   public final Parameter<String> exportEMDBtnPar;
   private final Parameter<EventParameter> emdEventParameter;
@@ -253,9 +244,9 @@ public class ExporterParams extends AbstractParamSet implements ParamSet {
     this.particleUnitParameter = new ComboEnumParameter<>(
         "Unit",
         "Choose which unit shall be exported",
-        ExportUnits.CTS,
-        ExportUnits.values(),
-        ExportUnits.class,
+        NMPUnit.CTS,
+        NMPUnit.values(),
+        NMPUnit.class,
         false,
         "particleUnitParameter"
     );
@@ -353,7 +344,8 @@ public class ExporterParams extends AbstractParamSet implements ParamSet {
     validParameters.add(exportFormat);
     validParameters.add(new SeparatorParameter());
 
-    validParameters.add(new ReadOnlyTextParameter("Exporters with settings", "", "Click on button to execute export"));
+    validParameters.add(new ReadOnlyTextParameter("Exporters with settings", "", "Click on button to " +
+        "execute export"));
 
     validParameters.add(exportRawDataBtnPar);
     validParameters.add(new SeparatorParameter());
@@ -440,6 +432,12 @@ public class ExporterParams extends AbstractParamSet implements ParamSet {
         }
       }
     }
+  }
+
+  @Override
+  public FxParamSetImpl getObservableInstance() {
+    // Without comment, date, ...
+    return new FxParamSetSlimImpl(this);
   }
 
   @Override
@@ -531,7 +529,7 @@ public class ExporterParams extends AbstractParamSet implements ParamSet {
     return particleEventParameter;
   }
 
-  public Parameter<ExportUnits> getParticleUnitParameter() {
+  public Parameter<NMPUnit> getParticleUnitParameter() {
     return particleUnitParameter;
   }
 

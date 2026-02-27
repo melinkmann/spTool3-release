@@ -154,8 +154,8 @@ public abstract class RegressionUtils {
 
     SpChartFactory.ChartComponent regressionComponent = new SpChartFactory.ChartComponent(
         new SpChartFactory.ChartData(
-            isotopeLbl + ": s=" + SnF.doubleToString(linReg.slope, NF.D1C1, NF.D1C1Exp) + " "
-                + "i=" + SnF.doubleToString(linReg.intercept, NF.D1C1) + " "
+            isotopeLbl + ": s=" + SnF.doubleToString(linReg.slope, NF.D1C2, NF.D1C2Exp) + " "
+                + "i=" + SnF.doubleToString(linReg.intercept, NF.D1C2, NF.D1C2Exp) + " "
                 + "R2=" + SnF.doubleToString(linReg.rSquare, NF.D1C3),
             linReg.x,
             linReg.y,
