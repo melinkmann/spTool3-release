@@ -18,30 +18,35 @@
 package processing.parameterSets.uiParams;
 
 import analysis.*;
+import analysis.Event;
 import analysis.quant.*;
 import com.google.common.util.concurrent.AtomicDouble;
 import core.SpTool3Main;
-import dataModelNew.Sample;
-import dataModelNew.TISeries;
-import dataModelNew.TISeriesRAM;
-import dataModelNew.Trace;
+import dataModelNew.*;
 import dataModelNew.mz.Element;
 import dataModelNew.mz.IsotopeMZ;
+import dataModelNew.mz.MZValue;
+import gui.HACCharts;
 import gui.MethodView;
 import gui.ParameterView;
 import gui.StageFactory;
 import gui.dialog.notification.NotificationFactory;
 import gui.util.NumberIterator;
 import gui.util.UiUtil;
-
-import java.awt.BasicStroke;
-import java.awt.Font;
-import java.util.*;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.stream.Collectors;
-
 import io.QuantStringParser;
+import io.export.ClipboardWriter;
+import io.export.ExportWriter;
+import io.fair_acc.chartfx.XYChart;
+import io.fair_acc.chartfx.axes.spi.DefaultNumericAxis;
+import io.fair_acc.chartfx.plugins.DataPointTooltip;
+import io.fair_acc.chartfx.plugins.Zoomer;
+import io.fair_acc.chartfx.renderer.ErrorStyle;
+import io.fair_acc.chartfx.renderer.LineStyle;
+import io.fair_acc.chartfx.renderer.spi.ErrorDataSetRenderer;
+import io.fair_acc.dataset.spi.DoubleDataSet;
+import io.fastExport.TabBlock;
+import io.fastExport.TabBlockColl;
+import io.fastExport.TabCol;
 import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
 import javafx.beans.property.ReadOnlyObjectWrapper;
@@ -53,22 +58,26 @@ import javafx.geometry.Orientation;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.control.*;
+import javafx.scene.control.Button;
+import javafx.scene.control.Label;
+import javafx.scene.control.ScrollPane;
+import javafx.scene.control.TextField;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
 import javafx.stage.Stage;
 import javafx.util.Pair;
-
-import javax.annotation.Nullable;
-
 import math.AverageUtils;
-import math.Smoothing;
+import math.HAC;
 import math.SavitzkyGolay;
+import math.Smoothing;
 import math.regression.RegressionUtils;
 import math.stat.MeasureOfLocation;
 import math.stat.PeakSymmetry;
 import math.stat.PreFilter;
 import math.units.Unit;
-import math.units.enums.*;
+import math.units.enums.IntensityUnit;
+import math.units.enums.TimeUnit;
+import math.units.enums.ViewUnits;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.commons.math3.analysis.integration.BaseAbstractUnivariateIntegrator;
 import org.apache.commons.math3.analysis.integration.RombergIntegrator;
@@ -77,13 +86,16 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.jfree.chart.JFreeChart;
 import org.jfree.chart.annotations.XYTextAnnotation;
+import org.jfree.chart.axis.LogAxis;
 import org.jfree.chart.axis.NumberAxis;
 import org.jfree.chart.axis.ValueAxis;
+import org.jfree.chart.fx.ChartCanvas;
 import org.jfree.chart.fx.ChartViewer;
 import org.jfree.chart.plot.ValueMarker;
 import org.jfree.chart.plot.XYPlot;
 import org.jfree.chart.title.TextTitle;
 import org.jfree.data.Range;
+import org.jfree.data.xy.XYDataItem;
 import processing.options.*;
 import processing.parameterSets.FxParamSet;
 import processing.parameterSets.FxParamSetImpl;
@@ -107,28 +119,22 @@ import util.SnF;
 import visualizer.ResultTableData;
 import visualizer.ResultsTable;
 import visualizer.ResultsTable.TableRowData;
-import visualizer.charts.AxisLabel;
+import visualizer.charts.*;
 import visualizer.charts.AxisLabel.PlainLabel;
-import visualizer.charts.AxisUtils;
-import visualizer.charts.RendererOption;
-import visualizer.charts.SpChartFactory;
-import visualizer.charts.SpChartFactory.ChartComponent;
-import visualizer.charts.SpChartFactory.ChartContainer;
-import visualizer.charts.SpChartFactory.ChartData;
-import visualizer.charts.SpChartFactory.ChartStyle;
-import visualizer.charts.SpChartFactory.HistoChartStyle;
-import visualizer.charts.SpChartFactory.HistogramChartData;
-import visualizer.styles.Colors;
+import visualizer.charts.SpChartFactory.*;
+import visualizer.styles.*;
 import visualizer.styles.Colors.SpColor;
-import visualizer.styles.FontStyles;
-import visualizer.styles.LineGraphStyle;
-import visualizer.styles.LineLineDashDefaults;
-import visualizer.styles.LineWidthDefaults;
 import visualizer.styles.MarkerSize.CustomMarkerSize;
-import visualizer.styles.MarkerSizeDefaults;
-import visualizer.styles.MarkerStyle;
-import visualizer.styles.OkabeItoColors;
-import visualizer.styles.UiColors;
+
+import javax.annotation.Nullable;
+import java.awt.*;
+import java.awt.geom.Point2D;
+import java.util.*;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import static math.regression.RegressionUtils.getOLS;
 
@@ -219,7 +225,7 @@ public abstract class Viewers {
           }
         }
       };
-      SpTool3Main.getRunTime().getTaskManager().forceToHousekeepingPool(
+      SpTool3Main.getRunTime().getTaskManager().forceToGraphPool(
           new SimpleLinearBatch<>(graphTask.getTaskName(), graphTask, false, new EmptyTaskResult()));
 
     }
@@ -1069,32 +1075,95 @@ public abstract class Viewers {
           && selIsotopes != null && !selIsotopes.isEmpty()) {
 
         // Extract the grouped samples; when averaging, the viewer can show more than 1 sample.
-        List<Sample> allSamples = new ArrayList<>();
-        selSamples.forEach(s -> allSamples.addAll(s.getAllSamples()));
+        boolean concatenate = true;
 
-        for (Sample sample : allSamples) {
-          if (sample != null) {
+        if (concatenate) {
 
-            List<Trace> selTraces = sample.getTraces(selIsotopes);
+          // isotope by isotope
+          for (Isotope isotope : selIsotopes) {
+            // dont collect all
+            for (Sample sample : selSamples) {
 
-            for (Trace trace : selTraces) {
-              if (plainSet.getShowRawData().getValue()) {
-                Colors color = AnalysisUtils.getColor(sample,
-                    trace.getMzValue().getIsotope(), allSamples.size(), selIsotopes.size());
-                List<ChartComponent> rawComponent = getRawComponent(trace, plainSet, color);
-                allRawComponents.addAll(rawComponent);
+              // concatenate all subsample
+              List<ChartComponent> subRawComponents = new ArrayList<>();
+              List<ChartComponent> subNpComponents = new ArrayList<>();
+              List<ChartComponent> subBgComponents = new ArrayList<>();
+
+
+              for (Sample subSample : sample.getAllSamples()) {
+                Trace trace = subSample.getTrace(isotope);
+                if (trace != null) {
+
+                  if (plainSet.getShowRawData().getValue()) {
+                    Colors color = AnalysisUtils.getColor(sample,
+                        trace.getMzValue().getIsotope(), selSamples.size(), selIsotopes.size());
+                    List<ChartComponent> rawComponent = getRawComponent(trace, plainSet, color);
+                    subRawComponents.addAll(rawComponent);
+                  }
+                }
+              }
+
+              if (!subRawComponents.isEmpty()) {
+                allRawComponents.add(new ChartComponent(subRawComponents));
               }
 
               for (PopulationID pop : selPops) {
+                for (Sample subSample : sample.getAllSamples()) {
+                  Trace trace = subSample.getTrace(isotope);
+                  if (trace != null) {
 
-                Colors color = AnalysisUtils.getColor(sample,
-                    trace.getMzValue().getIsotope(), allSamples.size(), selIsotopes.size());
+                    Colors color = AnalysisUtils.getColor(sample,
+                        trace.getMzValue().getIsotope(), selSamples.size(), selIsotopes.size());
 
-                Pair<List<ChartComponent>, List<ChartComponent>> eventComponents = getEventComponents(
-                    trace, pop, plainSet, selPops.indexOf(pop), color);
-                if (eventComponents != null) {
-                  allNpComponents.addAll(eventComponents.getKey());
-                  allBgComponents.addAll(eventComponents.getValue());
+                    Pair<List<ChartComponent>, List<ChartComponent>> eventComponents = getEventComponents(
+                        trace, pop, plainSet, selPops.indexOf(pop), color);
+                    if (eventComponents != null) {
+                      subNpComponents.addAll(eventComponents.getKey());
+                      subBgComponents.addAll(eventComponents.getValue());
+                    }
+                  }
+                }
+                if (!subNpComponents.isEmpty()) {
+                  allNpComponents.add(new ChartComponent(subNpComponents));
+                }
+                if (!subBgComponents.isEmpty()) {
+                  allBgComponents.add(new ChartComponent(subBgComponents));
+                }
+                subNpComponents = new ArrayList<>();
+                subBgComponents = new ArrayList<>();
+              }
+
+            }
+          }
+
+        } else {
+          List<Sample> allSamples = new ArrayList<>();
+          selSamples.forEach(s -> allSamples.addAll(s.getAllSamples()));
+
+          for (Sample sample : allSamples) {
+            if (sample != null) {
+
+              List<Trace> selTraces = sample.getTraces(selIsotopes);
+
+              for (Trace trace : selTraces) {
+                if (plainSet.getShowRawData().getValue()) {
+                  Colors color = AnalysisUtils.getColor(sample,
+                      trace.getMzValue().getIsotope(), allSamples.size(), selIsotopes.size());
+                  List<ChartComponent> rawComponent = getRawComponent(trace, plainSet, color);
+                  allRawComponents.addAll(rawComponent);
+                }
+
+                for (PopulationID pop : selPops) {
+
+                  Colors color = AnalysisUtils.getColor(sample,
+                      trace.getMzValue().getIsotope(), allSamples.size(), selIsotopes.size());
+
+                  Pair<List<ChartComponent>, List<ChartComponent>> eventComponents = getEventComponents(
+                      trace, pop, plainSet, selPops.indexOf(pop), color);
+                  if (eventComponents != null) {
+                    allNpComponents.addAll(eventComponents.getKey());
+                    allBgComponents.addAll(eventComponents.getValue());
+                  }
                 }
               }
             }
@@ -1200,11 +1269,16 @@ public abstract class Viewers {
       double windowSec = Math.max(trace.getTISeries().getDT(),
           plainSet.getGeneralWindowMillisec().getValue() / 1000);
 
-      TISeries average = AverageUtils.average(
-          trace,
-          windowSec,
-          plainSet.getRawLocationMeasure().getValue(),
-          plainSet.getRawPreFilter().getValue());
+      TISeries average;
+      if (windowSec == trace.getTISeries().getDT()) {
+        average = new TISeriesRAM(trace.getTISeries());
+      } else {
+        average = AverageUtils.average(
+            trace,
+            windowSec,
+            plainSet.getRawLocationMeasure().getValue(),
+            plainSet.getRawPreFilter().getValue());
+      }
 
       average = decideSmooth(average,
           plainSet.getRawSmoothType().getValue(),
@@ -1225,7 +1299,7 @@ public abstract class Viewers {
               "Intensity", IntensityUnit.CTS, MathMod.NONE),
           new ChartStyle(color, 1,
               LineWidthDefaults.MEDIUM_THICK,
-              LineLineDashDefaults.STRAIGHT,
+              LineDashDefaults.STRAIGHT, 0f,
               MarkerSizeDefaults.SMALL,
               MarkerStyle.CROSS,
               false,
@@ -1252,7 +1326,7 @@ public abstract class Viewers {
                 "Intensity", IntensityUnit.CTS, MathMod.NONE),
             new ChartStyle(color, 0.75,
                 LineWidthDefaults.THINNER,
-                LineLineDashDefaults.STRAIGHT,
+                LineDashDefaults.STRAIGHT, 0f,
                 MarkerSizeDefaults.SMALL,
                 MarkerStyle.CIRCLE,
                 false,
@@ -1321,7 +1395,7 @@ public abstract class Viewers {
                 yAxisLabel.getLabel(), yAxisLabel.getUnit(), MathMod.NONE),
             new ChartStyle(color, 1,
                 LineWidthDefaults.MEDIUM_THICK,
-                LineLineDashDefaults.STRAIGHT,
+                LineDashDefaults.STRAIGHT, 0f,
                 MarkerSizeDefaults.SMALL,
                 MarkerStyle.CROSS,
                 false,
@@ -1349,7 +1423,7 @@ public abstract class Viewers {
                   yAxisLabel.getLabel(), yAxisLabel.getUnit(), MathMod.NONE),
               new ChartStyle(color, 0.75,
                   LineWidthDefaults.THINNER,
-                  LineLineDashDefaults.STRAIGHT,
+                  LineDashDefaults.STRAIGHT, 0f,
                   MarkerSizeDefaults.SMALL,
                   MarkerStyle.CIRCLE,
                   false,
@@ -1381,7 +1455,7 @@ public abstract class Viewers {
                 yAxisLabel.getLabel(), yAxisLabel.getUnit(), MathMod.NONE),
             new ChartStyle(color, 1,
                 LineWidthDefaults.MEDIUM_THICK,
-                LineLineDashDefaults.STRAIGHT,
+                LineDashDefaults.STRAIGHT, 0f,
                 MarkerSizeDefaults.SMALL,
                 MarkerStyle.CROSS,
                 false,
@@ -1408,7 +1482,7 @@ public abstract class Viewers {
                   yAxisLabel.getLabel(), yAxisLabel.getUnit(), MathMod.NONE),
               new ChartStyle(color, 0.75,
                   LineWidthDefaults.THINNER,
-                  LineLineDashDefaults.STRAIGHT,
+                  LineDashDefaults.STRAIGHT, 0f,
                   MarkerSizeDefaults.SMALL,
                   MarkerStyle.CIRCLE,
                   false,
@@ -1530,191 +1604,455 @@ public abstract class Viewers {
       List<Isotope> selIsotopes = SpTool3Main.getRunTime().getMainWindowCtl().getSelIsotopes();
       List<PopulationID> selPops = SpTool3Main.getRunTime().getMainWindowCtl().getSelPops();
 
+      int nEventsToShow = Math.min(12, plainSet.getNumberOfEventsShown().getValue());
+      nEventsToShow = Math.max(1, nEventsToShow);
+      iteratorController.setStepSize(nEventsToShow - 1);
+
+      MathMod mathModYAxis = plainSet.getLogYAXis().getValue() ? MathMod.LOG10 : MathMod.NONE;
+
       if (samples != null && !samples.isEmpty() && !selIsotopes.isEmpty() && !selPops.isEmpty()) {
 
-        // so far we only show one sample in the MC raw view.
+
+        // so far we only show one sample.
         Sample sample = samples.get(0);
-        Isotope isotope = selIsotopes.get(0);
-        List<Event> events = sample.getNPEvents(selIsotopes.get(0), selPops.get(0));
+        PopulationID firstID = selPops.get(0);
 
-        if (plainSet.getSortBoolean().getValue()) {
-          events.sort((o1, o2) -> {
-            double val1 = o1.get(plainSet.getEventParameter().getValue());
-            double val2 = o2.get(plainSet.getEventParameter().getValue());
-            return Double.compare(val1, val2);
-          });
-        }
+        // Check if we are dealing with aligned population and multiple selected isotopes
+        boolean isAligned = firstID.getSteps().stream()
+            .anyMatch(popStep -> popStep instanceof PopulationStep.AlignSubtype);
 
-        // for some reason we should +1 (I think b/c we show 1 DP overlapping with event)
-        int previewWidth = plainSet.getNumberOfBGEvents().getValue() + 1;
-        List<TISeries> eventSeries = new ArrayList<>();
-        List<Integer> globalEvtIndex = new ArrayList<>();
-        List<Colors> eventColor = new ArrayList<>();
-        List<TISeries> previewSeries = new ArrayList<>();
-        List<TISeries> postviewSeries = new ArrayList<>();
-        List<String> eventAreaLabels = new ArrayList<>();
-
-        // Create a GridPane and put the viewers on that grid
-        GridPane gridPane = new GridPane();
-        gridPane.setHgap(5);
-        gridPane.setVgap(5);
-        // Fill the GridPane (3 rows x 5 columns)
-        int numCols = 4;
-        int counter = 0;
-
-        if (iteratorController.hasValue()) {
-          iteratorController.setFinalIdx(events.size() - 1);
-          for (int i = iteratorController.getCurrentIdx();
-               i <= iteratorController.getCurrentEndIdx(); i++) {
-
-            if (events.size() > i) {
-              Event event = events.get(i);
-
-              eventSeries.add(event.getProfile());
-              globalEvtIndex.add(i);
-              eventColor.add(AnalysisUtils.getColor(
-                  sample,
-                  selIsotopes.get(0),
-                  1,
-                  selIsotopes.size()));
-              previewSeries.add(event.getPreviousDP(previewWidth));
-              postviewSeries.add(event.getFollowingDP(previewWidth));
-
-              eventAreaLabels.add(event.getLabel());
+        boolean isPValSearch = false;
+        for (PopulationStep popStep : firstID.getSteps()) {
+          if (popStep instanceof PopulationStep.SearchSubtype) {
+            if (((PopulationStep.SearchSubtype) popStep).getSearchAlgorithm()
+                .equals(SearchAlgorithm.P_VALUE_ACCUMULATION)) {
+              isPValSearch = true;
             }
           }
         }
+        boolean multiIsotopeMode = (isAligned || isPValSearch) && selIsotopes.size() > 1;
 
-        List<JFreeChart> charts = new ArrayList<>();
+        if (multiIsotopeMode) {
 
-        for (int i = 0; i < eventSeries.size(); i++) {
+          // Length checks
+          boolean equalLength = selIsotopes.stream()
+              .map(iso -> sample.getNPEvents(iso, firstID))
+              .map(List::size)
+              .distinct()
+              .count() == 1;
 
-          // Create fresh for every single plot or else events accumualte in each view
-          List<ChartComponent> chartComponents = new ArrayList<>();
-          List<ChartComponent> legendComponents = new ArrayList<>();
+          if (equalLength) {
+            List<Event> firstEventList = sample.getNPEvents(selIsotopes.get(0), firstID);
+            int length = firstEventList.size();
+            if (length > 0) {
 
-          TISeries eventData = eventSeries.get(i);
-          Colors color = eventColor.get(i);
-          TISeries prevData = previewSeries.get(i);
-          TISeries postData = postviewSeries.get(i);
-          String areaLabel = eventAreaLabels.get(i);
+              // Get the total signal per region of the requested parameter
+              double[] regionBasedEventParameter = new double[length];
+              for (Isotope iso : selIsotopes) {
+                List<Event> events = sample.getNPEvents(iso, firstID);
+                for (int i = 0; i < events.size(); i++) {
+                  Event event = events.get(i);
+                  regionBasedEventParameter[i] += event.get(plainSet.getEventParameter().getValue());
+                }
+              }
 
-          ChartComponent comp;
+              // consider changing this in case it performs too slowly
+              HashMap<Isotope, List<Event>> eventMap = new HashMap<>();
 
-          // Avoid freezing when too large
-          if (eventData.size() < 1E3) {
+              // iterate over all regions by assuming the first region as a model (length checked above)
+              if (plainSet.getSortBoolean().getValue()) {
+                for (Isotope iso : selIsotopes) {
+                  List<Event> events = sample.getNPEvents(iso, firstID);
+                  events = IntStream.range(0, length)
+                      .boxed()
+                      .sorted(Comparator.comparingDouble(i -> regionBasedEventParameter[i]))
+                      .map(events::get)
+                      .toList();
+                  eventMap.put(iso, events);
+                }
+              } else {
+                for (Isotope iso : selIsotopes) {
+                  eventMap.put(iso, sample.getNPEvents(iso, firstID));
+                }
+              }
+
+              /// Now start building the plots
+              // for some reason we should +1 (I think b/c we show 1 DP overlapping with event)
+              int previewWidth = plainSet.getNumberOfBGEvents().getValue() + 1;
+
+              // Create a GridPane and put the viewers on that grid
+              GridPane gridPane = new GridPane();
+              gridPane.setHgap(5);
+              gridPane.setVgap(5);
+              // Fill the GridPane (3 rows x 5 columns)
+              int numCols = 4;
+              int counter = 0;
+
+              HashMap<Isotope, List<TISeries>> eventSeries = new HashMap<>();
+              HashMap<Isotope, List<Integer>> globalEvtIndex = new HashMap<>();
+              HashMap<Isotope, List<Colors>> eventColor = new HashMap<>();
+              HashMap<Isotope, List<TISeries>> previewSeries = new HashMap<>();
+              HashMap<Isotope, List<TISeries>> postviewSeries = new HashMap<>();
+
+              // Build the data sets
+              for (Isotope iso : selIsotopes) {
+                List<Event> events = eventMap.get(iso);
+                if (iteratorController.hasValue()) {
+                  iteratorController.setFinalIdx(events.size() - 1);
+                  for (int i = iteratorController.getCurrentIdx();
+                       i <= iteratorController.getCurrentEndIdx(); i++) {
+
+                    if (events.size() > i) {
+                      Event event = events.get(i);
+
+                      if (plainSet.getLogYAXis().getValue()) {
+                        eventSeries.computeIfAbsent(iso, k -> new ArrayList<>()).add(event.getLogProfile());
+                      } else {
+                        eventSeries.computeIfAbsent(iso, k -> new ArrayList<>()).add(event.getProfile());
+                      }
+
+                      globalEvtIndex.computeIfAbsent(iso, k -> new ArrayList<>()).add(i);
+                      eventColor.computeIfAbsent(iso, k -> new ArrayList<>()).add(AnalysisUtils.getColor(
+                          sample,
+                          iso,
+                          1,
+                          selIsotopes.size()));
+
+                      if (plainSet.getLogYAXis().getValue()) {
+                        previewSeries.computeIfAbsent(iso, k -> new ArrayList<>()).add(event.getLogPreviousDP(previewWidth));
+                        postviewSeries.computeIfAbsent(iso, k -> new ArrayList<>()).add(event.getLogFollowingDP(previewWidth));
+                      } else {
+                        previewSeries.computeIfAbsent(iso, k -> new ArrayList<>()).add(event.getPreviousDP(previewWidth));
+                        postviewSeries.computeIfAbsent(iso, k -> new ArrayList<>()).add(event.getFollowingDP(previewWidth));
+                      }
+                    }
+                  }
+                }
+              }
+
+              // Build the charts
+              List<JFreeChart> charts = new ArrayList<>();
+
+              int numEvents = eventSeries.get(selIsotopes.get(0)).size();
+
+              for (int i = 0; i < numEvents; i++) {
+
+                List<ChartComponent> chartComponents = new ArrayList<>();
+                List<ChartComponent> legendComponents = new ArrayList<>();
+
+                for (Isotope iso : selIsotopes) {
+                  List<TISeries> isoEventSeries = eventSeries.get(iso);
+
+                  if (isoEventSeries != null && i < isoEventSeries.size()) {
+
+                    TISeries eventData = eventSeries.get(iso).get(i);
+                    Colors color = eventColor.get(iso).get(i);
+                    TISeries prevData = previewSeries.get(iso).get(i);
+                    TISeries postData = postviewSeries.get(iso).get(i);
+                    int evtIndex = globalEvtIndex.get(iso).get(i);
+
+                    ChartComponent comp;
+
+                    if (eventData.size() < 1E3) {
+                      comp = new ChartComponent(
+                          new ChartData("Evt # " + (evtIndex + 1) + " - " + iso.getName(),
+                              eventData,
+                              "Time", TimeUnit.SECOND, MathMod.NONE,
+                              "Intensity", IntensityUnit.CTS, mathModYAxis),
+                          new ChartStyle(color, 1,
+                              LineWidthDefaults.MEDIUM_THICK,
+                              LineDashDefaults.STRAIGHT, 0f,
+                              MarkerSizeDefaults.SMALL,
+                              MarkerStyle.CROSS,
+                              false,
+                              RendererOption.LINE_AND_SHAPE,
+                              LineGraphStyle.LINE_AND_MARKER)
+                      );
+                    } else {
+                      comp = new ChartComponent(
+                          new ChartData("Evt # " + (evtIndex + 1) + " - " + iso.getName(),
+                              eventData,
+                              "Time", TimeUnit.SECOND, MathMod.NONE,
+                              "Intensity", IntensityUnit.CTS, mathModYAxis),
+                          new ChartStyle(color, 1,
+                              LineWidthDefaults.MEDIUM_THICK,
+                              LineDashDefaults.STRAIGHT, 0f,
+                              MarkerSizeDefaults.SMALL,
+                              MarkerStyle.CROSS,
+                              false,
+                              RendererOption.SAMPLING_LINE_AND_SHAPE,
+                              LineGraphStyle.LINE_AND_MARKER)
+                      );
+                    }
+
+                    chartComponents.add(comp);
+                    legendComponents.add(comp);
+
+                    comp = new ChartComponent(
+                        new ChartData("BG",
+                            prevData,
+                            "Time", TimeUnit.SECOND, MathMod.NONE,
+                            "Intensity", IntensityUnit.CTS, mathModYAxis),
+                        new ChartStyle(color, 1,
+                            LineWidthDefaults.MEDIUM,
+                            LineDashDefaults.STRAIGHT, 0f,
+                            MarkerSizeDefaults.SMALL,
+                            MarkerStyle.CIRCLE,
+                            false,
+                            RendererOption.LINE_AND_SHAPE,
+                            LineGraphStyle.LINE)
+                    );
+                    chartComponents.add(comp);
+                    // legendComponents.add(comp); // for multiple isotopes, this just spams...
+
+                    chartComponents.add(new ChartComponent(
+                        new ChartData("BG",
+                            postData,
+                            "Time", TimeUnit.SECOND, MathMod.NONE,
+                            "Intensity", IntensityUnit.CTS, mathModYAxis),
+                        new ChartStyle(color, 1,
+                            LineWidthDefaults.MEDIUM,
+                            LineDashDefaults.STRAIGHT, 0f,
+                            MarkerSizeDefaults.SMALL,
+                            MarkerStyle.CIRCLE,
+                            false,
+                            RendererOption.LINE_AND_SHAPE,
+                            LineGraphStyle.LINE)
+                    ));
+                  }
+                }
+
+                JFreeChart chart = SpChartFactory.createLineChart(chartComponents);
+                charts.add(chart);
+
+
+                ChartContainer chartContainer = SpChartFactory.bundleChartLegend(
+                    chart,
+                    legendComponents,
+                    800, 500);
+                Node viewNode = chartContainer.combinedPane;
+
+                int row = counter / numCols;
+                int col = counter % numCols;
+                counter++;
+
+                GridPane.setHgrow(viewNode, Priority.ALWAYS);
+                GridPane.setVgrow(viewNode, Priority.ALWAYS);
+
+                gridPane.add(viewNode, col, row);
+
+                if (plainSet.getUseCommonYAxis().getValue()) {
+                  AtomicReference<Double> maxY = new AtomicReference<>((double) 0);
+                  eventSeries.values().stream()
+                      .flatMap(List::stream)
+                      .forEach(s -> maxY.set(Math.max(maxY.get(), ArrUtils.getMax(s.getIntensity()))));
+                  if (maxY.get() > 0) {
+                    charts.forEach(c -> c.getXYPlot().getRangeAxis().setRange(new Range(0, maxY.get())));
+                  }
+                }
+              }
+
+              SpTool3Main.getRunTime().getGuiParameterManager().getEventTabPane()
+                  .setCenter(UiUtil.putOnAnchorWithoutInsets(gridPane));
+            }
+          }
+        } else {
+
+          // just one isotope
+          Isotope isotope = selIsotopes.get(0);
+          List<Event> events = sample.getNPEvents(isotope, firstID);
+
+          if (plainSet.getSortBoolean().getValue()) {
+            events.sort((o1, o2) -> {
+              double val1 = o1.get(plainSet.getEventParameter().getValue());
+              double val2 = o2.get(plainSet.getEventParameter().getValue());
+              return Double.compare(val1, val2);
+            });
+          }
+
+          // for some reason we should +1 (I think b/c we show 1 DP overlapping with event)
+          int previewWidth = plainSet.getNumberOfBGEvents().getValue() + 1;
+          List<TISeries> eventSeries = new ArrayList<>();
+          List<Integer> globalEvtIndex = new ArrayList<>();
+          List<Colors> eventColor = new ArrayList<>();
+          List<TISeries> previewSeries = new ArrayList<>();
+          List<TISeries> postviewSeries = new ArrayList<>();
+          List<String> eventAreaLabels = new ArrayList<>();
+
+          // Create a GridPane and put the viewers on that grid
+          GridPane gridPane = new GridPane();
+          gridPane.setHgap(5);
+          gridPane.setVgap(5);
+          // Fill the GridPane (3 rows x 5 columns)
+          int numCols = 4;
+          int counter = 0;
+
+          if (iteratorController.hasValue()) {
+            iteratorController.setFinalIdx(events.size() - 1);
+            for (int i = iteratorController.getCurrentIdx();
+                 i <= iteratorController.getCurrentEndIdx(); i++) {
+
+              if (events.size() > i) {
+                Event event = events.get(i);
+
+                if (plainSet.getLogYAXis().getValue()) {
+                  eventSeries.add(event.getLogProfile());
+                } else {
+                  eventSeries.add(event.getProfile());
+                }
+                globalEvtIndex.add(i);
+                eventColor.add(AnalysisUtils.getColor(
+                    sample,
+                    isotope,
+                    1,
+                    selIsotopes.size()));
+
+                if (plainSet.getLogYAXis().getValue()) {
+                  previewSeries.add(event.getLogPreviousDP(previewWidth));
+                  postviewSeries.add(event.getLogFollowingDP(previewWidth));
+                } else {
+                  previewSeries.add(event.getPreviousDP(previewWidth));
+                  postviewSeries.add(event.getFollowingDP(previewWidth));
+                }
+
+                eventAreaLabels.add(event.getLabel());
+              }
+            }
+          }
+
+          List<JFreeChart> charts = new ArrayList<>();
+
+          for (int i = 0; i < eventSeries.size(); i++) {
+
+            // Create fresh for every single plot or else events accumulate in each view
+            List<ChartComponent> chartComponents = new ArrayList<>();
+            List<ChartComponent> legendComponents = new ArrayList<>();
+
+            TISeries eventData = eventSeries.get(i);
+            Colors color = eventColor.get(i);
+            TISeries prevData = previewSeries.get(i);
+            TISeries postData = postviewSeries.get(i);
+            String areaLabel = eventAreaLabels.get(i);
+
+            ChartComponent comp;
+
+            // Avoid freezing when too large
+            if (eventData.size() < 1E3) {
+              comp = new ChartComponent(
+                  new ChartData("Evt # " + (globalEvtIndex.get(i) + 1) + " - " + isotope.getName(),
+                      eventData,
+                      "Time", TimeUnit.SECOND, MathMod.NONE,
+                      "Intensity", IntensityUnit.CTS, mathModYAxis),
+                  new ChartStyle(color, 1,
+                      LineWidthDefaults.MEDIUM_THICK,
+                      LineDashDefaults.STRAIGHT, 0f,
+                      MarkerSizeDefaults.SMALL,
+                      MarkerStyle.CROSS,
+                      false,
+                      RendererOption.LINE_AND_SHAPE,
+                      LineGraphStyle.LINE_AND_MARKER)
+              );
+            } else {
+              comp = new ChartComponent(
+                  new ChartData("Evt # " + (globalEvtIndex.get(i) + 1) + " - " + isotope.getName(),
+                      eventData,
+                      "Time", TimeUnit.SECOND, MathMod.NONE,
+                      "Intensity", IntensityUnit.CTS, mathModYAxis),
+                  new ChartStyle(color, 1,
+                      LineWidthDefaults.MEDIUM_THICK,
+                      LineDashDefaults.STRAIGHT, 0f,
+                      MarkerSizeDefaults.SMALL,
+                      MarkerStyle.CROSS,
+                      false,
+                      RendererOption.SAMPLING_LINE_AND_SHAPE,
+                      LineGraphStyle.LINE_AND_MARKER)
+              );
+            }
+
+            chartComponents.add(comp);
+            legendComponents.add(comp);
+
             comp = new ChartComponent(
-                new ChartData("Evt # " + (globalEvtIndex.get(i) + 1) + " - " + isotope.getName(),
-                    eventData,
+                new ChartData("BG",
+                    prevData,
                     "Time", TimeUnit.SECOND, MathMod.NONE,
-                    "Intensity", IntensityUnit.CTS, MathMod.NONE),
-                new ChartStyle(color, 1,
-                    LineWidthDefaults.MEDIUM_THICK,
-                    LineLineDashDefaults.STRAIGHT,
+                    "Intensity", IntensityUnit.CTS, mathModYAxis),
+                new ChartStyle(OkabeItoColors.BLACK_DARK, 1,
+                    LineWidthDefaults.MEDIUM,
+                    LineDashDefaults.STRAIGHT, 0f,
                     MarkerSizeDefaults.SMALL,
-                    MarkerStyle.CROSS,
+                    MarkerStyle.CIRCLE,
                     false,
                     RendererOption.LINE_AND_SHAPE,
-                    LineGraphStyle.LINE_AND_MARKER)
+                    LineGraphStyle.LINE)
             );
-          } else {
-            comp = new ChartComponent(
-                new ChartData("Evt # " + (globalEvtIndex.get(i) + 1) + " - " + isotope.getName(),
-                    eventData,
+            chartComponents.add(comp);
+            legendComponents.add(comp);
+
+            chartComponents.add(new ChartComponent(
+                new ChartData("BG",
+                    postData,
                     "Time", TimeUnit.SECOND, MathMod.NONE,
-                    "Intensity", IntensityUnit.CTS, MathMod.NONE),
-                new ChartStyle(color, 1,
-                    LineWidthDefaults.MEDIUM_THICK,
-                    LineLineDashDefaults.STRAIGHT,
+                    "Intensity", IntensityUnit.CTS, mathModYAxis),
+                new ChartStyle(OkabeItoColors.BLACK_DARK, 1,
+                    LineWidthDefaults.MEDIUM,
+                    LineDashDefaults.STRAIGHT, 0f,
                     MarkerSizeDefaults.SMALL,
-                    MarkerStyle.CROSS,
+                    MarkerStyle.CIRCLE,
                     false,
-                    RendererOption.SAMPLING_LINE_AND_SHAPE,
-                    LineGraphStyle.LINE_AND_MARKER)
-            );
+                    RendererOption.LINE_AND_SHAPE,
+                    LineGraphStyle.LINE)
+            ));
+
+            JFreeChart chart = SpChartFactory.createLineChart(chartComponents);
+            charts.add(chart);
+
+            if (plainSet.getAnnotatePeakParameters().getValue()) {
+              XYPlot plot = chart.getXYPlot();
+              //
+              double x = 0.2 * plot.getDomainAxis().getRange().getLowerBound()
+                  + 0.8 * plot.getDomainAxis().getRange().getUpperBound();
+              double y = 0.85 * plot.getRangeAxis().getRange().getUpperBound();
+              String annotTxt = "Σ " + areaLabel;
+              XYTextAnnotation annotation = new XYTextAnnotation(annotTxt, x, y);
+              annotation.setFont(FontStyles.getPlain());
+              //
+              plot.addAnnotation(annotation);
+            }
+
+            ChartContainer chartContainer = SpChartFactory.bundleChartLegend(
+                chart,
+                legendComponents,
+                800, 500);
+            Node viewNode = chartContainer.combinedPane;
+
+            int row = counter / numCols;
+            int col = counter % numCols;
+            counter++;
+
+            //viewNode.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE); // Let viewer expand
+
+            // Ensure the viewer grows to fill its cell
+            GridPane.setHgrow(viewNode, Priority.ALWAYS);
+            GridPane.setVgrow(viewNode, Priority.ALWAYS);
+
+            // Add to grid
+            gridPane.add(viewNode, col, row);
+
+            if (plainSet.getUseCommonYAxis().getValue()) {
+              AtomicReference<Double> maxY = new AtomicReference<>((double) 0);
+              eventSeries.forEach(s ->
+                  maxY.set(Math.max(maxY.get(), ArrUtils.getMax((s.getIntensity())))));
+              if (maxY.get() > 0) {
+                charts.forEach(c -> c.getXYPlot().getRangeAxis().setRange(new Range(0, maxY.get())));
+              }
+            }
           }
 
-          chartComponents.add(comp);
-          legendComponents.add(comp);
-
-          comp = new ChartComponent(
-              new ChartData("BG",
-                  prevData,
-                  "Time", TimeUnit.SECOND, MathMod.NONE,
-                  "Intensity", IntensityUnit.CTS, MathMod.NONE),
-              new ChartStyle(OkabeItoColors.BLACK_DARK, 1,
-                  LineWidthDefaults.MEDIUM,
-                  LineLineDashDefaults.STRAIGHT,
-                  MarkerSizeDefaults.SMALL,
-                  MarkerStyle.CIRCLE,
-                  false,
-                  RendererOption.LINE_AND_SHAPE,
-                  LineGraphStyle.LINE)
-          );
-          chartComponents.add(comp);
-          legendComponents.add(comp);
-
-          chartComponents.add(new ChartComponent(
-              new ChartData("BG",
-                  postData,
-                  "Time", TimeUnit.SECOND, MathMod.NONE,
-                  "Intensity", IntensityUnit.CTS, MathMod.NONE),
-              new ChartStyle(OkabeItoColors.BLACK_DARK, 1,
-                  LineWidthDefaults.MEDIUM,
-                  LineLineDashDefaults.STRAIGHT,
-                  MarkerSizeDefaults.SMALL,
-                  MarkerStyle.CIRCLE,
-                  false,
-                  RendererOption.LINE_AND_SHAPE,
-                  LineGraphStyle.LINE)
-          ));
-
-          JFreeChart chart = SpChartFactory.createLineChart(chartComponents);
-          charts.add(chart);
-
-          if (plainSet.getAnnotatePeakParameters().getValue()) {
-            XYPlot plot = chart.getXYPlot();
-            //
-            double x = 0.2 * plot.getDomainAxis().getRange().getLowerBound()
-                + 0.8 * plot.getDomainAxis().getRange().getUpperBound();
-            double y = 0.85 * plot.getRangeAxis().getRange().getUpperBound();
-            String annotTxt = "Σ " + areaLabel;
-            XYTextAnnotation annotation = new XYTextAnnotation(annotTxt, x, y);
-            annotation.setFont(FontStyles.getPlain());
-            //
-            plot.addAnnotation(annotation);
-          }
-
-          ChartContainer chartContainer = SpChartFactory.bundleChartLegend(
-              chart,
-              legendComponents,
-              800, 500);
-          Node viewNode = chartContainer.combinedPane;
-
-          int row = counter / numCols;
-          int col = counter % numCols;
-          counter++;
-
-          //viewNode.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE); // Let viewer expand
-
-          // Ensure the viewer grows to fill its cell
-          GridPane.setHgrow(viewNode, Priority.ALWAYS);
-          GridPane.setVgrow(viewNode, Priority.ALWAYS);
-
-          // Add to grid
-          gridPane.add(viewNode, col, row);
-
-          if (plainSet.getUseCommonYAxis().getValue()) {
-            AtomicReference<Double> maxY = new AtomicReference<>((double) 0);
-            eventSeries.forEach(s ->
-                maxY.set(Math.max(maxY.get(), ArrUtils.getMax((s.getIntensity())))));
-            charts.forEach(c -> c.getXYPlot().getRangeAxis().setRange(new Range(0, maxY.get())));
-          }
+          // Keep as much in the same pulse/runlater on the UI thread
+          SpTool3Main.getRunTime().getGuiParameterManager().getEventTabPane()
+              .setCenter(UiUtil.putOnAnchorWithoutInsets(gridPane));
         }
-
-        // Keep as much in the same pulse/runlater on the UI thread
-        SpTool3Main.getRunTime().getGuiParameterManager().getEventTabPane()
-            .setCenter(UiUtil.putOnAnchorWithoutInsets(gridPane));
       }
     } // refresh
   }
@@ -1725,12 +2063,369 @@ public abstract class Viewers {
     private final AtomicDouble progress = new AtomicDouble(0);
     private final AtomicBoolean isStopped = new AtomicBoolean(false);
 
+    private final AtomicReference<ChartViewer> viewerRef = new AtomicReference<>(null);
+
     public MonteCarloRawDataViewer(MonteCarloRawDataParameters plainSet) {
       super(plainSet);
     }
 
     @Override
     public void refreshGraph() {
+      MonteCarloRawDataParameters plainSet = (MonteCarloRawDataParameters) super.getPlainSet();
+      if (plainSet.getUseChartFX().getValue()) {
+        refreshGraphChartFX();
+      } else {
+        refreshGraphJFree();
+      }
+    }
+
+    public void refreshGraphChartFX() {
+      // The viewer exists in the background and we need to reset is stopped as well as progress each time
+      progress.set(0d);
+      isStopped.set(false);
+
+      MonteCarloRawDataParameters plainSet = (MonteCarloRawDataParameters) super.getPlainSet();
+      final List<DoubleDataSet> lineGraphs = new ArrayList<>();
+      final List<DoubleDataSet> peakMarkers = new ArrayList<>();
+      final List<DoubleDataSet> popMarkers = new ArrayList<>();
+      final List<DoubleDataSet> thresholdMarkers = new ArrayList<>();
+
+      // update UI in FXThread
+      UiUtil.showLoading(SpTool3Main.getRunTime().getGuiParameterManager().getRawDatMcTabPane());
+
+      // retrieve while in UI Thread
+      List<Sample> samples = SpTool3Main.getRunTime().getMainWindowCtl().getSelSamples();
+      List<Isotope> selIsotopes = SpTool3Main.getRunTime().getMainWindowCtl().getSelIsotopes();
+      // Check which type of events to show?
+      List<PopulationID> selPops = SpTool3Main.getRunTime().getMainWindowCtl().getSelPops();
+
+      WorkingTask graphTask = new WorkingTask() {
+        @Override
+        public String getTaskName() {
+          return "Show raw data";
+        }
+
+        @Override
+        public AtomicDouble getProgress() {
+          return progress;
+        }
+
+        @Override
+        public void stop() {
+          isStopped.set(true);
+        }
+
+        @Override
+        public TaskResult call() throws Exception {
+          // LOGGER.trace("Refreshing raw data view.");
+
+          try {
+            if (samples != null && !samples.isEmpty()) {
+              // so far we only show one sample in the MC raw view.
+              Sample sample = samples.get(0);
+
+              if (sample != null) {
+                // merged samples will return the main sample
+                sample = sample.getPrincipleSample();
+
+                if (selIsotopes != null && !selIsotopes.isEmpty()) {
+
+                  List<Trace> selTraces = sample.getTraces(selIsotopes);
+
+                  if (!selTraces.isEmpty()) {
+
+                    // max events to show per population
+                    int maxEventsToShow = plainSet.getUpperPointCountCutoff().getValue().intValue();
+                    Iterator<Colors> colorIterator = Colors.getDefaultIterator().iterator();
+                    Iterator<MarkerStyle> markerIterator = MarkerStyle.getDefaultAwtIterator().iterator();
+
+                    /////////////////////////////////////////////////////////////////////////
+                    //////////////////////// Simple Raw Data plot ///////////////////////////
+                    /////////////////////////////////////////////////////////////////////////
+
+                    traceLoop:
+                    for (Trace trace : selTraces) {
+                      // update progress
+                      progress.set(0.5 * (double) selTraces.indexOf(trace) / (selTraces.size()));
+                      if (isStopped.get()) {
+                        break traceLoop;
+                      }
+
+                      String seriesLabel = trace.getMzValue().getIsotope().getName();
+                      Colors color = trace.getColor(sample);
+                      String colorHex = Colors.toHex(color);
+
+                      DoubleDataSet ds = new DoubleDataSet(seriesLabel);
+                      ds.add(trace.getTISeries().getTime(), trace.getTISeries().getIntensity());
+                      ds.setStyle("fx-stroke: " + colorHex + "; fx-fill: transparent;");
+                      lineGraphs.add(new DoubleDataSet(ds));
+
+                    }
+
+                    if (plainSet.getShowEventMarkers().getValue() ||
+                        plainSet.getShowPopulationMarkers().getValue()) {
+
+                      List<PlottableEventMarkers> plottableEventMarkers =
+                          AnalysisUtils.getEventMarkers(selTraces, selPops);
+
+                      List<PlottableSubPopulation> plottablePopulations =
+                          AnalysisUtils.getPopulationMarkers(selTraces, selPops);
+
+                      plottableEventMarkers.removeIf(
+                          p -> p.getEventMarkerData().size() > maxEventsToShow);
+
+                      plottablePopulations.removeIf(p -> p.getTimerMarkers().length > maxEventsToShow);
+
+                      /////////////////////////////////////////////////////////////////////////
+                      //////////////////////// POPULATION MARKERS ///////////////////////////
+                      /////////////////////////////////////////////////////////////////////////
+
+                      if (plainSet.getShowPopulationMarkers().getValue()
+                          && !plottablePopulations.isEmpty()) {
+
+                        popLoop:
+                        for (int i = 0; i < plottablePopulations.size(); i++) {
+                          // update progress
+                          progress.set(0.6 * (double) i / (plottablePopulations.size()));
+                          if (isStopped.get()) {
+                            break popLoop;
+                          }
+
+                          PlottableSubPopulation plotPop = plottablePopulations.get(i);
+
+                          DoubleDataSet ds = new DoubleDataSet(plotPop.getPopLabel());
+                          ds.add(plotPop.getTimerMarkers(), ArrUtils.fillArray(-(2 + 2 * i),
+                              plotPop.size()));
+
+                          Colors col = plotPop.getColor() != null ? plotPop.getColor() :
+                              colorIterator.next();
+
+                          ds.setStyle("fx-stroke: " + Colors.toHex(col) + ";"
+                              + "fx-fill: " + Colors.toHex(col) + ";");
+
+                          peakMarkers.add(ds);
+                        }
+                      }
+
+                      /////////////////////////////////////////////////////////////////////////
+                      //////////////////////////////// PEAK MARKERS ///////////////////////////
+                      /////////////////////////////////////////////////////////////////////////
+                      if (plainSet.getShowEventMarkers().getValue() && !plottableEventMarkers.isEmpty()) {
+
+                        eventLoop:
+                        for (int i = 0; i < plottableEventMarkers.size(); i++) {
+                          // update progress
+                          progress.set(0.7 * (double) i / (plottableEventMarkers.size()));
+                          if (isStopped.get()) {
+                            break eventLoop;
+                          }
+
+                          PlottableEventMarkers eventMarkerData = plottableEventMarkers.get(i);
+
+                          PlottableSubPopulation plotPop = plottablePopulations.get(i);
+
+                          DoubleDataSet ds = new DoubleDataSet(eventMarkerData.getSeriesLabel());
+                          ds.add(eventMarkerData.getEventMarkerData().getTime(),
+                              eventMarkerData.getEventMarkerData().getIntensity());
+
+                          Colors col = plotPop.getColor() != null ? plotPop.getColor() :
+                              colorIterator.next();
+
+                          ds.setStyle("fx-stroke: " + Colors.toHex(col) + ";"
+                              + "fx-fill: " + Colors.toHex(col) + ";");
+
+                          popMarkers.add(ds);
+                        }
+                      }
+                    }
+
+                    /////////////////////////////////////////////////////////////////////////
+                    //////////////////////////////// THRESHOLDS ///////////////////////////
+                    /////////////////////////////////////////////////////////////////////////
+                    if (plainSet.getShowThresholdMarkers().getValue()) {
+                      // BASELINE
+                      List<PopulationID> selPopList = SpTool3Main.getRunTime().getMainWindowCtl()
+                          .getSelPops();
+
+                      traceLoop:
+                      for (Trace trace : selTraces) {
+                        // update progress:
+                        progress.set(0.8 + (double) selTraces.indexOf(trace) / (selTraces.size()));
+                        if (isStopped.get()) {
+                          break traceLoop;
+                        }
+                        for (PopulationID id : selPopList) {
+                          Population pop = trace.getPopulation(id);
+                          if (pop != null && !id.getType().equals(PopulationType.SIMULATION)
+                              && !id.getType().equals(PopulationType.EXTERNAL)) {
+                            // same instances for all
+                            StatCollection bgDist = trace.getBaseline().getBackgroundDistribution();
+                            TISeries tiSeries = trace.getTISeries();
+                            double[] globalTime = tiSeries.getTime();
+
+                            // SEARCH HEIGHT
+                            ThresholdSupplier thr = pop.getHeightInstructions().get(bgDist);
+                            TISeries xyData = AnalysisUtils.getThresholdXY(thr, tiSeries, globalTime);
+
+                            DoubleDataSet ds = new DoubleDataSet("Search height");
+                            ds.add(xyData.getTime(), xyData.getIntensity());
+
+                            // strokeDashArray drives the dashed appearance
+                            ds.setStyle("fx-stroke: " + Colors.toHex(UiColors.SEARCH_RED) + ";"
+                                + "fx-fill: transparent;"
+                                + "strokeDashArray: 8 4;");
+                            thresholdMarkers.add(ds);
+
+
+                            boolean searchAreEqual = pop.getStartInstructions().isEquivalent(
+                                pop.getStopInstructions());
+                            String startLabel = searchAreEqual ? "Search start and stop" : "Search start";
+
+                            // SEARCH START
+                            thr = pop.getStartInstructions().get(bgDist);
+                            xyData = AnalysisUtils.getThresholdXY(thr, tiSeries, globalTime);
+
+                            ds = new DoubleDataSet(startLabel);
+                            ds.add(xyData.getTime(), xyData.getIntensity());
+
+                            // strokeDashArray drives the dashed appearance
+                            ds.setStyle("fx-stroke: " + Colors.toHex(UiColors.BASELINE_BLUE) + ";"
+                                + "fx-fill: transparent;"
+                                + "strokeDashArray: 8 4;");
+                            thresholdMarkers.add(ds);
+
+
+                            if (!searchAreEqual) {
+                              // SEARCH STOP
+                              thr = pop.getStopInstructions().get(bgDist);
+                              xyData = AnalysisUtils.getThresholdXY(thr, tiSeries, globalTime);
+
+                              ds = new DoubleDataSet("Search stop");
+                              ds.add(xyData.getTime(), xyData.getIntensity());
+
+                              // strokeDashArray drives the dashed appearance
+                              ds.setStyle("fx-stroke: " + Colors.toHex(OkabeItoColors.BLACK_DARK) + ";"
+                                  + "fx-fill: transparent;"
+                                  + "strokeDashArray: 8 4;");
+                              thresholdMarkers.add(ds);
+                            }
+
+                            // GATE
+                            Colors gateColor = UiColors.GATING_MUSTARD;
+                            Colors originalColor = gateColor;
+                            List<ThresholdSupplierInstructions> gates = pop.getGatingInstr().stream()
+                                .filter(ThresholdSupplierInstructions::isHeight)
+                                .collect(Collectors.toList());
+
+                            for (ThresholdSupplierInstructions instr : gates) {
+                              thr = instr.get(bgDist);
+                              xyData = AnalysisUtils.getThresholdXY(thr, tiSeries, globalTime);
+
+                              ds = new DoubleDataSet(instr.getDescription());
+                              ds.add(xyData.getTime(), xyData.getIntensity());
+
+                              // strokeDashArray drives the dashed appearance
+                              ds.setStyle("fx-stroke: " + Colors.toHex(gateColor) + ";"
+                                  + "fx-fill: transparent;"
+                                  + "strokeDashArray: 8 4;");
+                              thresholdMarkers.add(ds);
+                              gateColor = Colors.variationHSB(originalColor, gateColor, 1);
+                            }
+                          }
+                        }
+                      }
+                      // BASELINE
+                    }
+
+
+                    Platform.runLater(() -> {
+                      try {
+                        // Build new chart FIRST
+                        DefaultNumericAxis xAxis = new DefaultNumericAxis("Time", "s");
+                        DefaultNumericAxis yAxis = new DefaultNumericAxis("Intensity",
+                            IntensityUnit.CTS.getUiString());
+
+                        XYChart chart = new XYChart(xAxis, yAxis);
+                        chart.setTitle("");
+
+                        Zoomer zoomer = new Zoomer();
+                        zoomer.setSliderVisible(false);   // cleaner look without range sliders
+                        zoomer.setPannerEnabled(true);  // pan with middle-click drag or ctrl+left-drag
+                        chart.getPlugins().add(zoomer);
+                        chart.getPlugins().add(new DataPointTooltip()); // hover to see values
+
+                        /// LINES
+                        ErrorDataSetRenderer lineRenderer = new ErrorDataSetRenderer();
+                        lineRenderer.setDrawMarker(false);
+                        lineRenderer.setErrorStyle(ErrorStyle.NONE); // disables error markers
+                        lineRenderer.setPolyLineStyle(LineStyle.NORMAL);
+                        for (DoubleDataSet ds : lineGraphs) {
+                          lineRenderer.getDatasets().add(ds);
+                        }
+                        chart.getRenderers().add(lineRenderer);
+
+                        ///  DOTS
+                        ErrorDataSetRenderer markerRenderer = new ErrorDataSetRenderer();
+                        markerRenderer.setDrawMarker(true);
+                        markerRenderer.setPolyLineStyle(LineStyle.NONE);
+                        //markerRenderer.setMarker(DefaultMarker.CIRCLE);
+                        //markerRenderer.setMarkerSize(8);
+
+                        for (DoubleDataSet ds : popMarkers) {
+                          markerRenderer.getDatasets().add(ds);
+                        }
+                        for (DoubleDataSet ds : peakMarkers) {
+                          markerRenderer.getDatasets().add(ds);
+                        }
+
+                        chart.getRenderers().add(markerRenderer);
+
+
+                        /// THRESHOLDS
+                        ErrorDataSetRenderer dashRenderer = new ErrorDataSetRenderer();
+                        dashRenderer.setDrawMarker(false);
+                        dashRenderer.setPolyLineStyle(LineStyle.NORMAL);
+
+                        for (DoubleDataSet ds : thresholdMarkers) {
+                          dashRenderer.getDatasets().add(ds);
+                        }
+
+                        chart.getRenderers().add(dashRenderer);
+
+                        // Replace atomically — do NOT setCenter(null) first.
+                        // Detaching while Prism render is in flight causes RTTexture NPE.
+                        BorderPane tabPane = SpTool3Main.getRunTime().getGuiParameterManager()
+                            .getRawDatMcTabPane();
+                        tabPane.setCenter(chart);
+
+                      } catch (Exception e) {
+                        LOGGER.error("Error while plotting! "
+                            + " Message: " + ExceptionUtils.getMessage(e)
+                            + " Details: " + ExceptionUtils.getStackTrace(e));
+                      }
+                    });
+                  }
+                }
+              }
+            }
+            progress.set(1d);
+            return new EmptyTaskResult();
+          } catch (Exception e) {
+            LOGGER.error("Error while plotting! "
+                + " Message: " + ExceptionUtils.getMessage(e)
+                + " Details: " + ExceptionUtils.getStackTrace(e));
+            return new EmptyTaskResult();
+          }
+        }
+      };
+
+      SpTool3Main.getRunTime().getTaskManager().forceToGraphPool(
+          new SimpleLinearBatch<>(graphTask.getTaskName(), graphTask, false, new EmptyTaskResult()));
+
+
+    } // CHECK: There is data to show!
+
+    public void refreshGraphJFree() {
       // The viewer exists in the background and we need to reset is stopped as well as progress each time
       progress.set(0d);
       isStopped.set(false);
@@ -1782,7 +2477,7 @@ public abstract class Viewers {
                   if (!selTraces.isEmpty()) {
 
                     // max events to show per population
-                    int maxEventsToShow = plainSet.getUpperPointCountCutoff().getValue();
+                    int maxEventsToShow = plainSet.getUpperPointCountCutoff().getValue().intValue();
                     Iterator<Colors> colorIterator = Colors.getDefaultIterator().iterator();
                     Iterator<MarkerStyle> markerIterator = MarkerStyle.getDefaultAwtIterator().iterator();
 
@@ -1811,15 +2506,36 @@ public abstract class Viewers {
 
                       Colors color = trace.getColor(sample);
 
+                      // Check if log10. In that case, remove all zeros.
+                      org.jfree.data.xy.XYSeries xySeries = trace.getXYSeries();
+
+                      if (plainSet.getYLogScale().getValue()) {
+                        org.jfree.data.xy.XYSeries copy = new org.jfree.data.xy.XYSeries(xySeries.getKey(),
+                            xySeries.getAutoSort(), xySeries.getAllowDuplicateXValues());
+
+                        for (int i = 0; i < xySeries.getItemCount(); i++) {
+                          double x = xySeries.getX(i).doubleValue();
+                          double y = xySeries.getY(i).doubleValue();
+
+                          if (y == 0.0) {
+                            y = 1E-3;
+                          }
+
+                          copy.add(x, y);
+                        }
+                        xySeries = copy;
+                      }
+
                       mainCharts.add(new ChartComponent(
-                          new ChartData(trace.getXYSeries(),
+                          new ChartData(xySeries,
                               "Time", TimeUnit.SECOND, MathMod.NONE,
                               "Intensity", IntensityUnit.CTS, MathMod.NONE),
                           new ChartStyle(color, 1,
                               LineWidthDefaults.MEDIUM_THICK,
-                              LineLineDashDefaults.STRAIGHT,
+                              LineDashDefaults.STRAIGHT, 0f,
                               MarkerSizeDefaults.SMALL,
                               MarkerStyle.CROSS,
+                              plainSet.getYLogScale().getValue(),
                               false,
                               RendererOption.SAMPLING_LINE_AND_SHAPE,
                               LineGraphStyle.LINE_AND_MARKER)
@@ -1868,10 +2584,11 @@ public abstract class Viewers {
                                   plotPop.getColor() != null ? plotPop.getColor() : colorIterator.next(),
                                   1,
                                   LineWidthDefaults.NONE,
-                                  LineLineDashDefaults.STRAIGHT,
+                                  LineDashDefaults.STRAIGHT, 0f,
                                   MarkerSizeDefaults.LARGE,
                                   plotPop.getMarker() != null ? plotPop.getMarker()
                                       : markerIterator.next(),
+                                  plainSet.getYLogScale().getValue(),
                                   true,
                                   RendererOption.LINE_AND_SHAPE,
                                   LineGraphStyle.MARKER)
@@ -1902,7 +2619,7 @@ public abstract class Viewers {
                               new ChartStyle(Colors.variationHSB(eventMarkerData.getColor(),
                                   eventMarkerData.getColor(), i - 1), 0.8,
                                   LineWidthDefaults.NONE,
-                                  LineLineDashDefaults.STRAIGHT,
+                                  LineDashDefaults.STRAIGHT, 0f,
                                   MarkerSizeDefaults.LARGE,
                                   eventMarkerData.getMarker(),
                                   true,
@@ -1957,9 +2674,10 @@ public abstract class Viewers {
                                     "Intensity", IntensityUnit.CTS, MathMod.NONE),
                                 new ChartStyle(UiColors.SEARCH_RED, 0.95,
                                     LineWidthDefaults.THICKER,
-                                    LineLineDashDefaults.L,
+                                    LineDashDefaults.XL, 2f,
                                     MarkerSizeDefaults.SMALL,
                                     MarkerStyle.BAR,
+                                    plainSet.getYLogScale().getValue(),
                                     true,
                                     RendererOption.SAMPLING_LINE_AND_SHAPE,
                                     LineGraphStyle.LINE_AND_MARKER)
@@ -1980,9 +2698,10 @@ public abstract class Viewers {
                                     "Intensity", IntensityUnit.CTS, MathMod.NONE),
                                 new ChartStyle(UiColors.BASELINE_BLUE, 0.7,
                                     LineWidthDefaults.THICKER,
-                                    LineLineDashDefaults.L_2,
+                                    LineDashDefaults.L, 1f,
                                     MarkerSizeDefaults.SMALL,
                                     MarkerStyle.BAR,
+                                    plainSet.getYLogScale().getValue(),
                                     true,
                                     RendererOption.SAMPLING_LINE_AND_SHAPE,
                                     LineGraphStyle.LINE_AND_MARKER)
@@ -2000,9 +2719,10 @@ public abstract class Viewers {
                                       "Intensity", IntensityUnit.CTS, MathMod.NONE),
                                   new ChartStyle(OkabeItoColors.BLACK_DARK, 0.5,
                                       LineWidthDefaults.THICKER,
-                                      LineLineDashDefaults.L_2,
+                                      LineDashDefaults.L, 1f,
                                       MarkerSizeDefaults.SMALL,
                                       MarkerStyle.BAR,
+                                      plainSet.getYLogScale().getValue(),
                                       true,
                                       RendererOption.SAMPLING_LINE_AND_SHAPE,
                                       LineGraphStyle.LINE_AND_MARKER)
@@ -2027,9 +2747,10 @@ public abstract class Viewers {
                                       "Intensity", IntensityUnit.CTS, MathMod.NONE),
                                   new ChartStyle(gateColor, 0.6,
                                       LineWidthDefaults.THICKER,
-                                      LineLineDashDefaults.L_3,
+                                      LineDashDefaults.L, 3f,
                                       MarkerSizeDefaults.SMALL,
                                       MarkerStyle.BAR,
+                                      plainSet.getYLogScale().getValue(),
                                       true,
                                       RendererOption.SAMPLING_LINE_AND_SHAPE,
                                       LineGraphStyle.LINE_AND_MARKER)
@@ -2062,9 +2783,7 @@ public abstract class Viewers {
 
                     Platform.runLater(() -> {
                       try {
-                        // detach old child
-                        SpTool3Main.getRunTime().getGuiParameterManager().getRawDatMcTabPane().setCenter(null);
-
+                        // Build new chart FIRST
                         JFreeChart chart = SpChartFactory.createLineChart(allComponents);
 
                         // axis limit
@@ -2077,13 +2796,24 @@ public abstract class Viewers {
                           }
                         }
 
-                        Node viewNode = SpChartFactory.bundleChartLegend(
+                        ChartContainer container = SpChartFactory.bundleChartLegend(
+                            viewerRef.get(),
                             chart,
                             allLegendComponents,
-                            800, 500).combinedPane;
+                            800, 500,
+                            false,
+                            Orientation.VERTICAL,
+                            false);
 
-                        SpTool3Main.getRunTime().getGuiParameterManager().getRawDatMcTabPane()
-                            .setCenter(viewNode);
+                        viewerRef.set(container.viewer);
+
+                        BorderPane tabPane = SpTool3Main.getRunTime().getGuiParameterManager()
+                            .getRawDatMcTabPane();
+
+                        // Replace atomically — do NOT setCenter(null) first.
+                        // Detaching while Prism render is in flight causes RTTexture NPE.
+                        tabPane.setCenter(container.combinedPane);
+
                       } catch (Exception e) {
                         LOGGER.error("Error while plotting! "
                             + " Message: " + ExceptionUtils.getMessage(e)
@@ -2105,7 +2835,7 @@ public abstract class Viewers {
         }
       };
 
-      SpTool3Main.getRunTime().getTaskManager().forceToHousekeepingPool(
+      SpTool3Main.getRunTime().getTaskManager().forceToGraphPool(
           new SimpleLinearBatch<>(graphTask.getTaskName(), graphTask, false, new EmptyTaskResult()));
 
 
@@ -2199,7 +2929,7 @@ public abstract class Viewers {
             ),
             new ChartStyle(OkabeItoColors.ORANGE_DARK, 1,
                 LineWidthDefaults.THICKER, //MEDIUM_THICK
-                LineLineDashDefaults.STRAIGHT,
+                LineDashDefaults.STRAIGHT, 0f,
                 MarkerSizeDefaults.SMALL,
                 MarkerStyle.CROSS,
                 false,
@@ -2251,7 +2981,7 @@ public abstract class Viewers {
                 new ChartStyle(
                     OkabeItoColors.VIOLET_DARK, 0.4,
                     LineWidthDefaults.THICKER,
-                    LineLineDashDefaults.STRAIGHT,
+                    LineDashDefaults.STRAIGHT, 0f,
                     MarkerSizeDefaults.SMALL,
                     MarkerStyle.CROSS,
                     false,
@@ -2294,7 +3024,7 @@ public abstract class Viewers {
                 new ChartStyle(
                     UiColors.PLOT_ANY_AXIS_MARKER, 0.75,
                     LineWidthDefaults.THINNER,
-                    LineLineDashDefaults.STRAIGHT,
+                    LineDashDefaults.STRAIGHT, 0f,
                     MarkerSizeDefaults.SMALL,
                     MarkerStyle.RECTANGLE,
                     true,
@@ -2342,6 +3072,22 @@ public abstract class Viewers {
     private final AtomicDouble progress = new AtomicDouble(0);
     private final AtomicBoolean isStopped = new AtomicBoolean(false);
 
+    private final AtomicReference<ChartViewer> viewerRef = new AtomicReference<>(null);
+
+    private final Button startPolygonBtn = UiUtil.getImageButton("Draw", "/img/drawPolygon.png",
+        "Start drawing a polygon in the scatter plot");
+    private final Button addPopulation = UiUtil.getImageButton("Store", "/img/selectAll.png",
+        "Store polygons as new populations");
+    private final Button clearPolygons = UiUtil.getImageButton("Clear", "/img/clearPolygon.png",
+        "Clear all polygons from the scatter plot");
+    private final Button removeAllPolygonPopsBtn = UiUtil.getImageButton("Delete", "/img/delete.png",
+        "Delete all populations in the sample that are of type 'polygon'");
+
+    private final HBox hbox = new HBox(5, startPolygonBtn, addPopulation, clearPolygons,
+        removeAllPolygonPopsBtn);
+    private final List<Pair<PolygonOverlay, AtomicBoolean>> polygons = new ArrayList<>();
+    private final List<Pair<PolygonOverlay, AtomicBoolean>> backupPolygons = new ArrayList<>();
+
     public MonteCarloScatterPlotViewer(MonteCarloScatterPlotParameters plainSet) {
       super(plainSet);
     }
@@ -2359,13 +3105,445 @@ public abstract class Viewers {
       progress.set(0d);
       isStopped.set(false);
 
-      // update UI in FXThread
-      UiUtil.showLoading(targetPane);
-
       // Sample selection: retrieve in UI thread
       List<Sample> samples = SpTool3Main.getRunTime().getMainWindowCtl().getSelSamples();
       List<Isotope> selIsotopes = SpTool3Main.getRunTime().getMainWindowCtl().getSelIsotopes();
       List<PopulationID> selPop = SpTool3Main.getRunTime().getMainWindowCtl().getSelPops();
+      Unit unit = SpTool3Main.getRunTime().getMainWindowCtl().getUnit();
+
+      // update UI in FXThread
+      UiUtil.showLoading(targetPane);
+
+      // delete the points
+      for (Pair<PolygonOverlay, AtomicBoolean> polygon : polygons) {
+        polygon.getKey().clear();
+      }
+      polygons.clear();
+
+      startPolygonBtn.setOnAction(e -> {
+        // unlisten prev polygons
+        for (Pair<PolygonOverlay, AtomicBoolean> polygon : polygons) {
+          polygon.getValue().set(false);
+        }
+
+        // make new polygon
+        PolygonOverlay overlay = new PolygonOverlay();
+        AtomicBoolean listen = new AtomicBoolean(true);
+        PolygonOverlay.enablePolygon(viewerRef.get(), overlay, listen);
+        Pair<PolygonOverlay, AtomicBoolean> pair = new Pair<>(overlay, listen);
+        polygons.add(pair);
+        backupPolygons.add(pair);
+      });
+
+      clearPolygons.setOnAction(e -> {
+        NotificationFactory.openYesCancel(
+            "Clear polygons drawn in scatter plot? This is irreversible.", () -> {
+              // delete the points
+              for (Pair<PolygonOverlay, AtomicBoolean> polygon : polygons) {
+                polygon.getValue().set(false); // silence all listeners
+                polygon.getKey().clear();
+              }
+              polygons.clear();
+              // sometimes polygons get stuck - this helps to definitively clear them
+              ChartViewer viewer = viewerRef.get();
+              if (viewer != null) {
+                ChartCanvas chartPanel = (ChartCanvas) viewer.getCanvas();
+                for (Pair<PolygonOverlay, AtomicBoolean> backupPolygon : backupPolygons) {
+                  backupPolygon.getValue().set(false); // silence all listeners
+                  backupPolygon.getKey().clear();
+                  chartPanel.removeOverlay(backupPolygon.getKey());
+                }
+                backupPolygons.clear();
+              }
+            });
+      });
+
+      addPopulation.setOnAction(e -> {
+        if (!plainSet.getScatterIsotopes().getValue()) {
+
+          /*
+          ##############################################################################
+           */
+          // check if aligned version is present
+          boolean isAligned = false;
+          boolean isPValSearch = false;
+          if (selIsotopes.size() == 1) {
+            for (PopulationID id : selPop) {
+              isAligned = id.getSteps().stream()
+                  .anyMatch(popStep -> popStep instanceof PopulationStep.AlignSubtype);
+
+              if (isAligned) {
+                break;
+              }
+
+              isPValSearch = false;
+              for (PopulationStep popStep : id.getSteps()) {
+                if (popStep instanceof PopulationStep.SearchSubtype) {
+                  isPValSearch =
+                      ((PopulationStep.SearchSubtype) popStep).getSearchAlgorithm()
+                          .equals(SearchAlgorithm.P_VALUE_ACCUMULATION);
+                  if (isPValSearch) {
+                    // one step is enough
+                    break;
+                  }
+                }
+              }
+            }
+          }
+
+          if (isAligned || isPValSearch) {
+            for (Sample sample : samples) {
+
+              for (PopulationID populationID : selPop) {
+
+                for (int i = 0; i < polygons.size(); i++) {
+                  HashSet<Integer> regionsInPolygon = new HashSet<>();
+
+                  Pair<PolygonOverlay, AtomicBoolean> polygon = polygons.get(i);
+                  // construct double precision path from the polygon points
+                  List<Point2D> pts = polygon.getKey().getPoints();
+                  if (pts.size() >= 3) {
+
+                    // keep for the population
+                    double[] xVertices = new double[pts.size()];
+                    double[] yVertices = new double[pts.size()];
+
+                    // construct path
+                    java.awt.geom.Path2D.Double path = new java.awt.geom.Path2D.Double();
+                    path.moveTo(pts.get(0).getX(), pts.get(0).getY());
+                    xVertices[0] = pts.get(0).getX();
+                    yVertices[0] = pts.get(0).getY();
+
+                    for (int j = 1; j < pts.size(); j++) {
+                      xVertices[j] = pts.get(j).getX();
+                      yVertices[j] = pts.get(j).getY();
+                      path.lineTo(xVertices[j], yVertices[j]);
+                    }
+                    path.closePath();
+
+                    for (Isotope isotope : selIsotopes) {
+
+                      double[] xData = sample.getData(isotope, populationID,
+                          EventType.NP, plainSet.getEventParameterX().getValue(), unit);
+
+                      double[] yData = sample.getData(isotope, populationID,
+                          EventType.NP, plainSet.getEventParameterY().getValue(), unit);
+
+                      xData = plainSet.getMathModificationX().getValue().calc(xData);
+                      yData = plainSet.getMathModificationY().getValue().calc(yData);
+
+                      Trace trace = sample.getTrace(isotope);
+                      if (trace != null) {
+                        Population pop = trace.getPopulation(populationID);
+                        if (pop != null) {
+                          EventCollection collection = pop.getEvents();
+                          List<Event> events = collection.getNpEvents();
+
+                          // create component
+                          if (xData.length > 0 && yData.length > 0 && !events.isEmpty()
+                              && xData.length == yData.length && events.size() == xData.length) {
+
+                            for (int n = 0; n < xData.length; n++) {
+                              if (path.contains(xData[n], yData[n])) {
+                                regionsInPolygon.add(n);
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+
+                    // now construct population for all isotopes
+                    List<Isotope> allIsotopes = sample.listIsotopes();
+                    for (Isotope allIso : allIsotopes) {
+
+                      // create population
+
+                      if (!regionsInPolygon.isEmpty()) {
+
+                        Trace trace = sample.getTrace(allIso);
+                        if (trace != null) {
+                          Population pop = trace.getPopulation(populationID);
+                          if (pop != null) {
+                            EventCollection collection = pop.getEvents();
+                            List<Event> events = collection.getNpEvents();
+
+                            MainEventCollection newCollection = new SubEventCollection(trace, collection);
+                            for (Integer idx : regionsInPolygon) {
+                              if (idx < events.size()) {
+                                newCollection.add(events.get(idx));
+                              }
+                            }
+
+                            PopulationID idCopy = new PopulationID(populationID);
+                            idCopy.append((new PopulationStep.PolygonSubtype(
+                                "PLGN_" + i, xVertices, yVertices)));
+
+                            trace.addOverridePopulation(idCopy,
+                                new NpPopulation(
+                                    idCopy,
+                                    pop,
+                                    newCollection,
+                                    idCopy.toString(),
+                                    pop.getContributingMZs()
+                                ),
+                                true);
+
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+
+          /*
+          ##############################################################################
+           */
+          } else {
+
+            for (Sample sample : samples) {
+              for (Isotope isotope : selIsotopes) {
+                for (PopulationID populationID : selPop) {
+
+                  double[] xData = sample.getData(isotope, populationID,
+                      EventType.NP, plainSet.getEventParameterX().getValue(), unit);
+
+                  double[] yData = sample.getData(isotope, populationID,
+                      EventType.NP, plainSet.getEventParameterY().getValue(), unit);
+
+                  xData = plainSet.getMathModificationX().getValue().calc(xData);
+                  yData = plainSet.getMathModificationY().getValue().calc(yData);
+
+                  Trace trace = sample.getTrace(isotope);
+                  if (trace != null) {
+                    Population pop = trace.getPopulation(populationID);
+                    if (pop != null) {
+                      EventCollection collection = pop.getEvents();
+                      List<Event> events = collection.getNpEvents();
+
+                      // create component
+                      if (xData.length > 0 && yData.length > 0 && !events.isEmpty()
+                          && xData.length == yData.length && events.size() == xData.length) {
+
+                        for (int i = 0; i < polygons.size(); i++) {
+
+                          Pair<PolygonOverlay, AtomicBoolean> polygon = polygons.get(i);
+                          List<Event> eventsInPolygon = new ArrayList<>();
+
+                          // construct double precision path from the polygon points
+                          List<Point2D> pts = polygon.getKey().getPoints();
+                          if (pts.size() >= 3) {
+
+                            // keep for the population
+                            double[] xVertices = new double[pts.size()];
+                            double[] yVertices = new double[pts.size()];
+
+                            // construct path
+                            java.awt.geom.Path2D.Double path = new java.awt.geom.Path2D.Double();
+                            path.moveTo(pts.get(0).getX(), pts.get(0).getY());
+                            xVertices[0] = pts.get(0).getX();
+                            yVertices[0] = pts.get(0).getY();
+
+                            for (int j = 1; j < pts.size(); j++) {
+                              xVertices[j] = pts.get(j).getX();
+                              yVertices[j] = pts.get(j).getY();
+                              path.lineTo(xVertices[j], yVertices[j]);
+                            }
+                            path.closePath();
+
+
+                            for (int n = 0; n < xData.length; n++) {
+                              if (path.contains(xData[n], yData[n])) {
+                                eventsInPolygon.add(events.get(n));
+                              }
+                            }
+
+                            // create population
+                            if (!eventsInPolygon.isEmpty()) {
+
+                              MainEventCollection newCollection = new SubEventCollection(trace, collection);
+                              newCollection.add(eventsInPolygon);
+                              // isotope!!!
+
+                              PopulationID idCopy = new PopulationID(populationID);
+                              idCopy.append((new PopulationStep.PolygonSubtype(
+                                  "PLGN_" + i, xVertices, yVertices)));
+
+                              trace.addOverridePopulation(idCopy,
+                                  new NpPopulation(
+                                      idCopy,
+                                      pop,
+                                      newCollection,
+                                      idCopy.toString(),
+                                      pop.getContributingMZs()
+                                  ),
+                                  true);
+
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+          SpTool3Main.getRunTime().getMainWindowCtl().updatePopulations();
+        } else {
+          for (Sample sample : samples) {
+
+            if (selIsotopes.size() > 1) {
+              // add the regions (i.e., data on all isotopes) based on these 2 selected isotopes
+              Isotope isotopeX = selIsotopes.get(0);
+              Isotope isotopeY = selIsotopes.get(1);
+
+              for (int i = 0; i < selPop.size(); i++) {
+                PopulationID populationID = selPop.get(i);
+
+                // check if aligned
+                boolean isAligned = populationID.getSteps().stream()
+                    .anyMatch(popStep -> popStep instanceof PopulationStep.AlignSubtype);
+
+                boolean isPValSearch = false;
+                for (PopulationStep popStep : populationID.getSteps()) {
+                  if (popStep instanceof PopulationStep.SearchSubtype) {
+                    isPValSearch = ((PopulationStep.SearchSubtype) popStep)
+                        .getSearchAlgorithm().equals(SearchAlgorithm.P_VALUE_ACCUMULATION);
+                    if (isPValSearch) {
+                      // one step is enough
+                      break;
+                    }
+                  }
+                }
+
+                if ((isAligned || isPValSearch)) {
+
+                  double[] xData = sample.getData(isotopeX, populationID,
+                      EventType.NP, plainSet.getEventParameterX().getValue(), unit);
+
+                  double[] yData = sample.getData(isotopeY, populationID,
+                      EventType.NP, plainSet.getEventParameterY().getValue(), unit);
+
+                  xData = plainSet.getMathModificationX().getValue().calc(xData);
+
+                  yData = plainSet.getMathModificationY().getValue().calc(yData);
+
+                  // iterate over all isotopes and add events that are within the region
+                  // (we have to assume that indices on event (i.e., region) in one isotpe matches all
+                  // others)
+                  List<Isotope> allIsotopes = sample.listIsotopes();
+
+                  for (int ij = 0; ij < allIsotopes.size(); ij++) {
+                    Isotope isotope = allIsotopes.get(ij);
+                    Trace trace = sample.getTrace(isotope);
+                    if (trace != null) {
+                      Population pop = trace.getPopulation(populationID);
+                      if (pop != null) {
+                        EventCollection collection = pop.getEvents();
+                        List<Event> events = collection.getNpEvents();
+
+                        // create component
+                        if (!events.isEmpty() && xData.length > 0 && yData.length > 0
+                            && xData.length == yData.length && events.size() == xData.length) {
+
+                          for (int ip = 0; ip < polygons.size(); ip++) {
+
+                            Pair<PolygonOverlay, AtomicBoolean> polygon = polygons.get(ip);
+                            List<Event> eventsInPolygon = new ArrayList<>();
+
+                            // construct double precision path from the polygon points
+                            List<Point2D> pts = polygon.getKey().getPoints();
+                            if (pts.size() >= 3) {
+
+                              // keep for the population
+                              double[] xVertices = new double[pts.size()];
+                              double[] yVertices = new double[pts.size()];
+
+                              // construct path
+                              java.awt.geom.Path2D.Double path = new java.awt.geom.Path2D.Double();
+                              path.moveTo(pts.get(0).getX(), pts.get(0).getY());
+                              xVertices[0] = pts.get(0).getX();
+                              yVertices[0] = pts.get(0).getY();
+
+                              for (int j = 1; j < pts.size(); j++) {
+                                xVertices[j] = pts.get(j).getX();
+
+                                yVertices[j] = pts.get(j).getY();
+                                path.lineTo(xVertices[j], yVertices[j]);
+                              }
+                              path.closePath();
+
+
+                              for (int n = 0; n < xData.length; n++) {
+                                if (path.contains(xData[n], yData[n])) {
+                                  eventsInPolygon.add(events.get(n));
+                                }
+                              }
+
+                              // create population
+                              if (!eventsInPolygon.isEmpty()) {
+                                MainEventCollection coll = new SubEventCollection(trace, collection);
+                                coll.add(eventsInPolygon);
+
+                                PopulationID idCopy = new PopulationID(populationID);
+                                idCopy.append((new PopulationStep.PolygonSubtype("PLGN_" + ip,
+                                    xVertices, yVertices)));
+
+                                trace.addOverridePopulation(idCopy,
+                                    new NpPopulation(
+                                        idCopy,
+                                        pop,
+                                        coll,
+                                        idCopy.toString(),
+                                        pop.getContributingMZs()
+                                    ),
+                                    true);
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+          SpTool3Main.getRunTime().getMainWindowCtl().updatePopulations();
+        }
+
+        // Finally clear the previous polyons
+        // delete the points
+        for (Pair<PolygonOverlay, AtomicBoolean> polygon : polygons) {
+          polygon.getValue().set(false); // silence all listeners
+          polygon.getKey().clear();
+        }
+        polygons.clear();
+      });
+
+
+      removeAllPolygonPopsBtn.setOnAction(e -> {
+
+        NotificationFactory.openYesCancel(
+            "Remove all populations of polygon-type? This is irreversible.", () -> {
+              for (Sample sample : samples) {
+                List<Isotope> isotopes = sample.listIsotopes();
+                List<PopulationID> popIDs = sample.listAllPopulations().stream()
+                    .filter(populationID -> populationID.getSteps().stream()
+                        .anyMatch(step -> step instanceof PopulationStep.PolygonSubtype))
+                    .toList();
+
+                popIDs.forEach(id -> sample.removePopulations(isotopes, id));
+              }
+              SpTool3Main.getRunTime().getMainWindowCtl().updatePopulations();
+            });
+      });
+
+      // add buttons
+      targetPane.setTop(hbox);
 
       WorkingTask graphTask = new WorkingTask() {
         @Override
@@ -2390,7 +3568,6 @@ public abstract class Viewers {
 
             if (plainSet != null) {
               // Define axis labels
-              Unit unit = SpTool3Main.getRunTime().getMainWindowCtl().getUnit();
               AxisLabel xAxisLabel = AxisLabel.getUnit(plainSet.getEventParameterX().getValue(), unit,
                   samples);
               AxisLabel yAxisLabel = AxisLabel.getUnit(plainSet.getEventParameterY().getValue(), unit,
@@ -2409,52 +3586,181 @@ public abstract class Viewers {
               int totalSteps = samples.size() * selIsotopes.size();
               int step = 0;
 
-              for (Sample sample : samples) {
+              if (!plainSet.getScatterIsotopes().getValue()) {
+                for (Sample sample : samples) {
 
-                isotopeLoop:
-                for (Isotope isotope : selIsotopes) {
-                  // update progress
-                  progress.set((double) step / totalSteps);
-                  step++;
-                  if (isStopped.get()) {
-                    break isotopeLoop;
+                  isotopeLoop:
+                  for (Isotope isotope : selIsotopes) {
+                    // update progress
+                    progress.set((double) step / totalSteps);
+                    step++;
+                    if (isStopped.get()) {
+                      break isotopeLoop;
+                    }
+
+                    // Decide the color
+                    Colors color = AnalysisUtils.getColor(sample, isotope, samples.size(),
+                        selIsotopes.size());
+
+                    for (PopulationID populationID : selPop) {
+
+                      double[] xData = sample.getData(isotope, populationID,
+                          EventType.NP, plainSet.getEventParameterX().getValue(), unit);
+
+                      double[] yData = sample.getData(isotope, populationID,
+                          EventType.NP, plainSet.getEventParameterY().getValue(), unit);
+
+                      xData = plainSet.getMathModificationX().getValue().calc(xData);
+                      yData = plainSet.getMathModificationY().getValue().calc(yData);
+
+                      // create component
+                      if (xData.length > 0 && yData.length > 0) {
+                        chartComponents.add(new ChartComponent(
+                            new ChartData(AnalysisUtils.getLabelForPlots(sample,
+                                new IsotopeMZ(isotope),
+                                populationID,
+                                EventType.NP),
+                                xData, yData,
+                                xLabel, xUnit, plainSet.getMathModificationX().getValue(),
+                                yLabel, yUnit, plainSet.getMathModificationY().getValue()),
+                            new ChartStyle(color, plainSet.getColorAlpha().getValue(),
+                                LineWidthDefaults.MEDIUM_THICK,
+                                LineDashDefaults.STRAIGHT, 0f,
+                                new CustomMarkerSize(plainSet.getDotSize().getValue()),
+                                markerMap.get(populationID),
+                                // when varying symbol from map, make sure to override
+                                true,
+                                RendererOption.LINE_AND_SHAPE,
+                                LineGraphStyle.MARKER)
+                        ));
+
+                        // Add regression line
+                        if (plainSet.getAddRegression().getValue()) {
+                          double regressionRatio = plainSet.getRegressionViewRatio().getValue();
+                          regressionRatio = Math.max(0, regressionRatio);
+                          regressionRatio = Math.min(1, regressionRatio);
+                          RegressionUtils.LSResult npReg = getOLS(xData, yData, regressionRatio);
+
+                          ChartComponent rawRegressionComponent = new ChartComponent(
+                              new ChartData(
+                                  "Raw s/i/R:" + SnF.doubleToString(npReg.slope, NF.D1C1) + " / "
+                                      + SnF.doubleToString(npReg.intercept, NF.D1C1) + " / "
+                                      + SnF.doubleToString(npReg.rSquare, NF.D1C3)
+                                      + "("
+                                      + isotope.getName() + "_" + sample.getNickName() + ")",
+                                  npReg.x,
+                                  npReg.y,
+                                  xLabel, xUnit, plainSet.getMathModificationX().getValue(),
+                                  yLabel, yUnit, plainSet.getMathModificationY().getValue()),
+                              new ChartStyle(color, 0.75,
+                                  LineWidthDefaults.THINNER,
+                                  LineDashDefaults.STRAIGHT, 0f,
+                                  MarkerSizeDefaults.SMALL,
+                                  MarkerStyle.CIRCLE,
+                                  false,
+                                  RendererOption.LINE_AND_SHAPE,
+                                  LineGraphStyle.LINE_AND_MARKER)
+                          );
+                          chartComponents.add(rawRegressionComponent);
+                        }
+                      }
+                    }
                   }
+                }
+              } else {
+                for (Sample sample : samples) {
 
-                  // Decide the color
-                  Colors color = AnalysisUtils.getColor(sample, isotope, samples.size(),
-                      selIsotopes.size());
+                  if (selIsotopes.size() > 1) {
+                    Isotope isotopeX = selIsotopes.get(0);
+                    Isotope isotopeY = selIsotopes.get(1);
 
-                  for (PopulationID populationID : selPop) {
+                    // Decide the color
+                    Colors color = new SpColor(sample.getColor());
 
-                    double[] xData = sample.getData(isotope, populationID,
-                        EventType.NP, plainSet.getEventParameterX().getValue(), unit);
+                    for (int i = 0; i < selPop.size(); i++) {
+                      PopulationID populationID = selPop.get(i);
 
-                    double[] yData = sample.getData(isotope, populationID,
-                        EventType.NP, plainSet.getEventParameterY().getValue(), unit);
+                      if (i > 0) {
+                        color = Colors.variationHSB(color, new SpColor(Colors.paletteColor(i)), i);
+                      }
 
-                    xData = plainSet.getMathModificationX().getValue().calc(xData);
-                    yData = plainSet.getMathModificationY().getValue().calc(yData);
+                      double[] xData = sample.getData(isotopeX, populationID,
+                          EventType.NP, plainSet.getEventParameterX().getValue(), unit);
 
-                    // create component
-                    if (xData.length > 0 && yData.length > 0) {
-                      chartComponents.add(new ChartComponent(
-                          new ChartData(AnalysisUtils.getLabelForPlots(sample,
-                              new IsotopeMZ(isotope),
-                              populationID,
-                              EventType.NP),
-                              xData, yData,
-                              xLabel, xUnit, plainSet.getMathModificationX().getValue(),
-                              yLabel, yUnit, plainSet.getMathModificationY().getValue()),
-                          new ChartStyle(color, plainSet.getColorAlpha().getValue(),
-                              LineWidthDefaults.MEDIUM_THICK,
-                              LineLineDashDefaults.STRAIGHT,
-                              new CustomMarkerSize(plainSet.getDotSize().getValue()),
-                              markerMap.get(populationID),
-                              // when varying symbol from map, make sure to override
-                              true,
-                              RendererOption.LINE_AND_SHAPE,
-                              LineGraphStyle.MARKER)
-                      ));
+                      double[] yData = sample.getData(isotopeY, populationID,
+                          EventType.NP, plainSet.getEventParameterY().getValue(), unit);
+
+                      xData = plainSet.getMathModificationX().getValue().calc(xData);
+                      yData = plainSet.getMathModificationY().getValue().calc(yData);
+
+                      xLabel = isotopeX.getName() + " " + xLabel;
+                      yLabel = isotopeY.getName() + " " + yLabel;
+
+                      // check if aligned
+                      boolean isAligned = populationID.getSteps().stream()
+                          .anyMatch(popStep -> popStep instanceof PopulationStep.AlignSubtype);
+
+                      boolean isPValSearch = false;
+                      for (PopulationStep popStep : populationID.getSteps()) {
+                        if (popStep instanceof PopulationStep.SearchSubtype) {
+                          isPValSearch = ((PopulationStep.SearchSubtype) popStep).getSearchAlgorithm()
+                              .equals(SearchAlgorithm.P_VALUE_ACCUMULATION);
+                          if (isPValSearch) {
+                            // one step is enough
+                            break;
+                          }
+                        }
+                      }
+
+                      if ((isAligned || isPValSearch) && xData.length > 0 && yData.length > 0) {
+                        chartComponents.add(new ChartComponent(
+                            new ChartData(AnalysisUtils.getLabelForPlots(sample,
+                                null,
+                                populationID,
+                                EventType.NP),
+                                xData, yData,
+                                xLabel, xUnit, plainSet.getMathModificationX().getValue(),
+                                yLabel, yUnit, plainSet.getMathModificationY().getValue()),
+                            new ChartStyle(color, plainSet.getColorAlpha().getValue(),
+                                LineWidthDefaults.MEDIUM_THICK,
+                                LineDashDefaults.STRAIGHT, 0f,
+                                new CustomMarkerSize(plainSet.getDotSize().getValue()),
+                                markerMap.get(populationID),
+                                // when varying symbol from map, make sure to override
+                                true,
+                                RendererOption.LINE_AND_SHAPE,
+                                LineGraphStyle.MARKER)
+                        ));
+
+                        if (plainSet.getAddRegression().getValue()) {
+                          double regressionRatio = plainSet.getRegressionViewRatio().getValue();
+                          regressionRatio = Math.max(0, regressionRatio);
+                          regressionRatio = Math.min(1, regressionRatio);
+                          RegressionUtils.LSResult npReg = getOLS(xData, yData, regressionRatio);
+
+                          ChartComponent rawRegressionComponent = new ChartComponent(
+                              new ChartData(
+                                  "Raw s/i/R:" + SnF.doubleToString(npReg.slope, NF.D1C1) + " / "
+                                      + SnF.doubleToString(npReg.intercept, NF.D1C1) + " / "
+                                      + SnF.doubleToString(npReg.rSquare, NF.D1C3)
+                                      + "(" + sample.getNickName() + ")",
+                                  npReg.x,
+                                  npReg.y,
+                                  xLabel, xUnit, plainSet.getMathModificationX().getValue(),
+                                  yLabel, yUnit, plainSet.getMathModificationY().getValue()),
+                              new ChartStyle(color, 0.75,
+                                  LineWidthDefaults.THINNER,
+                                  LineDashDefaults.STRAIGHT, 0f,
+                                  MarkerSizeDefaults.SMALL,
+                                  MarkerStyle.CIRCLE,
+                                  false,
+                                  RendererOption.LINE_AND_SHAPE,
+                                  LineGraphStyle.LINE_AND_MARKER)
+                          );
+                          chartComponents.add(rawRegressionComponent);
+                        }
+
+                      }
                     }
                   }
                 }
@@ -2463,42 +3769,64 @@ public abstract class Viewers {
               Platform.runLater(() -> {
                 try {
                   // Define the chart
-                  JFreeChart chart = SpChartFactory.createLineChart(
-                      chartComponents);
+                  JFreeChart chart = SpChartFactory.createLineChart(chartComponents);
 
                   // Check to adjust axis range
-                  if (chart != null) {
-                    if (plainSet.getLimitAxes().getValue()) {
-                      Range xRange = chart.getXYPlot().getDomainAxis().getRange();
-                      Range yRange = chart.getXYPlot().getRangeAxis().getRange();
+                  if (plainSet.getLimitAxes().getValue()) {
+                    Range xRange = chart.getXYPlot().getDomainAxis().getRange();
+                    Range yRange = chart.getXYPlot().getRangeAxis().getRange();
 
-                      double xLimUp = plainSet.getUpperXLimit().getValue();
-                      double yLimUp = plainSet.getUpperYLimit().getValue();
+                    double xLimUp = plainSet.getUpperXLimit().getValue();
+                    double yLimUp = plainSet.getUpperYLimit().getValue();
+                    double xLimLow = plainSet.getLowerXLimit().getValue();
+                    double yLimLow = plainSet.getLowerYLimit().getValue();
 
-                      // Make sure that upper > lower!
-                      if (xLimUp > xRange.getLowerBound()) {
-                        chart.getXYPlot().getDomainAxis().setRange(new Range(xRange.getLowerBound(), xLimUp));
-                      }
 
-                      if (yLimUp > yRange.getLowerBound()) {
-                        chart.getXYPlot().getRangeAxis().setRange(new Range(yRange.getLowerBound(), yLimUp));
-                      }
+                    // Make sure that upper > lower!
+                    if (xLimUp != 0 && xLimUp > xRange.getLowerBound()) {
+                      chart.getXYPlot().getDomainAxis().setRange(new Range(xRange.getLowerBound(),
+                          xLimUp));
+                    }
+
+                    if (yLimUp != 0 && yLimUp > yRange.getLowerBound()) {
+                      chart.getXYPlot().getRangeAxis().setRange(new Range(yRange.getLowerBound(),
+                          yLimUp));
+                    }
+
+                    // get new range handles
+                    xRange = chart.getXYPlot().getDomainAxis().getRange();
+                    yRange = chart.getXYPlot().getRangeAxis().getRange();
+
+                    if (xLimLow != 0 && xLimLow < xRange.getUpperBound()) {
+                      chart.getXYPlot().getDomainAxis().setRange(new Range(xLimLow,
+                          xRange.getUpperBound()));
+                    }
+
+                    if (yLimLow != 0 && yLimLow < yRange.getUpperBound()) {
+                      chart.getXYPlot().getRangeAxis().setRange(new Range(yLimLow,
+                          yRange.getUpperBound()));
                     }
                   }
 
                   // Create node
                   ChartContainer container = SpChartFactory.bundleChartLegend(
+                      viewerRef.get(),
                       chart,
                       chartComponents,
-                      800,
-                      500);
-                  Node viewNode = container.combinedPane;
+                      800, 500,
+                      false,
+                      Orientation.VERTICAL,
+                      false);
+
+                  viewerRef.set(container.viewer);
 
                   // TODO :)
                   ChartViewer viewer = container.viewer;
                   // PolygonOverlay.enablePolygon(viewer);
 
-                  targetPane.setCenter(viewNode);
+                  // Replace atomically — do NOT setCenter(null) first.
+                  // Detaching while Prism render is in flight causes RTTexture NPE.
+                  targetPane.setCenter(container.combinedPane);
                 } catch (Exception ex) {
                   LOGGER.error("Error while plotting! "
                       + " Message: " + ExceptionUtils.getMessage(ex)
@@ -2528,14 +3856,14 @@ public abstract class Viewers {
         }
       };
 
-      SpTool3Main.getRunTime().getTaskManager().forceToHousekeepingPool(
-          new SimpleLinearBatch<>(graphTask.getTaskName(), graphTask, false, new EmptyTaskResult()));
+      SpTool3Main.getRunTime().getTaskManager().forceToGraphPool(
+          new SimpleLinearBatch<>(graphTask.getTaskName(), graphTask, false,
+              new EmptyTaskResult()));
 
     }
   }
 
   public static class BoxPlotViewer extends ViewerFXParamSet {
-
 
     public BoxPlotViewer(BoxPlotParameters plainSet) {
       super(plainSet);
@@ -2620,16 +3948,26 @@ public abstract class Viewers {
                 // Merge the data
                 data = ArrUtils.merge(combinedData);
 
+                // Empty string will not be written.
+                String shortNameIDs;
+                if (plainSet.getShowIDsOnPlot().getValue()) {
+                  shortNameIDs = AnalysisUtils.getShortCodeNameForPlots(sample, selSamples, iso,
+                      popID, selPops);
+                } else {
+                  shortNameIDs = "";
+                }
+
+
                 ChartComponent component = new ChartComponent(
                     new HistogramChartData(
                         AnalysisUtils.getLabelForPlots(sample, new IsotopeMZ(iso), popID, evtType),
-                        AnalysisUtils.getShortCodeNameForPlots(sample, selSamples, iso, popID, selPops),
+                        shortNameIDs,
                         data,
                         xLabel, xUnit, MathMod.NONE,
                         yLabel, yUnit, plainSet.getMathModification().getValue(), 0d),
                     new ChartStyle(color, 0.95,
                         LineWidthDefaults.THICKER,
-                        LineLineDashDefaults.L,
+                        LineDashDefaults.XL, 0f,
                         MarkerSizeDefaults.SMALL,
                         MarkerStyle.BAR,
                         false,
@@ -2667,10 +4005,951 @@ public abstract class Viewers {
     }
   }
 
+  public static class SpectrumViewer extends ViewerFXParamSet {
+
+    private final AtomicDouble progress = new AtomicDouble(0);
+    private final AtomicBoolean isStopped = new AtomicBoolean(false);
+
+    private final AtomicReference<ChartViewer> viewerRef = new AtomicReference<>(null);
+
+    private List<Isotope> excludedFromLabel;
+
+    public SpectrumViewer(SpectrumViewerParameters plainSet) {
+      super(plainSet);
+    }
+
+    @Override
+    public double getValueWidth() {
+      return 135d;
+    }
+
+    @Override
+    public void refreshGraph() {
+      SpectrumViewerParameters plainSet = (SpectrumViewerParameters) super.getPlainSet();
+
+      progress.set(0d);
+      isStopped.set(false);
+
+      UiUtil.showLoading(targetPane);
+
+      List<Sample> selSamples = SpTool3Main.getRunTime().getMainWindowCtl().getSelSamples();
+      List<PopulationID> selPops = SpTool3Main.getRunTime().getMainWindowCtl().getSelPops();
+
+      List<ChartComponent> components = new ArrayList<>();
+
+      // Built by claude sonnet 4.6 based on the histogram template
+      WorkingTask graphTask = new WorkingTask() {
+        @Override
+        public String getTaskName() {
+          return "Show spectrum plot";
+        }
+
+        @Override
+        public AtomicDouble getProgress() {
+          return progress;
+        }
+
+        @Override
+        public void stop() {
+          isStopped.set(true);
+        }
+
+        @Override
+        public TaskResult call() throws Exception {
+          try {
+            if (plainSet != null) {
+
+              if (selSamples != null && !selSamples.isEmpty()
+                  && selPops != null && !selPops.isEmpty()) {
+
+                // Define labels
+                boolean normalizeY = plainSet.getNormalizeSignal().getValue();
+                AxisLabel yAxisLabel;
+                if (normalizeY) {
+                  yAxisLabel = new PlainLabel("Rel. intensity", ViewUnits.NONE);
+                } else {
+                  yAxisLabel = new PlainLabel("Intensity", ViewUnits.REGION_COUNTS);
+                }
+                AxisLabel xAxisLabel = new PlainLabel("m/z", ViewUnits.AMU);
+                String yLabel = yAxisLabel.getLabel();
+                Unit yUnit = yAxisLabel.getUnit();
+                String xLabel = xAxisLabel.getLabel();
+                Unit xUnit = xAxisLabel.getUnit();
+                double alpha = plainSet.getColorAlpha().getValue();
+                NormalizationType type = plainSet.getNormalizeSignalType().getValue();
+                if (plainSet.getExcludeIsotopes().getValue()) {
+                  excludedFromLabel = plainSet.listExcludedIsotopes();
+                } else {
+                  excludedFromLabel = new ArrayList<>();
+                }
+
+                int totalSteps = selSamples.size() * selPops.size();
+                int step = 0;
+
+                // Retrieve data
+                sampleLoop:
+                for (Sample sample : selSamples) {
+
+                  int counter = -1;
+                  for (PopulationID popID : selPops) {
+                    counter++; // for the color
+                    // update progress
+                    progress.set((double) step / totalSteps);
+                    step++;
+
+                    if (isStopped.get()) {
+                      break sampleLoop;
+                    }
+
+                    double[] specMZ = sample.getSpectralMZ(popID);
+                    double[] specInt = sample.getSpectralValues(popID);
+
+                    if (specMZ.length < 1 || specInt.length < 1) {
+                      // try to compute the spectra
+                      LOGGER.trace("No spectral data. Loading data from available sources.");
+                      SpectralUtil.computeSpectra(sample, popID);
+                      // try load again
+                      specMZ = sample.getSpectralMZ(popID);
+                      specInt = sample.getSpectralValues(popID);
+                    }
+
+                    if (specMZ.length > 0 && specMZ.length == specInt.length) {
+                      Colors col = new SpColor(sample.getColor());
+                      col = Colors.variationHSB(col, new SpColor(Colors.paletteColor(counter)), counter);
+
+                      if (normalizeY) {
+                        if (type == NormalizationType.SUM) {
+                          double yMax = ArrUtils.doubleSum(specInt);
+                          specInt = ArrUtils.normalize(specInt, yMax);
+                        } else {
+                          double yMax = ArrUtils.getMax(specInt);
+                          specInt = ArrUtils.normalize(specInt, yMax);
+                        }
+                      }
+
+                      if (specMZ.length > 0 && specMZ.length == specInt.length) {
+                        ChartComponent component = new ChartComponent(
+                            new ChartData(
+                                AnalysisUtils.getLabelForPlots(sample, null, popID, EventType.NP),
+                                AnalysisUtils.getShortCodeNameForPlots(sample, selSamples, null,
+                                    popID, selPops),
+                                specMZ, specInt,
+                                xLabel, xUnit, MathMod.NONE,
+                                yLabel, yUnit, MathMod.NONE),
+                            new ChartStyle(col, alpha,
+                                LineWidthDefaults.THICKER,
+                                LineDashDefaults.XL, 0f,
+                                MarkerSizeDefaults.SMALL,
+                                MarkerStyle.BAR,
+                                false,
+                                RendererOption.SAMPLING_LINE_AND_SHAPE,
+                                LineGraphStyle.LINE_AND_MARKER,
+                                plainSet.getyLog().getValue())
+                        );
+                        components.add(component);
+                      }
+                    }
+                  }
+                }
+              }
+
+              Platform.runLater(() -> {
+                try {
+                  JFreeChart chart = SpChartFactory.createMassSpectrumChart(components,
+                      plainSet.getShowLabels().getValue(),
+                      plainSet.getFilterAbundance().getValue(),
+                      plainSet.getMinAbundancePct().getValue(),
+                      excludedFromLabel,
+                      plainSet.getFilterSignal().getValue(),
+                      plainSet.getMinSignalNormalized().getValue());
+
+                  // Check to adjust axis range
+                  if (chart != null) {
+
+                    // find min in data for log axis
+                    double minOfData = Double.MAX_VALUE;
+                    for (int i = 0; i < components.size(); i++) {
+                      ChartComponent component = components.get(i);
+                      minOfData =
+                          Math.min(ArrUtils.getMin(ArrUtils.strictlyGreaterThan(component.getData().getY(),
+                                  0)),
+                              minOfData);
+                    }
+
+                    if (plainSet.getLimitAxes().getValue()) {
+                      double xLimUp = plainSet.getUpperXLimit().getValue();
+                      double xLimLow = plainSet.getLowerXLimit().getValue();
+
+                      double yLimUp = plainSet.getUpperYLimit().getValue();
+                      double yLimLow = plainSet.getLowerYLimit().getValue();
+
+                      Range currentXRng = chart.getXYPlot().getDomainAxis().getRange();
+                      Range currentYRng = chart.getXYPlot().getRangeAxis().getRange();
+
+                      /// X
+                      // xMax zero indicates neutral
+                      if (xLimUp == 0) {
+                        xLimUp = currentXRng.getUpperBound();
+                      }
+
+                      // if current min < 0 --> zero is just the neutral indicator
+                      if (xLimLow == 0) {
+                        xLimLow = currentXRng.getLowerBound();
+                      }
+
+                      // are they swapped? Do nothing
+                      if (!(xLimLow < xLimUp)) {
+                        xLimLow = currentXRng.getLowerBound();
+                        xLimUp = currentXRng.getUpperBound();
+                      }
+
+                      // safeguard: still bad?
+                      if (!(xLimLow < xLimUp)) {
+                        xLimUp = Math.nextUp(xLimLow);
+                      }
+
+                      /// Y
+                      if (!plainSet.getyLog().getValue()) {
+                        // xMax zero indicates neutral
+                        if (yLimUp == 0) {
+                          yLimUp = currentYRng.getUpperBound();
+                        }
+
+                        // if current min < 0 --> zero is just the neutral indicator
+                        if (yLimLow == 0) {
+                          yLimLow = currentYRng.getLowerBound();
+                        }
+
+                        // are they swapped? Do nothing
+                        if (!(yLimLow < yLimUp)) {
+                          yLimLow = currentYRng.getLowerBound();
+                          yLimUp = currentYRng.getUpperBound();
+                        }
+
+                        // safeguard: still bad?
+                        if (!(yLimLow < yLimUp)) {
+                          yLimUp = Math.nextUp(yLimLow);
+                        }
+
+                        // Last check: logscale!
+                      } else {
+
+                        // Neutral state: initialize log with min of data b/c ini bound of JFree is too
+                        // high
+                        if (yLimLow == 0) {
+                          yLimLow = Math.max(Math.nextUp(0d), minOfData);
+                        } else {
+                          // use input as limit and not the data min
+                          yLimLow = Math.max(Math.nextUp(0d), yLimLow);
+                        }
+
+                        // is upper limit neutral (=0) or bad (<0)? Keep existing bound
+                        if (yLimUp <= 0) {
+                          yLimUp = currentYRng.getUpperBound();
+                        }
+
+                        // safeguard: with log scale, upper must be at least 2x nextUp for 0 < lower <
+                        // upper
+                        yLimUp = Math.max(Math.nextUp(Math.nextUp(0d)), yLimUp);
+
+                        // safeguard: still bad?
+                        if (!(yLimLow < yLimUp)) {
+                          yLimUp = Math.nextUp(yLimLow);
+                        }
+
+                        // fix autoscale
+                        if (chart.getXYPlot().getRangeAxis() instanceof LogAxis) {
+                          chart.getXYPlot().getRangeAxis().setDefaultAutoRange(new Range(yLimLow,
+                              yLimUp));
+                        }
+                      }
+                      chart.getXYPlot().getDomainAxis().setRange(new Range(xLimLow, xLimUp));
+                      chart.getXYPlot().getRangeAxis().setRange(new Range(yLimLow, yLimUp));
+                    } else {
+                      // override bad ini value of JFree
+                      if (plainSet.getyLog().getValue()) {
+                        Range currentYRng = chart.getXYPlot().getRangeAxis().getRange();
+                        double yLimLow = Math.max(Math.nextUp(0d), minOfData);
+                        double yLimUp = currentYRng.getUpperBound();
+                        // safeguard
+                        if (!(yLimLow < yLimUp)) {
+                          yLimUp = Math.nextUp(yLimLow);
+                        }
+                        chart.getXYPlot().getRangeAxis().setRange(new Range(yLimLow, yLimUp));
+                      }
+                    }
+
+                    ChartContainer container = SpChartFactory.bundleChartLegend(
+                        viewerRef.get(),
+                        chart,
+                        components,
+                        800, 500,
+                        false,
+                        Orientation.VERTICAL,
+                        false);
+
+
+                    viewerRef.set(container.viewer);
+                    targetPane.setCenter(container.combinedPane);
+
+                  } else {
+                    // just some empty dummy
+                    Platform.runLater(() -> {
+                      try {
+                        targetPane.setCenter(new AnchorPane());
+                      } catch (Exception e) {
+                        LOGGER.error("Error while plotting! "
+                            + " Message: " + ExceptionUtils.getMessage(e)
+                            + " Details: " + ExceptionUtils.getStackTrace(e));
+                      }
+                    });
+                  }
+                } catch (Exception e) {
+                  LOGGER.error("Error while plotting! "
+                      + " Message: " + ExceptionUtils.getMessage(e)
+                      + " Details: " + ExceptionUtils.getStackTrace(e));
+                }
+              });
+
+            } else {
+              Platform.runLater(() -> targetPane.setCenter(new AnchorPane()));
+            }
+
+            progress.set(1d);
+            return new EmptyTaskResult();
+
+          } catch (Exception e) {
+            LOGGER.error("Error while plotting! "
+                + " Message: " + ExceptionUtils.getMessage(e)
+                + " Details: " + ExceptionUtils.getStackTrace(e));
+            return new EmptyTaskResult();
+          }
+        }
+      };
+
+      SpTool3Main.getRunTime().
+
+          getTaskManager().
+
+          forceToGraphPool(
+              new SimpleLinearBatch<>(graphTask.getTaskName(), graphTask, false, new
+
+                  EmptyTaskResult()));
+    }
+  }
+
+  public static class HACViewer extends ViewerFXParamSet {
+
+    private final AtomicDouble progress = new AtomicDouble(0);
+    private final AtomicBoolean isStopped = new AtomicBoolean(false);
+
+    private final AtomicReference<VBox> plotBoxRef = new AtomicReference<>(new VBox(10));
+
+    public HACViewer(HACViewerParameters plainSet) {
+      super(plainSet);
+    }
+
+    @Override
+    public double getValueWidth() {
+      return 135d;
+    }
+
+    @Override
+    public void refreshGraph() {
+      if (super.getPlainSet() instanceof HACViewerParameters) {
+        HACViewerParameters plainSet = (HACViewerParameters) super.getPlainSet();
+
+        progress.set(0d);
+        isStopped.set(false);
+
+        UiUtil.showLoading(targetPane);
+
+        List<Sample> selSamples = SpTool3Main.getRunTime().getMainWindowCtl().getSelSamples();
+        List<PopulationID> selPops = SpTool3Main.getRunTime().getMainWindowCtl().getSelPops();
+
+        double minFractionPct = plainSet.getMinFractionPct().getValue();
+        int minClusterSizePie = plainSet.getMinClusterSizePie().getValue();
+        boolean excludeElements = plainSet.getExcludeElements().getValue();
+        List<Isotope> excludedList = plainSet.listExcludedElements();
+        double intensityThreshold = plainSet.getIntensityThreshold().getValue();
+        boolean useLog2 = plainSet.getUseLog2().getValue();
+        boolean useZScore = plainSet.getUseZScore().getValue();
+        DistanceOptions distanceOption = plainSet.getOverrideThreshold().getValue();
+        double distanceThreshold = plainSet.getDistanceThreshold().getValue();
+        boolean useLogScaleDendrogram = plainSet.getUseLogScaleDendrogram().getValue();
+        boolean showClusterNumbers = plainSet.getShowClusterNumbers().getValue();
+        boolean applyCosine = plainSet.getApplyCosineFlattening().getValue();
+        double cosineMergeThreshold = plainSet.getCosineScore().getValue();
+        boolean useLog2ForCosine = plainSet.getUseLog2ForCosine().getValue();
+
+        // Copied from spectrum viewer, which was built by claude sonnet 4.6 based on the histogram
+        // template
+        WorkingTask graphTask = new WorkingTask() {
+          @Override
+          public String getTaskName() {
+            return "Show HAC plot";
+          }
+
+          @Override
+          public AtomicDouble getProgress() {
+            return progress;
+          }
+
+          @Override
+          public void stop() {
+            isStopped.set(true);
+          }
+
+          @Override
+          public TaskResult call() {
+            try {
+              if (selSamples != null && !selSamples.isEmpty()
+                  && selPops != null && !selPops.isEmpty()) {
+
+                // Only apply to first selected so far to keep it easy: Later consider scroll/tab pane?
+                Sample sample = selSamples.get(0);
+                PopulationID popID = selPops.get(0);
+
+                // Convert to spectral region
+                List<SpectralArray> spectralRegionsData = new ArrayList<>(sample.getSpectralData(popID));
+                // when creating populations, we shall add complete unfiltered regions data
+                final List<SpectralArray> spectralRegionsDataCopy = new ArrayList<>(spectralRegionsData);
+
+                if (spectralRegionsData.isEmpty()) {
+                  // try to compute the spectra
+                  LOGGER.trace("No spectral data. Loading data from available sources.");
+                  SpectralUtil.computeSpectra(sample, popID);
+                  // try load again
+                  spectralRegionsData = new ArrayList<>(sample.getSpectralData(popID));
+                }
+
+                // check for blacklisted elements
+                if (excludeElements) {
+                  spectralRegionsData.removeIf(sarr -> excludedList.contains(sarr.getIsotope()));
+                }
+
+                // transpose to regions and elements:
+                SpectralRegionElement sre = new SpectralRegionElement(spectralRegionsData);
+
+                // are there data?
+                if (!sre.getIntensities().isEmpty()) {
+                  // Claude Sonnet implementation of SMILES HAC:
+
+                  List<double[]> data = sre.getIntensities();
+
+                  // 2. Preprocess [my own implementation!]
+                  List<double[]> processed = HAC.preprocess(
+                      data,
+                      intensityThreshold,
+                      useLog2,
+                      useZScore
+                  );
+
+                  // Fit (expensive): reuse cached FittedHAC if preprocessing inputs are unchanged
+                  HacCrWrapper wrapper = sample.getHacWrapper(popID);
+                  HAC.FittedHAC fitted;
+
+                  // check if valid wrapper
+                  if (wrapper != null && wrapper.isEqualInstructions(
+                      intensityThreshold,
+                      useLog2,
+                      useZScore,
+                      excludeElements,
+                      excludedList)) {
+                    fitted = wrapper.getFit();
+                  } else {
+                    fitted = HAC.fit(processed);
+                    sample.putHacWrapper(popID, new HacCrWrapper(
+                        fitted,
+                        intensityThreshold,
+                        useLog2,
+                        useZScore,
+                        excludeElements,
+                        excludedList));
+                  }
+
+                  // Cut (cheap): derive threshold from the uncut tree, then cut once at the chosen
+                  // threshold
+                  HAC.ClusterResult crForThreshold = fitted.cut(0.0);
+
+                  double threshold = distanceThreshold;
+                  if (distanceOption.equals(DistanceOptions.HALF)) {
+                    threshold = crForThreshold.getHalfThreshold();
+                  } else if (distanceOption.equals(DistanceOptions.STEP_DIFFERENCE)) {
+                    threshold = crForThreshold.getSuggestedStepThreshold();
+                  } else if (distanceOption.equals(DistanceOptions.CURVATURE)) {
+                    threshold = crForThreshold.getSuggestedCurvatureThreshold();
+                  }
+
+                  HAC.ClusterResult crWard = fitted.cut(threshold);
+                  HAC.ClusterResult cr = crWard;
+
+                  // ── Cosine similarity post-processing ────────────────────────────────────
+                  // Merge clusters whose mean raw spectra are compositionally indistinguishable.
+                  // Only applied when the user has set a threshold below 1.0 (i.e., opted in).
+                  if (applyCosine) {
+                    List<double[]> dataForCosine;
+                    if (useLog2ForCosine) {
+                      dataForCosine = HAC.preprocess(
+                          data,
+                          intensityThreshold,
+                          useLog2,
+                          false   // never z-score before cosine
+                      );
+                    } else {
+                      dataForCosine = data;
+                    }
+
+                    cr = cr.mergeByCosineSimilarity(dataForCosine, cosineMergeThreshold);
+                  }
+
+                  // ___________________________________________________________________________________
+
+                  HBox dendroAndKneeBox = new HBox(10);
+                  plotBoxRef.get().getChildren().add(UiUtil.putOnAnchorWithoutInsets(dendroAndKneeBox));
+
+                  // #################################################################################
+                  // ######################## DENDROGRAM ##########################################
+                  // #################################################################################
+                  ChartComponent dendroComponent = new ChartComponent(
+                      new SpChartFactory.DendrogramChartData(crWard, popID.toString(), popID.toString()),
+                      new SpChartFactory.DendrogramChartStyle(LineWidthDefaults.MEDIUM,
+                          useLogScaleDendrogram, showClusterNumbers));
+
+                  JFreeChart dendroChart = SpChartFactory.createDendrogram(dendroComponent);
+
+                  List<ChartContainer> dendroChartContainers = new ArrayList<>();
+                  dendroChartContainers.add(SpChartFactory.bundleChartLegend(
+                      dendroChart,
+                      List.of(dendroComponent),
+                      800, 500));
+
+                  for (ChartContainer cont : dendroChartContainers) {
+                    dendroAndKneeBox.getChildren().add(UiUtil.putOnAnchorWithoutInsets(cont.viewer));
+                  }
+
+                  ValueMarker markerHorz;
+                  if (useLogScaleDendrogram) {
+                    markerHorz = new ValueMarker(Math.log1p(crWard.threshold()));
+                  } else {
+                    markerHorz = new ValueMarker(crWard.threshold());
+                  }
+                  markerHorz.setLabel("THR = " + SnF.doubleToString(crWard.threshold(), NF.D1C2));
+                  markerHorz.setPaint(OkabeItoColors.BLACK.get());
+                  markerHorz.setStroke(SpChartFactory.getStroke(
+                      LineWidthDefaults.MEDIUM,
+                      LineDashDefaults.S));
+                  dendroChart.getXYPlot().addRangeMarker(markerHorz);
+
+                  markerHorz.setLabelAnchor(org.jfree.chart.ui.RectangleAnchor.TOP_RIGHT);
+                  markerHorz.setLabelTextAnchor(org.jfree.chart.ui.TextAnchor.BOTTOM_RIGHT);
+                  markerHorz.setLabelFont(new Font("Tahoma", Font.BOLD,
+                      SpTool3Main.getRunTime().getConfParams().getAxisFontSize() - 3));
+                  markerHorz.setLabelPaint(OkabeItoColors.BLACK_DARK.get());
+
+                  // #################################################################################
+                  // ######################## KNEE PLOT ##########################################
+                  // #################################################################################
+                  int maxSteps = Math.max(crWard.k() + 10, 50);
+                  Pair<double[], double[]> kneeData = HACCharts.getKneePlotXY(crWard, maxSteps);
+
+                  ChartComponent comp = new ChartComponent(
+                      new ChartData(popID.toString(),
+                          kneeData.getKey(),
+                          kneeData.getValue(),
+                          "Merge step (from top)", ViewUnits.NONE, MathMod.NONE,
+                          "Ward distance", ViewUnits.NONE, MathMod.NONE),
+                      new ChartStyle(OkabeItoColors.BLACK, 1,
+                          LineWidthDefaults.MEDIUM_THICK,
+                          LineDashDefaults.STRAIGHT, 0f,
+                          MarkerSizeDefaults.LARGE,
+                          MarkerStyle.DIAMOND,
+                          false,
+                          RendererOption.LINE_AND_SHAPE,
+                          LineGraphStyle.LINE_AND_MARKER)
+                  );
+
+                  JFreeChart kneeChart = SpChartFactory.createLineChart(List.of(comp));
+
+                  // add the marker
+                  ValueMarker marker = new ValueMarker(crWard.k());
+                  marker.setLabel("k = " + crWard.k());
+                  marker.setPaint(Colors.LABEL_DARK);
+                  marker.setStroke(SpChartFactory.getStroke(
+                      LineWidthDefaults.MEDIUM,
+                      LineDashDefaults.S));
+                  kneeChart.getXYPlot().addDomainMarker(marker);
+
+                  marker.setLabelAnchor(org.jfree.chart.ui.RectangleAnchor.TOP_RIGHT);
+                  marker.setLabelTextAnchor(org.jfree.chart.ui.TextAnchor.TOP_LEFT);
+                  marker.setLabelFont(new Font("Tahoma", Font.BOLD,
+                      SpTool3Main.getRunTime().getConfParams().getAxisFontSize() - 3));
+                  marker.setLabelPaint(OkabeItoColors.BLACK_DARK.get());
+
+                  // make the chart.
+                  ChartContainer chartContainer = SpChartFactory.bundleChartLegend(
+                      kneeChart,
+                      List.of(comp),
+                      800, 500);
+
+                  // Here, no legend is needed for the knee plot
+                  dendroAndKneeBox.getChildren().add(UiUtil.putOnAnchorWithoutInsets(chartContainer.viewer));
+                  // Divide at 1/3 between dendrogram and knee plot
+                  chartContainer.viewer.minWidthProperty().bind(dendroAndKneeBox.widthProperty().divide(3));
+                  chartContainer.viewer.maxWidthProperty().bind(dendroAndKneeBox.widthProperty().divide(3));
+
+
+                  // #################################################################################
+                  // ######################## PIE CHARTS ##########################################
+                  // #################################################################################
+                  String[] elementNames = sre.getNames().toArray(new String[0]);
+                  List<SpChartFactory.PieChartData> pieChartData = HACCharts.getPieChartData(
+                      cr,
+                      elementNames,
+                      data,
+                      minClusterSizePie,
+                      minFractionPct);
+
+                  // get colors for element by most abundant isotope
+                  Map<String, Colors> elementColors = HACCharts.getPieChartColors(sre.getElements());
+
+                  List<ChartComponent> pieChartComponents = new ArrayList<>();
+                  for (SpChartFactory.PieChartData pieChartDat : pieChartData) {
+                    pieChartComponents.add(new ChartComponent(
+                        pieChartDat,
+                        new SpChartFactory.PieChartStyle(elementColors)));
+                  }
+
+                  List<JFreeChart> pieCharts = SpChartFactory.createPieCharts(pieChartComponents);
+
+                  List<ChartContainer> pieChartContainers = new ArrayList<>();
+                  if (pieChartComponents.size() == pieCharts.size()) {
+                    for (int i = 0; i < pieCharts.size(); i++) {
+                      pieChartContainers.add(SpChartFactory.bundleChartLegend(
+                          pieCharts.get(i),
+                          List.of(pieChartComponents.get(i)),
+                          800, 500));
+                    }
+                  }
+
+                  VBox pieGroupBox = new VBox(10);
+                  ScrollPane pieScroll = new ScrollPane(pieGroupBox);
+                  UiUtil.formatScrollPane(pieScroll);
+                  UiUtil.makePaneBrightAndRound(pieScroll);
+                  UiUtil.installFastScroll(pieScroll);
+                  // pieScroll.setFitToWidth(false);
+                  // pieScroll.setFitToHeight(false); // would prevent pies from shrinking
+                  plotBoxRef.get().getChildren().add(UiUtil.putOnAnchorWithoutInsets(pieScroll));
+                  // Keep scroll pane at 50%
+                  pieScroll.minHeightProperty().bind(plotBoxRef.get().heightProperty().divide(1.5));
+                  pieScroll.maxHeightProperty().bind(plotBoxRef.get().heightProperty().divide(1.5));
+
+                  HBox pieBox = new HBox(10);
+                  for (int i = 0; i < pieChartContainers.size(); i++) {
+                    if (i % 4 == 0) {
+                      pieBox = new HBox(10);
+                      pieGroupBox.getChildren().add(pieBox);
+                    }
+                    pieBox.getChildren().add(UiUtil.putOnAnchorWithoutInsets(pieChartContainers.get(i).viewer));
+                    pieChartContainers.get(i).viewer.setMinHeight(150); // or else, pies shrink to nothing
+                  }
+
+                  // #################################################################################
+                  // ######################## THE BUTTONS ##########################################
+                  // #################################################################################
+                  Button savePopulationsBtn = UiUtil.getImageButton("Store", "/img/selectAll.png",
+                      "Store clusters as new populations");
+
+                  // Capture for use in button action lambdas (must be effectively final for lambda
+                  // capture)
+                  final List<SpectralArray> capturedSpectra = new ArrayList<>(spectralRegionsDataCopy);
+
+                  HAC.ClusterResult finalCr = cr;
+                  savePopulationsBtn.setOnAction(e -> {
+
+                    /*
+                     TODO:
+                      1) Put this into a utility class
+                      2) in general: while at it, clean up this chaos in viewer to compute outside
+                      3) when sorting into populations: also filter/prepare the SpectralArray to
+                         avoid recomputation.
+                      ##  Probably the best approach would be to include the general clustering
+                      (trafo, blacklist, ...) as a submethod. The viewer should only support
+                      changing the threshold to identify it;
+                      Then, we could handle creation of population similar to creating filter/roi pop
+                     */
+
+                    List<List<Integer>> allRegionIndices = finalCr.indicesByCluster();
+
+                    List<Integer> hacIndices = new ArrayList<>();
+                    List<List<Integer>> regionIndices = new ArrayList<>();
+
+                    for (int c = 0; c < allRegionIndices.size(); c++) {
+                      List<Integer> list = allRegionIndices.get(c);
+                      // only use clusters that are larger than min size, i.e., that are shown in UI
+                      if (list.size() >= minClusterSizePie) {
+                        hacIndices.add(c);
+                        regionIndices.add(list);
+                      }
+                    }
+
+
+                    // check which isotopes to show as population
+                    List<Isotope> isotopes = new ArrayList<>(sample.listIsotopes());
+                    if (excludeElements) {
+                      isotopes.removeIf(excludedList::contains);
+                    }
+
+                    List<MZValue> mzValues = isotopes.stream()
+                        .map(IsotopeMZ::new)
+                        .map(isoMZ -> (MZValue) isoMZ)
+                        .toList();
+
+                    // get the Event list for each isotope
+                    for (Isotope isotope : isotopes) {
+                      Trace trace = sample.getTrace(isotope);
+                      if (trace != null) {
+                        Population pop = trace.getPopulation(popID);
+                        if (pop != null) {
+                          EventCollection collection = pop.getEvents();
+                          List<Event> events = collection.getNpEvents();
+
+
+                          // create cluster population for each cluster
+                          for (int i = 0; i < regionIndices.size(); i++) {
+                            int hacClusterLabel = hacIndices.get(i);
+
+                            MainEventCollection coll = new SubEventCollection(trace, collection);
+                            List<Integer> cluster = regionIndices.get(i);
+                            List<Event> eventsInCluster = new ArrayList<>();
+                            for (Integer idx : cluster) {
+                              if (idx < events.size()) {
+                                eventsInCluster.add(events.get(idx));
+                              }
+                            }
+                            coll.add(eventsInCluster);
+
+                            // create new population
+                            PopulationID idCopy = new PopulationID(popID);
+                            idCopy.append(new PopulationStep.ClusterSubtype(sample, hacClusterLabel,
+                                finalCr.clusterNames()[hacClusterLabel]));
+                            trace.addOverridePopulation(idCopy,
+                                new NpPopulation(
+                                    idCopy,
+                                    pop,
+                                    coll,
+                                    idCopy.toString(),
+                                    mzValues
+                                ),
+                                true);
+                          }
+                        }
+                      }
+                    }
+
+                    // -----------------------------------------------------------------------
+                    // Mirror the clustering into SpectralArray data for each new sub-population
+                    // -----------------------------------------------------------------------
+                    // spectralRegionsData is already available in the enclosing WorkingTask scope:
+                    // it holds one SpectralArray per isotope, each with intensity[i] = particle i.
+                    for (int i = 0; i < regionIndices.size(); i++) {
+                      int hacClusterLabel = hacIndices.get(i);
+                      List<Integer> cluster = regionIndices.get(i);
+
+                      PopulationID idCopy = new PopulationID(popID);
+                      idCopy.append(new PopulationStep.ClusterSubtype(sample, hacClusterLabel,
+                          finalCr.clusterNames()[hacClusterLabel]));
+
+                      List<SpectralArray> clusterSpectra = new ArrayList<>();
+                      for (SpectralArray sarr : capturedSpectra) {
+                        double[] allIntensities = sarr.getIntensity();
+                        double[] clusterIntensities = new double[cluster.size()];
+                        for (int j = 0; j < cluster.size(); j++) {
+                          int particleIdx = cluster.get(j);
+                          clusterIntensities[j] = particleIdx < allIntensities.length
+                              ? allIntensities[particleIdx]
+                              : 0.0;
+                        }
+
+                        // Slice additional features by the same cluster indices
+                        HashMap<String, double[]> clusterFeatures = new HashMap<>();
+                        for (String key : sarr.listAdditionalFeatures()) {
+                          double[] allFeatureValues = sarr.getAdditionalFeature(key);
+                          double[] clusterFeatureValues = new double[cluster.size()];
+                          for (int j = 0; j < cluster.size(); j++) {
+                            int particleIdx = cluster.get(j);
+                            clusterFeatureValues[j] =
+                                (allFeatureValues != null && particleIdx < allFeatureValues.length)
+                                    ? allFeatureValues[particleIdx]
+                                    : 0.0;
+                          }
+                          clusterFeatures.put(key, clusterFeatureValues);
+                        }
+
+                        clusterSpectra.add(new SpectralArray(sarr.getIsotope(), sarr.getMz(),
+                            clusterIntensities, clusterFeatures));
+                      }
+
+                      sample.addSpectralData(idCopy, clusterSpectra);
+                    }
+                    // -----------------------------------------------------------------------
+
+
+                    SpTool3Main.getRunTime().getMainWindowCtl().updatePopulations();
+                  });
+
+                  Button clearMergedBtn = UiUtil.getImageButton("Delete", "/img/delete.png",
+                      "Delete all populations in the sample that are of type 'cluster'");
+
+                  clearMergedBtn.setOnAction(e -> {
+                    NotificationFactory.openYesCancel(
+                        "Remove all populations of cluster-type? This is irreversible.", () -> {
+                          List<Isotope> isotopes = sample.listIsotopes();
+                          List<PopulationID> popIDs = sample.listAllPopulations().stream()
+                              .filter(populationID -> populationID.getSteps().stream()
+                                  .anyMatch(step -> step instanceof PopulationStep.ClusterSubtype))
+                              .toList();
+                          popIDs.forEach(id -> sample.removePopulations(isotopes, id));
+                          SpTool3Main.getRunTime().getMainWindowCtl().updatePopulations();
+                        });
+                  });
+
+                  Button clustersToClipboardBtn = UiUtil.getSquareImageButton("Clipboard", "/img/copy.png",
+                      "Copy composition results to clipboard");
+
+                  clustersToClipboardBtn.setOnAction(ev -> {
+                    ExportWriter writer = new ClipboardWriter();
+
+                    int nIsotopes = data.size();
+                    int nParticles = data.get(0).length;
+
+                    LinkedHashMap<String, Integer> elementIndex = new LinkedHashMap<>();
+                    for (String name : elementNames)
+                      if (!elementIndex.containsKey(name))
+                        elementIndex.put(name, elementIndex.size());
+
+                    int nElements = elementIndex.size();
+                    String[] elementList = elementIndex.keySet().toArray(new String[0]);
+
+                    double[][] meanRaw = new double[finalCr.k()][nElements];
+                    int[] counts = new int[finalCr.k()];
+
+                    for (int p = 0; p < nParticles; p++)
+                      counts[finalCr.labels()[p]]++;
+
+                    for (int iso = 0; iso < nIsotopes; iso++) {
+                      double[] channel = data.get(iso);
+                      int eIdx = elementIndex.get(elementNames[iso]);
+                      for (int p = 0; p < nParticles; p++) {
+                        int c = finalCr.labels()[p];
+                        meanRaw[c][eIdx] += channel[p];
+                      }
+                    }
+
+                    for (int c = 0; c < finalCr.k(); c++) {
+                      if (counts[c] == 0) continue;
+                      for (int e = 0; e < nElements; e++) {
+                        meanRaw[c][e] /= counts[c];
+                        // statistically, negative would be correct; but for particles, it does not make
+                        // much sense to allow this. Clamping is probably better. Ideally,
+                        // we should clamp to 3sigma or sth in the sense of the original Currie
+                        // publication
+                        meanRaw[c][e] = Math.max(0.0, meanRaw[c][e]);
+                      }
+                    }
+
+                    List<List<String>> columns = new ArrayList<>();
+
+                    List<String> elementCol = new ArrayList<>();
+                    elementCol.add("Element");
+                    Collections.addAll(elementCol, elementList);
+                    columns.add(elementCol);
+
+                    for (int c = 0; c < finalCr.k(); c++) {
+                      if (finalCr.sizes()[c] < minClusterSizePie) continue;
+
+                      double total = 0.0;
+                      for (int e = 0; e < nElements; e++)
+                        total += meanRaw[c][e];
+
+                      List<String> col = new ArrayList<>();
+                      col.add(finalCr.clusterNames()[c] + " (n=" + finalCr.sizes()[c] + ")");
+                      for (int e = 0; e < nElements; e++) {
+                        double pct = (total > 0.0) ? meanRaw[c][e] / total * 100.0 : 0.0;
+                        col.add(String.format("%.1f%%", pct));
+                      }
+                      columns.add(col);
+                    }
+
+                    TabBlockColl coll = new TabBlockColl(writer, false);
+                    TabBlock block = new TabBlock();
+                    for (List<String> column : columns)
+                      block.addCol(new TabCol(column));
+                    coll.add(block);
+                    coll.export();
+                  });
+
+                  plotBoxRef.get().getChildren().add(UiUtil.putOnAnchorWithoutInsets(new HBox(3,
+                      clustersToClipboardBtn, savePopulationsBtn, clearMergedBtn)));
+                }
+              }
+
+              Platform.runLater(() -> {
+                try {
+                  if (plotBoxRef.get() != null) {
+                    targetPane.setCenter(plotBoxRef.get());
+                    plotBoxRef.set(new VBox());
+
+                  } else {
+                    // just some empty dummy
+                    Platform.runLater(() -> {
+                      try {
+                        targetPane.setCenter(new AnchorPane());
+                      } catch (Exception e) {
+                        Platform.runLater(() -> targetPane.setCenter(new AnchorPane()));
+                        LOGGER.error("Error while plotting! "
+                            + " Message: " + ExceptionUtils.getMessage(e)
+                            + " Details: " + ExceptionUtils.getStackTrace(e));
+                      }
+                    });
+                  }
+                } catch (Exception e) {
+                  Platform.runLater(() -> targetPane.setCenter(new AnchorPane()));
+                  LOGGER.error("Error while plotting! "
+                      + " Message: " + ExceptionUtils.getMessage(e)
+                      + " Details: " + ExceptionUtils.getStackTrace(e));
+                }
+              });
+
+
+              progress.set(1d);
+              return new EmptyTaskResult();
+
+            } catch (Exception e) {
+              Platform.runLater(() -> targetPane.setCenter(new AnchorPane()));
+              LOGGER.error("Error while plotting! "
+                  + " Message: " + ExceptionUtils.getMessage(e)
+                  + " Details: " + ExceptionUtils.getStackTrace(e));
+              return new EmptyTaskResult();
+            }
+          }
+        };
+
+        SpTool3Main.getRunTime().getTaskManager().forceToGraphPool(
+            new SimpleLinearBatch<>(graphTask.getTaskName(), graphTask, false,
+                new EmptyTaskResult()));
+      } else {
+        Platform.runLater(() -> targetPane.setCenter(new AnchorPane()));
+      }
+    }
+  }
+
   public static class MonteCarloHistoViewer extends ViewerFXParamSet {
 
     private final AtomicDouble progress = new AtomicDouble(0);
     private final AtomicBoolean isStopped = new AtomicBoolean(false);
+
+    private final AtomicReference<ChartViewer> viewerRef = new AtomicReference<>(null);
 
     public MonteCarloHistoViewer(MonteCarloHistoParameters plainSet) {
       super(plainSet);
@@ -2836,7 +5115,8 @@ public abstract class Viewers {
                           )));
 
                       // update color: makes it brighter or darker for the next plot
-                      color = Colors.variationHSB(mainColor, mainColor, selPops.indexOf(populationID) + 1);
+                      color = Colors.variationHSB(mainColor, mainColor,
+                          selPops.indexOf(populationID) + 1);
                     }
 
                     // Calculate percentiles in case we need to set axis limits
@@ -2892,7 +5172,7 @@ public abstract class Viewers {
                         chartComponent.getData().getyMath()),
                         new ChartStyle(new SpColor(chartComponent.getStyle().getColorFX()), 1,
                             LineWidthDefaults.THICKER,
-                            LineLineDashDefaults.STRAIGHT,
+                            LineDashDefaults.STRAIGHT, 0f,
                             MarkerSizeDefaults.SMALL,
                             MarkerStyle.CROSS,
                             false,
@@ -2925,7 +5205,7 @@ public abstract class Viewers {
                         chartComponent.getData().getyMath()),
                         new ChartStyle(new SpColor(chartComponent.getStyle().getColorFX()), 1,
                             LineWidthDefaults.THICK,
-                            LineLineDashDefaults.STRAIGHT,
+                            LineDashDefaults.STRAIGHT, 0f,
                             MarkerSizeDefaults.SMALL,
                             MarkerStyle.CROSS,
                             false,
@@ -3051,7 +5331,7 @@ public abstract class Viewers {
                               BasicStroke.CAP_ROUND,
                               BasicStroke.JOIN_ROUND,
                               1.0f,
-                              LineLineDashDefaults.L_3.get(),
+                              LineDashDefaults.L.get(),
                               0.0f)
                           );
                           chart.getXYPlot().addDomainMarker(marker);
@@ -3059,14 +5339,18 @@ public abstract class Viewers {
                       }
                     }
 
-                    // Create node
-                    Node viewNode = SpChartFactory.bundleChartLegend(
+                    ChartContainer container = SpChartFactory.bundleChartLegend(
+                        viewerRef.get(),
                         chart,
                         legendComponents,
-                        800,
-                        500).combinedPane;
+                        800, 500,
+                        false,
+                        Orientation.VERTICAL,
+                        false);
 
-                    targetPane.setCenter(viewNode);
+                    viewerRef.set(container.viewer);
+                    targetPane.setCenter(container.combinedPane);
+
                   } else {
                     // just some empty dummy
                     Platform.runLater(() -> {
@@ -3098,7 +5382,7 @@ public abstract class Viewers {
         }
 
       };
-      SpTool3Main.getRunTime().getTaskManager().forceToHousekeepingPool(
+      SpTool3Main.getRunTime().getTaskManager().forceToGraphPool(
           new SimpleLinearBatch<>(graphTask.getTaskName(), graphTask, false, new EmptyTaskResult()));
 
 
@@ -3304,7 +5588,7 @@ public abstract class Viewers {
                 chartComponent.getData().getyMath()),
                 new ChartStyle(new SpColor(chartComponent.getStyle().getColorFX()), 1,
                     LineWidthDefaults.THICKER,
-                    LineLineDashDefaults.STRAIGHT,
+                    LineDashDefaults.STRAIGHT, 0f,
                     MarkerSizeDefaults.SMALL,
                     MarkerStyle.CROSS,
                     false,
@@ -3337,7 +5621,7 @@ public abstract class Viewers {
                 chartComponent.getData().getyMath()),
                 new ChartStyle(new SpColor(chartComponent.getStyle().getColorFX()), 1,
                     LineWidthDefaults.THICK,
-                    LineLineDashDefaults.STRAIGHT,
+                    LineDashDefaults.STRAIGHT, 0f,
                     MarkerSizeDefaults.SMALL,
                     MarkerStyle.CROSS,
                     false,

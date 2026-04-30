@@ -102,6 +102,8 @@ public class FileInterpreterUtils {
 
     if (rawMzField.toLowerCase(Locale.ROOT).contains("intensity")) {
       rawMzField = rawMzField.substring(rawMzField.indexOf(')') + 1).trim();
+    } else if (rawMzField.toLowerCase(Locale.ROOT).contains("time")) {
+      rawMzField = rawMzField.substring(rawMzField.indexOf("Time") + 4).trim();
     }
 
     // "|" indicates TQ data
@@ -240,7 +242,7 @@ public class FileInterpreterUtils {
 
   public static Pair<Boolean, MZValue> safelyGetMZ1(String elementAndNumber) {
     boolean isValid = true;
-    Isotope candidate = Isotope.getFromString(elementAndNumber);
+    Isotope candidate = Isotope.guessFromString(elementAndNumber);
     if (candidate == null || !candidate.isValid()) {
       candidate = Element.UNKNOWN.getMostAbundant();
       isValid = false;

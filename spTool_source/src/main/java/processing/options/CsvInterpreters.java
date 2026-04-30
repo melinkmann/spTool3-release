@@ -17,6 +17,7 @@
 
 package processing.options;
 
+import core.SpTool3Main;
 import gui.util.UiString;
 
 import java.io.Serializable;
@@ -60,6 +61,13 @@ public enum CsvInterpreters implements Serializable, UiString {
     }
   },
 
+  LPC {
+    @Override
+    public String getUiString() {
+      return "LPC 'single particle list' import";
+    }
+  },
+
   CUSTOM_TRA {
     @Override
     public String getUiString() {
@@ -68,7 +76,12 @@ public enum CsvInterpreters implements Serializable, UiString {
   };
 
   public static CsvInterpreters[] getActive() {
-    return new CsvInterpreters[]{AGILENT, THERMO_XY, ANALYTIK_JENA, CUSTOM_TRA};
+    if (SpTool3Main.getRunTime().getConfParams().showAllParamsAsExpert()) {
+      return new CsvInterpreters[]{AGILENT, THERMO_XY, ANALYTIK_JENA, CUSTOM_TRA, CUSTOM_PEAKS, LPC};
+    } else {
+      return new CsvInterpreters[]{AGILENT, THERMO_XY, ANALYTIK_JENA, CUSTOM_TRA};
+    }
+
   }
 
 //  CUSTOM_TRA {

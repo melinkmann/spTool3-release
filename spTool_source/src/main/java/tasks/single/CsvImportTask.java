@@ -20,9 +20,11 @@ package tasks.single;
 import core.SpTool3Main;
 import dataModelNew.Sample;
 import io.impl.CsvInterpreter;
+
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -40,7 +42,8 @@ public class CsvImportTask extends AbstractWorkingTask implements WorkingTask {
 
   public CsvImportTask(CsvInterpreterParams params, Path path) {
     super("CSV data import");
-    // pass a copy to avoid changes in UI trickling down into multi thread environment when running in the background
+    // pass a copy to avoid changes in UI trickling down into multi thread environment when running in the
+    // background
     CsvInterpreterParams p = ((CsvInterpreterParams) params.getCopyWithPreviousDateFileAndID());
     this.params = p;
     this.path = path;
@@ -56,12 +59,20 @@ public class CsvImportTask extends AbstractWorkingTask implements WorkingTask {
       setProgress(0);
       // START ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ##
       LOGGER.info("CSV import starts for " + path
-          + " in thread " + Thread.currentThread());
+          + " in thread " + Thread.currentThread().getId());
 
       CsvInterpreter csvInterpreter = params.getInterpreter();
       csvInterpreter.parse(path);
       result.addAll(csvInterpreter.getSamples());
       csvInterpreter = null; // idea: offer for GC?
+
+      // make sure the method is stored in the sample (esp. for isotope selection)
+      for (Sample sample : result) {
+        if (!sample.getMethod().getSets().contains(params)) {
+          sample.getMethod().getSets().add(params);
+        }
+      }
+
 
       LOGGER.info("Finished reading from " + path + ".");
 

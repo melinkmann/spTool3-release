@@ -24,17 +24,17 @@ public interface LineDash {
   @Nullable
   float[] get();
 
-  public static class CustomLLineDash implements LineDash {
+  public static class CustomLineDash implements LineDash {
 
     @Nullable
     private final float[] dashPattern;
 
-    public CustomLLineDash(@Nullable float[] dashPattern) {
+    public CustomLineDash(@Nullable float[] dashPattern) {
       this.dashPattern = dashPattern;
     }
 
     // No dashes: solid line
-    public CustomLLineDash() {
+    public CustomLineDash() {
       this.dashPattern = null;
     }
 

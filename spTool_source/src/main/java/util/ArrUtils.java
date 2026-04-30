@@ -87,18 +87,18 @@ public abstract class ArrUtils {
         .map(d -> 1 / (double) d).collect(Collectors.toList());
   }
 
-  public static double[] normalize(double[] data, double factor) {
-    double[] result = data;
+  public static double[] normalizeByMaximumTimesFactor(double[] data, double factor) {
+    double[] result = new double[data.length];
     double max = getMax(data);
     if (max > 0) {
       for (int i = 0; i < result.length; i++) {
-        result[i] = factor * result[i] / max;
+        result[i] = factor * data[i] / max;
       }
     }
     return result;
   }
 
-  public static double[] normalizeOverriding(double[] data, double[] previousArray) {
+  public static double[] normalizeBySumOverriding(double[] data, double[] previousArray) {
     double sumPrev = 0;
     for (double d : previousArray) {
       sumPrev += d;
@@ -119,7 +119,7 @@ public abstract class ArrUtils {
     return data;
   }
 
-  public static void normalizeOverriding(double[] array) {
+  public static void normalizeBySumOverriding(double[] array) {
     double sum = 0;
     for (double d : array) {
       sum += d;
@@ -127,6 +127,18 @@ public abstract class ArrUtils {
     for (int i = 0; i < array.length; i++) {
       array[i] = array[i] / sum;
     }
+  }
+
+  public static double[] normalize(double[] array, double divisor) {
+    double[] result = new double[array.length];
+    if (divisor != 0) {
+      for (int i = 0; i < array.length; i++) {
+        result[i] = array[i] / divisor;
+      }
+    } else {
+      result = array;
+    }
+    return result;
   }
 
   public static void roundOverriding(double[] array) {
@@ -464,6 +476,7 @@ public abstract class ArrUtils {
     }
     return new Pair<>(booleans.length, count);
   }
+
 
   // --------------------------- Array vs.function ------------------------------------------
 

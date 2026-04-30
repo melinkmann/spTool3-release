@@ -18,6 +18,8 @@
 package sandbox.montecarlo;
 
 import org.apache.commons.math3.distribution.PoissonDistribution;
+import org.hipparchus.linear.ArrayRealVector;
+import util.ArrUtils;
 
 public abstract class Background {
 
@@ -129,10 +131,13 @@ public abstract class Background {
     }
 
     double meanBackground = sum / n;
-    double offset = m - meanBackground;
+
+    // Likely exponential makes the BG too large -> correct by division (not by const. offset!)
+    double ratio = meanBackground / m;
+    background = ArrUtils.divide(background, ratio);
 
     for (int i = 0; i < n; i++) {
-      signal[i] += background[i] + offset;
+      signal[i] += background[i];
     }
   }
 

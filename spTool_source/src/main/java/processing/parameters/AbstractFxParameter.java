@@ -174,6 +174,9 @@ public abstract class AbstractFxParameter<T extends Serializable> implements FxP
     if (decoration != null) {
       Node decorationControl = decoration.getControl(this);
       decoration.setControlFxParameter(this);
+      if (isUneditable) {
+        decorationControl.setDisable(true);
+      }
       return decorationControl;
     }
     return null;
@@ -241,6 +244,11 @@ public abstract class AbstractFxParameter<T extends Serializable> implements FxP
   @Override
   public void setUneditable() {
     isUneditable = true;
+    // moved this to the getter of the decoration. getter constructs the decoration thus needs decision
+    // there/then.
+    //if (getDecoration() != null) {
+    //  getDecoration().setDisable(true);
+    //}
   }
 
   @Override

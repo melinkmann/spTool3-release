@@ -17,12 +17,11 @@
 
 package dataModelNew;
 
-import analysis.Event;
-import analysis.NpPopulation;
-import analysis.PopulationID;
+import analysis.*;
 import analysis.quant.Calibration;
 import analysis.quant.Cal;
 import core.SpTool3Main;
+import dataModelNew.mz.Element;
 import dataModelNew.mz.MZValue;
 import dataModelNew.mz.SQmz;
 import io.export.ExportSimulationEventContainer;
@@ -33,6 +32,7 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.Serial;
 import java.io.Serializable;
+import java.lang.ref.SoftReference;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -67,8 +67,11 @@ public class IncompleteSample implements Sample, Serializable {
   private String comment;
   private final SampleFile sampleFile;
   private final HashMap<Isotope, Trace> traces;
+  private Method method;
   private Cal quant;
   private Color color;
+  private List<Isotope> sampleDefaultIsotopes;
+  private List<String> removedIsotopeInfo;
 
   private final IncompleteParticleMatrix matrix;
 
@@ -77,39 +80,51 @@ public class IncompleteSample implements Sample, Serializable {
   public IncompleteSample() {
     this.matrix = new IncompleteParticleMatrix();
     this.traces = new LinkedHashMap<>();
+    this.method = new ListMethod();
     this.nickName = "No data";
     this.highlighted = false;
     this.comment = "";
     this.sampleFile = new SampleFile();
     this.quant = new Calibration();
     this.color = SpTool3Main.getRunTime().getNextSampleColor().get();
+    this.sampleDefaultIsotopes = new ArrayList<>();
+    this.removedIsotopeInfo = new ArrayList<>();
   }
 
   public IncompleteSample(String nickName, SampleFile sampleFile, IncompleteParticleMatrix matrix) {
     this.matrix = matrix;
     this.traces = new LinkedHashMap<>();
+    this.method = new ListMethod();
     this.nickName = nickName;
     this.highlighted = false;
     this.comment = "";
     this.sampleFile = sampleFile;
     this.quant = new Calibration(nickName);
     this.color = SpTool3Main.getRunTime().getNextSampleColor().get();
+    this.sampleDefaultIsotopes = new ArrayList<>();
+    this.removedIsotopeInfo = new ArrayList<>();
   }
 
   // Deep copy
   public IncompleteSample(String nickName, boolean highlighted, String comment,
                           SampleFile sampleFile, HashMap<Isotope, Trace> traces,
+                          Method method,
                           Cal quant,
                           Color color,
-                          IncompleteParticleMatrix matrix) {
+                          IncompleteParticleMatrix matrix,
+                          List<Isotope> sampleDefaultIsotopes,
+                          List<String> removedIsotopeInfo) {
     this.nickName = nickName;
     this.highlighted = highlighted;
     this.comment = comment;
     this.sampleFile = new SampleFile(sampleFile);
     this.traces = traces;
+    this.method = method;
     this.quant = quant;
     this.color = color;
     this.matrix = matrix.copy();
+    this.sampleDefaultIsotopes = new ArrayList<>(sampleDefaultIsotopes);
+    this.removedIsotopeInfo = new ArrayList<>(removedIsotopeInfo);
   }
 
   @Override
@@ -120,7 +135,8 @@ public class IncompleteSample implements Sample, Serializable {
   @Override
   public Sample copyWithoutTraces() {
     return new IncompleteSample(nickName, highlighted, comment, sampleFile,
-        traces, quant, color, matrix.copy());
+        traces, method.getCopyWithoutFile(), quant, color, matrix.copy(), sampleDefaultIsotopes,
+        removedIsotopeInfo);
   }
 
 
@@ -139,6 +155,15 @@ public class IncompleteSample implements Sample, Serializable {
     in.defaultReadObject();
     if (quant == null) {
       this.quant = new Calibration();
+    }
+    if (sampleDefaultIsotopes == null) {
+      this.sampleDefaultIsotopes = new ArrayList<>();
+    }
+    if (removedIsotopeInfo == null) {
+      this.removedIsotopeInfo = new ArrayList<>();
+    }
+    if (method == null) {
+      this.method = new ListMethod();
     }
     LOGGER.trace("Read from object: " + getNickName());
   }
@@ -182,6 +207,24 @@ public class IncompleteSample implements Sample, Serializable {
   }
 
   @Override
+  public List<String> getRemovedIsotopeInfo() {
+    return new ArrayList<>(removedIsotopeInfo);
+  }
+
+  @Override
+  public double getMeanSiaShape() {
+    double lowerLimit = SpTool3Main.getRunTime().getConfParams().getSiaLowerLimit().getValue();
+    double upperLimit = SpTool3Main.getRunTime().getConfParams().getSiaUpperLimit().getValue();
+    double sia = traces.values().stream()
+        .map(Trace::getSiaShape)
+        .filter(d -> d > lowerLimit)
+        .filter(d -> d < upperLimit)
+        .mapToDouble(Double::doubleValue)
+        .average().orElse(0);
+    return sia;
+  }
+
+  @Override
   public List<Trace> getTraces() {
     return Collections.unmodifiableList(new ArrayList<>(traces.values()));
   }
@@ -217,6 +260,32 @@ public class IncompleteSample implements Sample, Serializable {
     return new ArrayList<>();
   }
 
+  @Override
+  public @Nullable List<SpectralArray> getSpectralData(PopulationID popID) {
+    return new ArrayList<>();
+  }
+
+  @Override
+  @Nullable
+  public HacCrWrapper getHacWrapper(PopulationID popID) {
+    return null;
+  }
+
+  @Override
+  public void putHacWrapper(PopulationID popID, HacCrWrapper wrapper) {
+    // nada
+  }
+
+  @Override
+  public void addSpectralData(PopulationID populationID, List<SpectralArray> spectralData) {
+    // do nothing
+  }
+
+
+  @Override
+  public void clearSpectralData() {
+    // do nothing
+  }
 
   @Override
   public List<ParticlePopulationMatrix> getMatrices(Isotope isotope) {
@@ -261,6 +330,22 @@ public class IncompleteSample implements Sample, Serializable {
   }
 
   @Override
+  public void removeIsotopes(List<Isotope> isotopes) {
+    this.traces.keySet().removeAll(isotopes);
+  }
+
+  @Override
+  public void removeTraces(List<Trace> tracesToRemove) {
+    this.traces.values().removeAll(tracesToRemove);
+  }
+
+  @Override
+  public void removeTrace(Trace traceToRemove, String message) {
+    this.traces.values().remove(traceToRemove);
+    removedIsotopeInfo.add(message);
+  }
+
+  @Override
   public void addTrace(Trace trace) {
     traces.put(trace.getMzValue().getIsotope(), trace);
   }
@@ -273,11 +358,11 @@ public class IncompleteSample implements Sample, Serializable {
 
   public Method getMethod() {
     // essentially a "do nothing" but without risking null pointer
-    return new ListMethod();
+    return method;
   }
 
   public void setMethod(Method method) {
-    // do nothing
+    this.method = method;
   }
 
   public SampleFile getSampleFile() {
@@ -288,6 +373,17 @@ public class IncompleteSample implements Sample, Serializable {
   @Override
   public Color getColor() {
     return color;
+  }
+
+  @Override
+  public List<Isotope> getSampleDefaultIsotopes() {
+    return new ArrayList<>(sampleDefaultIsotopes);
+  }
+
+  @Override
+  public void setSampleDefaultIsotopes(List<Isotope> sampleDefaultIsotopes) {
+    this.sampleDefaultIsotopes.clear();
+    this.sampleDefaultIsotopes.addAll(sampleDefaultIsotopes);
   }
 
 
@@ -303,9 +399,10 @@ public class IncompleteSample implements Sample, Serializable {
   public MZValue getMZ() {
     if (traces.isEmpty()) {
       // dummy
-      return new SQmz();
+      return new SQmz(Element.UNKNOWN.getIsotopes().get(0));
     } else {
-      return traces.get(0).getMzValue();
+      List<Isotope> keys = new ArrayList<>(traces.keySet());
+      return traces.get(keys.get(0)).getMzValue();
     }
   }
 
@@ -328,13 +425,14 @@ public class IncompleteSample implements Sample, Serializable {
                           EventParameter param, Unit unit) {
 
     double[] data = new double[0];
-    if (IntensityUnit.CTS.equals(unit)) {
-      // call getter (possibly null)
-      Trace trace = getTrace(isotope);
-      if (trace != null) {
-        data = trace.get(populationID, eventType, param);
-      }
+    // Just return, whatever has been stored (user may load quant or external data)
+    //if (IntensityUnit.CTS.equals(unit)) {
+    // call getter (possibly null)
+    Trace trace = getTrace(isotope);
+    if (trace != null) {
+      data = trace.get(populationID, eventType, param);
     }
+    //}
     return data;
   }
 
@@ -354,7 +452,8 @@ public class IncompleteSample implements Sample, Serializable {
   }
 
   @Override
-  public double getMaxThr(@Nullable Isotope isotope, PopulationID populationID, boolean netSignal, Unit unit) {
+  public double getMaxThr(@Nullable Isotope isotope, PopulationID populationID, boolean netSignal,
+                          Unit unit) {
     return 0;
   }
 
@@ -489,7 +588,17 @@ public class IncompleteSample implements Sample, Serializable {
   }
 
   @Override
+  public String tabRawMeanCPS(Isotope isotope) {
+    return EMPTY_CELL;
+  }
+
+  @Override
   public String tabRawMedian(Isotope isotope) {
+    return EMPTY_CELL;
+  }
+
+  @Override
+  public String tabRawMedianCPS(Isotope isotope) {
     return EMPTY_CELL;
   }
 
@@ -501,6 +610,24 @@ public class IncompleteSample implements Sample, Serializable {
   @Override
   public String tabRawMAD(Isotope isotope) {
     return EMPTY_CELL;
+  }
+
+  @Override
+  public String tabSIAShape(Isotope isotope) {
+    String val = EMPTY_CELL;
+    Trace trace = getTrace(isotope);
+    if (trace != null) {
+      double siaShape = trace.getSiaShape();
+      if (siaShape > 0) {
+        val = str(siaShape, NF.D1C4);
+      }
+    }
+    return val;
+  }
+
+  @Override
+  public String tabMeanSIAShape(Isotope isotope) {
+    return str(getMeanSiaShape(), NF.D1C4);
   }
 
   @Override

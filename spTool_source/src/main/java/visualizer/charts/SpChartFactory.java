@@ -21,19 +21,20 @@ import core.SpTool3Main;
 import dataModelNew.TISeries;
 import gui.StageFactory;
 import gui.util.UiUtil;
+import io.export.DataExport;
 import io.export.JFreeExportUtils;
 
-import java.awt.BasicStroke;
-import java.awt.Paint;
-import java.awt.Shape;
+import java.awt.*;
 import java.awt.geom.Line2D;
 import java.awt.geom.Rectangle2D;
 import java.text.DecimalFormat;
 import java.text.NumberFormat;
+import java.util.*;
 import java.util.List;
 import java.util.stream.Collectors;
 
 import javafx.animation.PauseTransition;
+import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
 import javafx.event.EventHandler;
 import javafx.geometry.Orientation;
@@ -45,13 +46,10 @@ import javafx.scene.Node;
 import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.SplitPane;
+import javafx.scene.control.Tooltip;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
-import javafx.scene.layout.AnchorPane;
-import javafx.scene.layout.BorderPane;
-import javafx.scene.layout.FlowPane;
-import javafx.scene.layout.Pane;
-import javafx.scene.layout.VBox;
+import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Line;
 import javafx.scene.shape.Rectangle;
@@ -60,67 +58,42 @@ import javafx.util.Pair;
 
 import javax.annotation.Nullable;
 
+import math.HAC;
 import math.units.Unit;
+import math.units.enums.ViewUnits;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.jfree.chart.ChartFactory;
-import org.jfree.chart.JFreeChart;
-import org.jfree.chart.axis.CategoryAxis;
-import org.jfree.chart.axis.NumberAxis;
-import org.jfree.chart.axis.NumberTickUnit;
-import org.jfree.chart.axis.TickUnits;
-import org.jfree.chart.axis.ValueAxis;
+import org.jfree.chart.*;
+import org.jfree.chart.annotations.XYTextAnnotation;
+import org.jfree.chart.axis.*;
+import org.jfree.chart.entity.ChartEntity;
 import org.jfree.chart.event.AxisChangeEvent;
 import org.jfree.chart.event.AxisChangeListener;
 import org.jfree.chart.fx.ChartCanvas;
 import org.jfree.chart.fx.ChartViewer;
 import org.jfree.chart.labels.BoxAndWhiskerToolTipGenerator;
-import org.jfree.chart.plot.CategoryMarker;
-import org.jfree.chart.plot.CategoryPlot;
-import org.jfree.chart.plot.DatasetRenderingOrder;
-import org.jfree.chart.plot.PlotOrientation;
-import org.jfree.chart.plot.SeriesRenderingOrder;
-import org.jfree.chart.plot.ValueMarker;
-import org.jfree.chart.plot.XYPlot;
+import org.jfree.chart.labels.ItemLabelAnchor;
+import org.jfree.chart.labels.ItemLabelPosition;
+import org.jfree.chart.plot.*;
 import org.jfree.chart.renderer.category.CategoryItemRenderer;
-import org.jfree.chart.renderer.xy.SamplingXYLineRenderer;
-import org.jfree.chart.renderer.xy.XYBarRenderer;
-import org.jfree.chart.renderer.xy.XYItemRenderer;
-import org.jfree.chart.renderer.xy.XYLineAndShapeRenderer;
+import org.jfree.chart.renderer.xy.*;
 import org.jfree.chart.ui.RectangleInsets;
+import org.jfree.chart.ui.TextAnchor;
 import org.jfree.data.Range;
+import org.jfree.data.general.DefaultPieDataset;
 import org.jfree.data.statistics.DefaultBoxAndWhiskerCategoryDataset;
 import org.jfree.data.statistics.HistogramDataset;
-import org.jfree.data.xy.DefaultXYDataset;
-import org.jfree.data.xy.XYDataset;
-import org.jfree.data.xy.XYSeries;
-import org.jfree.data.xy.XYSeriesCollection;
+import org.jfree.data.xy.*;
 import processing.options.BinWidthEstimator;
 import processing.options.HistogramNormalization;
 import processing.options.MathMod;
+import sandbox.montecarlo.Isotope;
 import util.ArrUtils;
 import util.NF;
 import visualizer.charts.JFreeUtil.ExtendedHistogramDataSet;
-import visualizer.styles.Colors;
-import visualizer.styles.FontStyles;
-import visualizer.styles.LineDash;
-import visualizer.styles.LineGraphStyle;
-import visualizer.styles.LineLineDashDefaults;
-import visualizer.styles.LineWidth;
-import visualizer.styles.LineWidthDefaults;
-import visualizer.styles.MarkerSize;
-import visualizer.styles.MarkerSizeDefaults;
-import visualizer.styles.MarkerStyle;
-import visualizer.styles.NumberFormats;
-import visualizer.styles.SpV2Colors;
+import visualizer.styles.*;
 
-/*
-TODO:
-Negatvive areas althought suppres is checked
-Histogram does not show any when a single sel pop has just 1 event...
-Pop shows non-existent in listview.. something about refilling is wrong.
- */
 
 public abstract class SpChartFactory {
 
@@ -136,12 +109,20 @@ public abstract class SpChartFactory {
 
       chart = ChartFactory.createXYLineChart("",
           component.getData().translateXLbl(),
-          component.getData().translateYLbl(),
+          component.translateYLbl(), // this method includes log10
           new DefaultXYDataset(),
           PlotOrientation.VERTICAL,
           false,
           false,
           false);
+
+      // make y axis log?
+      if (component.getStyle().isyLog()) {
+        LogAxis logAxis = new LogAxis(component.getData().translateYLbl());
+        logAxis.setBase(10);
+        logAxis.setSmallestValue(0.001);
+        chart.getXYPlot().setRangeAxis(logAxis);
+      }
 
       int noOfComponents = components.size();
       for (int i = 0; i < noOfComponents; i++) {
@@ -176,6 +157,366 @@ public abstract class SpChartFactory {
     }
 
     return chart;
+  }
+
+  public static List<JFreeChart> createPieCharts(List<ChartComponent> components) {
+    List<JFreeChart> charts = new ArrayList<>();
+    for (ChartComponent component : components) {
+      JFreeChart chart = createPieChart(component);
+      if (chart != null) {
+        charts.add(chart);
+      }
+    }
+    return charts;
+  }
+
+  @Nullable
+  public static JFreeChart createPieChart(ChartComponent component) {
+
+    // Dummy
+    JFreeChart chart = null;
+
+    if (component.getData() instanceof PieChartData pieData
+        && component.getStyle() instanceof PieChartStyle pieStyle) {
+
+      // Create the pie chart using the title stored in seriesName and the pre-built dataset
+      chart = ChartFactory.createPieChart(
+          pieData.getSeriesName(),
+          pieData.getPieDataset(),
+          true,
+          true,
+          false);
+
+      chart.setNotify(false);
+
+      // Style the pie plot
+      PiePlot<?> piePlot = (PiePlot<?>) chart.getPlot();
+
+      // Apply colors from the shared colorMap — ensures consistent element colors across all pie charts.
+      // Keys in the dataset that are not in the colorMap (e.g. "Other") get a fallback color.
+      Map<String, Colors> colorMap = pieStyle.getColorMap();
+      int counter = -1;
+      for (String key : pieData.getKeys()) {
+        counter++;
+        if (pieData.getPieDataset().getIndex(key) >= 0) {
+          Colors color = colorMap.get(key);
+          if (color == null) {
+            color = new Colors.SpColor(Colors.paletteColor(counter));
+          }
+          piePlot.setSectionPaint(key, color.get());
+        }
+      }
+
+      // "Other" slice always gets the dedicated fallback color
+      if (pieData.getPieDataset().getIndex("Other") >= 0)
+        piePlot.setSectionPaint("Other", Colors.OTHER_PIE_SLICE);
+
+      chart.setNotify(true);
+    }
+
+    return chart;
+  }
+
+  // 100% Claude Sonnet 4.6
+  public static JFreeChart createDendrogram(ChartComponent component) {
+
+    // dummy
+    JFreeChart chart = new JFreeChart(new XYPlot());
+
+    if (component.getData() instanceof DendrogramChartData
+        && component.getStyle() instanceof DendrogramChartStyle) {
+
+      DendrogramChartData data = (DendrogramChartData) component.getData();
+      DendrogramChartStyle style = (DendrogramChartStyle) component.getStyle();
+      HAC.ClusterResult cr = data.getClusterResult();
+
+      int nParticles = cr.labels().length;
+      int nMerges = cr.mergeTree().length;
+
+      // ── 1. Leaf order via iterative pre-order traversal ───────────────────
+
+      int[] leafPosition = new int[nParticles];
+      int root = nParticles + nMerges - 1;
+      List<Integer> order = new ArrayList<>(nParticles);
+      Deque<Integer> stack = new ArrayDeque<>();
+      stack.push(root);
+
+      while (!stack.isEmpty()) {
+        int node = stack.pop();
+        if (node < nParticles) {
+          order.add(node);
+        } else {
+          int m = node - nParticles;
+          stack.push(cr.mergeTree()[m][1]);
+          stack.push(cr.mergeTree()[m][0]);
+        }
+      }
+
+      for (int col = 0; col < order.size(); col++)
+        leafPosition[order.get(col)] = col;
+
+      // ── 2. X-centres ─────────────────────────────────────────────────────
+
+      double[] nodeX = new double[nParticles + nMerges];
+      for (int i = 0; i < nParticles; i++)
+        nodeX[i] = leafPosition[i];
+      for (int m = 0; m < nMerges; m++) {
+        int left = cr.mergeTree()[m][0];
+        int right = cr.mergeTree()[m][1];
+        nodeX[nParticles + m] = (nodeX[left] + nodeX[right]) / 2.0;
+      }
+
+      // ── 3. Node heights ───────────────────────────────────────────────────
+
+      double[] nodeHeight = new double[nParticles + nMerges];
+      for (int m = 0; m < nMerges; m++)
+        nodeHeight[nParticles + m] = cr.mergeHeights()[m];
+
+      // ── 4. Cluster colours ────────────────────────────────────────────────
+
+      int[] nodeCluster = new int[nParticles + nMerges];
+      Arrays.fill(nodeCluster, -1);
+      for (int i = 0; i < nParticles; i++)
+        nodeCluster[i] = cr.labels()[i];
+      for (int m = 0; m < nMerges; m++) {
+        int left = cr.mergeTree()[m][0];
+        int right = cr.mergeTree()[m][1];
+        int cLeft = nodeCluster[left];
+        int cRight = nodeCluster[right];
+        boolean sameCluster = (cLeft == cRight && cLeft >= 0);
+        boolean belowThreshold = (cr.mergeHeights()[m] <= cr.threshold());
+        nodeCluster[nParticles + m] = (sameCluster && belowThreshold) ? cLeft : -1;
+      }
+
+      // ── 5. Axes ───────────────────────────────────────────────────────────
+
+      double maxHeight = cr.mergeHeights()[nMerges - 1];
+      double yAxisMax = style.useLogScaleDendrogram ? Math.log1p(maxHeight) : maxHeight;
+
+      NumberAxis xAxis = new NumberAxis();
+      xAxis.setVisible(false);
+      xAxis.setRange(-0.5, nParticles - 0.5);
+      xAxis.setAutoRange(false);
+
+      NumberAxis yAxis;
+      if (style.useLogScaleDendrogram) {
+        yAxis = new NumberAxis("ln(Ward distance) /-");
+      } else {
+        yAxis = new NumberAxis("Ward distance /-");
+      }
+      yAxis.setRange(0.0, yAxisMax * 1.05);
+      yAxis.setAutoRange(false);
+
+      // ── 6. Dummy dataset ──────────────────────────────────────────────────
+
+      XYSeries series = new XYSeries("leaves");
+      for (int i = 0; i < nParticles; i++)
+        series.add(i, 0.0);
+      series.add(0, yAxisMax * 1.05);
+      XYSeriesCollection dataset = new XYSeriesCollection(series);
+
+      // ── 7. Renderer ───────────────────────────────────────────────────────
+
+      DendrogramRenderer renderer = new DendrogramRenderer(
+          style,
+          cr.mergeTree(),
+          cr.mergeHeights(),
+          nodeX,
+          nodeHeight,
+          nodeCluster,
+          nParticles,
+          nMerges,
+          style.useLogScaleDendrogram
+      );
+
+      // ── 8. Assemble ───────────────────────────────────────────────────────
+
+      XYPlot plot = new XYPlot(dataset, xAxis, yAxis, renderer);
+      plot.setDomainGridlinesVisible(false);
+
+      chart = new JFreeChart(
+          //"Dendrogram  (k = " + cr.k() + ")",
+          "",
+          new Font("Tahoma", Font.BOLD, SpTool3Main.getRunTime().getConfParams().getAxisFontSize() - 1),
+          plot, false);
+
+      // Should make sure that axis colors match those of the others
+      ChartFactory.getChartTheme().apply(chart);
+
+      // ── 9. Cluster centre annotations ────────────────────────────────────────
+
+      if (style.showClusterNumbers) {
+        // For each cluster, average the x-positions of its leaf members
+        Map<Integer, List<Double>> clusterXPositions = new HashMap<>();
+        for (int i = 0; i < nParticles; i++) {
+          int c = nodeCluster[i];
+          if (c >= 0) {
+            clusterXPositions.computeIfAbsent(c, k -> new ArrayList<>()).add(nodeX[i]);
+          }
+        }
+
+        double annotationY = yAxisMax * 0.10; // near the bottom, tweak to taste
+
+        for (Map.Entry<Integer, List<Double>> entry : clusterXPositions.entrySet()) {
+          int clusterId = entry.getKey();
+          double centerX = entry.getValue().stream()
+              .mapToDouble(Double::doubleValue)
+              .average()
+              .orElse(0);
+
+          XYTextAnnotation ann = new XYTextAnnotation(cr.clusterNames()[clusterId], centerX, annotationY);
+          ann.setFont(new Font("Tahoma", Font.BOLD,
+              SpTool3Main.getRunTime().getConfParams().getAxisFontSize() + 2));
+          ann.setPaint(java.awt.Color.DARK_GRAY);
+          ann.setTextAnchor(TextAnchor.CENTER);
+          plot.addAnnotation(ann);
+        }
+      }
+    }
+
+
+    return chart;
+  }
+
+  public static JFreeChart createMassSpectrumChart(List<ChartComponent> components,
+                                                   boolean showLabels,
+                                                   boolean filterAbundanceForLabels,
+                                                   double minAbundancePct,
+                                                   List<Isotope> excludedFromLabel,
+                                                   boolean filterSignalForLabels,
+                                                   double minSignalRelative) {
+
+    JFreeChart chart = ChartFactory.createScatterPlot(null, "", "", new DefaultXYDataset());
+
+    if (!components.isEmpty()) {
+      ChartComponent component = components.get(0);
+
+      boolean yLog = component.getStyle().yLog;
+
+      // Use XYBarChart as the base — gives us vertical bars out of the box
+      chart = ChartFactory.createXYBarChart(
+          "",
+          component.getData().translateXLbl(),  // typically "m/z"
+          false,
+          component.getData().translateYLbl(),  // typically "Intensity" or "Rel. Abundance"
+          new XYIntervalSeriesCollection(),
+          PlotOrientation.VERTICAL,
+          false, false, false
+      );
+
+      // make y axis log
+      if (yLog) {
+        LogAxis logAxis = new LogAxis(component.getData().translateYLbl());
+        logAxis.setBase(10);
+        logAxis.setSmallestValue(1); // avoids log(0) issues — tune to your minimum intensity
+        chart.getXYPlot().setRangeAxis(logAxis);
+      }
+
+      int noOfComponents = components.size();
+      double maxYValue = components.stream()
+          .map(ChartComponent::getData)
+          .map(ChartData::getY)
+          .filter(Objects::nonNull)
+          .map(ArrUtils::getMax)
+          .mapToDouble(Double::doubleValue)
+          .max()
+          .orElse(0d);
+
+      for (int i = 0; i < noOfComponents; i++) {
+        component = components.get(i);
+
+        XYIntervalSeriesCollection dataset = new XYIntervalSeriesCollection();
+
+        /// XYBarRenderer
+        XYItemRenderer renderer = component.getStyle().getXYBarRenderer();
+        renderer.setDefaultToolTipGenerator(null);
+
+        renderer.setDefaultToolTipGenerator((ds, series, item) ->
+            JFreeUtil.buildTooltip(0, 0, maxYValue, true, new ArrayList<>(),
+                (XYIntervalSeriesCollection) ds, series, item)
+        );
+
+        if (showLabels) {
+          double abundanceCutoff;
+          if (filterAbundanceForLabels) {
+            abundanceCutoff = minAbundancePct / 100;
+          } else {
+            abundanceCutoff = 0;
+          }
+
+          double signalCutoff;
+          if (filterSignalForLabels) {
+            signalCutoff = minSignalRelative / 1000;
+          } else {
+            signalCutoff = 0;
+          }
+
+          renderer.setDefaultItemLabelGenerator((ds, series, item) ->
+              JFreeUtil.buildTooltip(abundanceCutoff, signalCutoff, maxYValue, false, excludedFromLabel,
+                  (XYIntervalSeriesCollection) ds, series, item)
+          );
+
+          renderer.setDefaultItemLabelsVisible(true);
+          renderer.setDefaultPositiveItemLabelPosition(
+              new ItemLabelPosition(ItemLabelAnchor.OUTSIDE12, TextAnchor.BOTTOM_CENTER)
+          );
+          renderer.setDefaultItemLabelFont(FontStyles.getBold(1));
+        }
+
+        chart.getXYPlot().setDataset(i, dataset);
+        chart.getXYPlot().setRenderer(i, renderer);
+      }
+
+      chart.setNotify(false);
+      chart.getXYPlot().setNotify(false);
+
+      for (int i = 0; i < noOfComponents; i++) {
+        XYIntervalSeriesCollection dataset =
+            (XYIntervalSeriesCollection) chart.getXYPlot().getDataset(i);
+        component = components.get(i);
+        fillMassSpecDataset(dataset, component);
+      }
+
+      // Reactivate notifications
+      chart.setNotify(true);
+      chart.getXYPlot().setNotify(true);
+    }
+
+
+    return chart;
+  }
+
+  /**
+   * Fills an XYIntervalSeriesCollection for bar/stick rendering.
+   * Each peak is a bar from y=0 to y=intensity, with a tiny x-interval around the m/z value.
+   */
+  private static void fillMassSpecDataset(XYIntervalSeriesCollection dataset,
+                                          ChartComponent component) {
+    XYIntervalSeries series = new XYIntervalSeries(component.getData().getSeriesShortname());
+
+    double[] mzArr = component.getData().getX();
+    double[] signalArr = component.getData().getY();
+
+    if (mzArr.length == signalArr.length) {
+
+      double halfWidth = 0.25; // 0.5 amu total bar width (fixed for ~0.5 amu resolution)
+
+      for (int i = 0; i < mzArr.length; i++) {
+        double mz = mzArr[i];
+        double intensity = signalArr[i];
+        series.add(
+            mz,                    // x
+            mz - halfWidth,        // xLow
+            mz + halfWidth,        // xHigh
+            intensity,             // y
+            0,                     // yLow  (bar starts at baseline)
+            intensity              // yHigh
+        );
+      }
+    }
+
+
+    dataset.addSeries(series);
   }
 
 
@@ -395,7 +736,11 @@ public abstract class SpChartFactory {
     /*
     BACKGROUND
      */
-    chart.setBackgroundPaint(Colors.CHART_BACKGROUND);
+    if (SpTool3Main.getRunTime().getConfParams().getJfreePlotsWhiteOnly().getValue()) {
+      chart.setBackgroundPaint(Colors.PLOT_BACKGROUND);
+    } else {
+      chart.setBackgroundPaint(Colors.CHART_BACKGROUND);
+    }
 
     if (chart.getPlot() instanceof XYPlot) {
       chart.getXYPlot().setBackgroundPaint(Colors.PLOT_BACKGROUND);
@@ -420,11 +765,28 @@ public abstract class SpChartFactory {
       chart.getCategoryPlot().setDomainGridlinesVisible(true);
       chart.getCategoryPlot().setDomainGridlinePaint(Colors.PLOT_GRIDLINES);
       chart.getCategoryPlot().setDomainGridlineStroke(LineWidthDefaults.GRID.getStroke());
+
+    } else if (chart.getPlot() instanceof PiePlot<?> piePlot) {
+      piePlot.setBackgroundPaint(Colors.PLOT_BACKGROUND);
+      piePlot.setOutlineVisible(false);
+      piePlot.setShadowPaint(null);
+      piePlot.setLabelBackgroundPaint(Colors.PLOT_BACKGROUND);
+      piePlot.setLabelOutlinePaint(null);
+      piePlot.setLabelShadowPaint(null);
+      piePlot.setLabelFont(new Font("Tahoma", Font.BOLD, 9));
+      // For pie plots, we actually use the title
+      if (chart.getTitle() != null) {
+        chart.getTitle().setFont(new Font("Tahoma", Font.BOLD,
+            SpTool3Main.getRunTime().getConfParams().getAxisFontSize()));
+      }
     }
 
     /*
     AXES
     */
+    double axSpacing = SpTool3Main.getRunTime().getConfParams().getAxisLabelSpacing();
+    axSpacing = Math.max(axSpacing, 0.1);
+
     if (chart.getPlot() instanceof XYPlot) {
 
       // x axis
@@ -435,7 +797,9 @@ public abstract class SpChartFactory {
         domainAxis.setNumberFormatOverride(NumberFormats.automatic(domainAxis.getRange()));
         // Forces JFree to use larger spacing between ticks,i.e., show fewer ticks
         // Note: Bottom = dist from num to ax.label, top = dist from num to axis.line
-        domainAxis.setTickLabelInsets(new RectangleInsets(5, 15, 5, 15));
+        // Caused issues with export:
+        // domainAxis.setTickLabelInsets(new RectangleInsets(5, 15, 5, 15));
+        domainAxis.setTickLabelInsets(new RectangleInsets(5, axSpacing, 5, axSpacing));
       }
 
       // y-axis
@@ -443,12 +807,13 @@ public abstract class SpChartFactory {
         ValueAxis valueAxis = chart.getXYPlot().getRangeAxis();
         valueAxis.setLabelFont(FontStyles.getBold());
         valueAxis.setTickLabelFont(FontStyles.getPlain());
-        NumberAxis numberAxis = (NumberAxis) chart.getXYPlot().getRangeAxis();
-        numberAxis.setNumberFormatOverride(NumberFormats.automatic(valueAxis.getRange()));
+        if (valueAxis instanceof NumberAxis) {
+          NumberAxis numberAxis = (NumberAxis) chart.getXYPlot().getRangeAxis();
+          numberAxis.setNumberFormatOverride(NumberFormats.automatic(valueAxis.getRange()));
+        }
         // Forces JFree to use larger spacing between ticks,i.e., show fewer ticks.
         // Note: left = dist from num to ax, right = dist from num to ax.label
-        valueAxis.setTickLabelInsets(new RectangleInsets(15, 5, 15, 15));
-
+        valueAxis.setTickLabelInsets(new RectangleInsets(axSpacing, 5, axSpacing, 10));
       }
     } else if (chart.getPlot() instanceof CategoryPlot) {
       // x axis
@@ -466,7 +831,7 @@ public abstract class SpChartFactory {
         NumberAxis numberAxis = (NumberAxis) chart.getCategoryPlot().getRangeAxis();
         numberAxis.setNumberFormatOverride(NumberFormats.automatic(valueAxis.getRange()));
         // Forces JFree to use larger spacing between ticks,i.e., show fewer ticks
-        valueAxis.setTickLabelInsets(new RectangleInsets(15, 5, 15, 15));
+        valueAxis.setTickLabelInsets(new RectangleInsets(axSpacing, 5, axSpacing, 10));
       }
     }
 
@@ -536,6 +901,8 @@ public abstract class SpChartFactory {
         xAxis.setRange(new Range(limits.getxLow(), limits.getxHigh()));
         yAxis.setRange(new Range(limits.getyLow(), limits.getyHigh()));
       }
+    } else if (chart.getPlot() instanceof PiePlot<?>) {
+      // no zoom to handle
     } else {
       CategoryPlot plot = chart.getCategoryPlot();
       ValueAxis yAxis = plot.getRangeAxis();
@@ -549,8 +916,32 @@ public abstract class SpChartFactory {
 
 
   public static void installSpUserComfort(ChartViewer viewer) {
-    ViewerZoomMemory zoomMemory = new ViewerZoomMemory(viewer);
+    /// Tooltip style
+    Tooltip tooltip = new Tooltip();
+    tooltip.setShowDelay(Duration.millis(5));   // default is 1000ms
+    tooltip.setHideDelay(Duration.millis(50));
+    tooltip.setStyle(
+        "-fx-font-size: 16px; " +
+            "-fx-font-weight: bold; " +
+            "-fx-background-color: #222; " +
+            "-fx-text-fill: white;"
+    );
 
+    viewer.setOnMouseMoved(event -> {
+      var entities = viewer.getRenderingInfo().getEntityCollection();
+      if (entities == null) return;
+
+      ChartEntity entity = entities.getEntity(event.getX(), event.getY());
+      if (entity != null && entity.getToolTipText() != null) {
+        tooltip.setText(entity.getToolTipText()); // uses your generator's text
+        Tooltip.install(viewer, tooltip);
+      } else {
+        Tooltip.uninstall(viewer, tooltip);
+      }
+    });
+
+    /// ZOOM
+    ViewerZoomMemory zoomMemory = new ViewerZoomMemory(viewer);
     /**
      * Custom handler with properties:
      * 1) Zoom memory.
@@ -572,7 +963,9 @@ public abstract class SpChartFactory {
     canvas.removeMouseHandler(canvas.getMouseHandler("pan"));
     canvas.addMouseHandler(new SpPanHandlerFX("pan", zoomMemory));
 
+    canvas.removeMouseHandler(canvas.getMouseHandler("dragZoom")); // added for the recycling viewer 3.1.2
     canvas.addMouseHandler(new SpDragZoomHandlerFX("dragZoom", viewer, zoomMemory));
+
 
     /**
      * Install hotkeys:
@@ -648,8 +1041,12 @@ public abstract class SpChartFactory {
               wasCtl = true;
               zoomMemory.storeZoom();
               if (yRng.getUpperBound() > yRng.getLowerBound()) {
-                yAxis.setRange(yRng.getLowerBound() - reducedYRangeLength,
-                    yRng.getUpperBound() + reducedYRangeLength);
+                if (yAxis instanceof LogAxis) {
+                  setYRangeWithStep(yAxis, yRng, -1, +1);
+                } else {
+                  yAxis.setRange(yRng.getLowerBound() - reducedYRangeLength,
+                      yRng.getUpperBound() + reducedYRangeLength);
+                }
               }
             }
 
@@ -657,8 +1054,12 @@ public abstract class SpChartFactory {
               wasCtl = true;
               zoomMemory.storeZoom();
               if (yRng.getUpperBound() > yRng.getLowerBound()) {
-                yAxis.setRange(yRng.getLowerBound() + reducedYRangeLength,
-                    yRng.getUpperBound() - reducedYRangeLength);
+                if (yAxis instanceof LogAxis) {
+                  setYRangeWithStep(yAxis, yRng, +1, -1);
+                } else {
+                  yAxis.setRange(yRng.getLowerBound() + reducedYRangeLength,
+                      yRng.getUpperBound() - reducedYRangeLength);
+                }
               }
             }
 
@@ -700,16 +1101,24 @@ public abstract class SpChartFactory {
               if (event.getCode() == KeyCode.KP_DOWN || event.getCode() == KeyCode.DOWN) {
                 if (yRng.getUpperBound() > yRng.getLowerBound()) {
                   zoomMemory.storeZoom();
-                  yAxis.setRange(yRng.getLowerBound() - reducedYRangeLength,
-                      yRng.getUpperBound() - reducedYRangeLength);
+                  if (yAxis instanceof LogAxis) {
+                    setYRangeWithStep(yAxis, yRng, -1, -1);
+                  } else {
+                    yAxis.setRange(yRng.getLowerBound() - reducedYRangeLength,
+                        yRng.getUpperBound() - reducedYRangeLength);
+                  }
                 }
               }
 
               if (event.getCode() == KeyCode.KP_UP || event.getCode() == KeyCode.UP) {
                 if (yRng.getUpperBound() > yRng.getLowerBound()) {
                   zoomMemory.storeZoom();
-                  yAxis.setRange(yRng.getLowerBound() + reducedYRangeLength,
-                      yRng.getUpperBound() + reducedYRangeLength);
+                  if (yAxis instanceof LogAxis) {
+                    setYRangeWithStep(yAxis, yRng, +1, +1);
+                  } else {
+                    yAxis.setRange(yRng.getLowerBound() + reducedYRangeLength,
+                        yRng.getUpperBound() + reducedYRangeLength);
+                  }
                 }
               }
             }
@@ -718,7 +1127,8 @@ public abstract class SpChartFactory {
           viewer.requestFocus(); // continue try to keep focus
         }
       });
-    } else {
+      // add check b/c piechart is neither xy nor category
+    } else if (viewer.getChart().getPlot() instanceof CategoryPlot) {
       CategoryPlot plot = viewer.getChart().getCategoryPlot();
       CategoryAxis xAxis = plot.getDomainAxis();
       ValueAxis yAxis = plot.getRangeAxis();
@@ -743,6 +1153,23 @@ public abstract class SpChartFactory {
       });
 
       // BoxPlot category x axis cannot be zoomed, so there is no need to implement the functions.
+    }
+  }
+
+  private static void setYRangeWithStep(ValueAxis yAxis, Range yRng, double lowSign, double highSign) {
+    double factor = 0.10;
+    if (yAxis instanceof LogAxis) {
+      double logLow = Math.log10(yRng.getLowerBound());
+      double logHigh = Math.log10(yRng.getUpperBound());
+      double step = (logHigh - logLow) * factor;
+      double newLow = Math.pow(10, logLow + lowSign * step);
+      double newHigh = Math.pow(10, logHigh + highSign * step);
+      if (newLow < newHigh) yAxis.setRange(newLow, newHigh);
+    } else {
+      double step = yRng.getLength() * factor;
+      double newLow = yRng.getLowerBound() + lowSign * step;
+      double newHigh = yRng.getUpperBound() + highSign * step;
+      if (newLow < newHigh) yAxis.setRange(newLow, newHigh);
     }
   }
 
@@ -860,14 +1287,41 @@ public abstract class SpChartFactory {
                                                  boolean singleCol) {
 
     // Colors, ...
+    chart.setNotify(false); // avoid triggering a chart notification before the canvas is ready
     makeNice(chart);
 
     // The viewer
-    ChartViewer viewer = new ChartViewer(chart);
+    ChartViewer viewer = new ChartViewer(chart) {{
+      // Force canvas to zero size so Prism cannot allocate an RTTexture
+      // before the viewer is attached to a live scene
+      getCanvas().setWidth(0);
+      getCanvas().setHeight(0);
+    }};
+    viewer.setMinSize(20, 20);
     viewer.setPrefSize(width, height);
+
+    // Claude Sonnet 4.6 bugfix for weird prism null pointer:
+    // Defer canvas draw until viewer is actually attached to a scene.
+    // Without this, Prism may fail to allocate the RTTexture for the ChartCanvas,
+    // causing a NullPointerException in NGCanvas.initCanvas.
+    viewer.sceneProperty().addListener((obs, oldScene, newScene) -> {
+      if (newScene != null) {
+        Platform.runLater(() -> {
+          // When finally on scene, give Canvas real dimensions and draw
+          viewer.getCanvas().setWidth(width);
+          viewer.getCanvas().setHeight(height);
+          viewer.getCanvas().draw();
+          if (SpTool3Main.getRunTime().getConfParams().getRefocusGraphGraphs()) {
+            viewer.requestFocus(); // only request focus once in a live scene
+          }
+        });
+      }
+    });
 
     // Zoom, ...
     installSpUserComfort(viewer);
+
+    chart.setNotify(true); // re-enable only after viewer is constructed
 
     // The container: Split Pane
     BorderPane combinedPane = new BorderPane();
@@ -877,22 +1331,50 @@ public abstract class SpChartFactory {
     Pair<ScrollPane, Pane> legend = getLegend(components, singleCol);
     splitPane.getItems().addAll(viewer, UiUtil.putOnAnchorWithoutInsets(legend.getKey()));
 
-    if (!disableSplitDivider) {
-      splitPane.setDividerPositions(SpTool3Main.getRunTime().getGuiParameterManager()
-          .getLayoutParameters().getChartDivider());
+    // Disable vis first: This way the user never sees the jump — the pane simply appears already in the
+    // correct state.
+    splitPane.setVisible(false); // hide until divider is correctly positioned
 
-      splitPane.getDividers().get(0).positionProperty().addListener(
-          (observable, oldValue, newValue) -> {
-            SpTool3Main.getRunTime().getGuiParameterManager().getLayoutParameters()
-                .setChartDivider(newValue.doubleValue());
-          });
-    } else {
-      splitPane.setDividerPositions(0.99);
-      splitPane.getDividers().get(0).positionProperty().addListener(
-          (observable, oldValue, newValue) -> {
+    // Divider positions (must be set after layout pass, else ignored by JavaFX)
+    splitPane.sceneProperty().addListener((obs, oldScene, newScene) -> {
+      if (newScene != null) {
+        Platform.runLater(() -> {
+          if (!disableSplitDivider) {
+            splitPane.setDividerPositions(SpTool3Main.getRunTime()
+                .getGuiParameterManager()
+                .getLayoutParameters()
+                .getChartDivider());
+          } else {
             splitPane.setDividerPositions(0.99);
-          });
-    }
+          }
+          splitPane.setVisible(true); // show only after divider is in place
+
+          // Divider change listeners would be fine outside the bracket — they don't need a scene.
+          // But: change listeners are firing before the scene listener and saving the wrong (default)
+          // divider position
+          if (!disableSplitDivider) {
+            // May cause bugs in JavaFX since item is not on scene yet
+            //splitPane.setDividerPositions(SpTool3Main.getRunTime()
+            //    .getGuiParameterManager()
+            //    .getLayoutParameters()
+            //    .getChartDivider());
+//
+            splitPane.getDividers().get(0).positionProperty().addListener(
+                (observable, oldValue, newValue) -> {
+                  SpTool3Main.getRunTime().getGuiParameterManager().getLayoutParameters()
+                      .setChartDivider(newValue.doubleValue());
+                });
+          } else {
+            // May cause bugs in JavaFX since item is not on scene yet
+            // splitPane.setDividerPositions(0.99);
+            splitPane.getDividers().get(0).positionProperty().addListener(
+                (observable, oldValue, newValue) -> {
+                  splitPane.setDividerPositions(0.99);
+                });
+          }
+        });
+      }
+    });
 
     combinedPane.setCenter(splitPane);
 
@@ -902,9 +1384,149 @@ public abstract class SpChartFactory {
     AnchorPane anchorPane = UiUtil.putOnAnchorWithoutInsets(combinedPane);
     anchorPane.setPrefSize(width, height);
 
-    viewer.requestFocus();
     return new ChartContainer(anchorPane, viewer, legend.getKey());
+  }
 
+  public static ChartContainer bundleChartLegend(@Nullable ChartViewer viewer,
+                                                 JFreeChart chart,
+                                                 List<ChartComponent> components,
+                                                 double width, double height,
+                                                 boolean disableSplitDivider,
+                                                 Orientation splitOrientation,
+                                                 boolean singleCol) {
+
+    /// Style of chart need to be set for every chart!
+
+    // Colors, ...
+    chart.setNotify(false);
+    makeNice(chart);
+
+    /// The viewer: only create if not instantiated yet
+    if (viewer == null) {
+      viewer = new ChartViewer(chart) {{
+        // Force canvas to zero size so Prism cannot allocate an RTTexture
+        // before the viewer is attached to a live scene
+        getCanvas().setWidth(0);
+        getCanvas().setHeight(0);
+      }};
+      viewer.setMinSize(20, 20);
+      viewer.setPrefSize(width, height);
+
+      // Claude Sonnet 4.6 idea to bugfix for weird prism null pointer:
+      // Defer canvas draw until viewer is actually attached to a scene.
+      // Without this, Prism may fail to allocate the RTTexture for the ChartCanvas,
+      // causing a NullPointerException in NGCanvas.initCanvas.
+      ChartViewer finalViewer = viewer;
+      viewer.sceneProperty().addListener((obs, oldScene, newScene) -> {
+        if (newScene != null) {
+          Platform.runLater(() -> {
+            // When finally on scene, give Canvas real dimensions and draw
+            finalViewer.getCanvas().setWidth(width);
+            finalViewer.getCanvas().setHeight(height);
+            finalViewer.getCanvas().draw();
+            // This works now: but it removes focus from parameter sets
+            if (SpTool3Main.getRunTime().getConfParams().getRefocusGraphGraphs()) {
+              finalViewer.requestFocus(); // only request focus once in a live scene
+            }
+          });
+        }
+      });
+
+      // chart.setNotify(true); // re-enable only after viewer is constructed (already called at end!)
+    } else {
+      // setting the width/height and calling draw is claude sonnet 4.6 idea to protect fire change
+      // before adding this, it also already worked apparently bug free
+      viewer.getCanvas().setWidth(0);   // suppress render during chart swap
+      viewer.getCanvas().setHeight(0);
+      viewer.setChart(chart);
+      viewer.getCanvas().setWidth(width);
+      viewer.getCanvas().setHeight(height);
+      viewer.getCanvas().draw();
+    }
+
+    // The container: Split Pane
+    BorderPane combinedPane = new BorderPane();
+    SplitPane splitPane = new SplitPane();
+    splitPane.setOrientation(splitOrientation);
+
+    Pair<ScrollPane, Pane> legend = getLegend(components, singleCol);
+    splitPane.getItems().addAll(
+        UiUtil.putOnAnchorWithoutInsets(viewer),
+        UiUtil.putOnAnchorWithoutInsets(legend.getKey()));
+
+    // Disable vis first: This way the user never sees the jump — the pane simply appears already in the
+    // correct state.
+    splitPane.setVisible(false); // hide until divider is correctly positioned
+
+    // Divider positions (must be set after layout pass, else ignored by JavaFX)
+    splitPane.sceneProperty().addListener((obs, oldScene, newScene) -> {
+      if (newScene != null) {
+        // Platform.runLater(() -> { // slows down immensely but does not seem to be required
+        if (!disableSplitDivider) {
+          splitPane.setDividerPositions(SpTool3Main.getRunTime()
+              .getGuiParameterManager()
+              .getLayoutParameters()
+              .getChartDivider());
+        } else {
+          splitPane.setDividerPositions(0.99);
+        }
+
+        splitPane.setVisible(true); // show visible only after divider is in place
+
+        // Divider change listeners would be fine outside the bracket — they don't need a scene.
+        // But: change listeners are firing before the scene listener and saving the wrong (default)
+        // divider position
+        if (!disableSplitDivider) {
+          // May cause bugs in JavaFX since item is not on scene yet. Moved into runlater
+          // splitPane.setDividerPositions(SpTool3Main.getRunTime()
+          //    .getGuiParameterManager()
+          //    .getLayoutParameters()
+          //    .getChartDivider());
+
+          splitPane.getDividers().get(0).positionProperty().addListener(
+              (observable, oldValue, newValue) -> {
+                SpTool3Main.getRunTime().getGuiParameterManager().getLayoutParameters()
+                    .setChartDivider(newValue.doubleValue());
+              });
+        } else {
+          // May cause bugs in JavaFX since item is not on scene yet
+          // splitPane.setDividerPositions(0.99);
+          splitPane.getDividers().get(0).positionProperty().addListener(
+              (observable, oldValue, newValue) -> {
+                splitPane.setDividerPositions(0.99);
+              });
+        }
+        // }); // platform runlater bracket
+      }
+    });
+
+    combinedPane.setCenter(splitPane);
+
+    // Save context menu...
+    JFreeExportUtils.makeExportable(viewer, legend.getValue());
+
+    AnchorPane anchorPane = UiUtil.putOnAnchorWithoutInsets(combinedPane);
+    anchorPane.setPrefSize(width, height);
+
+    // Silence updates in chart on Zoom, zoom memory ... [we have to call that here to refresh for new chart!)
+    installSpUserComfort(viewer);
+
+    // at the end
+    chart.setNotify(true);
+    return new ChartContainer(anchorPane, viewer, legend.getKey());
+  }
+
+  public static BasicStroke getStroke(LineWidth width, LineDash dash) {
+    return new BasicStroke(
+        width.get(),
+        //BasicStroke.CAP_ROUND,
+        //BasicStroke.JOIN_ROUND,
+        BasicStroke.CAP_BUTT,
+        BasicStroke.JOIN_MITER,
+        1f,
+        dash.get(),
+        0f
+    );
   }
 
   public static class ChartContainer {
@@ -975,12 +1597,25 @@ public abstract class SpChartFactory {
       this.style = new ChartStyle();
     }
 
+    public ChartComponent(List<ChartComponent> list) {
+      this.data = new ChartData(list.stream().map(ChartComponent::getData).toList());
+      this.style = list.get(0).getStyle();
+    }
+
     public ChartData getData() {
       return data;
     }
 
     public ChartStyle getStyle() {
       return style;
+    }
+
+    public String translateYLbl() {
+      String label = data.translateYLbl();
+      if (style.isyLog()) {
+        label = "log10(" + label + ")";
+      }
+      return label;
     }
 
   }
@@ -1001,6 +1636,21 @@ public abstract class SpChartFactory {
     private final Unit yUnit;
     private final MathMod xMath;
     private final MathMod yMath;
+
+    public ChartData() {
+      this.seriesName = "";
+      this.seriesShortname = "";
+      this.x = new double[0];
+      this.y = new double[0];
+      this.xLbl = "";
+      this.yLbl = "";
+      this.xUnit = ViewUnits.NONE;
+      this.yUnit = ViewUnits.NONE;
+      this.xMath = MathMod.NONE;
+      this.yMath = MathMod.NONE;
+      this.tiSeries = null;
+      this.xySeries = null;
+    }
 
     public ChartData(String seriesName, double[] x, double[] y,
                      String xLbl, Unit xUnit, MathMod xMath, String yLbl, Unit yUnit, MathMod yMath) {
@@ -1087,6 +1737,60 @@ public abstract class SpChartFactory {
       this.xySeries = null;
     }
 
+    public ChartData(List<ChartData> dataList) {
+      ChartData first = !dataList.isEmpty() ? dataList.get(0) : new ChartData();
+
+      // Copy metadata from first element
+      this.seriesName = first.seriesName;
+      this.seriesShortname = first.seriesShortname;
+      this.xLbl = first.xLbl;
+      this.yLbl = first.yLbl;
+      this.xUnit = first.xUnit;
+      this.yUnit = first.yUnit;
+      this.xMath = first.xMath;
+      this.yMath = first.yMath;
+
+      this.tiSeries = null;
+      this.xySeries = null;
+
+      // Total size
+      int totalLength = dataList.stream()
+          .mapToInt(d -> d.x.length)
+          .sum();
+
+      double[] mergedX = new double[totalLength];
+      double[] mergedY = new double[totalLength];
+
+      int pos = 0;
+      double lastX = 0.0;
+      boolean firstSeries = true;
+
+      for (ChartData d : dataList) {
+        double[] xArr = d.x;
+        double[] yArr = d.y;
+
+        double shift = 0.0;
+
+        if (!firstSeries && xArr.length > 0) {
+          double step = (xArr.length > 1) ? (xArr[1] - xArr[0]) : 0.0;
+          shift = lastX + step - xArr[0];
+        }
+
+        for (int i = 0; i < xArr.length; i++) {
+          double newX = xArr[i] + shift;
+          mergedX[pos] = newX;
+          mergedY[pos] = yArr[i];
+          pos++;
+          lastX = newX;
+        }
+
+        firstSeries = false;
+      }
+
+      this.x = mergedX;
+      this.y = mergedY;
+    }
+
     public String getSeriesName() {
       return seriesName;
     }
@@ -1124,11 +1828,13 @@ public abstract class SpChartFactory {
     }
 
     public String translateYLbl() {
+      String label;
       if (yMath.equals(MathMod.NONE)) {
-        return yLbl + " /" + yUnit.getAxisString();
+        label = yLbl + " /" + yUnit.getAxisString();
       } else {
-        return yMath.getUiString() + "(" + yLbl + " /" + yUnit.getAxisString() + ")";
+        label = yMath.getUiString() + "(" + yLbl + " /" + yUnit.getAxisString() + ")";
       }
+      return label;
     }
 
     public String getyLbl() {
@@ -1177,12 +1883,62 @@ public abstract class SpChartFactory {
     }
   }
 
+  public static class PieChartData extends ChartData {
+
+    private final String[] keys;
+    private final double[] values;
+    private final DefaultPieDataset<String> pieDataset;
+
+    public PieChartData(String seriesName, String[] keys, double[] values) {
+      super(seriesName, seriesName, new double[0], new double[0],
+          "", ViewUnits.NONE, MathMod.NONE,
+          "", ViewUnits.NONE, MathMod.NONE);
+      this.keys = keys;
+      this.values = values;
+
+      // Build the JFreeChart dataset from the raw arrays
+      this.pieDataset = new DefaultPieDataset<>();
+      for (int i = 0; i < keys.length; i++) {
+        pieDataset.setValue(keys[i], values[i]);
+      }
+    }
+
+    public String[] getKeys() {
+      return keys;
+    }
+
+    public double[] getValues() {
+      return values;
+    }
+
+    public DefaultPieDataset<String> getPieDataset() {
+      return pieDataset;
+    }
+  }
+
+  public static class DendrogramChartData extends ChartData {
+
+    private final HAC.ClusterResult clusterResult;
+
+    public DendrogramChartData(HAC.ClusterResult clusterResult, String seriesName, String seriesShortName) {
+      super(seriesName, seriesName, new double[0], new double[0],
+          "", ViewUnits.NONE, MathMod.NONE,
+          "Ward distance", ViewUnits.NONE, MathMod.NONE);
+      this.clusterResult = clusterResult;
+    }
+
+    public HAC.ClusterResult getClusterResult() {
+      return clusterResult;
+    }
+  }
+
   // Container with information on Chart Style.
   public static class ChartStyle {
 
     private final Colors paint;
     private final LineWidth width;
     private final LineDash dashPattern;
+    private final float dashPhase;
     private final MarkerSize markerSize;
     private final MarkerStyle markerStyle;
     private final boolean overrideLegendBoxSymbol;
@@ -1191,12 +1947,14 @@ public abstract class SpChartFactory {
     private final BarFillPattern fillPattern;
     private final double alpha;
     private final boolean active;
+    private final boolean yLog;
 
     public ChartStyle() {
       // Defaults
       this.paint = SpV2Colors.BLACK;
       this.width = LineWidthDefaults.MEDIUM;
-      this.dashPattern = LineLineDashDefaults.STRAIGHT;
+      this.dashPattern = LineDashDefaults.STRAIGHT;
+      this.dashPhase = 0;
       this.markerSize = MarkerSizeDefaults.MEDIUM;
       this.markerStyle = MarkerStyle.CROSS;
       this.overrideLegendBoxSymbol = false;
@@ -1205,9 +1963,11 @@ public abstract class SpChartFactory {
       this.fillPattern = BarFillPattern.NONE;
       this.alpha = 1; // i.e. no alpha
       this.active = false;
+      this.yLog = false;
     }
 
-    public ChartStyle(Colors paint, double alpha, LineWidthDefaults width, LineDash dashPattern,
+    public ChartStyle(Colors paint, double alpha, LineWidthDefaults width,
+                      LineDash dashPattern, float dashPhase,
                       MarkerSize markerSize, MarkerStyle markerStyle,
                       boolean overrideLegendBoxSymbol,
                       RendererOption rendererOption, LineGraphStyle lineGraphStyle,
@@ -1215,6 +1975,7 @@ public abstract class SpChartFactory {
       this.paint = paint;
       this.width = width;
       this.dashPattern = dashPattern;
+      this.dashPhase = dashPhase;
       this.markerSize = markerSize;
       this.markerStyle = markerStyle;
       this.overrideLegendBoxSymbol = overrideLegendBoxSymbol;
@@ -1223,15 +1984,19 @@ public abstract class SpChartFactory {
       this.fillPattern = fillPattern;
       this.alpha = Math.min(alpha, 1);
       this.active = true;
+      this.yLog = false;
     }
 
-    public ChartStyle(Colors paint, double alpha, LineWidthDefaults width, LineDash dashPattern,
+
+    public ChartStyle(Colors paint, double alpha, LineWidthDefaults width,
+                      LineDash dashPattern, float dashPhase,
                       MarkerSize markerSize, MarkerStyle markerStyle,
                       boolean overrideLegendBoxSymbol,
                       RendererOption rendererOption, LineGraphStyle lineGraphStyle) {
       this.paint = paint;
       this.width = width;
       this.dashPattern = dashPattern;
+      this.dashPhase = dashPhase;
       this.markerSize = markerSize;
       this.markerStyle = markerStyle;
       this.overrideLegendBoxSymbol = overrideLegendBoxSymbol;
@@ -1240,15 +2005,66 @@ public abstract class SpChartFactory {
       this.fillPattern = BarFillPattern.NONE;
       this.alpha = Math.min(alpha, 1);
       this.active = true;
+      this.yLog = false;
+    }
+
+    public ChartStyle(Colors paint, double alpha, LineWidthDefaults width,
+                      LineDash dashPattern, float dashPhase,
+                      MarkerSize markerSize, MarkerStyle markerStyle,
+                      boolean yLog,
+                      boolean overrideLegendBoxSymbol,
+                      RendererOption rendererOption, LineGraphStyle lineGraphStyle) {
+      this.paint = paint;
+      this.width = width;
+      this.dashPattern = dashPattern;
+      this.dashPhase = dashPhase;
+      this.markerSize = markerSize;
+      this.markerStyle = markerStyle;
+      this.overrideLegendBoxSymbol = overrideLegendBoxSymbol;
+      this.rendererOption = rendererOption;
+      this.lineMarker = lineGraphStyle;
+      this.fillPattern = BarFillPattern.NONE;
+      this.alpha = Math.min(alpha, 1);
+      this.active = true;
+      this.yLog = yLog;
+    }
+
+    public ChartStyle(Colors paint, double alpha, LineWidthDefaults width,
+                      LineDash dashPattern, float dashPhase,
+                      MarkerSize markerSize, MarkerStyle markerStyle,
+                      boolean overrideLegendBoxSymbol,
+                      RendererOption rendererOption, LineGraphStyle lineGraphStyle,
+                      boolean yLog) {
+      this.paint = paint;
+      this.width = width;
+      this.dashPattern = dashPattern;
+      this.dashPhase = dashPhase;
+      this.markerSize = markerSize;
+      this.markerStyle = markerStyle;
+      this.overrideLegendBoxSymbol = overrideLegendBoxSymbol;
+      this.rendererOption = rendererOption;
+      this.lineMarker = lineGraphStyle;
+      this.fillPattern = BarFillPattern.NONE;
+      this.alpha = Math.min(alpha, 1);
+      this.active = true;
+      this.yLog = yLog;
     }
 
 
     public Paint getPaint() {
-      return paint.get(alpha);
+      if (paint != null) {
+        return paint.get(alpha);
+      } else {
+        return OkabeItoColors.BLACK.get(alpha);
+      }
     }
 
     public Color getColorFX() {
-      return paint.getFX(alpha);
+      if (paint != null) {
+        return paint.getFX(alpha);
+      } else {
+        return OkabeItoColors.BLACK.getFX(alpha);
+      }
     }
 
     public BasicStroke getStroke() {
@@ -1261,7 +2077,7 @@ public abstract class SpChartFactory {
             BasicStroke.JOIN_ROUND,
             1.0f,
             dashPattern.get(),
-            0.0f
+            dashPhase
         );
       }
     }
@@ -1285,7 +2101,7 @@ public abstract class SpChartFactory {
       int width = 15;
       int height = 10;
 
-      Rectangle rectangle = new Rectangle(width, height, paint.getFX());
+      Rectangle rectangle = new Rectangle(width, height, getColorFX());
       Node result = rectangle;
 
       if (fillPattern != null && !fillPattern.equals(BarFillPattern.NONE)) {
@@ -1344,7 +2160,9 @@ public abstract class SpChartFactory {
       return overrideLegendBoxSymbol;
     }
 
-
+    public boolean isyLog() {
+      return yLog;
+    }
   }
 
   public static class HistoChartStyle extends ChartStyle {
@@ -1352,9 +2170,55 @@ public abstract class SpChartFactory {
     public HistoChartStyle(Colors paint, double alpha, BarFillPattern barFillPattern) {
 
       super(paint, alpha,
-          null, null, null, null, false, null, null, barFillPattern);
+          null, null, 0, null, null, false, null, null, barFillPattern);
     }
   }
 
+  public static class PieChartStyle extends ChartStyle {
 
-}
+    private final Map<String, Colors> colorMap;
+
+    public PieChartStyle(Map<String, Colors> colorMap) {
+      super(null, 1,
+          null, null, 0, null, null, false, null, null);
+      this.colorMap = colorMap;
+    }
+
+    public Map<String, Colors> getColorMap() {
+      return colorMap;
+    }
+
+  }
+
+  public static class DendrogramChartStyle extends ChartStyle {
+
+    private final java.awt.Color branchesAboveThresholdColor = Colors.LABEL_DARK;
+    private final LineWidthDefaults branchStrokeWidth;
+    private final boolean useLogScaleDendrogram;
+    private final boolean showClusterNumbers;
+
+
+    public DendrogramChartStyle(LineWidthDefaults branchStrokeWidth, boolean useLogScaleDendrogram,
+                                boolean showClusterNumbers) {
+
+      super(null, 1, branchStrokeWidth,
+          null, 0, null, null, false, null, null);
+      this.branchStrokeWidth = branchStrokeWidth;
+      this.useLogScaleDendrogram = useLogScaleDendrogram;
+      this.showClusterNumbers = showClusterNumbers;
+    }
+
+    public LineWidthDefaults getBranchStrokeWidth() {
+      return branchStrokeWidth;
+    }
+
+    public java.awt.Color getBranchesAboveThresholdColor() {
+      return branchesAboveThresholdColor;
+    }
+
+  }
+
+
+} // end of class
+
+

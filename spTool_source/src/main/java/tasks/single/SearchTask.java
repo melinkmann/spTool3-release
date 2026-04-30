@@ -26,19 +26,16 @@ import dataModelNew.SampleImpl;
 import dataModelNew.TISeries;
 import dataModelNew.Trace;
 
-import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import math.stat.MeasureOfLocation;
 import math.stat.Median;
 import org.apache.commons.lang3.exception.ExceptionUtils;
-import org.apache.commons.math3.distribution.ChiSquaredDistribution;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import processing.options.*;
@@ -84,7 +81,7 @@ public class SearchTask extends AbstractWorkingTask implements WorkingTask {
       // START ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ##
       if (sampleRef.get() != null) {
         LOGGER.info("Event search starts for " + sampleRef.get().getNickName()
-            + " in thread " + Thread.currentThread());
+            + " in thread " + Thread.currentThread().getId());
         double counter = 0;
         mainLoop:
         while (!getIsStopped().get()) {
@@ -110,8 +107,8 @@ public class SearchTask extends AbstractWorkingTask implements WorkingTask {
 
             double offset = params.getStartStopOffset().getValue();
 
-            double windowAttenuator = params.getWindowIntensityAttenuator().getValue();
-            double windowPercent = params.getWindowPeakPercent().getValue();
+            double bonusPointsAtMeanMicrosec = params.getWindowBonusWidth().getValue();
+            double windowWidthMicrosec = params.getWindowWidth().getValue();
 
             SmoothType smoothType = params.getSmoothType().getValue();
             double smoothWidth = params.getSmoothGaussianWidth().getValue();
@@ -165,11 +162,11 @@ public class SearchTask extends AbstractWorkingTask implements WorkingTask {
 
                     case SPLIT_CORRECTION_WINDOW -> {
                       coll = SearchUtils.windowSplitCorrectSearch(trace, trace.getTISeries(),
-                          start, stop, height, windowPercent, windowAttenuator);
-                      popParSummary.add("WinPct", params.getWindowPeakPercent(),
-                          SnF.doubleToString(windowPercent, NF.D1C2));
-                      popParSummary.add("WinAttenuate", params.getWindowIntensityAttenuator(),
-                          SnF.doubleToString(windowAttenuator, NF.D1C2));
+                          start, stop, height, windowWidthMicrosec, bonusPointsAtMeanMicrosec);
+                      popParSummary.add("Winµs", params.getWindowWidth(),
+                          SnF.doubleToString(windowWidthMicrosec, NF.D1C2));
+                      popParSummary.add("WinBonusµs", params.getWindowBonusWidth(),
+                          SnF.doubleToString(bonusPointsAtMeanMicrosec, NF.D1C2));
                       break;
                     }
 
@@ -195,7 +192,7 @@ public class SearchTask extends AbstractWorkingTask implements WorkingTask {
                       stopInstr,
                       heightInstr,
                       popParSummary);
-                  trace.addOverridePopulation(populationID, population);
+                  trace.addOverridePopulation(populationID, population,false);
 
                   // ##############################################################
                   // Net signal: do this right after the search
@@ -352,7 +349,7 @@ public class SearchTask extends AbstractWorkingTask implements WorkingTask {
 
                     for (Event event : coll.getNpEvents()) {
                       int peakIdx = event.getPeak();
-                      double bgPerDT = supplier.interpolate(peakIdx, trace.getTISeries().size());
+                      double bgPerDT = supplier.interpolateProtected(peakIdx, trace.getTISeries().size());
 
                       double bgPerNP = bgPerDT * event.getNoOfPoints();
                       if (suppressNegativeNetValues) {
@@ -368,6 +365,7 @@ public class SearchTask extends AbstractWorkingTask implements WorkingTask {
               }
             } else {
               // p-value approach
+              List<Trace> interestingTraces = new ArrayList<>(traces);
 
               // ################################################################################
               // find interesting traces
@@ -387,10 +385,10 @@ public class SearchTask extends AbstractWorkingTask implements WorkingTask {
 
               // check if we only want the selected isotopes?
               if (params.getOnlyUseSelectedIsotopesForPValue().getValue()) {
-                traces.removeIf(t -> !selIsotope.contains(t.getMzValue().getIsotope()));
+                interestingTraces.removeIf(t -> !selIsotope.contains(t.getMzValue().getIsotope()));
               }
 
-              for (Trace trace : traces) {
+              for (Trace trace : interestingTraces) {
 
                 if (getIsStopped().get()) {
                   break;
@@ -431,7 +429,7 @@ public class SearchTask extends AbstractWorkingTask implements WorkingTask {
                     break;
                   }
 
-                  setProgress(0.2 * counter / traces.size());
+                  setProgress(0.2 * counter / interestingTraces.size());
                 }
                 screenStartThrMap.put(trace, screenStartInstr);
                 preScreenStopThrMap.put(trace, screenStopInstr);
@@ -472,7 +470,7 @@ public class SearchTask extends AbstractWorkingTask implements WorkingTask {
                 for (int i = 0; i < hStat.length; i++) {
 
                   if (i > 0 && i % mod == 0) {
-                    LOGGER.trace("p-Value computation at data point " + i + " / " + hStat.length);
+                    LOGGER.debug("p-Value computation at data point " + i + " / " + hStat.length);
                   }
 
                   // check stopping condition every 5000 data points (isStopped.get() likely slower (atomic))
@@ -636,7 +634,10 @@ public class SearchTask extends AbstractWorkingTask implements WorkingTask {
                     1.0 / preScreenMap.size());
 
               /*
-               Create the EventCollection for each trace that passed pre-screening.
+               Create the EventCollection for
+               ------e-a-c-h- -t-r-a-c-e- -t-h-a-t- -p-a-s-s-e-d- -p-r-e-s-c-r-e-e-n-i-n-g-.------
+               ALL TRACES to create a REGION in time where there are NPs.
+
                Note: It would be more efficient to share the indices among
                all traces. However, at the moment, we need a fast proof of principle. Optimization for later.
                This would also require some thoughts: what if user applies gating and removes
@@ -648,7 +649,7 @@ public class SearchTask extends AbstractWorkingTask implements WorkingTask {
                in the pipeline.
                */
 
-                for (Trace trace : preScreenMap.keySet()) {
+                for (Trace trace : traces) {
                   if (trace.getBaseline().hasBaseline()) {
                     Baseline bln = trace.getBaseline();
                     MainEventCollection collection = new MainEventCollection(trace);
@@ -718,7 +719,7 @@ public class SearchTask extends AbstractWorkingTask implements WorkingTask {
                       }
                       popParSummary.add("pStartStop", pStartStop, SnF.doubleToString(startStopPValue,
                           NF.D1C3));
-                      popParSummary.add("MZ", preScreenMap.size() + "/" + traces.size());
+                      popParSummary.add("MZ", preScreenMap.size() + "/" + interestingTraces.size());
                       PopulationID populationID = branch.startBranchForTrace(trace, params);
                       Population population = new NpPopulation(
                           populationID,
@@ -734,7 +735,8 @@ public class SearchTask extends AbstractWorkingTask implements WorkingTask {
                       population.setContributingMZs(preScreenMap.keySet().stream()
                           .map(Trace::getMzValue)
                           .collect(Collectors.toList()));
-                      trace.addOverridePopulation(populationID, population);
+                      trace.addOverridePopulation(populationID, population,
+                          false);
 
                       // Net signal: do this right after the search
 
@@ -897,7 +899,7 @@ public class SearchTask extends AbstractWorkingTask implements WorkingTask {
                           }
 
                           int peakIdx = event.getPeak();
-                          double bgPerDT = supplier.interpolate(peakIdx, trace.getTISeries().size());
+                          double bgPerDT = supplier.interpolateProtected(peakIdx, trace.getTISeries().size());
                           double bgPerNP = bgPerDT * event.getNoOfPoints();
                           if (suppressNegativeNetValues) {
                             double grossArea = event.get(EventParameter.AREA);

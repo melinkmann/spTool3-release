@@ -38,12 +38,6 @@ import io.export.ExportWriter;
 import io.fastExport.TabBlock;
 import io.fastExport.TabBlockColl;
 import io.fastExport.TabCol;
-import math.Smoothing;
-import org.apache.commons.math3.fitting.leastsquares.*;
-import org.apache.commons.math3.linear.Array2DRowRealMatrix;
-import org.apache.commons.math3.linear.ArrayRealVector;
-import org.apache.commons.math3.util.Pair;
-import sandbox.montecarlo.PeakFunction;
 import util.ArrUtils;
 import util.NF;
 import util.SnF;
@@ -63,7 +57,7 @@ public class PeakFittingUtils {
 
       double[] y = event.getProfile().getY();
       //double[] y = Smoothing.gaussianSmooth(y, 5);
-      ArrUtils.normalizeOverriding(y);
+      ArrUtils.normalizeBySumOverriding(y);
 
       if (!avrgMap.containsKey(event.getNoOfPoints())) {
         double[] avrg = new double[maxPoints];

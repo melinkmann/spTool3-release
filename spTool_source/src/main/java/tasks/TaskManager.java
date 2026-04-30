@@ -19,6 +19,7 @@ package tasks;
 
 import com.google.common.util.concurrent.AtomicDouble;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -32,6 +33,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+
 import javafx.application.Platform;
 import javafx.scene.control.ProgressBar;
 import javafx.scene.text.Text;
@@ -51,6 +53,7 @@ public class TaskManager {
   public static final int HOUSEKEEPING_MODULO = 50;
 
   // PRINCIPLE: executors can be shut down nicely. Better than creating Threads whenever housekeeping.
+  private final ExecutorService graphPool;
   private final ExecutorService workingPool;
   private final ExecutorService housekeepingPool;
   private final ExecutorService parallelBatchHousekeepingPool; // limit parallel execution to keep weak refs
@@ -72,6 +75,7 @@ public class TaskManager {
    linear queue.
    */
   private final Map<Task, Future<TaskResult>> runningWatchedBatchTasks;
+  private final Map<Task, Future<TaskResult>> runningWatchedGraphTasks;
 
   /*
   Only one batch at a time is expected to run. Hence, have a waiting list.
@@ -84,6 +88,10 @@ public class TaskManager {
   private ProgressBar mainProgressIndicator = new ProgressBar(1);
   private Text progressIndicatorPercent = new Text("0 %");
   private Text ramStatusLbl = new Text("0000/0000 MB");
+  // Storage status
+  private final AtomicInteger storageFileCounter = new AtomicInteger(0);
+  private Text storageStatusLbl = new Text("0 GB");
+
   // Needed to cover the waiting list in the progress.
   private final AtomicInteger batchDoneCounter;
   private final AtomicInteger batchTotalCounter;
@@ -96,6 +104,12 @@ public class TaskManager {
      */
     workingPool = Executors.newFixedThreadPool(parallelThreads,
         new ThreadFactoryBuilder().setDaemon(true).build());
+
+
+    /*
+    Graphs: only ONE at a time to avoid parallel race conditions between javaFX and prism pipeline
+     */
+    graphPool = Executors.newFixedThreadPool(1, new ThreadFactoryBuilder().setDaemon(true).build());
 
     /*
     Mostly tasks waiting for futures to complete --> needs more at the same time,
@@ -129,6 +143,7 @@ public class TaskManager {
      */
     this.runningWorkerTasks = Collections.synchronizedMap(new LinkedHashMap<>());
     this.runningWatchedBatchTasks = Collections.synchronizedMap(new LinkedHashMap<>());
+    this.runningWatchedGraphTasks = Collections.synchronizedMap(new LinkedHashMap<>());
     this.waitingBatchTasks = Collections.synchronizedList(new ArrayList<>());
     this.isWorking = new AtomicBoolean(false);
 
@@ -188,23 +203,52 @@ public class TaskManager {
         // Remove batches that have been done
         runningWatchedBatchTasks.entrySet().removeIf(entries -> entries.getValue().isDone());
 
+        // Increment the "done" counter... exactly parallel as above
+        runningWatchedGraphTasks
+            .values()
+            .stream()
+            .filter(Future::isDone)
+            .forEach(i -> batchDoneCounter.incrementAndGet());
+        // Trigger method in the task result of the batch
+        runningWatchedGraphTasks
+            .values()
+            .stream()
+            .filter(Future::isDone)
+            .forEach(f -> {
+              try {
+                TaskResult result = f.get();
+                result.process();
+              } catch (InterruptedException | ExecutionException e) {
+                LOGGER.error(ExceptionUtils.getStackTrace(e));
+              }
+            });
+        // Remove batches that have been done
+        runningWatchedGraphTasks.entrySet().removeIf(entries -> entries.getValue().isDone());
+
         // Calculate progress. Housekeepers should report adequate progress.
-        if (runningWatchedBatchTasks.isEmpty() && waitingBatchTasks.isEmpty()) {
+        if (runningWatchedBatchTasks.isEmpty() && waitingBatchTasks.isEmpty() && runningWatchedGraphTasks.isEmpty()) {
           showProgressStopped();
           batchDoneCounter.set(0);
           batchTotalCounter.set(0);
         }
 
-        if (!runningWatchedBatchTasks.isEmpty()) {
-          int batchRunningCount = runningWatchedBatchTasks.size();
+        if (!runningWatchedBatchTasks.isEmpty() || !runningWatchedGraphTasks.isEmpty()) {
+          int batchRunningCount = runningWatchedBatchTasks.size() + runningWatchedGraphTasks.size();
           int totalDone = batchDoneCounter.get();
           int totalTotal = Math.max(1, batchTotalCounter.get());
-          double sumProgress = runningWatchedBatchTasks.keySet()
+          double sumBatch = runningWatchedBatchTasks.keySet()
               .stream()
               .map(Task::getProgress)
               .map(AtomicDouble::doubleValue)
               .mapToDouble(Double::doubleValue)
               .sum();
+          double sumGraph = runningWatchedGraphTasks.keySet()
+              .stream()
+              .map(Task::getProgress)
+              .map(AtomicDouble::doubleValue)
+              .mapToDouble(Double::doubleValue)
+              .sum();
+          double sumProgress = sumBatch + sumGraph;
           double progress = (sumProgress / batchRunningCount + totalDone) / totalTotal;
           showProgressRunning(progress);
         }
@@ -244,12 +288,14 @@ public class TaskManager {
     parallelBatchHousekeepingPool.shutdown();
     workingPool.shutdown();
     managerPool.shutdown();
+    graphPool.shutdown();
 
-    LOGGER.info("Shutdown of thread pools. Housekeeping down: "
-        + housekeepingPool.isShutdown()
-        + ". Parallel housekeeping down: "
-        + parallelBatchHousekeepingPool.isShutdown()
-        + ". Worker down: " + workingPool.isShutdown() + ". Manager down: "
+    LOGGER.info("Shutdown of thread pools." +
+        " Housekeeping down: " + housekeepingPool.isShutdown()
+        + ". Parallel housekeeping down: " + parallelBatchHousekeepingPool.isShutdown()
+        + ". Graphing down: " + graphPool.isShutdown()
+        + ". Worker down: " + workingPool.isShutdown()
+        + ". Manager down: "
         + managerPool.isShutdown());
   }
 
@@ -292,12 +338,15 @@ public class TaskManager {
             + SnF.doubleToString(SnF.round(heapMaxSize / 1E6, 10), NF.D1C0)
             + " MB";
 
-    Platform.runLater(() -> ramStatusLbl.setText(ram));
+    Platform.runLater(() -> {
+      ramStatusLbl.setText(ram);
+      storageStatusLbl.setText(storageFileCounter.get() + " GB");
+    });
   }
 
   //
   public void setMainProgressIndicator(ProgressBar mainProgressIndicator,
-      Text progressIndicatorPercent) {
+                                       Text progressIndicatorPercent) {
     this.mainProgressIndicator = mainProgressIndicator;
     this.progressIndicatorPercent = progressIndicatorPercent;
     showProgressStopped(); //initialize as full and green
@@ -305,6 +354,10 @@ public class TaskManager {
 
   public void setRamStatusLbl(Text ramStatusLbl) {
     this.ramStatusLbl = ramStatusLbl;
+  }
+
+  public void setStorageStatusLbl(Text storageStatusLbl) {
+    this.storageStatusLbl = storageStatusLbl;
   }
 
 
@@ -338,6 +391,15 @@ public class TaskManager {
     return future;
   }
 
+
+  public synchronized Future<TaskResult> forceToGraphPool(Task graphTask) {
+    Future<TaskResult> future = graphPool.submit(graphTask);
+    batchTotalCounter.incrementAndGet();
+    runningWatchedGraphTasks.put(graphTask, future);
+    return future;
+  }
+
+
   /**
    * Linear Batch can add its Sub-Parallel Batches without putting them on the progress watch or on
    * the stop list. Why? --< Scenario: A queue of e.g. parallel operations wants to queue its
@@ -369,12 +431,19 @@ public class TaskManager {
   }
 
 
+  public synchronized void notifyNewStorageFile() {
+    storageFileCounter.incrementAndGet();
+  }
+
   // ________________________________________________________
   public synchronized void stop() {
     for (Task t : runningWorkerTasks.keySet()) {
       t.stop();
     }
     for (Task t : runningWatchedBatchTasks.keySet()) {
+      t.stop();
+    }
+    for (Task t : runningWatchedGraphTasks.keySet()) {
       t.stop();
     }
     waitingBatchTasks.clear();

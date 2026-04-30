@@ -25,7 +25,9 @@ public interface ThresholdSupplier {
 
   double getSliceValue(int index);
 
-  double interpolate(int i, int rawLength);
+  double interpolateProtected(int i, int rawLength);
+
+  double interpolateUnprotected(int i, int rawLength);
 
   public int[] getAnchorIndices(int rawLength);
 

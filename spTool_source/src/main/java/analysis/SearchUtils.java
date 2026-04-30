@@ -24,15 +24,10 @@ import java.util.*;
 
 import math.SavitzkyGolay;
 import math.Smoothing;
-import org.apache.commons.math3.distribution.ChiSquaredDistribution;
-import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
-import org.apache.commons.statistics.distribution.GammaDistribution;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import processing.options.SmoothType;
 import util.*;
-
-import static sandbox.montecarlo.Statistics.MIN_P_VALUE;
 
 public abstract class SearchUtils {
 
@@ -49,20 +44,22 @@ public abstract class SearchUtils {
                                                              ThresholdSupplier startThr,
                                                              ThresholdSupplier stopThr,
                                                              ThresholdSupplier heightThr,
-                                                             double windowPercent,
-                                                             double attenuator) {
+                                                             double windowMicroseconds,
+                                                             double bonusPointsAtMeanMicrosec) {
 
     double[] yData = tiSeries.getIntensity();
     List<Integer> currentEventIndices = new ArrayList<>();
-    double currentPeakHeight = 0;
+    // double currentPeakHeight = 0; // This is checked in the checkForOverlaps method
 
     int lastIndex = tiSeries.size() - 1;
 
     // Assuming average peak width of 500, extend by 10% of peak
-    int dtBonus = (int) Math.ceil(500 / (1E6 * tiSeries.getDT()) * (windowPercent / 100));
-    if (attenuator < 1) {
-      LOGGER.info("Cannot use attenuator smaller than 1. Used attenuator = 1 instead.");
-      attenuator = 1;
+    double microSecDT = 1E6 * tiSeries.getDT();
+    int dtBonus = (int) Math.ceil(windowMicroseconds / microSecDT);
+    int bonusPointsAtMean = (int) Math.ceil(bonusPointsAtMeanMicrosec / microSecDT);
+    if (bonusPointsAtMean < 0) {
+      LOGGER.info("Cannot use bonus points smaller than 0. Used bonus points = 0 instead.");
+      bonusPointsAtMean = 0;
     }
 
     MainEventCollection collection = new MainEventCollection(trace);
@@ -76,25 +73,70 @@ public abstract class SearchUtils {
       }
 
       // Condition: either >start, or the current event has indices (has started) and we are >stop.
-      double startThrVal = startThr.interpolate(i, yData.length);
-      double stopThrVal = stopThr.interpolate(i, yData.length);
+      double startThrVal = startThr.interpolateProtected(i, yData.length);
+      double stopThrVal = stopThr.interpolateProtected(i, yData.length);
       if ((yVal >= startThrVal)
           || (!currentEventIndices.isEmpty() && (yVal >= stopThrVal) && yVal > 0)) {
 
-        // changed this: h/m would prefer height peaks but higher peaks do not need so much window. low
-        // peaks do!
-        double ratio = Math.min(1, startThr.interpolate(i, yData.length) / yVal);
-        ratio = Math.pow(ratio, 0.5);
-        // ratio is expected/forced between 0 and 1
-        int bonusPoints = Math.max(1, (int) Math.ceil(10 * ratio));
+        /*
+        Idea: height/mean would prefer heigh peaks but higher peaks do not need so much window.
+        Instead, low peaks do!
+        Since we only allow yValues above the startThr, the ratio is guaranteed to be 0 < r < 1
 
-        int window = (int) (Math.ceil((dtBonus + bonusPoints / attenuator)));
+          clearvars
+          clc
+          close all
+
+          mu = 11;
+          plus = 10;
+
+          n = 1E4;
+
+          intensity = poissrnd(mu, n,1);
+
+          intensity = intensity(intensity>=mu);
+
+          ratio = max(1,mu)./intensity;
+
+          % ratio = ratio.^2;
+
+          ratio = ratio .*plus;
+
+          figure
+          subplot 121
+          histogram(ratio)
+          subplot 122
+          scatter(intensity, ratio)
+          */
+
+
+        // Poisson "fuzziness": µ will be noninteger, but y is integer (for QMS)!
+        // --> rescale to 1 by ceiling µ
+        double ratio = Math.max(1, startThrVal) / (Math.max(1, yVal));
+
+        // after rescaling, ensure that ratio does not exceed 1
+        ratio = Math.min(ratio, 1);
+
+        // optional scaling using power: increase the punishment for large peaks
+        // ratio = Math.pow(ratio, 2);
+
+        // multiply with bonus p
+        int bonusPoints = (int) Math.ceil(ratio * bonusPointsAtMean);
+
+        int window = dtBonus + bonusPoints;
+
+        //        System.out.println(" ");
+        //        System.out.println("dtBonus: " + dtBonus);
+        //        System.out.println("bonusPoints: " + bonusPoints);
+        //        System.out.println("window: " + window);
+
         int extIdxBefore = Math.max(0, i - window);
         int extIdxAfter = Math.min(lastIndex, i + window);
 
         for (int idx = extIdxBefore; idx <= extIdxAfter; idx++) {
           currentEventIndices.add(idx);
-          currentPeakHeight = Math.max(currentPeakHeight, yVal);
+          //currentPeakHeight = Math.max(currentPeakHeight, yVal); // This is checked in the
+          // checkForOverlaps method
         }
 
         // check if event ended due to end of tISeries (i.e. last index reached) -> add it
@@ -106,7 +148,7 @@ public abstract class SearchUtils {
           collection.add(new NpEvent(collection, currentEventIndices));
           // reset the event indices after storing them
           currentEventIndices.clear();
-          currentPeakHeight = 0;
+          //currentPeakHeight = 0; // This is checked in the checkForOverlaps method
         }
 
         // idx is no event (equals "yVal <= cutoff")
@@ -120,7 +162,7 @@ public abstract class SearchUtils {
           collection.add(new NpEvent(collection, currentEventIndices));
           // reset the event indices after storing them
           currentEventIndices.clear();
-          currentPeakHeight = 0;
+          //currentPeakHeight = 0; // This is checked in the checkForOverlaps method
         }
         // anyway, ad the reading at idx=i (which is < threshold) to the background
         // backgSeries.add(i); --> this becomes obsolete as we calc the BG from "not NP".
@@ -178,7 +220,7 @@ public abstract class SearchUtils {
         Event event = new NpEvent(checkedCollection, mergedEvent.start, mergedEvent.end);
         int peakIdx = event.getPeak();
         double currentPeakHeight = yData[peakIdx];
-        if (currentPeakHeight > heightThr.interpolate(peakIdx, yData.length)) {
+        if (currentPeakHeight > heightThr.interpolateProtected(peakIdx, yData.length)) {
           checkedCollection.add(event);
         }
 
@@ -225,8 +267,8 @@ public abstract class SearchUtils {
       }
 
       // Condition: either >start, or the current event has indices (has started) and we are >stop.
-      double startThrVal = startThr.interpolate(i, yData.length);
-      double stopThrVal = stopThr.interpolate(i, yData.length);
+      double startThrVal = startThr.interpolateProtected(i, yData.length);
+      double stopThrVal = stopThr.interpolateProtected(i, yData.length);
 
       if ((yVal >= startThrVal)
           || (!currentEventIndices.isEmpty() && (yVal >= stopThrVal) && yVal > 0)) {
@@ -234,7 +276,7 @@ public abstract class SearchUtils {
         currentPeakHeight = Math.max(currentPeakHeight, yVal);
         // check if event ended due to end of tISeries (i.e. last index reached) -> add it
         if (i == lastIndex) {
-          if (currentPeakHeight > heightThr.interpolate(i, yData.length)) {
+          if (currentPeakHeight > heightThr.interpolateProtected(i, yData.length)) {
             collection.add(new NpEvent(collection, currentEventIndices));
           }
           // reset the event indices after storing them
@@ -247,7 +289,7 @@ public abstract class SearchUtils {
         // check if event ended (i.e. there are indices stored in the list)
         if (!currentEventIndices.isEmpty()) {
           // System.out.println("i\t"+i+"\tthr\t"+heightThr.interpolate(i, yData.length));
-          if (currentPeakHeight > heightThr.interpolate(i, yData.length)) {
+          if (currentPeakHeight > heightThr.interpolateProtected(i, yData.length)) {
             collection.add(new NpEvent(collection, currentEventIndices));
           }
           // reset the event indices after storing them
@@ -316,8 +358,8 @@ public abstract class SearchUtils {
       }
 
       // Condition: either >start, or the current event has indices (has started) and we are >stop.
-      double startThrVal = startThr.interpolate(i, yData.length);
-      double stopThrVal = stopThr.interpolate(i, yData.length);
+      double startThrVal = startThr.interpolateProtected(i, yData.length);
+      double stopThrVal = stopThr.interpolateProtected(i, yData.length);
       if ((yMax >= startThrVal)
           || (!currentEventIndices.isEmpty() && (yMax >= stopThrVal) && yMax > 0)) {
         currentEventIndices.add(i);
@@ -378,7 +420,7 @@ public abstract class SearchUtils {
         yVal = Math.round(yVal);
       }
 
-      if (yVal > thr.interpolate(i, yData.length) && yVal > 0) {
+      if (yVal > thr.interpolateProtected(i, yData.length) && yVal > 0) {
         collection.add(new NpEvent(collection, Collections.singletonList(i)));
       }
     }
@@ -387,8 +429,6 @@ public abstract class SearchUtils {
     collection.getNpEvents().forEach(e -> e.calcPeakIndex(yData));
     return collection;
   }
-
-
 
 
 }

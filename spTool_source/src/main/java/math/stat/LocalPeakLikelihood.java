@@ -90,7 +90,7 @@ public class LocalPeakLikelihood {
       scores[i] = (double) countAbove / shortWindowData.length;
     }
 
-    ArrUtils.normalize(scores, 1);
+    scores=ArrUtils.normalizeByMaximumTimesFactor(scores, 1);
     return scores;
   }
 

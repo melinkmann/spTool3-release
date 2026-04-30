@@ -33,11 +33,14 @@ import io.SampleSet;
 
 import java.awt.MouseInfo;
 import java.awt.Point;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.StringProperty;
@@ -45,7 +48,6 @@ import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
-import javafx.event.EventHandler;
 import javafx.geometry.Pos;
 import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
@@ -69,7 +71,6 @@ import javafx.scene.image.ImageView;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyCombination;
 import javafx.scene.input.KeyEvent;
-import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
@@ -83,6 +84,7 @@ import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import processing.parameterSets.Method;
+import processing.parameterSets.action.Actions;
 import sandbox.montecarlo.Isotope;
 import util.NF;
 import util.SnF;
@@ -121,6 +123,10 @@ public class TableFactory {
     addLoadMethodMenu(table);
     addPreviewMethodMenu(table);
     addRerunMethodMenu(table);
+    addRerunAllMethodMenu(table);
+    addSeparator(table);
+    addDeleteSampleMenu(sampleListAndTable);
+    addRemoveMenu(sampleListAndTable);
     addSeparator(table);
     addSearchFieldMenu(table, sampleSearchField);
 
@@ -629,7 +635,7 @@ public class TableFactory {
   }
 
   public static void addRerunMethodMenu(TableView<FxSample> table) {
-    MenuItem view = UiUtil.getImageMenuItem("Adjust", "/img/start.png");
+    MenuItem view = UiUtil.getImageMenuItem("Adjust", "/img/edit.png");
     table.getContextMenu().getItems().add(view);
 
     view.setOnAction(e -> {
@@ -652,6 +658,32 @@ public class TableFactory {
       }
     });
   }
+
+  public static void addRerunAllMethodMenu(TableView<FxSample> table) {
+    MenuItem view = UiUtil.getImageMenuItem("Reprocess", "/img/startAll.png");
+    table.getContextMenu().getItems().add(view);
+
+    view.setOnAction(e -> {
+      FxSample fxSample = table.getSelectionModel().getSelectedItem();
+      if (fxSample != null) {
+        Sample sample = fxSample.getPlainSample();
+        if (sample != null) {
+          sample = sample.getPrincipleSample();
+
+          Method method = sample.getMethod();
+          // otherwise a change would affect the method stored in the sample file (it is referenced by the
+          // pointer)
+          if (method != null) {
+            Method copyOfMethod = method.getCopyWithoutFile();
+            List<FxSample> placeholderList = new ArrayList<>();
+            placeholderList.add(fxSample);
+            Actions.reprocess(copyOfMethod, placeholderList);
+          }
+        }
+      }
+    });
+  }
+
 
   public static void addCloneMenu(TableView<FxSample> table) {
     MenuItem view = UiUtil.getImageMenuItem("Clone", "/img/clone.png");
@@ -779,6 +811,7 @@ public class TableFactory {
       }
     });
 
+
     //    // Make Box.
 //    CustomColorPicker colorPicker = new CustomColorPicker();
 //    colorPicker.getCustomColors().clear();
@@ -819,6 +852,39 @@ public class TableFactory {
 //        }
 //      }
 //    });
+  }
+
+  public static void addDeleteSampleMenu(SampleListAndTable sampleListAndTable) {
+    MenuItem notFavouriteMenu = UiUtil
+        .getImageMenuItem("Delete Samples Globally", "/img/delete.png");
+    notFavouriteMenu.setOnAction(e ->
+        NotificationFactory
+            .openYesCancel("Delete Sample from all Sets? This is irreversible.", () -> {
+              List<Sample> selSamples = sampleListAndTable.getSelSamples();
+              SampleSet selSet = sampleListAndTable.getSampleSetListView().getSelectionModel()
+                  .getSelectedItem().unwrap();
+              if (selSet != null) {
+                SpTool3Main.getRunTime().getSampleReg().removeSamplesEntirely(selSamples);
+              }
+              sampleListAndTable.filterSampleSets();
+            }));
+    sampleListAndTable.getSampleTableView().getContextMenu().getItems().add(notFavouriteMenu);
+  }
+
+  public static void addRemoveMenu(SampleListAndTable sampleListAndTable) {
+    MenuItem notFavouriteMenu = UiUtil.getImageMenuItem("Remove Samples from Set", "/img/remove.png");
+    notFavouriteMenu.setOnAction(e ->
+        NotificationFactory.openYesCancel("Remove selected samples from set? This is irreversible.",
+            () -> {
+              List<Sample> selSamples = sampleListAndTable.getSelSamples();
+              SampleSet selSet = sampleListAndTable.getSampleSetListView().getSelectionModel()
+                  .getSelectedItem().unwrap();
+              if (selSet != null) {
+                selSet.getSamples().removeAll(selSamples);
+              }
+              sampleListAndTable.filterSampleSets();
+            }));
+    sampleListAndTable.getSampleTableView().getContextMenu().getItems().add(notFavouriteMenu);
   }
 
   public static void addGroupMenu(TableView<FxSample> table) {

@@ -19,14 +19,15 @@ package analysis;
 
 import java.io.Serial;
 import java.io.Serializable;
+import java.util.Arrays;
 import java.util.Objects;
 
-import com.orsonpdf.filter.FilterType;
+import dataModelNew.Sample;
 import processing.options.GatingOption;
 import processing.options.SearchAlgorithm;
-import tasks.single.FilterTask;
 
 public interface PopulationStep extends Serializable {
+
 
   public int customHash();
 
@@ -93,6 +94,51 @@ public interface PopulationStep extends Serializable {
       boolean isEquiv = false;
       if (other instanceof RoiSubtype) {
         isEquiv = Objects.equals(paramSetLabel, ((RoiSubtype) other).paramSetLabel);
+      }
+      return isEquiv;
+    }
+  }
+
+  final class ManualRoiSubtype implements PopulationStep, Serializable {
+
+    /*
+    Note:
+    Equality is determined by INPUTs not by RESULTS.
+    Example: We want to select the same percentiles
+    but not what actual numbers these correspond to.
+     */
+
+    @Serial
+    private static final long serialVersionUID = 1_000_000L;
+
+    private final String paramSetLabel;
+    private final double start;
+    private final double end;
+
+    public ManualRoiSubtype(String paramSetLabel, double start, double end) {
+      this.paramSetLabel = paramSetLabel;
+      this.start = start;
+      this.end = end;
+    }
+
+    @Override
+    public int customHash() {
+      return Objects.hash(paramSetLabel);
+    }
+
+    @Override
+    public String translate() {
+      return "MRoi(" + paramSetLabel + ")";
+    }
+
+
+    @Override
+    public boolean isEquivalent(PopulationStep other) {
+      boolean isEquiv = false;
+      if (other instanceof ManualRoiSubtype) {
+        isEquiv = Objects.equals(paramSetLabel, ((ManualRoiSubtype) other).paramSetLabel);
+        isEquiv = Objects.equals(start, ((ManualRoiSubtype) other).start);
+        isEquiv = Objects.equals(end, ((ManualRoiSubtype) other).end);
       }
       return isEquiv;
     }
@@ -244,7 +290,7 @@ public interface PopulationStep extends Serializable {
     @Serial
     private static final long serialVersionUID = 1_000_000L;
 
-    SearchAlgorithm searchAlgorithm;
+    private final SearchAlgorithm searchAlgorithm;
 
     public SearchSubtype(SearchAlgorithm searchAlgorithm) {
       this.searchAlgorithm = searchAlgorithm;
@@ -267,6 +313,10 @@ public interface PopulationStep extends Serializable {
         isEquiv = searchAlgorithm == ((SearchSubtype) other).searchAlgorithm;
       }
       return isEquiv;
+    }
+
+    public SearchAlgorithm getSearchAlgorithm() {
+      return searchAlgorithm;
     }
   }
 
@@ -296,6 +346,111 @@ public interface PopulationStep extends Serializable {
       boolean isEquiv = false;
       if (other instanceof GateSubtype) {
         isEquiv = gatingOption == ((GateSubtype) other).gatingOption;
+      }
+      return isEquiv;
+    }
+  }
+
+  final class AlignSubtype implements PopulationStep, Serializable {
+
+    @Serial
+    private static final long serialVersionUID = 1_000_000L;
+
+    public AlignSubtype() {
+    }
+
+    @Override
+    public int customHash() {
+      //return Objects.hash(... if there were fields ...);
+      return AlignSubtype.class.hashCode();
+    }
+
+    @Override
+    public String translate() {
+      return "ALN";
+    }
+
+    @Override
+    public boolean isEquivalent(PopulationStep other) {
+      boolean isEquiv = false;
+      if (other instanceof AlignSubtype) {
+        isEquiv = true;
+      }
+      return isEquiv;
+    }
+  }
+
+  final class ClusterSubtype implements PopulationStep, Serializable {
+
+    @Serial
+    private static final long serialVersionUID = 1_000_000L;
+
+    private final String uniqueSampleString;
+    private final int clusterIndex;
+    private final String clusterName;
+
+
+    public ClusterSubtype(Sample sample, int clusterIndex, String clusterName) {
+      this.uniqueSampleString = sample.getNickName() + sample.hashCode(); // should be unique?!
+      this.clusterIndex = clusterIndex;
+      this.clusterName = clusterName;
+    }
+
+    @Override
+    public int customHash() {
+      return Objects.hash(uniqueSampleString, clusterIndex, clusterName);
+    }
+
+    @Override
+    public String translate() {
+      return clusterName;
+    }
+
+    @Override
+    public boolean isEquivalent(PopulationStep other) {
+      boolean isEquiv = false;
+      if (other instanceof ClusterSubtype) {
+        isEquiv = Objects.equals(uniqueSampleString, ((ClusterSubtype) other).uniqueSampleString);
+        isEquiv = isEquiv && clusterIndex == ((ClusterSubtype) other).clusterIndex;
+        isEquiv = isEquiv && Objects.equals(clusterName, ((ClusterSubtype) other).clusterName);
+      }
+      return isEquiv;
+    }
+  }
+
+  final class PolygonSubtype implements PopulationStep, Serializable {
+
+    @Serial
+    private static final long serialVersionUID = 1_000_000L;
+
+    private final String labelString;
+    private final double[] xVertices;
+    private final double[] yVertices;
+
+    public PolygonSubtype(String labelString, double[] xVertices, double[] yVertices) {
+      this.labelString = labelString;
+      this.xVertices = xVertices;
+      this.yVertices = yVertices;
+    }
+
+
+    @Override
+    public int customHash() {
+      return Objects.hash(labelString, Arrays.hashCode(xVertices), Arrays.hashCode(yVertices));
+    }
+
+    @Override
+    public String translate() {
+      return labelString;
+    }
+
+    @Override
+    public boolean isEquivalent(PopulationStep other) {
+      boolean isEquiv = false;
+      if (other instanceof PolygonSubtype) {
+        isEquiv = Objects.equals(labelString, ((PolygonSubtype) other).labelString);
+        isEquiv = isEquiv && Arrays.equals(xVertices, ((PolygonSubtype) other).xVertices);
+        isEquiv = isEquiv && Arrays.equals(yVertices, ((PolygonSubtype) other).yVertices);
       }
       return isEquiv;
     }

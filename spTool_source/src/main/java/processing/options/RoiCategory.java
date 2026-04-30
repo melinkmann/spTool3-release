@@ -87,13 +87,13 @@ public enum RoiCategory {
   CHANGE_POINT {
     @Override
     public String toString() {
-      return "Log derivative change point (LDCP)";
+      return "Change point";
     }
 
 
     @Override
     public String getShortLabel() {
-      return "LDCP";
+      return "ChgPt";
     }
   };
 

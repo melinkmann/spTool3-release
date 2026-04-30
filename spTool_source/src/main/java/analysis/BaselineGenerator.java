@@ -35,6 +35,8 @@ import math.stat.MeasureOfLocation;
 import math.stat.MeasureOfSpread;
 import math.stat.Median;
 import math.stat.Rosner;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import processing.options.BaselineDynamic;
 import processing.options.CompoundPoissonModel;
 import processing.options.DistributionModel;
@@ -44,7 +46,10 @@ import util.ArrUtils;
 
 public abstract class BaselineGenerator {
 
-  public static Baseline generateBaseline(BaselineParams par, double[] inputData) {
+  private static final Logger LOGGER = LogManager.getLogger(BaselineGenerator.class);
+
+  public static Baseline generateBaseline(BaselineParams par, double[] inputData, double dwellTimeSec,
+                                          double empiricalSiaShape, double lowerSIALim, double upperSIALim) {
 
     // Make a copy: We have had a Bug where the original array was destroyed
     double[] data = ArrUtils.copy(inputData);
@@ -53,7 +58,10 @@ public abstract class BaselineGenerator {
     ------------------------ UNPACK PARAMETERS ------------------------
      */
     BaselineDynamic baselineDynamic = par.getBaselineDynamics().getValue();
-    int pointsPerSlice = par.getBaselinePointsPerSegment().getValue();
+    double widthPerSlice = par.getBaselinePointsPerSegment().getValue();
+    int pointsPerSlice = (int) Math.ceil(widthPerSlice/(1000*dwellTimeSec));
+    pointsPerSlice = Math.max(10, pointsPerSlice);
+
     if (baselineDynamic.equals(BaselineDynamic.CONSTANT)) {
       pointsPerSlice = data.length;
     }
@@ -72,6 +80,21 @@ public abstract class BaselineGenerator {
     }
 
     double siaShape = par.getSiaShape().getValue();
+    // siaShape = 0 is the "NaN" or "no set at all" flag
+    if (par.getPreferEmpiricalSIA().getValue() && empiricalSiaShape > 0) {
+      // Set some sanity boundaries for all we know about TOF detectors so far (should be taken care of before
+      // but better safe than sorry).
+      if (empiricalSiaShape < lowerSIALim || empiricalSiaShape > upperSIALim) {
+        siaShape = par.getSiaShape().getValue();
+        LOGGER.info("Empirical SIA shape was ill conditioned: " + empiricalSiaShape
+            + ". Using default SIA from parameter: " + siaShape
+            + ". Limits are set in configuration:" +
+            "Lower: " + lowerSIALim + ", upper: " + upperSIALim + ".");
+      } else {
+        siaShape = empiricalSiaShape;
+      }
+    }
+
 
     MeasureOfLocation locGauss = par.getMeasureOfLocationGauss().getValue();
     MeasureOfSpread spreadGauss = par.getMeasureOfSpreadGauss().getValue();

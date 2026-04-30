@@ -52,6 +52,10 @@ public class TableIO {
   public TableIO() {
     this.filePath = GlobalIO.makeResultsTableFile();
     this.activeParameters = new ArrayList<>(read());
+    fillIfEmpty();
+  }
+
+  private void fillIfEmpty() {
     if (this.activeParameters.isEmpty()) {
       activeParameters.add(TablePar.SAMPLE_NICK_NAME);
       activeParameters.add(TablePar.SAMPLE_FULL_PATH);
@@ -128,6 +132,7 @@ public class TableIO {
   public void reset() {
     this.activeParameters.clear();
     activeParameters.addAll(TablePar.getValuesOrdered());
+    fillIfEmpty();
     // write(); // should be up to the user
   }
 
@@ -135,6 +140,7 @@ public class TableIO {
     List<TablePar> read = read();
     this.activeParameters.clear();
     activeParameters.addAll(read);
+    fillIfEmpty();
   }
 
   public void showDialog() {
@@ -156,6 +162,7 @@ public class TableIO {
       List<TablePar> results = result.get();
       this.activeParameters.clear();
       this.activeParameters.addAll(results);
+      fillIfEmpty();
       SpTool3Main.getRunTime().getGuiParameterManager().notifyValueChange();
     }
 

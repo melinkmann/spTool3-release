@@ -39,6 +39,8 @@ public interface Trace extends Serializable {
 
   Trace copy(Sample newSample);
 
+  void toHDD();
+
   Sample getSample();
 
   MZValue getMzValue();
@@ -46,6 +48,8 @@ public interface Trace extends Serializable {
   TISeries getTISeries();
 
   TISeries getOriginalTISeries();
+
+  double getSiaShape();
 
   void setFlags(DataFlag flag, List<Integer> indices);
 
@@ -61,7 +65,7 @@ public interface Trace extends Serializable {
 
   List<Population> getAllPopulations();
 
-  void addOverridePopulation(PopulationID id, Population population);
+  void addOverridePopulation(PopulationID id, Population population, boolean preserveSpectra);
 
   void removePopulation(PopulationID id);
 

@@ -132,8 +132,7 @@ public class ExporterParams extends AbstractParamSet implements ParamSet {
             where an event is known to occur from data generator. 
             This export will write a specific intensity value at each of these positions, e.g., y = 1000.
             The height of the marker can be chosen below in the SpCal-section of the export. 
-            This format will force SpCal to include a marker to highlight true peak positions
-            """,
+            This format will force SpCal to include a marker to highlight true peak positions""",
         false,
         false,
         "includePopulationMarkers");
@@ -192,8 +191,7 @@ public class ExporterParams extends AbstractParamSet implements ParamSet {
         "Background",
         "Export",
         """
-            Export the background data, i.e., all data points that are not considered an event
-            """,
+            Export the background data, i.e., all data points that are not considered an event""",
         false,
         false,
         "exportBackgroundData");
@@ -205,8 +203,7 @@ public class ExporterParams extends AbstractParamSet implements ParamSet {
             Take a random sample from all background data points
             in order to reduce the amount of data points and file sizes.
             Note that this procedure may produce a biased sample depending on
-            how many data points are exported and how much the background actually varies
-            """,
+            how many data points are exported and how much the background actually varies""",
         false,
         false,
         "applyJitterSampling");

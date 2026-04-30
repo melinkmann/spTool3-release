@@ -80,7 +80,7 @@ public enum SearchAlgorithm {
 
     @Override
     public String shortString() {
-      return "Accumulated p-search";
+      return "p-search";
     }
   };
 

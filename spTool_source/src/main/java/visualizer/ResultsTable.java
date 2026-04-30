@@ -353,11 +353,18 @@ public abstract class ResultsTable {
       }
     },
 
+    REMOVED_MZ {
+      @Override
+      protected String getValue(Sample s, Isotope i, PopulationID p) {
+        return s.tabRemovedIsotopes();
+      }
+    },
+
     /// ///////////////////////////////////////////////////////////////////////////
 
     TRACE_MZ {
       public String getValue(Sample s, Isotope i, PopulationID p) {
-        String val = check(i) ? i.getName() : "N/A";
+        String val = check(i) ? i.getName() : EMPTY_CELL;
         return val;
       }
     },
@@ -365,6 +372,18 @@ public abstract class ResultsTable {
     DWELL_TIME {
       public String getValue(Sample s, Isotope i, PopulationID p) {
         return s.tabDwellTime(i);
+      }
+    },
+
+    DWELL_TIME_MS {
+      public String getValue(Sample s, Isotope i, PopulationID p) {
+        String dtStr = s.tabDwellTime(i);
+        double dtus = SnF.strToDoubleSilent(dtStr);
+        if (dtus > 0) {
+          return str(dtus / 1000, NF.D1C2);
+        }else {
+          return EMPTY_CELL;
+        }
       }
     },
 
@@ -392,9 +411,21 @@ public abstract class ResultsTable {
       }
     },
 
+    RAW_MEAN_CPS {
+      public String getValue(Sample s, Isotope i, PopulationID p) {
+        return s.tabRawMeanCPS(i);
+      }
+    },
+
     RAW_MEDIAN {
       public String getValue(Sample s, Isotope i, PopulationID p) {
         return s.tabRawMedian(i);
+      }
+    },
+
+    RAW_MEDIAN_CPS {
+      public String getValue(Sample s, Isotope i, PopulationID p) {
+        return s.tabRawMedianCPS(i);
       }
     },
 
@@ -407,6 +438,18 @@ public abstract class ResultsTable {
     RAW_MAD {
       public String getValue(Sample s, Isotope i, PopulationID p) {
         return s.tabRawMAD(i);
+      }
+    },
+
+    SIA_SHAPE {
+      public String getValue(Sample s, Isotope i, PopulationID p) {
+        return s.tabSIAShape(i);
+      }
+    },
+
+    MEAN_SIA_SHAPE {
+      public String getValue(Sample s, Isotope i, PopulationID p) {
+        return s.tabMeanSIAShape(i);
       }
     },
 
@@ -688,7 +731,7 @@ public abstract class ResultsTable {
 
     GATES_META {
       public String getValue(Sample s, Isotope i, PopulationID p) {
-        String val = "N/A";
+        String val = EMPTY_CELL;
         return val;
       }
 
@@ -705,7 +748,7 @@ public abstract class ResultsTable {
 
     GATES {
       public String getValue(Sample s, Isotope i, PopulationID p) {
-        String val = "N/A";
+        String val = EMPTY_CELL;
         return val;
       }
 
@@ -762,6 +805,7 @@ public abstract class ResultsTable {
         return new ArrayList<>(Arrays.asList(
             TRACE_MZ,
             DWELL_TIME,
+            DWELL_TIME_MS,
             DURATION,
             DATA_POINTS,
             TI_SERIES_LIMITS,
@@ -769,6 +813,10 @@ public abstract class ResultsTable {
             RAW_MEDIAN,
             RAW_SD,
             RAW_MAD,
+            RAW_MEAN_CPS,
+            RAW_MEDIAN_CPS,
+            SIA_SHAPE,
+            MEAN_SIA_SHAPE,
             BLN_DISTR,
             BLN_MEAN,
             BLN_SD,
@@ -778,13 +826,18 @@ public abstract class ResultsTable {
         return new ArrayList<>(Arrays.asList(
             TRACE_MZ,
             DWELL_TIME,
+            DWELL_TIME_MS,
             DURATION,
             DATA_POINTS,
             TI_SERIES_LIMITS,
             RAW_MEAN,
             RAW_MEDIAN,
             RAW_SD,
-            RAW_MAD
+            RAW_MAD,
+            RAW_MEAN_CPS,
+            RAW_MEDIAN_CPS,
+            SIA_SHAPE,
+            MEAN_SIA_SHAPE
         ));
       }
     }
@@ -927,16 +980,23 @@ public abstract class ResultsTable {
         case SAMPLE_FULL_PATH -> "Path";
         case SAMPLE_COMMENT -> "Comment";
         case SAMPLE_HIGHLIGHT -> "Marked";
+        case REMOVED_MZ -> "Removed m/z";
 
         case TRACE_MZ -> "Isotope m/z";
+
         case DWELL_TIME -> "Dwell time [µs]";
+        case DWELL_TIME_MS -> "Dwell time [ms]";
         case DURATION -> "Duration [s]";
         case DATA_POINTS -> "Data points [-]";
         case TI_SERIES_LIMITS -> "Limits";
         case RAW_MEAN -> "Raw mean [cts]";
         case RAW_MEDIAN -> "Raw median [cts]";
+        case RAW_MEAN_CPS -> "Raw mean [cts/s]";
+        case RAW_MEDIAN_CPS -> "Raw median [cts/s]";
         case RAW_SD -> "Raw SD [cts]";
         case RAW_MAD -> "Raw MAD SD [cts]";
+        case SIA_SHAPE -> "SIA shape [-]";
+        case MEAN_SIA_SHAPE -> "Mean SIA shape [-]";
 
         case AEROSOL_TE -> "TE [%]";
         case PNC_TE -> "PNC TE [%]";

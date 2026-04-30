@@ -78,9 +78,10 @@ public class InterferenceDatabase {
   }
 
   public static String SOURCE = """
-      Source: https://doi.org/10.1016/j.sab.2021.106098
+      Please cite the publication of this database:
+      https://doi.org/10.1016/j.sab.2021.106098
       by Madeleine C. Lomax-Vogt, Fang Liu, John W. Olesik.
-            
+      
       Note that the data base handles half masses from doubly charged odd masses
       as being present in both neighboring even masses, i.e.,
       '139La++ @ mass 69.5 is treated as both 69 and 70.

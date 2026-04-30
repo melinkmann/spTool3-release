@@ -95,8 +95,8 @@ public class PopParSummary implements Serializable {
           add("bWidth", inputParams.getCustomBinWidth(),
               SnF.doubleToString(inputParams.getCustomBinWidth().getValue(), NF.D1C3));
         }
-        add("z", inputParams.getChangePointZ(),
-            inputParams.getChangePointZ().getValueAsString());
+        add("z", inputParams.getSmoothWidth(),
+            inputParams.getSmoothWidth().getValueAsString());
       }
     }
   }

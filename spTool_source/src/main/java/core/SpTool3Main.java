@@ -27,6 +27,9 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import util.Functional;
 import util.storage.TmpFileCleanup;
+import visualizer.charts.JFreeUtil;
+
+import java.util.Locale;
 
 
 public class SpTool3Main extends Application {
@@ -53,16 +56,16 @@ public class SpTool3Main extends Application {
     SpTool3Main.ANALYZER = analyzer;
   }
 
-  public static final Boolean SHOW_DRIFT = false;
-  public static final Boolean SHOW_ACCUMULATION = false;
-  public static final Boolean SHOW_WINDOW = false;
-  public static final Boolean SHOW_INTERFERENCE_DB = false;
-  public static final Boolean SHOW_PEAK_MODEL = false;
+  public static final Boolean SHOW_DRIFT = true;
+  public static final Boolean SHOW_ACCUMULATION = true;
+  public static final Boolean SHOW_WINDOW = true;
+  public static final Boolean SHOW_INTERFERENCE_DB = true;
+  public static final Boolean SHOW_PEAK_MODEL = true;
   public static final Boolean SHOW_EMD_EXPORT = false;
-  public static final Boolean SHOW_PVALUE_EXPORT = false;
-  public static final Boolean SHOW_PRECISION_RECALL_EXPORT = false;
+  public static final Boolean SHOW_PVALUE_EXPORT = true;
+  public static final Boolean SHOW_PRECISION_RECALL_EXPORT = true;
 
-  public static final String VERSION_ID = "3.1.2";
+  public static final String VERSION_ID = "3.1.3";
 
   public static final String AUTHOR_STATEMENT =
       """     
@@ -124,6 +127,7 @@ public class SpTool3Main extends Application {
   public void start(Stage stage) throws Exception {
 
     LOGGER.info("Starting spTool.");
+    Locale.setDefault(Locale.US); // enforces . as decimal separator
 
     /**
      * storage: reset piled up temp files from MemoryMappedStorage
@@ -144,6 +148,7 @@ public class SpTool3Main extends Application {
 //    NumberConvertibleUnit num = new DoubleConvertibleUnit(50, MassUnit.MICRO_GRAM);
 //    NumberConvertibleUnit conv = num.convert(MassUnit.GRAM);
 //    System.out.println(conv.translate(NF.D1C6));
+
   }
 
   public static RunTimeInstance getRunTime() {

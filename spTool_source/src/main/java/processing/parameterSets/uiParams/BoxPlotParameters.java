@@ -19,8 +19,10 @@ package processing.parameterSets.uiParams;
 
 import gui.util.TextFormatterOption;
 import io.XmlUtil;
+
 import java.io.Serial;
 import java.nio.file.Path;
+
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
@@ -32,7 +34,7 @@ import processing.parameterSets.AvailableParameterSets;
 import processing.parameterSets.FxParamSetImpl;
 import processing.parameterSets.ParamSet;
 import processing.parameterSets.XmlInstanceDictionary;
-import processing.parameterSets.uiParams.Viewers.BoxPlotViewer;
+import processing.parameterSets.uiParams.Viewers.SpectrumViewer;
 import processing.parameters.BooleanParameter;
 import processing.parameters.ComboEnumParameter;
 import processing.parameters.ImageDecoration;
@@ -114,6 +116,7 @@ public class BoxPlotParameters extends AbstractParamSet implements ParamSet {
   private final Parameter<MathMod> mathModification;
   private final Parameter<EventParameter> eventParameter;
 
+  private final Parameter<Boolean> showIDsOnPlot;
 
 //  private final Parameter<Boolean> limitAxes;
 //  private final Parameter<Double> upperYLimit;
@@ -164,6 +167,16 @@ public class BoxPlotParameters extends AbstractParamSet implements ParamSet {
         true,
         "jitterBackground"
     );
+
+    this.showIDsOnPlot = new BooleanParameter(
+        "IDs",
+        "Show box ID",
+        "Adds an identifier to each box (sample number, population number, mz)",
+        true,
+        false,
+        "showIDsOnPlot"
+    );
+
 
     numberOfBackgroundEvents = new IntegerParameter(
         "# of BG",
@@ -225,6 +238,8 @@ public class BoxPlotParameters extends AbstractParamSet implements ParamSet {
     this.jitterBackground = histParams.jitterBackground.copyWithoutChildren();
     this.numberOfBackgroundEvents = histParams.numberOfBackgroundEvents.copyWithoutChildren();
 
+    this.showIDsOnPlot = histParams.showIDsOnPlot.copyWithoutChildren();
+
 
 //    this.limitAxes = histParams.limitAxes.copyWithoutChildren();
 //    this.upperYLimit = histParams.upperYLimit.copyWithoutChildren();
@@ -261,7 +276,8 @@ public class BoxPlotParameters extends AbstractParamSet implements ParamSet {
     super.setParentParameters(
         eventParameter,
         mathModification,
-        eventType
+        eventType,
+        showIDsOnPlot
 
 //        limitAxes,
 
@@ -301,6 +317,7 @@ public class BoxPlotParameters extends AbstractParamSet implements ParamSet {
           case "eventParameter" -> eventParameter;
           case "reduceBackground" -> jitterBackground;
           case "numberOfBackgroundEvents" -> numberOfBackgroundEvents;
+          case "showIDsOnPlot" -> showIDsOnPlot;
 
           default -> null;
         };
@@ -327,9 +344,12 @@ public class BoxPlotParameters extends AbstractParamSet implements ParamSet {
 
   @Override
   public FxParamSetImpl getObservableInstance() {
-    return new BoxPlotViewer(this);
+    return new Viewers.BoxPlotViewer(this);
   }
 
+  public Parameter<Boolean> getShowIDsOnPlot() {
+    return showIDsOnPlot;
+  }
 
   public Parameter<EventType> getEventType() {
     return eventType;
@@ -376,7 +396,9 @@ if (histoChart != null) {
 
                 if (dataset instanceof HistogramDataset) {
                   HistogramDataset histogramDataset = (HistogramDataset) dataset;
-                  // as of now, histograms have only one series and the overlay is done by adding datasets to the XYPlot.
+                  // as of now, histograms have only one series and the overlay is done by adding datasets
+                  to the XYPlot.
+
                   int seriesCount = histogramDataset.getSeriesCount();
                   if (seriesCount > 0) {
                     int itmCount = histogramDataset.getItemCount(0); // items = bars per histogram

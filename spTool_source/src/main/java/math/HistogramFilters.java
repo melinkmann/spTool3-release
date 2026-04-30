@@ -18,17 +18,92 @@
 package math;
 
 import math.stat.MeasureOfLocation;
-import math.stat.MeasureOfSpread;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.jfree.data.statistics.HistogramDataset;
+import processing.options.BinWidthEstimator;
+import smile.stat.distribution.KernelDensity;
 import util.ArrUtils;
-
-import javax.naming.AuthenticationNotSupportedException;
 
 public class HistogramFilters {
 
   public static final Logger LOGGER = LogManager.getLogger(HistogramFilters.class);
+
+  // TODO: Delete. I believe, kernel width would be too much of a problem.
+  public static double computeValley(double[] data) {
+    double value = 0;
+
+    if (data.length > 2) {
+      double bandwidth = BinWidthEstimator.silvermanRule(data) * 1.25d;
+      KernelDensity kd = new KernelDensity(data, bandwidth);
+      double maxVal = ArrUtils.getMax(data);
+
+      // step size
+      double minDataStep = Double.MAX_VALUE;
+      for (int i = 1; i < data.length; i++) {
+        double diff = data[i] - data[i - 1];
+        minDataStep = Math.min(diff, minDataStep);
+      }
+
+      double stepSize = minDataStep / 10;
+      double[] x = ArrUtils.fillArrayExclusive(0, 1.1 * maxVal, stepSize);
+      double[] y = new double[x.length];
+      for (int i = 0; i < x.length; i++) {
+        y[i] = kd.p(x[i]);
+      }
+    }
+
+    return value;
+  }
+
+  public static double findSplitPoint(HistogramDataset histogramDataset, int windowWidth) {
+    double val = 0;
+
+    // ensure uneven width
+    if (windowWidth % 2 == 0) windowWidth++;
+
+    int seriesIndex = 0;
+    int itemCount = histogramDataset.getItemCount(seriesIndex);
+    if (itemCount > 0) {
+      double[] barMeasure = new double[itemCount];
+      double[] barHeights = new double[itemCount];
+
+      boolean useCentre = false;
+      for (int i = 0; i < itemCount; i++) {
+        double startX = histogramDataset.getStartX(seriesIndex, i).doubleValue();
+        if (useCentre) {
+          double endX = histogramDataset.getEndX(seriesIndex, i).doubleValue();
+          barMeasure[i] = (startX + endX) / 2.0;
+        } else {
+          barMeasure[i] = startX;
+        }
+        barHeights[i] = histogramDataset.getY(seriesIndex, i).doubleValue();
+      }
+
+      // clamp window to array length, keep it odd
+      int clampedWindow = Math.min(windowWidth, barMeasure.length);
+      if (clampedWindow % 2 == 0) clampedWindow--;
+      int half = clampedWindow / 2;
+
+      if (barMeasure.length > clampedWindow) {
+        for (int i = half; i < barMeasure.length - half; i++) {
+          double prev = 0, past = 0;
+          for (int j = 0; j < half; j++) {
+            prev += barHeights[i - j - 1];
+            past += barHeights[i + j + 1];
+          }
+          prev = (barHeights[i] + prev) / (double) (half + 1);
+          past = (barHeights[i] + past) / (double) (half + 1);
+          if (past > prev) {
+            val = barMeasure[i];
+            break;
+          }
+        }
+      }
+    }
+    return val;
+  }
+
 
   /**
    * ChatGPT: Compute threshold for a HistogramDataset.
@@ -37,7 +112,7 @@ public class HistogramFilters {
    * @param seriesIndex      index of the series to process
    * @return threshold value (x-coordinate of bin center)
    */
-  public static double computelogDerivativeChangePointThreshold(HistogramDataset histogramDataset,
+  public static double computeLogDerivativeChangePointThreshold(HistogramDataset histogramDataset,
                                                                 int seriesIndex, double z) {
     int itemCount = histogramDataset.getItemCount(seriesIndex);
     double thr = 0;
@@ -85,7 +160,7 @@ public class HistogramFilters {
     int n = hist.length;
 
     // Normalize histogram
-    hist = ArrUtils.normalize(hist, 1);
+    hist = ArrUtils.normalizeByMaximumTimesFactor(hist, 1);
 
     // ---- 1. Smooth histogram (3-point moving average)
     double[] smooth = new double[n];

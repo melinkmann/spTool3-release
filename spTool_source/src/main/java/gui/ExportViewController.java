@@ -109,7 +109,7 @@ public class ExportViewController implements ParameterView, FxStage, Hotkeyable 
   private final Button exportMethodBtn = new Button("Export method as csv");
   private final Button exportMethodSpmBtn = new Button("Export method as spm");
   private final Button exportResultsTable = new Button("Export results table");
-
+  private final Button exportRegionSpectra = new Button("Export region spectra");
 
   protected final ExporterParams exportParamSet;
   protected final FxParamSet fxParamSet;
@@ -168,6 +168,11 @@ public class ExportViewController implements ParameterView, FxStage, Hotkeyable 
         """
             Export the results table as a human-readable .csv file that can be loaded into MS excel.""");
 
+    UiUtil.tooltip(exportRegionSpectra,
+        """
+            Export mass spectrum of an aligned population.""");
+
+
     this.fxParamSet = this.exportParamSet.getObservableInstance();
 
     this.stage = stage;
@@ -224,6 +229,7 @@ public class ExportViewController implements ParameterView, FxStage, Hotkeyable 
     if (SpTool3Main.SHOW_PVALUE_EXPORT) {
       buttonBoxItems.add(new Separator(Orientation.HORIZONTAL));
       buttonBoxItems.add(exportPValuesBtn);
+      buttonBoxItems.add(exportRegionSpectra);
     }
     if (SpTool3Main.SHOW_PRECISION_RECALL_EXPORT) {
       buttonBoxItems.add(new Separator(Orientation.HORIZONTAL));
@@ -318,6 +324,7 @@ public class ExportViewController implements ParameterView, FxStage, Hotkeyable 
       SpTool3Main.getRunTime().getTaskManager().queueToHousekeepingPool(parallel);
 
     });
+
 
     exportResultsTable.setOnAction(e -> {
       FunctionalTask task = new FunctionalTask("Export",
@@ -422,6 +429,48 @@ public class ExportViewController implements ParameterView, FxStage, Hotkeyable 
 
                 DataExport.exportPValues(sample, selIsotopes, params, writer);
               }
+            }
+
+          }, new FunctionalTaskResult(() -> {
+        Platform.runLater(() -> {
+          NotificationFactory.openAutocloseInfo("Export finished");
+        });
+      }));
+
+      BatchTask parallel = new SimpleLinearBatch<>("Export",
+          task, false, new EmptyTaskResult());
+      SpTool3Main.getRunTime().getTaskManager().queueToHousekeepingPool(parallel);
+
+    });
+
+    exportRegionSpectra.setOnAction(e -> {
+
+
+      FunctionalTask task = new FunctionalTask("Export",
+          () -> {
+
+            List<Sample> selSamples = SpTool3Main.getRunTime().getMainWindowCtl().getSelSamples();
+            List<PopulationID> selPops = SpTool3Main.getRunTime().getMainWindowCtl().getSelPops();
+
+            int i = 0; // increment counter
+            for (Sample sample : selSamples) {
+
+              i++;
+
+              String sampleName = sample.getNickName();
+              sampleName = GlobalIO.cleanupWindowsFileName(sampleName);
+              String dateTag = Util.getYearMonthDateDayHourMinuteSecond();
+              sampleName = dateTag + "_Spectra_" + i + "_" + sampleName;
+
+              if (exportParamSet.getExportFormat().getValue().equals(ExportTarget.CSV)) {
+                String pathStr = exportParamSet.getCurrentExportPath().getValue();
+                Path path = Paths.get(pathStr);
+                path = PathUtil.addDir(path, "Data", sampleName);
+                PathUtil.createDir(path);
+
+                DataExport.exportRegionSpectra(sample, selPops, path);
+              }
+
             }
 
           }, new FunctionalTaskResult(() -> {

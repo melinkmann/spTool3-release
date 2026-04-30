@@ -33,18 +33,25 @@ public abstract class XmlInstanceDictionary {
     ParamSet set = switch (type) {
       case BaselineParams.XML_ELEMENT_TAG -> new BaselineParams();
       case GatingParams.XML_ELEMENT_TAG -> new GatingParams();
+      case IsotopeRemoverParams.XML_ELEMENT_TAG -> new IsotopeRemoverParams();
 
       case FilterParams.XML_ELEMENT_TAG -> new FilterParams();
       case TimeRoiParams.XML_ELEMENT_TAG -> new TimeRoiParams();
+      case EventDataRangeParams.XML_ELEMENT_TAG -> new EventDataRangeParams();
 
       case NormalSearchParams.XML_ELEMENT_TAG -> new NormalSearchParams();
       case AlignerParams.XML_ELEMENT_TAG -> new AlignerParams();
 
+      case SignalModificationParams.XML_ELEMENT_TAG -> new SignalModificationParams();
+
       case CsvInterpreterParams.XML_ELEMENT_TAG -> new CsvInterpreterParams();
+      case NuInterpreterParams.XML_ELEMENT_TAG -> new NuInterpreterParams();
+
       case MCSimGeneralParams.XML_ELEMENT_TAG -> new MCSimGeneralParams();
       case MCSimParticleParams.XML_ELEMENT_TAG -> new MCSimParticleParams();
 
       case DTGroupParams.XML_ELEMENT_TAG -> new DTGroupParams();
+      case IsotopeCalculatorParams.XML_ELEMENT_TAG -> new IsotopeCalculatorParams();
 
       case SignificanceTestParams.XML_ELEMENT_TAG -> new SignificanceTestParams();
 
@@ -57,6 +64,8 @@ public abstract class XmlInstanceDictionary {
       case MonteCarloHistoParameters.XML_ELEMENT_TAG -> new MonteCarloHistoParameters();
       case BoxPlotParameters.XML_ELEMENT_TAG -> new BoxPlotParameters();
 
+      case SpectrumViewerParameters.XML_ELEMENT_TAG -> new SpectrumViewerParameters();
+      case HACViewerParameters.XML_ELEMENT_TAG ->  new HACViewerParameters();
       case MonteCarloRawDataParameters.XML_ELEMENT_TAG -> new MonteCarloRawDataParameters();
       case MonteCarloScatterPlotParameters.XML_ELEMENT_TAG -> new MonteCarloScatterPlotParameters();
       case SingleEventViewerParameters.XML_ELEMENT_TAG -> new SingleEventViewerParameters();

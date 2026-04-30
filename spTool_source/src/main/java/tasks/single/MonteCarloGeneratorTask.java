@@ -35,6 +35,7 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
+import io.nu.ShapeEstimator2;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -60,7 +61,6 @@ import sandbox.montecarlo.MacroTimeFrameUtil;
 import sandbox.montecarlo.ParticleInstructions;
 import sandbox.montecarlo.ParticlePopulationMatrix;
 import sandbox.montecarlo.ParticlePopulationMatrixRAM;
-import sandbox.montecarlo.PeakFunction;
 import sandbox.montecarlo.Statistics;
 import tasks.TaskResult;
 import tasks.WorkingTask;
@@ -99,7 +99,7 @@ public class MonteCarloGeneratorTask extends AbstractWorkingTask implements Work
     try {
       // START ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ##
       LOGGER.info("Data generator starts."
-          + " in thread " + Thread.currentThread());
+          + " in thread " + Thread.currentThread().getId());
 
       mainLoop:
       while (!getIsStopped().get()) {
@@ -681,7 +681,9 @@ public class MonteCarloGeneratorTask extends AbstractWorkingTask implements Work
 
               // Create the actual " trace in the sample" for the UI.
               TISeries tiSeries = new TISeriesHDD(time, signal);
-              TraceMC trace = new TraceMC(sample, new TOFmz(isotope), tiSeries, macroDTSec);
+              // Estimate SIA for the giggles
+              double empiricalShape = ShapeEstimator2.computeShape(signal);
+              TraceMC trace = new TraceMC(sample, new TOFmz(isotope), tiSeries, macroDTSec,empiricalShape);
               trace.setEmpiricalMeanBG(empiricalBG);
               trace.setExpectedMeanBG(macroBgLevel);
               sample.addTrace(trace);

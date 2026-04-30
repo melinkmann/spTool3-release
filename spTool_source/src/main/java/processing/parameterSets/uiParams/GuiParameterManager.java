@@ -74,6 +74,8 @@ public class GuiParameterManager {
   private final ToggleButton blnToggle;
   private final ToggleButton compareHistoToggle;
   private final ToggleButton histoMCToggle;
+  private final ToggleButton spectrumToggle;
+  private final ToggleButton hacToggle;
   private final ToggleButton boxplotToggle;
   private final ToggleButton scatterMCToggle;
   private final ToggleButton eventToggle;
@@ -91,6 +93,8 @@ public class GuiParameterManager {
   private final BorderPane blnTabPane = new BorderPane();
   private final BorderPane compareHistoTabPane = new BorderPane();
   private final BorderPane histoMCTabPane = new BorderPane();
+  private final BorderPane spectrumTabPane = new BorderPane();
+  private final BorderPane hacTabPane = new BorderPane();
   private final BorderPane boxplotTabPane = new BorderPane();
   private final BorderPane scatterMCTabPane = new BorderPane();
   private final BorderPane averageTabPane = new BorderPane();
@@ -119,6 +123,8 @@ public class GuiParameterManager {
     this.blnToggle = UiUtil.getTabBtn("BLN", "/img/blnView.png", toggleGroup);
     this.compareHistoToggle = UiUtil.getTabBtn("Hist", "/img/4by4histo.png", toggleGroup);
     this.histoMCToggle = UiUtil.getTabBtn("Hist", "/img/histoViewMC.png", toggleGroup);
+    this.spectrumToggle = UiUtil.getTabBtn("Spec", "/img/spectrumView.png", toggleGroup);
+    this.hacToggle = UiUtil.getTabBtn("HAC", "/img/clusterDendrogram.png", toggleGroup);
     this.boxplotToggle = UiUtil.getTabBtn("Box", "/img/boxplot.png", toggleGroup);
     this.scatterMCToggle = UiUtil.getTabBtn("XY", "/img/scatter.png", toggleGroup);
     this.eventToggle = UiUtil.getTabBtn("EVT", "/img/singlePeakView.png", toggleGroup);
@@ -171,6 +177,8 @@ public class GuiParameterManager {
     availableUiSets.add(new MonteCarloHistoParameters());
     availableUiSets.add(new BoxPlotParameters());
     availableUiSets.add(new MonteCarloScatterPlotParameters());
+    availableUiSets.add(new SpectrumViewerParameters());
+    availableUiSets.add(new HACViewerParameters());
     availableUiSets.add(new SingleEventViewerParameters());
     availableUiSets.add(new AverageViewerParameters());
     availableUiSets.add(new IclPeakParameters());
@@ -216,6 +224,8 @@ public class GuiParameterManager {
       case IclPeakParameters.XML_ELEMENT_TAG -> getIclTabPane();
       case MonteCarloScatterPlotParameters.XML_ELEMENT_TAG -> getScatterMCTabPane();
       case MonteCarloHistoParameters.XML_ELEMENT_TAG -> getHistoMCTabPane();
+      case SpectrumViewerParameters.XML_ELEMENT_TAG -> getSpectrumPane();
+      case HACViewerParameters.XML_ELEMENT_TAG -> getHacTabPane();
       case SingleEventViewerParameters.XML_ELEMENT_TAG -> getEventTabPane();
       case AverageViewerParameters.XML_ELEMENT_TAG -> getAverageTabPane();
       case BoxPlotParameters.XML_ELEMENT_TAG -> getBoxplotTabPane();
@@ -314,6 +324,16 @@ public class GuiParameterManager {
     histoMCToggle.setOnMouseClicked(e -> {
       handleToggleSelection(e, "Histogram viewer", histoMCToggle, histoMCTabPane,
           MonteCarloHistoParameters.XML_ELEMENT_TAG);
+    });
+
+    spectrumToggle.setOnMouseClicked(e -> {
+      handleToggleSelection(e, "Spectrum viewer", spectrumToggle, spectrumTabPane,
+          SpectrumViewerParameters.XML_ELEMENT_TAG);
+    });
+
+    hacToggle.setOnMouseClicked(e -> {
+      handleToggleSelection(e, "HAC viewer", hacToggle, hacTabPane,
+          HACViewerParameters.XML_ELEMENT_TAG);
     });
 
     scatterMCToggle.setOnMouseClicked(e -> {
@@ -433,6 +453,14 @@ public class GuiParameterManager {
       toggleBox.getChildren().add(histoMCToggle);
     }
 
+    if (confParams.isShowSpectrum()) {
+      toggleBox.getChildren().add(spectrumToggle);
+    }
+
+    if (confParams.isShowHAC()) {
+      toggleBox.getChildren().add(hacToggle);
+    }
+
     if (confParams.isShowScatterMC()) {
       toggleBox.getChildren().add(scatterMCToggle);
     }
@@ -519,6 +547,14 @@ public class GuiParameterManager {
 
   public BorderPane getAlignTabPane() {
     return alignTabPane;
+  }
+
+  public BorderPane getSpectrumPane() {
+    return spectrumTabPane;
+  }
+
+  public BorderPane getHacTabPane() {
+    return hacTabPane;
   }
 
   public BorderPane getResultsTableTabPane() {

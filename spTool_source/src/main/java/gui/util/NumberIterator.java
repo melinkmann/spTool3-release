@@ -27,7 +27,7 @@ public class NumberIterator {
 
   private final Property<String> currentIdxProperty;
   private final int itemsShowing;
-  private final int stepSize;
+  private int stepSize;
   private int finalIdx;
   private Functional onChange;
 
@@ -35,9 +35,9 @@ public class NumberIterator {
   private boolean reachedMinimum;
 
   public NumberIterator(TextField valueField,
-      int initialIndex,
-      int itemsShowing,
-      int finalIdx) {
+                        int initialIndex,
+                        int itemsShowing,
+                        int finalIdx) {
     this.currentIdxProperty = new SimpleStringProperty(SnF.intToString(initialIndex));
     this.itemsShowing = itemsShowing;
     this.stepSize = itemsShowing - 1;
@@ -54,45 +54,44 @@ public class NumberIterator {
 
   public void increment() {
     reachedMinimum = false;
-
+    int step = Math.max(1, stepSize);
     int currentIndex = getCurrentIdx();
-    currentIndex += stepSize;
-    if (currentIndex + stepSize == finalIdx && !reachedMaximum) {
-      reachedMaximum = true;
-    } else if (currentIndex +stepSize> finalIdx && !reachedMaximum) {
-      currentIndex = finalIdx - stepSize;
-      reachedMaximum = true;
-      // Wrap around
-    } else if (reachedMaximum) {
+
+    if (reachedMaximum) {
       currentIndex = 0;
       reachedMaximum = false;
       reachedMinimum = true;
+    } else if (currentIndex + step >= finalIdx) {
+      currentIndex = finalIdx;
+      reachedMaximum = true;
+    } else {
+      currentIndex += step;
     }
+
     currentIdxProperty.setValue(Integer.toString(currentIndex));
   }
 
   public void decrement() {
     reachedMaximum = false;
-
+    int step = Math.max(1, stepSize);
     int currentIndex = getCurrentIdx();
-    currentIndex -= stepSize;
 
-    if (currentIndex == 0 && !reachedMinimum) {
-      reachedMinimum = true;
-    }else if (currentIndex < 0 && !reachedMinimum) {
-      currentIndex = 0;
-      reachedMinimum = true;
-    } else if (reachedMinimum) {
-      // Wrap around to last valid full page
-      currentIndex = (int) finalIdx / (int) itemsShowing * itemsShowing -2;
+    if (reachedMinimum) {
+      currentIndex = (finalIdx / step) * step;
       reachedMinimum = false;
       reachedMaximum = true;
+    } else if (currentIndex - step <= 0) {
+      currentIndex = 0;
+      reachedMinimum = true;
+    } else {
+      currentIndex -= step;
     }
+
     currentIdxProperty.setValue(Integer.toString(currentIndex));
   }
 
   public int getCurrentIdx() {
-    return Math.max(SnF.strToInt(currentIdxProperty.getValue()),0);
+    return Math.max(SnF.strToInt(currentIdxProperty.getValue()), 0);
   }
 
   public int getCurrentEndIdx() {
@@ -105,6 +104,10 @@ public class NumberIterator {
 
   public int getStepSize() {
     return stepSize;
+  }
+
+  public void setStepSize(int stepSize) {
+    this.stepSize = stepSize;
   }
 
   public void setFinalIdx(int finalIdx) {

@@ -26,7 +26,7 @@ import java.util.List;
 
 // chatGPT guided to using Apache Commons wherever possible.
 
-public abstract class KruskallWallisGPT {
+public abstract class KruskalWallisGPT {
 
   public static class Result {
     public final double hStatistic;
@@ -37,6 +37,20 @@ public abstract class KruskallWallisGPT {
       this.hStatistic = hStatistic;
       this.pValue = pValue;
       this.degreesOfFreedom = degreesOfFreedom;
+    }
+  }
+
+  // Claude Sonnet 4.6 correction: rank() now returns both the midranks and the
+  // tie correction sum, so tie detection is performed exactly once and the
+  // correction factor C is guaranteed to be consistent with the midranks used
+  // to compute H.
+  private static class RankResult {
+    final double[] ranks;
+    final double tieCorrection;
+
+    RankResult(double[] ranks, double tieCorrection) {
+      this.ranks = ranks;
+      this.tieCorrection = tieCorrection;
     }
   }
 
@@ -54,8 +68,9 @@ public abstract class KruskallWallisGPT {
 
     int N = allValues.size();
 
-    // Rank all values with midranks
-    double[] ranks = rank(allValues);
+    // Rank all values with midranks; tie correction sum returned together
+    RankResult rr = rank(allValues);
+    double[] ranks = rr.ranks;
 
     // Step 1: Sum of ranks per group
     double[] rankSums = new double[groups.size()];
@@ -77,28 +92,10 @@ public abstract class KruskallWallisGPT {
 
     double H = (12.0 / (N * (N + 1))) * hNumerator - 3 * (N + 1);
 
-    // Step 3: Tie correction
-    double tieCorrection = 0.0;
-    int i = 0;
-    Integer[] indices = new Integer[N];
-    for (int k = 0; k < N; k++) indices[k] = k;
-    Arrays.sort(indices, Comparator.comparingDouble(allValues::get));
-
-    while (i < N) {
-      int j = i;
-      while (j + 1 < N && allValues.get(indices[j + 1]).equals(allValues.get(indices[i]))) {
-        j++;
-      }
-      int t = j - i + 1; // size of tie group
-      if (t > 1) {
-        tieCorrection += t * t * t - t;
-      }
-      i = j + 1;
-    }
-
+    // Step 3: Tie correction — reuse value from rank() instead of re-traversing
     double C = 1.0;
-    if (tieCorrection > 0) {
-      C = 1.0 - tieCorrection / (N * N * N - N);
+    if (rr.tieCorrection > 0) {
+      C = 1.0 - rr.tieCorrection / ((double) N * N * N - N);
     }
 
     double H_corrected = H / C;
@@ -113,8 +110,8 @@ public abstract class KruskallWallisGPT {
     return new Result(H_corrected, pValue, df);
   }
 
-  // Assign midranks for ties
-  private static double[] rank(List<Double> values) {
+  // Assign midranks for ties; also accumulates tie correction sum (Σ t³-t)
+  private static RankResult rank(List<Double> values) {
     int n = values.size();
     Integer[] indices = new Integer[n];
     for (int i = 0; i < n; i++) indices[i] = i;
@@ -122,20 +119,25 @@ public abstract class KruskallWallisGPT {
     Arrays.sort(indices, Comparator.comparingDouble(values::get));
 
     double[] ranks = new double[n];
+    double tieCorrection = 0.0;
     int i = 0;
     while (i < n) {
       int j = i;
-      while (j + 1 < n && values.get(indices[j + 1]).equals(values.get(indices[i]))) {
+      // Claude Sonnet 4.6 correction: replaced .equals() with Double.compare()
+      // to avoid fragile boxed-Double equality on computed floating-point values.
+      while (j + 1 < n && Double.compare(values.get(indices[j + 1]), values.get(indices[i])) == 0) {
         j++;
       }
       double rank = (i + j + 2) / 2.0;
       for (int k = i; k <= j; k++) {
         ranks[indices[k]] = rank;
       }
+      int t = j - i + 1;
+      if (t > 1) {
+        tieCorrection += (double) t * t * t - t;
+      }
       i = j + 1;
     }
-    return ranks;
+    return new RankResult(ranks, tieCorrection);
   }
-
-
 }

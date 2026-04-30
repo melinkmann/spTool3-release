@@ -68,10 +68,12 @@ public class MonteCarloRawDataParameters extends AbstractParamSet implements Par
 
   private final Parameter<Boolean> showEventMarkers;
   private final Parameter<Boolean> showPopulationMarkers;
-  private final Parameter<Integer> upperPointCountCutoff;
+  private final Parameter<Double> upperPointCountCutoff;
   private final Parameter<Boolean> showThresholdMarkers;
+  private final Parameter<Boolean> yLogScale;
   private final Parameter<Boolean> limitAxes;
   private final Parameter<Double> upperYLimit;
+  private final Parameter<Boolean> useChartFX;
 
   public MonteCarloRawDataParameters() {
     super("Monte carlo raw data viewer parameters", XML_ELEMENT_TAG);
@@ -94,17 +96,19 @@ public class MonteCarloRawDataParameters extends AbstractParamSet implements Par
         false,
         "showPopulationMarkers");
 
-    this.upperPointCountCutoff = new IntegerParameter(
+    this.upperPointCountCutoff = new DoubleParameter(
         "Limit",
         "In the plot, too many visible markers make the graphs slow to respond."
             + "\nHence, you may specify a cutoff number here. "
             + "\nWhen a population or single mz has more highlighted points than the specified value,"
-            + "\nno markers will be shown for the respective population or mz (i.e., only the line graph is visible)."
+            + "\nno markers will be shown for the respective population or mz (i.e., only the line graph is" +
+            " visible)."
             + "\nYou can use this for instance, when you simulated a background"
             + "\nthat consists of many small particles."
             + "\nNote: To deactivate this behaviour, simply choose a large number",
-        10000,
-        TextFormatterOption.ASSURE_NONZERO_POSITIVE_INTEGER,
+        100000d,
+        NF.D1C1Exp,
+        TextFormatterOption.ASSURE_POS_EXP_DOUBLE,
         false,
         "upperPointCountCutoff"
     );
@@ -116,6 +120,15 @@ public class MonteCarloRawDataParameters extends AbstractParamSet implements Par
         false,
         false,
         "showThresholdMarkers");
+
+    yLogScale = new BooleanParameter(
+        "y-axis",
+        "log10",
+        "Show log10 of data on y-axis",
+        false,
+        false,
+        "yLogScale"
+    );
 
     limitAxes = new BooleanParameter(
         "Axis limits",
@@ -135,6 +148,17 @@ public class MonteCarloRawDataParameters extends AbstractParamSet implements Par
         false,
         "upperYLimit");
 
+    useChartFX = new BooleanParameter(
+        "Style",
+        "Quick plot",
+        """
+            Uses a different plotting library with fewer customization
+            but faster visualization, e.g., for large TOF data sets""",
+        false,
+        true,
+        "useChartFX"
+    );
+
     organize();
   }
 
@@ -145,8 +169,10 @@ public class MonteCarloRawDataParameters extends AbstractParamSet implements Par
     this.showPopulationMarkers = iclPeakViewer.showPopulationMarkers.copyWithoutChildren();
     this.upperPointCountCutoff = iclPeakViewer.upperPointCountCutoff.copyWithoutChildren();
     this.showThresholdMarkers = iclPeakViewer.showThresholdMarkers.copyWithoutChildren();
+    this.yLogScale = iclPeakViewer.yLogScale.copyWithoutChildren();
     this.limitAxes = iclPeakViewer.limitAxes.copyWithoutChildren();
     this.upperYLimit = iclPeakViewer.upperYLimit.copyWithoutChildren();
+    this.useChartFX = iclPeakViewer.useChartFX.copyWithoutChildren();
     organize();
   }
 
@@ -180,14 +206,18 @@ public class MonteCarloRawDataParameters extends AbstractParamSet implements Par
           showPopulationMarkers,
           upperPointCountCutoff,
           showThresholdMarkers,
-          limitAxes
+          yLogScale,
+          limitAxes,
+          useChartFX
       );
     } else {
       super.setParentParameters(
           showEventMarkers,
           showPopulationMarkers,
           upperPointCountCutoff,
-          limitAxes
+          limitAxes,
+          yLogScale,
+          useChartFX
       );
     }
 
@@ -220,8 +250,12 @@ public class MonteCarloRawDataParameters extends AbstractParamSet implements Par
 
           case "showThresholdMarkers" -> showThresholdMarkers;
 
+          case "yLogScale" -> yLogScale;
+
           case "limitAxes" -> limitAxes;
           case "upperYLimit" -> upperYLimit;
+
+          case "useChartFX" -> useChartFX;
 
           default -> null;
         };
@@ -248,6 +282,7 @@ public class MonteCarloRawDataParameters extends AbstractParamSet implements Par
 
   @Override
   public FxParamSetImpl getObservableInstance() {
+//    return new MonteCarloRawDataViewer(this);
     return new MonteCarloRawDataViewer(this);
   }
 
@@ -260,7 +295,7 @@ public class MonteCarloRawDataParameters extends AbstractParamSet implements Par
     return showPopulationMarkers;
   }
 
-  public Parameter<Integer> getUpperPointCountCutoff() {
+  public Parameter<Double> getUpperPointCountCutoff() {
     return upperPointCountCutoff;
   }
 
@@ -274,5 +309,13 @@ public class MonteCarloRawDataParameters extends AbstractParamSet implements Par
 
   public Parameter<Double> getUpperYLimit() {
     return upperYLimit;
+  }
+
+  public Parameter<Boolean> getUseChartFX() {
+    return useChartFX;
+  }
+
+  public Parameter<Boolean> getYLogScale() {
+    return yLogScale;
   }
 }

@@ -340,6 +340,23 @@ public class MethodView implements ParameterView {
         }
       }
     });
+//
+    Button lastSavedMethodBtn = UiUtil.getToolbarBtn("/img/load.png", "Load default method from " +
+        "configuration.");
+
+    lastSavedMethodBtn.setOnAction(e -> {
+      boolean proceedAndDiscard = callProceedAndDiscardDialog();
+      if (proceedAndDiscard) {
+        Path methodFilePath = SpTool3Main.getRunTime().getConfParams().getCurrentMethodFile();
+        File asFile = methodFilePath.toFile();
+        if (asFile.exists() && asFile.isFile() && asFile.canRead()) {
+          Method m = XmlUtil.readMethodFromXml(methodFilePath);
+          if (m != null) {
+            setMethod(m);
+          }
+        }
+      }
+    });
 
     Button openMethodFromProjectBtn = UiUtil.getToolbarBtn("/img/loadFromProject.png", "Select " +
         "method:\nSelect method from the list of existing methods in the project folder");
@@ -349,7 +366,7 @@ public class MethodView implements ParameterView {
       if (proceedAndDiscard) {
         Path methodPath = SpTool3Main.getRunTime().getConfParams().getDefaultProjectPath();
         if (Files.isDirectory(methodPath)) {
-          List<Path> methodPaths = new ArrayList<>(PathUtil.listFiles(methodPath, false));
+          List<Path> methodPaths = new ArrayList<>(PathUtil.listFiles(methodPath, true));
           methodPaths = PathUtil.retainType(methodPaths, GlobalIO.METHOD_EXTENSION);
 
           List<Method> methods = new ArrayList<>();
@@ -441,9 +458,11 @@ public class MethodView implements ParameterView {
     });
 
     topToolbar.getItems().addAll(methodLbl, new Separator(Orientation.VERTICAL), statusImage,
-        new Separator(Orientation.VERTICAL), save, saveAs, UiUtil.createSeparator(20), undo,
-        new Separator(Orientation.VERTICAL), deleteMethod, UiUtil.createSeparator(20), openMethodBtn,
-        browseMethodBtn, new Separator(Orientation.VERTICAL), newMethodBtn, UiUtil.createSeparator(20),
+        new Separator(Orientation.VERTICAL), save, saveAs, UiUtil.createSeparator(20),
+        undo, lastSavedMethodBtn,
+        new Separator(Orientation.VERTICAL), deleteMethod, UiUtil.createSeparator(20),
+        openMethodBtn, browseMethodBtn, new Separator(Orientation.VERTICAL),
+        newMethodBtn, UiUtil.createSeparator(20),
         saveAsProject, openMethodFromProjectBtn);
 
     // ############################################################################################
@@ -591,13 +610,22 @@ public class MethodView implements ParameterView {
   // Getters as helplers to get the unwrapped entries.
   private List<FxParamSet> getSelectedFxSets() {
     List<FxParamSet> selSets =
-        subMethodsListView.getSelectionModel().getSelectedItems().stream().map(FxEntry::unwrap).filter(Predicate.not(Objects::isNull)).collect(Collectors.toList());
+        subMethodsListView.getSelectionModel().getSelectedItems().stream()
+            .filter(Objects::nonNull)
+            .map(FxEntry::unwrap)
+            .filter(Predicate.not(Objects::isNull))
+            .collect(Collectors.toList());
     return selSets;
   }
 
   private List<ParamSet> getSelectedSets() {
     List<ParamSet> selSets =
-        subMethodsListView.getSelectionModel().getSelectedItems().stream().map(FxEntry::unwrap).filter(Predicate.not(Objects::isNull)).map(FxParamSet::getPlainSet).collect(Collectors.toList());
+        subMethodsListView.getSelectionModel().getSelectedItems().stream()
+            .filter(Objects::nonNull)
+            .map(FxEntry::unwrap)
+            .filter(Predicate.not(Objects::isNull))
+            .map(FxParamSet::getPlainSet)
+            .collect(Collectors.toList());
     return selSets;
   }
 

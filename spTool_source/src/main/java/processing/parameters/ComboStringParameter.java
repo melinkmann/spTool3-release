@@ -50,7 +50,7 @@ public class ComboStringParameter extends AbstractParameter<String> implements
         @Override
         public @Nullable
         String match(String inputString, String[] options) {
-          Isotope searchItem = Isotope.getFromString(inputString);
+          Isotope searchItem = Isotope.guessFromString(inputString);
           // We assume that the options are isotopes with Full UI names
           for (String option : options) {
             Isotope candidate = Isotope.getFromFullUIName(option);

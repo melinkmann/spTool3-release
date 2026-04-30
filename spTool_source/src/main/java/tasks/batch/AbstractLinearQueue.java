@@ -19,12 +19,14 @@ package tasks.batch;
 
 import com.google.common.util.concurrent.AtomicDouble;
 import core.SpTool3Main;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicBoolean;
+
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -130,8 +132,8 @@ public abstract class AbstractLinearQueue implements BatchTask {
         }
         futures.add(future);
         LOGGER.debug("Submitted task: <" + task.getTaskName()
-            + "> linearly as step number " + (stepCounter) + " / " + (iterations)
-            + ". Queue has thread " + Thread.currentThread());
+            + "> from linear queue as step number " + (stepCounter) + " / " + (iterations)
+            + ". Queue has thread " + Thread.currentThread().getId());
 
         // START WAITING LOOP ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ##
         // Loop.
@@ -157,11 +159,13 @@ public abstract class AbstractLinearQueue implements BatchTask {
           // Status to console.
           if (loggerTimer % TaskManager.HOUSEKEEPING_MODULO == 0) {
             long finishedCount = futures.stream().filter(Future::isDone).count();
+            int index = Math.min(Math.toIntExact(finishedCount), tasks.size()-1);
             LOGGER.trace("Linear Batch completed "
                 + (finishedCount) + "/" + (tasks.size())
-                + " tasks. Time spent running: "
+                + " tasks. Currently working on " + tasks.get(index).getTaskName() +
+                ". Time spent running: "
                 + loggerTimer * TaskManager.HOUSEKEEPING_SLEEP / 1000 + " seconds."
-                + " Queue has thread " + Thread.currentThread());
+                + " Queue is in thread " + Thread.currentThread().getId());
           }
 
           isDone = future.isDone();

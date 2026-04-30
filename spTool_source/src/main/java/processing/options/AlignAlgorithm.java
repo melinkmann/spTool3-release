@@ -18,5 +18,17 @@
 package processing.options;
 
 public enum AlignAlgorithm {
-  // TODO: add, e.g, peak overlap
+  REGION_COVERAGE {
+    @Override
+    public String toString() {
+      return "Region";
+    }
+  },
+
+  CONTACT {
+    @Override
+    public String toString() {
+      return "Contact";
+    }
+  }
 }

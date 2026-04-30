@@ -200,6 +200,62 @@ public class ParticleInstructions {
     // We only get one entry per event (and not for each isotope!), i.e., relatively RAM inexpensive
     double[] randomTotalIntensities = getRandomIntensities(arrivalTimes.length);
 
+
+    // [2.1] EXPERIMENTAL: Include Plasma Sampling Noise
+    /*
+    NOTE: Does not seem to work as such.
+    Why? I made the resampling symmetric to that the mean particle area would be conserved.
+    But, in that case, values are equally likely transferred to the higher or lower side of the
+    distribution when just multiplying with a percent value. The SD seems to be conserved as well under these
+    circumstances.
+    Instead, a Poisson-like resampling should be more adequate.
+    Why Poisson? It includes heteroscedasticity and easily handles nonzero value policy close to zero.
+     */
+    // double[] percents = new double[randomTotalIntensities.length];
+    // for (int i = 0; i < percents.length; i++) {
+    //   double val = -1;
+    //   while (val < 0) {
+    //     val = Statistics.randomifyPercent(1, 0.4);
+    //   }
+    //   percents[i] = val;
+    // }
+    // randomTotalIntensities = ArrUtils.multiply(randomTotalIntensities, percents);
+    /*
+    NOTE: Even adding this Poisson step does not alter much.
+    It seems that most of the total variance on particles comes from the o.g. distribution
+    AND the detector resampling itself. Coupling two Poisson-like resampling steps after another
+    _should_ increase variance but apparently only to a rather small degree. Making a variance budget
+    would be not fully straight forward (analytically) since we have the lognormal particle intensity,
+    then the peak shape with 3 Gaussians defining shape, then the dwell time grid with random arrival
+    and finally the Compound Poisson resampling process.
+     */
+    // Statistics.resamplePoissrnd(randomTotalIntensities);
+    /*
+    WHAT'S THE LESSON?
+    1) When we have a lognormal counts distribution, we can modify DT, conc, BG, ... as we like
+    2) For the background, we know that we sufficiently describe it with (overdispersed)
+       Poisson or Compound Poisson --> there is no need for a Plasma sampling model.
+    3) What we cannot do: Use the "randomTotalIntensities" as a prior, e.g., to input
+       TEM-based particle distribution and compare the result with ICP-MS abd expect it to be spot-on.
+       Why? We do not know the variance (the shape factor of the lognormal).
+       In all other cases we use the empirical value for it.
+
+       Peculiar: This empirical Var already includes the detector statistics ("resampling").
+       The fact that we can do it that way may imply that the variance boost kind of cancels out
+       and using the empirical variance for the particle SD is not overly boosted by the
+       following resampling process. (Actually, I am not 100% sure why:
+        a) Maybe it is because we only resample once and for one step not such a big increase is expected.
+        b) Maybe the o.g. lognormal of the particles dominates (?)
+        c) Maybe the fact that we have the area, then slice it in pieces, resample these pieces each with
+           the detector statistics and THEN compute the sum again, ...
+           Maybe somewhere in there, cancelling effects are present that lead to a miniscule increase?
+           Keep in mind: The peak slicing has DT raster aliasing (random wait time),
+           the peak itself has 2 Gaussians and one Lognormal/Gaussian. So the entire process may be hard
+           to tackle analytically?
+      4) In summary: Assume that the generator does not reveal the full point-spread function of an ICP-MS.
+     */
+
+
     // [3] Iterate over the individual NP events,
     // to randomize their composition & assign icl shapes.
     for (int eventIdx = 0; eventIdx < arrivalTimes.length; eventIdx++) {
@@ -216,7 +272,7 @@ public class ParticleInstructions {
       }
 
       // Normalize random fractions to 1 and also multiply with the actual signal
-      ArrUtils.normalizeOverriding(elementSignalLevelFractions);
+      ArrUtils.normalizeBySumOverriding(elementSignalLevelFractions);
       ArrUtils.multiplyOverriding(elementSignalLevelFractions, randomTotalIntensities[eventIdx]);
 
       // [4] Now that we know the randomized elemental composition,
@@ -264,7 +320,7 @@ public class ParticleInstructions {
           fractions[i] = Statistics.randomifyPercent(isotope.getAbundance(),
               isotopeFractionUncertainty);
         }
-        ArrUtils.normalizeOverriding(fractions);
+        ArrUtils.normalizeBySumOverriding(fractions);
         ArrUtils.multiplyOverriding(fractions, elementSignalLevel);
 
         for (int i = 0; i < isotopes.size(); i++) {

@@ -19,8 +19,10 @@ package processing.parameterSets.uiParams;
 
 import gui.util.TextFormatterOption;
 import io.XmlUtil;
+
 import java.io.Serial;
 import java.nio.file.Path;
+
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
@@ -125,11 +127,17 @@ public class MonteCarloScatterPlotParameters extends AbstractParamSet implements
         }
    */
 
+
+  private final Parameter<Boolean> scatterIsotopes;
+
   private final Parameter<EventParameter> eventParameterX;
   private final Parameter<MathMod> mathModificationX;
 
   private final Parameter<EventParameter> eventParameterY;
   private final Parameter<MathMod> mathModificationY;
+
+  private final Parameter<Boolean> addRegression;
+  private final Parameter<Double> regressionViewRatio;
 
   private final Parameter<Double> colorAlpha;
   private final Parameter<Integer> dotSize;
@@ -137,9 +145,24 @@ public class MonteCarloScatterPlotParameters extends AbstractParamSet implements
   private final Parameter<Boolean> limitAxes;
   private final Parameter<Double> upperYLimit;
   private final Parameter<Double> upperXLimit;
+  private final Parameter<Double> lowerYLimit;
+  private final Parameter<Double> lowerXLimit;
+
 
   public MonteCarloScatterPlotParameters() {
     super("Monte carlo scatter plot viewer parameters", XML_ELEMENT_TAG);
+
+    this.scatterIsotopes = new BooleanParameter(
+        "Data",
+        "2 Isotopes",
+        """
+            If selected, the first selected isotope is put on the x-axis
+            and the second selected isotope is put on the y-axis.
+            Otherwise, we scatter different peak parameters for the same isotope""",
+        false,
+        true,
+        "scatterIsotopes"
+    );
 
     eventParameterX = new ComboEnumParameter<>(
         "x data",
@@ -180,6 +203,22 @@ public class MonteCarloScatterPlotParameters extends AbstractParamSet implements
         false,
         "mathModificationY"
     );
+
+    this.addRegression = new BooleanParameter(
+        "Show",
+        "OLS regression",
+        "Add ordinary least square regression fit to data",
+        false,
+        false,
+        "addRegression");
+
+    this.regressionViewRatio = new DoubleParameter("View Δx [-]",
+        "Increase the view window for the regression relative to the x data [0-1],",
+        0.10d,
+        NF.D1C3,
+        TextFormatterOption.ASSURE_NONZERO_POSITIVE_DOUBLE,
+        true,
+        "regressionViewRatio");
 
     this.colorAlpha = new DoubleParameter(
         "Alpha",
@@ -225,21 +264,45 @@ public class MonteCarloScatterPlotParameters extends AbstractParamSet implements
         false,
         "upperXLimit");
 
+    lowerYLimit = new DoubleParameter(
+        "Lower y",
+        "Choose the lower y-axis limit as a absolute value",
+        0d,
+        NF.D1C3,
+        TextFormatterOption.ASSURE_POSITIVE_DOUBLE,
+        false,
+        "lowerYLimit");
+
+
+    lowerXLimit = new DoubleParameter(
+        "Lower x",
+        "Choose the lower x-axis limit as an absolute value",
+        0.00d,
+        NF.D1C3,
+        TextFormatterOption.ASSURE_POSITIVE_DOUBLE,
+        false,
+        "lowerXLimit");
+
     organize();
   }
 
   public MonteCarloScatterPlotParameters(MonteCarloScatterPlotParameters params) {
     super(params.getLabelParameter().getValue(), XML_ELEMENT_TAG);
     super.setComment(params.getCommentParameter());
+    this.scatterIsotopes = params.scatterIsotopes.copyWithoutChildren();
     this.mathModificationX = params.mathModificationX.copyWithoutChildren();
     this.eventParameterX = params.eventParameterX.copyWithoutChildren();
     this.mathModificationY = params.mathModificationY.copyWithoutChildren();
     this.eventParameterY = params.eventParameterY.copyWithoutChildren();
+    this.addRegression = params.addRegression.copyWithoutChildren();
+    this.regressionViewRatio = params.regressionViewRatio.copyWithoutChildren();
     this.colorAlpha = params.colorAlpha.copyWithoutChildren();
     this.dotSize = params.dotSize.copyWithoutChildren();
     this.limitAxes = params.limitAxes.copyWithoutChildren();
     this.upperXLimit = params.upperXLimit.copyWithoutChildren();
     this.upperYLimit = params.upperYLimit.copyWithoutChildren();
+    this.lowerXLimit = params.lowerXLimit.copyWithoutChildren();
+    this.lowerYLimit = params.lowerYLimit.copyWithoutChildren();
     organize();
   }
 
@@ -267,15 +330,19 @@ public class MonteCarloScatterPlotParameters extends AbstractParamSet implements
 
     // Register parent
     super.setParentParameters(
+        scatterIsotopes,
         eventParameterX,
         mathModificationX,
         eventParameterY,
         mathModificationY,
+        addRegression,
         colorAlpha,
         dotSize,
         limitAxes);
 
-    limitAxes.addConditionalChild(true, upperXLimit, upperYLimit);
+    addRegression.addConditionalChild(true, regressionViewRatio);
+
+    limitAxes.addConditionalChild(true, lowerXLimit, upperXLimit, lowerYLimit, upperYLimit);
 
     eventParameterX.setDecoration(new ImageDecoration<>("/img/sumareaX.png"));
     mathModificationX.setDecoration(new ImageDecoration<>("/img/linlogX.png"));
@@ -300,6 +367,8 @@ public class MonteCarloScatterPlotParameters extends AbstractParamSet implements
           case DATE_PAR_XML_ID -> super.dateCreated;
           case UUID_PAR_XML_ID -> super.uuidString;
 
+          case "scatterIsotopes" -> scatterIsotopes;
+
           case "eventParameterX" -> eventParameterX;
           case "mathModificationX" -> mathModificationX;
           case "eventParameterY" -> eventParameterY;
@@ -308,9 +377,15 @@ public class MonteCarloScatterPlotParameters extends AbstractParamSet implements
           case "colorAlpha" -> colorAlpha;
           case "dotSize" -> dotSize;
 
+          case "addRegression" -> addRegression;
+          case "regressionViewRatio" -> regressionViewRatio;
+
           case "limitAxes" -> limitAxes;
-          case " upperXLimit" -> upperXLimit;
-          case " upperYLimit" -> upperYLimit;
+          case "upperXLimit" -> upperXLimit;
+          case "upperYLimit" -> upperYLimit;
+
+          case "lowerXLimit" -> lowerXLimit;
+          case "lowerYLimit" -> lowerYLimit;
 
           default -> null;
         };
@@ -340,7 +415,12 @@ public class MonteCarloScatterPlotParameters extends AbstractParamSet implements
     return new MonteCarloScatterPlotViewer(this);
   }
 
-  //////////////////////////////////////////////////////////////
+
+  /// ///////////////////////////////////////////////////////////
+
+  public Parameter<Boolean> getScatterIsotopes() {
+    return scatterIsotopes;
+  }
 
   public Parameter<EventParameter> getEventParameterX() {
     return eventParameterX;
@@ -356,6 +436,14 @@ public class MonteCarloScatterPlotParameters extends AbstractParamSet implements
 
   public Parameter<MathMod> getMathModificationY() {
     return mathModificationY;
+  }
+
+  public Parameter<Boolean> getAddRegression() {
+    return addRegression;
+  }
+
+  public Parameter<Double> getRegressionViewRatio() {
+    return regressionViewRatio;
   }
 
   public Parameter<Double> getColorAlpha() {
@@ -376,5 +464,13 @@ public class MonteCarloScatterPlotParameters extends AbstractParamSet implements
 
   public Parameter<Double> getUpperYLimit() {
     return upperYLimit;
+  }
+
+  public Parameter<Double> getLowerXLimit() {
+    return lowerXLimit;
+  }
+
+  public Parameter<Double> getLowerYLimit() {
+    return lowerYLimit;
   }
 }

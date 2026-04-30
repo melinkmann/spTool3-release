@@ -19,8 +19,10 @@ package processing.parameterSets.uiParams;
 
 import gui.util.TextFormatterOption;
 import io.XmlUtil;
+
 import java.io.Serial;
 import java.nio.file.Path;
+
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
@@ -71,6 +73,8 @@ public class SingleEventViewerParameters extends AbstractParamSet implements Par
   private final Parameter<Integer> numberOfBGEvents;
   private final Parameter<Boolean> sortBoolean;
   private final Parameter<EventParameter> eventParameter;
+  private final Parameter<Boolean> logYAXis;
+  private final Parameter<Integer> numberOfEventsShown;
 
   public SingleEventViewerParameters() {
     super("Monte carlo raw data viewer parameters", XML_ELEMENT_TAG);
@@ -82,6 +86,14 @@ public class SingleEventViewerParameters extends AbstractParamSet implements Par
         false,
         false,
         "useCommonYAxis");
+
+    logYAXis = new BooleanParameter(
+        "y-axis",
+        "log-scale",
+        "Show log10(intensity + 1) on the y-axis for better visibility",
+        false,
+        false,
+        "logYAXis");
 
     this.showPeakParameters = new BooleanParameter(
         "Parameters",
@@ -100,6 +112,16 @@ public class SingleEventViewerParameters extends AbstractParamSet implements Par
         false,
         "numberOfBGEvents"
     );
+
+    numberOfEventsShown = new IntegerParameter(
+        "Show n",
+        "How many events are shown (max 4x3)",
+        12,
+        TextFormatterOption.ASSURE_NONZERO_POSITIVE_INTEGER,
+        false,
+        "numberOfEventsShown"
+    );
+
 
     this.sortBoolean = new BooleanParameter(
         "Sort",
@@ -126,10 +148,12 @@ public class SingleEventViewerParameters extends AbstractParamSet implements Par
     super(iclPeakViewer.getLabelParameter().getValue(), XML_ELEMENT_TAG);
     super.setComment(iclPeakViewer.getCommentParameter());
     this.useCommonYAxis = iclPeakViewer.useCommonYAxis.copyWithoutChildren();
+    this.logYAXis = iclPeakViewer.logYAXis.copyWithoutChildren();
     this.showPeakParameters = iclPeakViewer.showPeakParameters.copyWithoutChildren();
     this.numberOfBGEvents = iclPeakViewer.numberOfBGEvents.copyWithoutChildren();
     this.sortBoolean = iclPeakViewer.sortBoolean.copyWithoutChildren();
     this.eventParameter = iclPeakViewer.eventParameter.copyWithoutChildren();
+    this.numberOfEventsShown = iclPeakViewer.numberOfEventsShown.copyWithoutChildren();
 
     organize();
   }
@@ -158,7 +182,9 @@ public class SingleEventViewerParameters extends AbstractParamSet implements Par
 
     // Register parent
     super.setParentParameters(
+         numberOfEventsShown,
         useCommonYAxis,
+        logYAXis,
         showPeakParameters,
         numberOfBGEvents,
         sortBoolean
@@ -184,6 +210,8 @@ public class SingleEventViewerParameters extends AbstractParamSet implements Par
           case DATE_PAR_XML_ID -> super.dateCreated;
           case UUID_PAR_XML_ID -> super.uuidString;
 
+          case "numberOfEventsShown" -> numberOfEventsShown;
+          case "logYAXis" -> logYAXis;
           case "useCommonYAxis" -> useCommonYAxis;
           case "showPeakParameters" -> showPeakParameters;
           case "numberOfBGEvents" -> numberOfBGEvents;
@@ -218,6 +246,9 @@ public class SingleEventViewerParameters extends AbstractParamSet implements Par
     return new SingleEventViewer(this);
   }
 
+  public Parameter<Integer> getNumberOfEventsShown() {
+    return numberOfEventsShown;
+  }
 
   public Parameter<Boolean> getUseCommonYAxis() {
     return useCommonYAxis;
@@ -237,5 +268,9 @@ public class SingleEventViewerParameters extends AbstractParamSet implements Par
 
   public Parameter<EventParameter> getEventParameter() {
     return eventParameter;
+  }
+
+  public Parameter<Boolean> getLogYAXis() {
+    return logYAXis;
   }
 }

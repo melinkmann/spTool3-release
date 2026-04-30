@@ -27,6 +27,7 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.Serial;
 import java.util.List;
+
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import processing.options.MCSimIclShapeParameters;
@@ -80,8 +81,10 @@ public class ElementBundle implements ParamBundle {
 
     massFraction = new DoubleParameter("Intensity fraction [0-1]",
         "'Mass' fraction of the respective element. Make sure that the fraction add up to 1.0."
-            + "\nFor the scope of the data generator, we use the intensity fraction as a proxy for the mass fraction"
-            + "\nbecause the relationship of mass and intensity strongly depends on instrument tuning and element",
+            + "\nFor the scope of the data generator, we use the intensity fraction as a proxy for the mass" +
+            " fraction"
+            + "\nbecause the relationship of mass and intensity strongly depends on instrument tuning and " +
+            "element",
         1d,
         NF.D1C3,
         TextFormatterOption.ASSURE_NONZERO_POSITIVE_DOUBLE,
@@ -102,7 +105,8 @@ public class ElementBundle implements ParamBundle {
             The key parameters are:
             Linear plasma flow velocity 'v', diffusion coefficient 'D', distance of vaporization 'y'.\
             Each parameter has a mean value ± a standard deviation (SD) to simulate random ion clouds.
-            The default values can be changed in the configuration of spTool.
+            The default values can be changed in the configuration of spTool
+            (Edit -> Configuration -> *scroll down*).
             Alternatively, it is also possible to select custom values here in this method
             """,
         MCSimIclShapeParameters.DEFAULT,
@@ -113,21 +117,25 @@ public class ElementBundle implements ParamBundle {
 
     // custom pars of peakShape
     d_mu = new DoubleParameter("Diffusion coefficient (D) [cm2/s]",
-        "Mean diffusion coefficient of the element in the plasma."
-            + "\nHigher values lead to broader peaks."
-            + "\nWhy? When the diffusion coefficient of an ion is greater,"
-            + "\nthe peak will spread out more strongly (i.e., the ion cloud become more diffuse)."
-            + "\nA good starting point is D=60 cm2/s",
-        60d,
+        """
+            Mean diffusion coefficient of the element in the plasma.
+            Higher values lead to broader peaks.
+            Why? When the diffusion coefficient of an ion is greater,
+            the peak will spread out more strongly (i.e., the ion cloud become more diffuse).
+            A good starting point is D=25 cm2/s
+            but values closer to 100 cm2/s are also plausible (to obtain broader peaks)""",
+        21d,
         NF.D1C1,
         TextFormatterOption.ASSURE_NONZERO_POSITIVE_DOUBLE,
         true,
         wrapID("d_mu"));
 
     d_SD = new DoubleParameter("Diffusion coefficient (±SD)",
-        "Standard deviation of D."
-            + "\nThis number specifies how broadly the random numbers vary",
-        8d,
+        """
+            Standard deviation of D.
+            This number specifies how broadly the random numbers vary
+            A good starting point is SD=5 cm2/s""",
+        4d,
         NF.D1C1,
         TextFormatterOption.ASSURE_POSITIVE_DOUBLE,
         true,
@@ -186,7 +194,8 @@ public class ElementBundle implements ParamBundle {
     Previously, the class that spawns this bundle parsed the xml file down to the "bundle node".
 
      <parameterBundle bundleID="elementBundle">
-         <parameter defaultValue="Au (Gold)" label="Element" value="Mg (Magnesium)" xmlID="elementHeaderParameter"/>
+         <parameter defaultValue="Au (Gold)" label="Element" value="Mg (Magnesium)"
+         xmlID="elementHeaderParameter"/>
          <parameter defaultValue="0.25" label="Mass fraction" value="0.25" xmlID="massFraction"/>
          <parameter defaultValue="15.0" label="Particle event rate" value="15.0" xmlID="eventRate"/>
      </parameterBundle>
@@ -292,7 +301,6 @@ public class ElementBundle implements ParamBundle {
   public String getSortingString() {
     return elementHeaderParameter.getValueAsString();
   }
-
 
 
   @Serial

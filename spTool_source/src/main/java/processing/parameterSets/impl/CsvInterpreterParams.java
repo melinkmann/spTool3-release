@@ -22,6 +22,7 @@ import gui.util.TextFormatterOption;
 import io.XmlUtil;
 import io.impl.*;
 
+import java.io.IOException;
 import java.io.Serial;
 import java.io.Serializable;
 import java.nio.file.Path;
@@ -82,7 +83,9 @@ public class CsvInterpreterParams extends AbstractParamSet implements Serializab
 
   private final Parameter<OverRangeRecognition> overRangeRecognition;
   private final Parameter<Double> customOverRangeValue;
+
   // for the custom case
+  private Parameter<LpcDimension> lpcImportParameter;
 
   public CsvInterpreterParams() {
     this("Csv import parameters");
@@ -301,6 +304,16 @@ public class CsvInterpreterParams extends AbstractParamSet implements Serializab
         "customOverRangeValue"
     );
 
+    this.lpcImportParameter = new ComboEnumParameter<>(
+        "Quantity",
+        "What data shall be imported from the single particle data file?",
+        LpcDimension.CIRCLE_EQUIVALENT_DIAMETER,
+        LpcDimension.values(),
+        LpcDimension.class,
+        true,
+        "lpcImportParameter"
+    );
+
     organize();
   }
 
@@ -328,7 +341,7 @@ public class CsvInterpreterParams extends AbstractParamSet implements Serializab
     this.hasLineIndex = csvInterpreterParams.hasLineIndex.copyWithoutChildren();
     this.overRangeRecognition = csvInterpreterParams.overRangeRecognition.copyWithoutChildren();
     this.customOverRangeValue = csvInterpreterParams.customOverRangeValue.copyWithoutChildren();
-
+    this.lpcImportParameter = csvInterpreterParams.lpcImportParameter.copyWithoutChildren();
 
     organize();
   }
@@ -378,6 +391,14 @@ public class CsvInterpreterParams extends AbstractParamSet implements Serializab
 
     interpreter.addConditionalChild(CsvInterpreters.ANALYTIK_JENA,
         overRangeRecognition);
+
+    interpreter.addConditionalChild(CsvInterpreters.CUSTOM_PEAKS,
+        isotopeParameter);
+
+    interpreter.addConditionalChild(CsvInterpreters.LPC,
+        isotopeParameter,
+        lpcImportParameter,
+        firstLine);
 
     overRangeRecognition.addConditionalChild(OverRangeRecognition.CUSTOM, customOverRangeValue);
 
@@ -451,6 +472,8 @@ public class CsvInterpreterParams extends AbstractParamSet implements Serializab
 
           case "hasXData" -> hasXData;
 
+          case "lpcImportParameter" ->lpcImportParameter;
+
           default -> null;
         };
 
@@ -490,6 +513,7 @@ public class CsvInterpreterParams extends AbstractParamSet implements Serializab
   public CsvInterpreter getInterpreter() {
     return switch (interpreter.getValue()) {
       case CUSTOM_PEAKS -> new CsvInterpreterCustomPeaks(this);
+      case LPC -> new CsvInterpreterLPC(this);
       case CUSTOM_TRA -> new CsvInterpreterCustomTimeResolved(this);
       case AGILENT -> new CsvInterpreterAgilent(this);
       case THERMO_XY -> new CsvInterpreterThermoXY(this);
@@ -560,6 +584,10 @@ public class CsvInterpreterParams extends AbstractParamSet implements Serializab
     return customOverRangeValue;
   }
 
+  public Parameter<LpcDimension> getLpcImportParameter() {
+    return lpcImportParameter;
+  }
+
   public double getORValue() {
     double or = switch (overRangeRecognition.getValue()) {
       case NONE -> 0.0;
@@ -569,4 +597,20 @@ public class CsvInterpreterParams extends AbstractParamSet implements Serializab
     };
     return or;
   }
+
+  @Serial
+  private void readObject(java.io.ObjectInputStream in) throws IOException, ClassNotFoundException {
+
+    in.defaultReadObject();
+
+    // default supplier
+    final CsvInterpreterParams defaults = new CsvInterpreterParams();
+
+    // Fix missing fields from old serialized versions: we have to use
+    if (lpcImportParameter == null) {
+      this.lpcImportParameter = defaults.lpcImportParameter;
+    }
+  }
+
+
 }

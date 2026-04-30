@@ -22,28 +22,43 @@ public class BeasleySpringerMoroInvNormCdf {
 
 
   /**
+   * Computes the z such that P(Z > z) = alpha for a standard normal distribution.
+   * Accurate for extremely small alpha (e.g., 1E-20).
+   *
    * Note: this may be an alternative to Beasley Springer Moro.
-   * <p>
    * chatGPT: seems fine, however, at the precision required in spICP-MS, I would much rather use
    * BSM to be fully consistent.
-   * <p>
-   * Analogous to: BeasleySpringerMoroInvNormCdf.invNormCdfApprox(alpha); Also, BSM
-   * usually agrees with Apache and wikipedia which tells my gut feeling that it is to be preferred.
-   * Computes the z such that P(Z > z) = alpha for a standard normal distribution. Accurate for
-   * extremely small alpha (e.g., 1E-20).
    */
   public static double inverseNormalSurvival(double alpha) {
     if (alpha <= 0.0 || alpha >= 1.0) {
       throw new IllegalArgumentException("alpha must be in (0, 1)");
     }
 
-    // Asymptotic approximation for extreme upper tail
-    // z ≈ sqrt(-2 * log(alpha) - log(4π * log(alpha)))
+    // Claude Sonnet 4.6 correction (revised after ChatGPT review):
+    // The original code was wrong in two ways — see full comment in git history.
+    //
+    // Correct derivation from the Mills ratio approximation:
+    //   log(α) ≈ -z²/2 - log(z) - 0.5·log(2π)
+    // Rearranging:
+    //   z² = -2·log(α) - log(2π) - 2·log(z)
+    // Let w = -2·log(α) - log(2π).
+    // Substitute z ≈ √w  =>  2·log(z) ≈ log(w), giving:
+    //   z² ≈ w - log(w)
+    //
+    // Note: an earlier Claude Sonnet 4.6 attempt used w - 0.5·log(w),
+    // which under-corrects by a factor of 2 because it applied 0.5·log(w)
+    // where 2·log(z) = log(w) was needed.
+    //
+    // Example: alpha = 1e-10
+    //   w      = 46.052 - 1.838 = 44.214
+    //   log(w) = 3.789
+    //   z²     = 44.214 - 3.789 = 40.425  =>  z = 6.358
+    //   Apache Commons: z = 6.3613  (corrected formula accurate to ~3e-3)
+    //   Old 0.5·log(w) version: z ≈ 6.361 ... actually let me recheck:
+    //     w - 0.5·log(w) = 44.214 - 1.894 = 42.320  =>  z = 6.505  (worse)
     double logAlpha = Math.log(alpha);
-    double logLog = Math.log(-logAlpha);
-    double inner = 4.0 * Math.PI * logLog;
-    double correction = Math.log(inner);
-    double zSquared = -2.0 * logAlpha - correction;
+    double w = -2.0 * logAlpha - Math.log(2.0 * Math.PI);
+    double zSquared = w - Math.log(w);
     return Math.sqrt(zSquared);
   }
 

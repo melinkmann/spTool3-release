@@ -53,8 +53,8 @@ public class NormalSearchParams extends AbstractParamSet implements ParamSet {
   private final Parameter<Double> startStopOffset;
   private final ThresholdBundle heightCriterium;
 
-  private final Parameter<Double> windowIntensityAttenuator;
-  private final Parameter<Double> windowPeakPercent;
+  private Parameter<Double> windowBonusWidth;
+  private Parameter<Double> windowWidth;
 
   private final Parameter<Double> smoothGaussianWidth;
 
@@ -163,31 +163,38 @@ public class NormalSearchParams extends AbstractParamSet implements ParamSet {
         SearchThresholdOption.getLargerThanMu(),
         "heightFilter");
 
-    this.windowIntensityAttenuator = new DoubleParameter(
-        "Signal intensity attenuator",
+    this.windowBonusWidth = new DoubleParameter(
+        "Bonus points [µs]",
         """
-            Each data point above the start threshold is extended in x direction to capture
-            noisy peaks. This number attenuates the influence of the signal intensity
-            (relative to the search start/stop criteria) on the width.
-            Note: Larger number tends to produce smaller window widths""",
-        3d,
-        NF.D1C2,
-        TextFormatterOption.ASSURE_NONZERO_POSITIVE_DOUBLE,
-        false,
-        "windowIntensityAttenuator");
-
-    windowPeakPercent = new DoubleParameter(
-        "Peak width [%]",
-        """
-            Each data point above the start threshold is extended in x direction to capture
-            noisy peaks. For each peak, the base for the extended data point window is a
-            percentage of an average peak width of 500 µs. For example, at a dwell time of 10 µs and
-            width = 20, the base window has a width of 500 / 10 · 20% = 10 data points""",
+            Each data point above the start threshold is extended in x direction (i.e., time)
+            to improve detection for noisy peaks especially at low dwell times.
+            This number gives 'bonus points' to add, depending on the signal intensity:
+            At low signal (y = start threshold), spTool extends the peak around any given data point
+            above the start threshold. The number of these points added is computed from this
+            parameter and the dwell time (e.g., @ DT = 20 µs, 'Bonus points' = 60 µs adds 3 points).
+            
+            At higher signal intensity, fewer points will be added (scaling with: 1/intensity).
+            Usually, peaks with high signal intensity have enough signal to be detected anyway
+            and adding too many points increases the danger to cause peak overlap""",
         20d,
         NF.D1C1,
         TextFormatterOption.ASSURE_NONZERO_POSITIVE_DOUBLE,
         false,
-        "windowPeakPercent");
+        "windowBonusWidth");
+
+    windowWidth = new DoubleParameter(
+        "Window [µs]",
+        """
+            Each data point above the start threshold is extended in x direction (i.e., time)
+            to improve detection for noisy peaks especially at low dwell times.
+            
+            For each data point above the start threshold, 
+            all data points a time window of the width specified here be will added to the peak.""",
+        20d,
+        NF.D1C1,
+        TextFormatterOption.ASSURE_NONZERO_POSITIVE_DOUBLE,
+        false,
+        "windowWidth");
 
     this.smoothGaussianWidth = new DoubleParameter(
         "Peak width [µs]",
@@ -386,7 +393,7 @@ public class NormalSearchParams extends AbstractParamSet implements ParamSet {
     this.netTimeWindowLocation = new ComboEnumParameter<>(
         "Measure of location",
         """
-            Measure of position for the background subtraction.
+            Measure of location for the background subtraction.
             Choose median if the data are very noisy due to many small particles
             or similar reasons. Else, use the mean. Note that the median is slower to compute than the
             mean!
@@ -430,8 +437,8 @@ public class NormalSearchParams extends AbstractParamSet implements ParamSet {
     this.stopCriterium = params.stopCriterium.getCopy();
     this.startStopOffset = params.startStopOffset.copyWithoutChildren();
     this.heightCriterium = params.heightCriterium.getCopy();
-    this.windowIntensityAttenuator = params.windowIntensityAttenuator.copyWithoutChildren();
-    this.windowPeakPercent = params.windowPeakPercent.copyWithoutChildren();
+    this.windowBonusWidth = params.windowBonusWidth.copyWithoutChildren();
+    this.windowWidth = params.windowWidth.copyWithoutChildren();
     this.smoothGaussianWidth = params.smoothGaussianWidth.copyWithoutChildren();
     this.prescreenStartStopCriterium = params.prescreenStartStopCriterium.getCopy();
     this.prescreenHeightCriterium = params.prescreenHeightCriterium.getCopy();
@@ -493,8 +500,8 @@ public class NormalSearchParams extends AbstractParamSet implements ParamSet {
 
     searchAlgorithm.addConditionalChild(
         SearchAlgorithm.SPLIT_CORRECTION_WINDOW,
-        windowPeakPercent,
-        windowIntensityAttenuator,
+        windowWidth,
+        windowBonusWidth,
         startCriterium.getThresholdOption(),
         stopCriterium.getThresholdOption(),
         startStopOffset,
@@ -570,8 +577,8 @@ public class NormalSearchParams extends AbstractParamSet implements ParamSet {
           case "heightFilter" + ThresholdBundle.XML_ID_ALPHA -> heightCriterium.getAlpha();
           case "heightFilter" + ThresholdBundle.XML_ID_FACTOR -> heightCriterium.getFactor();
 
-          case "windowFactor" -> windowIntensityAttenuator;
-          case "windowPeakPercent" -> windowPeakPercent;
+          case "windowFactor" -> windowBonusWidth;
+          case "windowPeakPercent" -> windowWidth;
 
           case "smoothGaussianWidth" -> smoothGaussianWidth;
 
@@ -659,12 +666,12 @@ public class NormalSearchParams extends AbstractParamSet implements ParamSet {
     return heightCriterium;
   }
 
-  public Parameter<Double> getWindowIntensityAttenuator() {
-    return windowIntensityAttenuator;
+  public Parameter<Double> getWindowBonusWidth() {
+    return windowBonusWidth;
   }
 
-  public Parameter<Double> getWindowPeakPercent() {
-    return windowPeakPercent;
+  public Parameter<Double> getWindowWidth() {
+    return windowWidth;
   }
 
   public Parameter<Double> getSmoothGaussianWidth() {
@@ -743,6 +750,14 @@ public class NormalSearchParams extends AbstractParamSet implements ParamSet {
     // Fix missing fields from old serialized versions: we have to use
     if (enableBoolean == null) {
       this.enableBoolean = defaults.enableBoolean;
+    }
+
+    if (windowBonusWidth == null) {
+      this.windowBonusWidth = defaults.windowBonusWidth;
+    }
+
+    if (windowWidth == null) {
+      this.windowWidth = defaults.windowWidth;
     }
 
     if (smoothType == null) {

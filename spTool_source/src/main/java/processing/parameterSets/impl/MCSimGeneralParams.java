@@ -314,19 +314,23 @@ public class MCSimGeneralParams extends AbstractParamSet implements ParamSet {
         """
             When optimizing for peak shape, it is recommendable to use this option.
             It forces peaks to have an equal distance between each other instead of the
-            usual Poisson process distances. This allows to have more peaks in the same time
-            which accelerates computation. The most time consuming part for long sample durations
-            is computation and handling of the millions of BG data points. By fitting more peaks into
-            the same sample duration, the efficiency is increased""",
+            usual Poisson process randomised distances:
+            
+            This allows to have more peaks in the same time which accelerates computation.
+            The most time consuming part for long sample durations
+            is computation and handling of the millions of BG data points.
+            By putting more peaks into the same sample duration, the efficiency is increased.
+            """,
         false,
         true,
         "evenPeakSpacing");
 
-    this.estimatedPeakWidth = new DoubleParameter("Estimated width [ms]",
+    this.estimatedPeakWidth = new DoubleParameter("Distance [ms]",
         """
-            The distance between equally spaced peaks will be roughly 1.5 x this estimated width.
+            This parameter sets the distance between the equally spaced peaks of high capacity mode.
             There is some randomness added to the exact spacing in order to allow the peaks
-            to shift against the time grid""",
+            to shift against the time grid. As a result, the time between peaks
+            will be roughly 1.5 times larger than the distance value set here""",
         10d,
         NF.D1C1,
         TextFormatterOption.ASSURE_NONZERO_POSITIVE_DOUBLE,
@@ -395,10 +399,10 @@ public class MCSimGeneralParams extends AbstractParamSet implements ParamSet {
         isotopeConflictOption,
         deadTimeModel,
         detectorDistribution,
-        applyDilution,
         oscillation,
-        evenPeakSpacing
-    );
+        evenPeakSpacing,
+        applyDilution
+        );
 
     applyDilution.addConditionalChild(true, dilutionFactor);
 

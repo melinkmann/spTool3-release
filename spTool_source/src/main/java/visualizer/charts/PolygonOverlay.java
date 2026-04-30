@@ -19,6 +19,7 @@ package visualizer.charts;
 
 
 import com.google.common.primitives.Doubles;
+
 import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.geom.Point2D;
@@ -28,6 +29,8 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Stack;
+import java.util.concurrent.atomic.AtomicBoolean;
+
 import org.jfree.chart.ChartPanel;
 import org.jfree.chart.ChartRenderingInfo;
 import org.jfree.chart.event.OverlayChangeEvent;
@@ -53,9 +56,13 @@ public class PolygonOverlay implements OverlayFX {
     fireChangeEvent();
   }
 
+  public List<Point2D> getPoints() {
+    return Collections.unmodifiableList(points);
+  }
+
   @Override
   public void paintOverlay(Graphics2D g2, ChartCanvas canvas) {
-    if (canvas.getRenderingInfo() != null && points.size()>0) {
+    if (canvas.getRenderingInfo() != null && points.size() > 0) {
       XYPlot plot = (XYPlot) canvas.getChart().getPlot();
       Rectangle2D dataArea = canvas.getRenderingInfo().getPlotInfo().getDataArea();
 
@@ -74,6 +81,7 @@ public class PolygonOverlay implements OverlayFX {
             points.get(i).getX(), dataArea, plot.getDomainAxisEdge());
         double yy = plot.getRangeAxis().valueToJava2D(
             points.get(i).getY(), dataArea, plot.getRangeAxisEdge());
+
         xs[i] = (int) xx;
         ys[i] = (int) yy;
       }
@@ -138,7 +146,7 @@ public class PolygonOverlay implements OverlayFX {
       }
 
       // Draw filled polygon
-      g2.setColor(new Color(0, 0, 255, 64));
+      g2.setColor(new Color(0, 0, 255, 128)); //64
       g2.fillPolygon(xs, ys, points.size());
 
       // Draw polygon outline
@@ -152,7 +160,6 @@ public class PolygonOverlay implements OverlayFX {
       }
     }
   }
-
 
 
   @Override
@@ -214,44 +221,50 @@ public class PolygonOverlay implements OverlayFX {
         (b.getY() - a.getY()) * (c.getX() - a.getX());
   }
 
+
   public static void enablePolygon(ChartViewer viewer) {
-    PolygonOverlay overlay = new PolygonOverlay();
-    ChartCanvas chartPanel = (ChartCanvas) viewer.getCanvas();
-    chartPanel.addOverlay(overlay);
+    enablePolygon(viewer, new PolygonOverlay(), new AtomicBoolean(true));
+  }
 
-    // Mouse click: add polygon vertices
-    final List<Point2D> polygonPoints = new ArrayList<>();
+  public static void enablePolygon(ChartViewer viewer, PolygonOverlay overlay, AtomicBoolean listen) {
+    if (viewer != null) {
+      ChartCanvas chartPanel = (ChartCanvas) viewer.getCanvas();
+      chartPanel.addOverlay(overlay);
 
-    viewer.addEventHandler(javafx.scene.input.MouseEvent.MOUSE_CLICKED, e -> {
-      if (e.getButton().name().equals("PRIMARY")) {
+      // Mouse click: add polygon vertices
+      final List<Point2D> polygonPoints = new ArrayList<>();
 
-        // clear old stuff
-        overlay.clear();
+      viewer.addEventHandler(javafx.scene.input.MouseEvent.MOUSE_CLICKED, e -> {
+        if (listen.get() && e.getButton().name().equals("PRIMARY")) {
 
-        double xx = e.getX();
-        double yy = e.getY();
-
-        ChartRenderingInfo info = viewer.getRenderingInfo();
-        XYPlot plot = (XYPlot) viewer.getChart().getPlot();
-        Rectangle2D dataArea = info.getPlotInfo().getDataArea();
-
-        double chartX = plot.getDomainAxis().java2DToValue(xx, dataArea, plot.getDomainAxisEdge());
-        double chartY = plot.getRangeAxis().java2DToValue(yy, dataArea, plot.getRangeAxisEdge());
-
-        // add last point
-        polygonPoints.add(new Point2D.Double(chartX, chartY));
-        // Double-click closes polygon
-
-        for (Point2D p : polygonPoints) {
-          overlay.addPoint(new Point2D.Double((int) p.getX(), (int) p.getY()));
-        }
-
-        if (e.getClickCount() == 2) {
-          polygonPoints.clear();
+          // clear old stuff
           overlay.clear();
+
+          double xx = e.getX();
+          double yy = e.getY();
+
+          ChartRenderingInfo info = viewer.getRenderingInfo();
+          XYPlot plot = (XYPlot) viewer.getChart().getPlot();
+          Rectangle2D dataArea = info.getPlotInfo().getDataArea();
+
+          double chartX = plot.getDomainAxis().java2DToValue(xx, dataArea, plot.getDomainAxisEdge());
+          double chartY = plot.getRangeAxis().java2DToValue(yy, dataArea, plot.getRangeAxisEdge());
+
+          // add last point
+          polygonPoints.add(new Point2D.Double(chartX, chartY));
+          // Double-click closes polygon
+
+          for (Point2D p : polygonPoints) {
+            overlay.addPoint(new Point2D.Double(p.getX(), p.getY()));
+          }
+
+          if (e.getClickCount() == 2) {
+            polygonPoints.clear();
+            overlay.clear();
+          }
         }
-      }
-    });
+      });
+    }
   }
 
 

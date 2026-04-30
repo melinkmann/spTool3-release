@@ -17,7 +17,6 @@
 
 package math.units.enums;
 
-import math.units.ConvertibleUnit;
 import math.units.Unit;
 
 public enum ViewUnits implements Unit {
@@ -27,6 +26,20 @@ public enum ViewUnits implements Unit {
     @Override
     public String getLiteralString() {
       return "-";
+    }
+  },
+
+  AMU {
+    @Override
+    public String getLiteralString() {
+      return "amu";
+    }
+  },
+
+  REGION_COUNTS {
+    @Override
+    public String getLiteralString() {
+      return "cts/region";
     }
   },
 

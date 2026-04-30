@@ -19,26 +19,31 @@ package util;
 
 import gui.dialog.FxEntry;
 
+import java.io.File;
 import java.nio.file.Path;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.Date;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
+import java.util.*;
+import java.util.stream.Collectors;
 
+import gui.dialog.caseImpl.CsvLoader;
+import gui.dialog.caseImpl.NuLoader;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.freehep.graphicsio.pdf.PDFPathConstructor;
+import org.jetbrains.annotations.Nullable;
+import processing.parameterSets.AvailableParameterSets;
 import processing.parameterSets.Method;
 import processing.parameterSets.ParamSet;
+import processing.parameterSets.impl.CsvInterpreterParams;
+import processing.parameterSets.impl.NuInterpreterParams;
 
 public abstract class Util {
 
   private static final Logger LOGGER = LogManager.getLogger(Util.class);
 
+  private static final double LOG_2 = Math.log(2);
 
   public static SimpleDateFormat getStandardDateFormat() {
     // You need to set Locale to US, else you get "Nov." instead of "Nov" (note the dot ".")
@@ -112,8 +117,6 @@ public abstract class Util {
       }
     }
   }
-
-
 
 
   public static void windowsSortFile(List<Path> unsortedFiles) {
@@ -212,5 +215,106 @@ public abstract class Util {
     }
   };
 
+
+  @Nullable
+  public static NuInterpreterParams getNuParametersFromMethod(Method method) {
+    NuInterpreterParams nuParams = null;
+    List<ParamSet> nuSets = method.getSets().stream()
+        .filter(s -> s.getEnum().equals(AvailableParameterSets.NU_READER))
+        .collect(Collectors.toList());
+    if (!nuSets.isEmpty() && nuSets.get(0) instanceof NuInterpreterParams) {
+      nuParams = (NuInterpreterParams) nuSets.get(0);
+    }
+    return nuParams;
+  }
+
+  @Nullable
+  public static CsvInterpreterParams getCSVParamsFromMethod(Method method) {
+    CsvInterpreterParams csvParams = null;
+    List<ParamSet> csvSets = method.getSets().stream()
+        .filter(s -> s.getEnum().equals(AvailableParameterSets.CSV_READER))
+        .collect(Collectors.toList());
+    if (!csvSets.isEmpty() && csvSets.get(0) instanceof CsvInterpreterParams) {
+      csvParams = (CsvInterpreterParams) csvSets.get(0);
+    }
+    return csvParams;
+  }
+
+  @Nullable
+  public static NuInterpreterParams getNuParametersFromDialog() {
+    NuInterpreterParams nuParams = null;
+    NuLoader launcher = new NuLoader();
+    Optional<ParamSet> nuOptional = launcher.showAndWait();
+
+    if (nuOptional.isPresent()) {
+      ParamSet params = nuOptional.get();
+      if (params instanceof NuInterpreterParams) {
+        nuParams = (NuInterpreterParams) params;
+      }
+    }
+    return nuParams;
+  }
+
+  @Nullable
+  public static CsvInterpreterParams getCSVParamsFromDialog(List<Path> files) {
+    CsvInterpreterParams csvParams = null;
+    CsvLoader launcher = new CsvLoader(files);
+    Optional<ParamSet> csvReaderOptional = launcher.showAndWait();
+
+    if (csvReaderOptional.isPresent()) {
+      ParamSet params = csvReaderOptional.get();
+      if (params instanceof CsvInterpreterParams) {
+        csvParams = (CsvInterpreterParams) params;
+      }
+    }
+    return csvParams;
+  }
+
+
+  public static boolean isNuPath(Path path) {
+    // Check which type to use: Check if TOF first.
+    String fileName = path.getFileName().toString();
+    File pathAsFile = path.toFile();
+
+    // check: "generate" the run.info file and check if it exists
+    File runInfoFile = new File(path.toString(), "run.info");
+    boolean hasRunInfo = runInfoFile.exists() && runInfoFile.isFile() && runInfoFile.canRead();
+
+    boolean isRunInfo = fileName.equals("run.info")
+        && pathAsFile.exists() && pathAsFile.isFile() && pathAsFile.canRead();
+
+    boolean foundTOF = hasRunInfo || isRunInfo;
+
+    return foundTOF;
+  }
+
+  public static boolean isCsvLikeFile(Path path) {
+    File pathAsFile = path.toFile();
+    return pathAsFile.exists() && pathAsFile.isFile() && pathAsFile.canRead();
+  }
+
+
+  public static Path getCheckedNuPathDir(Path directoryOrFile) {
+    Path result;
+    String fileName = directoryOrFile.getFileName().toString();
+    if (fileName.equals("run.info")) {
+      result = directoryOrFile.getParent(); // step up one level
+    } else {
+      result = directoryOrFile;
+    }
+    return result;
+  }
+
+  public static double log2(double x) {
+    return Math.log(x) / LOG_2;
+  }
+
+  public static double[] log2(double[] a) {
+    double[] arr = new double[a.length];
+    for (int i = 0; i < a.length; i++) {
+      arr[i] = Util.log2(a[i]);
+    }
+    return arr;
+  }
 
 }

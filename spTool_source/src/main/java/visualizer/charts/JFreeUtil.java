@@ -18,24 +18,65 @@
 package visualizer.charts;
 
 import dataModelNew.TISeries;
+
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+
+import dataModelNew.mz.Element;
+import javafx.scene.control.Tooltip;
+import javafx.util.Duration;
 import org.jfree.chart.fx.ChartViewer;
 import org.jfree.chart.plot.XYPlot;
 import org.jfree.data.statistics.HistogramDataset;
 import org.jfree.data.xy.XYDataset;
+import org.jfree.data.xy.XYIntervalSeriesCollection;
 import org.jfree.data.xy.XYSeries;
 import org.jfree.data.xy.XYSeriesCollection;
 import processing.options.BinWidthEstimator;
 import processing.options.HistogramNormalization;
+import sandbox.montecarlo.Isotope;
+import util.NF;
+import util.SnF;
 import visualizer.charts.SpChartFactory.ChartComponent;
 
 public abstract class JFreeUtil {
 
+  public static String buildTooltip(double minAbundance, double minSignal, double maxYValue,
+                                    boolean showAbundance,
+                                    List<Isotope> excludedFromLabel,
+                                    XYIntervalSeriesCollection ds, int series, int item) {
+
+    double mz = ds.getXValue(series, item);
+    int nominalMZ = (int) Math.round(mz);
+
+    List<String> matchingIsotopes = new ArrayList<>();
+
+    for (Element ele : Element.values()) {
+      for (Isotope iso : ele.getIsotopes()) {
+        double relSignal = ds.getYValue(series, item) / maxYValue;
+        if (iso.getIsotopicNumber() == nominalMZ
+            && iso.getAbundance() > minAbundance
+            && relSignal > minSignal
+            && !excludedFromLabel.contains(iso)) {
+          if (showAbundance) {
+            matchingIsotopes.add(iso.getName() + "(" + SnF.doubleToString(100 * iso.getAbundance(),
+                NF.D1C1) + "%)");
+          } else {
+            matchingIsotopes.add(iso.getName());
+          }
+        }
+      }
+    }
+
+    return String.join("\n", matchingIsotopes);
+  }
+
 
   /**
-  Filling is faster than adding new XYDataSets.
+   * Filling is faster than adding new XYDataSets.
    */
   public static void fillDataset(XYDataset dataset, ChartComponent component) {
     XYSeries xySeries = component.getData().getXySeries();
@@ -46,7 +87,7 @@ public abstract class JFreeUtil {
           component.getData().getY(),
           component.getData().getSeriesName());
     }
-    if(dataset instanceof XYSeriesCollection){
+    if (dataset instanceof XYSeriesCollection) {
       XYSeriesCollection collection = (XYSeriesCollection) dataset;
       collection.setNotify(false);
       xySeries.setNotify(false);
@@ -71,7 +112,7 @@ public abstract class JFreeUtil {
   }
 
   public static XYSeriesCollection createDataset(double[] xData, double[] yData,
-      String seriesName) {
+                                                 String seriesName) {
     XYSeriesCollection seriesCollection = new XYSeriesCollection();
     XYSeries series = wrapDataAsJFreeXYSeries(xData, yData, seriesName);
     seriesCollection.addSeries(series);
@@ -92,7 +133,7 @@ public abstract class JFreeUtil {
   }
 
   public static XYSeriesCollection createDataset(List<double[]> xData, List<double[]> yData,
-      List<String> seriesName) {
+                                                 List<String> seriesName) {
     XYSeriesCollection seriesCollection = new XYSeriesCollection();
     if (xData.size() == yData.size() && xData.size() == seriesName.size()) {
       for (int i = 0; i < xData.size(); i++) {
@@ -104,7 +145,7 @@ public abstract class JFreeUtil {
   }
 
   private static XYSeries wrapDataAsJFreeXYSeries(double[] xData, double[] yData,
-      String seriesName) {
+                                                  String seriesName) {
     final XYSeries xySeries = new XYSeries(seriesName, true, true);
     if (xData.length == yData.length) {
       for (int i = 0; i < xData.length; i++) {
@@ -121,10 +162,10 @@ public abstract class JFreeUtil {
 
   // Use List instead of tedious adding (where once has to check and update each time sth is added):
   public static List<ExtendedHistogramDataSet> createHistogramDatasets(List<double[]> dataList,
-      List<String> seriesNames,
-      HistogramNormalization type,
-      BinWidthEstimator binWidthEstimator,
-      double customBinWidth) {
+                                                                       List<String> seriesNames,
+                                                                       HistogramNormalization type,
+                                                                       BinWidthEstimator binWidthEstimator,
+                                                                       double customBinWidth) {
 
     List<ExtendedHistogramDataSet> sets = new ArrayList<>();
 
@@ -165,7 +206,6 @@ public abstract class JFreeUtil {
       return binWidth;
     }
   }
-
 
 
 }

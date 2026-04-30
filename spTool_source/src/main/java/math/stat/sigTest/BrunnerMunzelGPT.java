@@ -53,7 +53,9 @@ public abstract class BrunnerMunzelGPT {
       double sum = 0.0;
       for (int j = 0; j < ny; j++) {
         if (x[i] > y[j]) sum += 1.0;
-        else if (x[i] == y[j]) sum += 0.5;
+          // Claude Sonnet 4.6 correction: replaced == with Double.compare() to avoid
+          // fragile floating-point equality on primitive doubles.
+        else if (Double.compare(x[i], y[j]) == 0) sum += 0.5;
       }
       p_i[i] = sum / ny;
     }
@@ -62,7 +64,9 @@ public abstract class BrunnerMunzelGPT {
       double sum = 0.0;
       for (int i = 0; i < nx; i++) {
         if (y[j] > x[i]) sum += 1.0;
-        else if (y[j] == x[i]) sum += 0.5;
+          // Claude Sonnet 4.6 correction: replaced == with Double.compare() to avoid
+          // fragile floating-point equality on primitive doubles.
+        else if (Double.compare(y[j], x[i]) == 0) sum += 0.5;
       }
       q_j[j] = sum / nx;
     }
@@ -71,19 +75,28 @@ public abstract class BrunnerMunzelGPT {
     double p_hat = Arrays.stream(p_i).average().orElse(0.5);
 
     // Step 3: variance estimate
+    // Claude Sonnet 4.6 correction: variance components must be centred around
+    // the per-sample means (meanP, meanQ), not the global p_hat. Centring on
+    // p_hat produces wrong SE and W whenever nx != ny (unbalanced designs).
+    double meanP = Arrays.stream(p_i).average().orElse(0.0);
     double sX2 = 0.0;
     for (double pi : p_i) {
-      sX2 += Math.pow(pi - p_hat, 2);
+      sX2 += Math.pow(pi - meanP, 2);
     }
     sX2 /= (nx - 1);
 
+    double meanQ = Arrays.stream(q_j).average().orElse(0.0);
     double sY2 = 0.0;
     for (double qj : q_j) {
-      sY2 += Math.pow(qj - p_hat, 2);
+      sY2 += Math.pow(qj - meanQ, 2);
     }
     sY2 /= (ny - 1);
 
     double se = Math.sqrt(sX2 / nx + sY2 / ny);
+
+    // Claude Sonnet 4.6 correction: guard against zero SE (all values identical),
+    // which would produce NaN/Infinity W with no indication of failure.
+    if (Double.compare(se, 0.0) == 0) return new Result(Double.NaN, Double.NaN);
 
     // Step 4: Brunner-Munzel statistic
     double W = (p_hat - 0.5) / se;
@@ -98,8 +111,4 @@ public abstract class BrunnerMunzelGPT {
 
     return new Result(W, pValue);
   }
-
-
-
-
 }

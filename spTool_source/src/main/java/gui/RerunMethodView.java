@@ -18,6 +18,8 @@
 package gui;
 
 import core.SpTool3Main;
+import dataModelNew.Sample;
+import dataModelNew.SampleImpl;
 import dataModelNew.fxImpl.FxSample;
 import gui.dialog.FxEntry;
 import gui.dialog.FxEntryFactory;
@@ -29,11 +31,7 @@ import gui.dialog.notification.NotificationFactory;
 import gui.util.GlobalFields;
 import gui.util.UiUtil;
 import gui.viewerCells.ParamSetListCell;
-import io.GlobalIO;
-import io.XmlUtil;
 
-import java.io.File;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.function.Predicate;
@@ -54,13 +52,11 @@ import javafx.scene.control.SelectionMode;
 import javafx.scene.control.Separator;
 import javafx.scene.control.SeparatorMenuItem;
 import javafx.scene.control.ToolBar;
-import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
-import javafx.stage.FileChooser;
-import javafx.stage.FileChooser.ExtensionFilter;
+import javafx.stage.Stage;
 import javafx.util.Callback;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.logging.log4j.LogManager;
@@ -102,11 +98,11 @@ public class RerunMethodView implements ParameterView {
   //Try to remember to scroll position and focus - works!!!
   private final HashMap<FxParamSet, ListView<FxParameter<?>>> viewMap = new HashMap<>();
 
-  public  RerunMethodView(Method method, FxSample fxSample) {
+  public RerunMethodView(Method m, FxSample fxSample) {
 
     this.parentSceneForDialogs = SpTool3Main.getMainStage().getScene();
 
-    this.copyOfMethod = method.getCopyWithoutFile();
+    this.copyOfMethod = m.getCopyWithoutFile();
     this.fxCopyOfMethod = copyOfMethod.getObservableInstance();
 
     this.fxSample = fxSample;
@@ -257,11 +253,190 @@ public class RerunMethodView implements ParameterView {
         "Reprocess the sample.");
     runButton.setOnAction(e -> process());
 
-    topToolbar.getItems().addAll(methodLbl,
-        new Separator(Orientation.VERTICAL),
-        runButton,
-        new Separator(Orientation.VERTICAL)
-    );
+    Button createButton = UiUtil.getToolbarBtn(
+        "/img/startCreate.png",
+        "Create new sample based on the simulator submethods.");
+    createButton.setOnAction(e -> create());
+
+    /// ///////////////////////////////////////////
+    Button importAgain = UiUtil.getImageButton("Import again", "/img/loadFromDrive.png",
+        "Import that file of the sample again.");
+    importAgain.setPrefWidth(120);
+
+    importAgain.setOnAction(e -> {
+      // DO NOT DO THIS: THIS WAY WE CANNOT GUARANTEE THAT SAMPLE AND METHOD MATCH!
+      // List<Sample> selSamples = SpTool3Main.getRunTime().getMainWindowCtl().getSelSamples();
+      // if (!selSamples.isEmpty()) {
+      //   selSamples = List.of(selSamples.get(0));
+      // }
+
+      List<Sample> selSamples = new ArrayList<>();
+      if (fxSample != null) {
+        if (fxSample.getPlainSample() != null) {
+          selSamples.add(fxSample.getPlainSample());
+        }
+      }
+
+      List<Sample> samples = new ArrayList<>();
+      List<Path> paths = new ArrayList<>();
+      List<Method> methods = new ArrayList<>();
+      for (Sample sample : selSamples) {
+        if (sample != null) {
+          sample = sample.getPrincipleSample();
+          samples.add(sample);
+          //
+          Path path = sample.getSampleFile().getFilePath();
+          if (!path.toString().isEmpty() && !path.toString().equals("N/A") && !path.toString().equals(" ")) {
+            paths.add(path);
+            methods.add(copyOfMethod);
+          }
+        }
+      }
+
+      if (!samples.isEmpty() && !paths.isEmpty()) {
+        // needed for the PTOE popup
+        Scene scene = importAgain.getScene();
+        Stage parent = null;
+        if (scene != null) {
+          parent = (Stage) scene.getWindow();
+        }
+        SpTool3Main.getRunTime().getMainWindowCtl().startImportLoadAgain(paths, methods, parent);
+      }
+    });
+
+    Button replaceImport = UiUtil.getImageButton("Replace", "/img/refresh.png",
+        "Delete sample and import again from file.");
+    replaceImport.setPrefWidth(120);
+
+    replaceImport.setOnAction(e -> {
+      // DO NOT DO THIS: THIS WAY WE CANNOT GUARANTEE THAT SAMPLE AND METHOD MATCH!
+      // List<Sample> selSamples = SpTool3Main.getRunTime().getMainWindowCtl().getSelSamples();
+      // if (!selSamples.isEmpty()) {
+      //   selSamples = List.of(selSamples.get(0));
+      // }
+
+      List<Sample> selSamples = new ArrayList<>();
+      if (fxSample != null) {
+        if (fxSample.getPlainSample() != null) {
+          selSamples.add(fxSample.getPlainSample());
+        }
+      }
+
+      List<Sample> samples = new ArrayList<>();
+      List<Path> paths = new ArrayList<>();
+      List<Method> methods = new ArrayList<>();
+      for (Sample sample : selSamples) {
+        if (sample != null) {
+          sample = sample.getPrincipleSample();
+          samples.add(sample);
+          methods.add(copyOfMethod);
+          //
+          Path path = sample.getSampleFile().getFilePath();
+          if (!path.toString().isEmpty() && !path.toString().equals("N/A") && !path.toString().equals(" ")) {
+            paths.add(path);
+          }
+        }
+      }
+
+      if (!samples.isEmpty() && !paths.isEmpty()) {
+        // needed for the PTOE popup
+        Scene scene = replaceImport.getScene();
+        Stage parent = null;
+        if (scene != null) {
+          parent = (Stage) scene.getWindow();
+        }
+
+        List<Boolean> successes = SpTool3Main.getRunTime().getMainWindowCtl().startImportLoadAgain(paths,
+            methods,parent);
+
+        // Only remove if reimport is possible at all (i.e, if success was returned).
+        if (!successes.isEmpty()) {
+          for (int i = 0; i < successes.size(); i++) {
+            boolean success = successes.get(i);
+            if (success) {
+              if (i < samples.size()) {
+                Sample sample = samples.get(i);
+                SpTool3Main.getRunTime().getSampleReg().removeSamplesEntirely(List.of(sample));
+              }
+            }
+          }
+          // refresh UI
+          SpTool3Main.getRunTime().getMainWindowCtl().updateSampleSets();
+        }
+      }
+    });
+
+    Button replaceIsotopes = UiUtil.getSquareImageButton("Update m/z", "/img/tableTrace.png",
+        "Update isotopes in the sample.");
+    replaceIsotopes.setPrefWidth(110);
+
+    replaceIsotopes.setOnAction(e -> {
+      // DO NOT DO THIS: THIS WAY WE CANNOT GUARANTEE THAT SAMPLE AND METHOD MATCH!
+      // List<Sample> selSamples = SpTool3Main.getRunTime().getMainWindowCtl().getSelSamples();
+      // if (!selSamples.isEmpty()) {
+      //   selSamples = List.of(selSamples.get(0));
+      // }
+
+      List<Sample> selSamples = new ArrayList<>();
+      if (fxSample != null) {
+        if (fxSample.getPlainSample() != null) {
+          selSamples.add(fxSample.getPlainSample());
+        }
+      }
+
+      List<Sample> sampleRefs = new ArrayList<>();
+      List<Path> paths = new ArrayList<>();
+      List<Method> methods = new ArrayList<>();
+
+      // Should be size=1 (see above)
+      for (Sample sample : selSamples) {
+        if (sample != null) {
+
+          List<Sample> subSamples = sample.getAllSamples();
+          // These should all be sampleImpl and not merged
+          for (Sample subSample : subSamples) {
+
+            // Reload with full dialog/options
+            sampleRefs.add(subSample);
+            Path path = subSample.getSampleFile().getFilePath();
+            if (!path.toString().isEmpty() && !path.toString().equals("N/A") && !path.toString().equals(" ")) {
+              paths.add(path);
+            }
+            methods.add(copyOfMethod);
+            // needed for the PTOE popup
+            Scene scene = replaceIsotopes.getScene();
+            Stage parent = null;
+            if (scene != null) {
+              parent = (Stage) scene.getWindow();
+            }
+            SpTool3Main.getRunTime().getMainWindowCtl().startImportReplaceMZ(sampleRefs, paths, methods,
+                parent);
+
+          }
+        }
+      }
+    });
+    /// //////////////////////////////////////////
+
+
+    topToolbar.getItems().
+
+        addAll(methodLbl,
+            new Separator(Orientation.VERTICAL),
+
+            createButton,
+            new Separator(Orientation.VERTICAL),
+
+            runButton,
+            new Separator(Orientation.VERTICAL),
+
+            replaceIsotopes,
+            new Separator(Orientation.VERTICAL),
+
+            importAgain,
+            replaceImport
+        );
+
 
     // ############################################################################################
 
@@ -295,11 +470,19 @@ public class RerunMethodView implements ParameterView {
   }
 
 
+  public void create() {
+    List<FxSample> placeholderList = new ArrayList<>();
+    placeholderList.add(fxSample);
+    Actions.executeMethodCreateBtn(copyOfMethod, 1);
+  }
+
+
   public void process() {
     List<FxSample> placeholderList = new ArrayList<>();
     placeholderList.add(fxSample);
     Actions.reprocess(copyOfMethod, placeholderList);
   }
+
 
   public void notifyItemChange() {
     List<FxParamSet> fxSubMethods = getSelectedFxSets();
@@ -522,6 +705,6 @@ public class RerunMethodView implements ParameterView {
     }
   }
 
-  //////
+//////
 
 }

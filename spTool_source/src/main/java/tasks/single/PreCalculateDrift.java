@@ -57,7 +57,7 @@ public class PreCalculateDrift extends AbstractWorkingTask implements WorkingTas
       setProgress(0);
       // START ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ##
        LOGGER.trace("Calculate drift values"
-           + " in thread " + Thread.currentThread());
+           + " in thread " + Thread.currentThread().getId());
 
       Sample sample = sampleRef.get();
       if (sample != null) {

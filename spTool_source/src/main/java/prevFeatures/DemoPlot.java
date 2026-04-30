@@ -46,7 +46,7 @@ import visualizer.charts.SpChartFactory.ChartComponent;
 import visualizer.charts.SpChartFactory.ChartData;
 import visualizer.charts.SpChartFactory.ChartStyle;
 import visualizer.styles.LineGraphStyle;
-import visualizer.styles.LineLineDashDefaults;
+import visualizer.styles.LineDashDefaults;
 import visualizer.styles.LineWidthDefaults;
 import visualizer.styles.MarkerSizeDefaults;
 import visualizer.styles.MarkerStyle;
@@ -98,7 +98,7 @@ public class DemoPlot {
             "Some other value on the y", ViewUnits.NP_PER_SECOND,MathMod.NONE),
         new ChartStyle(OkabeItoColors.VERMILION, 0.1,
             LineWidthDefaults.MEDIUM,
-            LineLineDashDefaults.STRAIGHT,
+            LineDashDefaults.STRAIGHT,0f,
             MarkerSizeDefaults.SMALL,
             MarkerStyle.CROSS,
             false,
@@ -114,7 +114,7 @@ public class DemoPlot {
             "", ViewUnits.NP_PER_SECOND,MathMod.NONE),
         new ChartStyle(OkabeItoColors.PINK, 0.3,
             LineWidthDefaults.MEDIUM,
-            LineLineDashDefaults.STRAIGHT,
+            LineDashDefaults.STRAIGHT,0f,
             MarkerSizeDefaults.SMALL,
             MarkerStyle.CROSS, false,
             RendererOption.SAMPLING_LINE_AND_SHAPE,
@@ -129,7 +129,7 @@ public class DemoPlot {
             "", ViewUnits.NP_PER_SECOND,MathMod.NONE),
         new ChartStyle(OkabeItoColors.GREEN_BLUE, 0.3,
             LineWidthDefaults.MEDIUM,
-            LineLineDashDefaults.STRAIGHT,
+            LineDashDefaults.STRAIGHT,0f,
             MarkerSizeDefaults.SMALL,
             MarkerStyle.CROSS, false,
             RendererOption.SAMPLING_LINE_AND_SHAPE,
@@ -144,7 +144,7 @@ public class DemoPlot {
             "", ViewUnits.NP_PER_SECOND,MathMod.NONE),
         new ChartStyle(OkabeItoColors.ORANGE, 0.75,
             LineWidthDefaults.THIN,
-            LineLineDashDefaults.STRAIGHT,
+            LineDashDefaults.STRAIGHT,0f,
             MarkerSizeDefaults.MEDIUM,
             MarkerStyle.CROSS, false,
             RendererOption.LINE_AND_SHAPE,
@@ -162,7 +162,7 @@ public class DemoPlot {
             "", ViewUnits.NP_PER_SECOND,MathMod.NONE),
         new ChartStyle(OkabeItoColors.BLACK, 0.95,
             LineWidthDefaults.THICKER,
-            LineLineDashDefaults.STRAIGHT,
+            LineDashDefaults.STRAIGHT,0f,
             MarkerSizeDefaults.SMALL,
             MarkerStyle.CROSS, false,
             RendererOption.LINE_AND_SHAPE,
@@ -180,7 +180,7 @@ public class DemoPlot {
             "Depending Stuff", ViewUnits.NP_PER_SECOND,MathMod.NONE),
         new ChartStyle(OkabeItoColors.BLACK, 1,
             LineWidthDefaults.MEDIUM,
-            LineLineDashDefaults.STRAIGHT,
+            LineDashDefaults.STRAIGHT,0f,
             MarkerSizeDefaults.SMALL,
             MarkerStyle.CROSS, false,
             RendererOption.SAMPLING_LINE_AND_SHAPE,

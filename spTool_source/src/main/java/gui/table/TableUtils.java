@@ -371,8 +371,8 @@ public class TableUtils {
         .collect(Collectors.joining("\t"));
     sb.append(headerRow).append("\n");
 
-    // Get selected rows
-    List<T> selectedItems = tableView.getSelectionModel().getSelectedItems();
+    // Get selected rows: as new list, to not use ref to observable list
+    List<T> selectedItems = new ArrayList<>(tableView.getSelectionModel().getSelectedItems());
 
     // Get row data
     for (T item : selectedItems) {
@@ -416,8 +416,8 @@ public class TableUtils {
     // Flatten leaf columns for data extraction
     List<TableColumn<T, ?>> flatColumns = getLeafColumns(tableView.getColumns());
 
-    // Selected rows
-    List<T> selectedItems = tableView.getSelectionModel().getSelectedItems();
+    // Selected rows: warp in list and do not push ref to observable list
+    List<T> selectedItems = new ArrayList<>(tableView.getSelectionModel().getSelectedItems());
 
     // Data rows
     for (T item : selectedItems) {

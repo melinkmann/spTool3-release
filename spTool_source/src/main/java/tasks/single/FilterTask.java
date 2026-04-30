@@ -81,7 +81,7 @@ public class FilterTask extends AbstractWorkingTask implements WorkingTask {
       // START ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ##
       if (sampleRef.get() != null && params.getEnableBoolean().getValue()) {
         LOGGER.info("Filtering starts for " + sampleRef.get().getNickName()
-            + " in thread " + Thread.currentThread());
+            + " in thread " + Thread.currentThread().getId());
         double counter = 0;
         mainLoop:
         while (!getIsStopped().get()) {
@@ -90,6 +90,8 @@ public class FilterTask extends AbstractWorkingTask implements WorkingTask {
           if (sample instanceof SampleImpl) {
 
             List<Trace> traces = sample.getTraces();
+
+            traceLoop:
             for (Trace trace : traces) {
 
               PopulationID popID = branch.getID(trace);
@@ -171,7 +173,8 @@ public class FilterTask extends AbstractWorkingTask implements WorkingTask {
                               oldPop,
                               new SubEventCollection(trace, multiEventsMap.get(1), oldPop),
                               idCopy.toString(),
-                              inputPopSummary));
+                              inputPopSummary),
+                          false);
 
                       // Make this new head of branch! Else, OG ID in HashMap is altered, affecting
                       // bucketing in buggy way
@@ -197,7 +200,8 @@ public class FilterTask extends AbstractWorkingTask implements WorkingTask {
                                   oldPop,
                                   new SubEventCollection(trace, multiEventsMap.get(nEvents), oldPop),
                                   idCopyTemp.toString(),
-                                  inputPopSummary));
+                                  inputPopSummary),
+                              false);
                           // (4) Updating the branch: when ID was not just "appended"
                           // branch.overrideID(trace, );
                         }
@@ -221,7 +225,8 @@ public class FilterTask extends AbstractWorkingTask implements WorkingTask {
                               oldPop,
                               new SubEventCollection(trace, allGreaterThanOne, oldPop),
                               idCopy.toString(),
-                              inputPopSummary));
+                              inputPopSummary),
+                          false);
                       // (4) Updating the branch: when ID was not just "appended"
                       // branch.overrideID(trace, );
                     }
@@ -283,7 +288,8 @@ public class FilterTask extends AbstractWorkingTask implements WorkingTask {
                             oldPop,
                             new SubEventCollection(trace, eventsToKeep, oldPop),
                             idCopy.toString(),
-                            inputPopSummary));
+                            inputPopSummary),
+                        false);
                     // (4) Make this new head of branch!
                     branch.overrideID(trace, idCopy);
 
@@ -302,7 +308,8 @@ public class FilterTask extends AbstractWorkingTask implements WorkingTask {
                               oldPop,
                               new SubEventCollection(trace, orEventToRemove, oldPop),
                               idCopy.toString(),
-                              inputPopSummary));
+                              inputPopSummary),
+                          false);
 
                     }
                   }
@@ -339,10 +346,12 @@ public class FilterTask extends AbstractWorkingTask implements WorkingTask {
                       List<RoiStartStopBundle> startStopExceptions = params.getRoiStartStopBundles();
                       List<RoiSigFactorBundle> sigFactorExceptions = params.getRoiSigFactorBundles();
 
+                      boolean hasExceptionData = false;
                       for (RoiStartStopBundle startStopException : startStopExceptions) {
                         if (startStopException.isotopeHeaderParameter.getValue().unwrap().equals(isotope)) {
                           startPar = startStopException.start.getValue();
                           endPar = startStopException.end.getValue();
+                          hasExceptionData = true;
                           break; // break at first match
                         }
                       }
@@ -350,12 +359,15 @@ public class FilterTask extends AbstractWorkingTask implements WorkingTask {
                       for (RoiSigFactorBundle sigException : sigFactorExceptions) {
                         if (sigException.isotopeHeaderParameter.getValue().unwrap().equals(isotope)) {
                           sigFactor = sigException.sigFactor.getValue();
+                          hasExceptionData = true;
                           break; // break at first match
                         }
                       }
+                      boolean applyToExceptionOnly = params.getRoiExceptionExclusive().getValue();
 
                       List<Event> eventsToKeep = new ArrayList<>();
 
+                      /// CATEGORY STARTS
                       if (roiCategory.equals(RoiCategory.ABSOLUTE_VALUES)) {
 
                         /*
@@ -370,6 +382,13 @@ public class FilterTask extends AbstractWorkingTask implements WorkingTask {
                         case a) Parameter is duration or sth that cannot quantify -> we are OK apply ROI
                         case b)
                          */
+
+                        // special case: limiting to exceptions only
+                        if (applyToExceptionOnly) {
+                          if (!hasExceptionData) {
+                            continue traceLoop;
+                          }
+                        }
 
                         boolean applyRoi;
                         if (!EventParameter.isAreaOrHeight(eventParameter)) {
@@ -437,6 +456,14 @@ public class FilterTask extends AbstractWorkingTask implements WorkingTask {
                         }
 
                       } else if (roiCategory.equals(RoiCategory.PERCENTILES)) {
+
+                        // special case: limiting to exceptions only
+                        if (applyToExceptionOnly) {
+                          if (!hasExceptionData) {
+                            continue traceLoop;
+                          }
+                        }
+
                         // now start and stop should be percentiles.
                         startPar = Math.max(startPar, Double.MIN_VALUE);
                         startPar = Math.min(100, startPar);
@@ -629,8 +656,7 @@ public class FilterTask extends AbstractWorkingTask implements WorkingTask {
                       } else if (roiCategory.equals(RoiCategory.CHANGE_POINT)) {
                         double[] data = sample.getData(isotope, popID, EventType.NP, eventParameter, unit);
 
-                        // no math conversion since the log is applied internally anyway
-                        // data = mathConversion.calc(data);
+                         data = mathConversion.calc(data);
 
                         BinWidthEstimator estimator = params.getBinWidthEstimator().getValue();
                         double customWidth = params.getCustomBinWidth().getValue();
@@ -649,19 +675,15 @@ public class FilterTask extends AbstractWorkingTask implements WorkingTask {
                         if (!histoDataSets.isEmpty()) {
                           HistogramDataset histogramDataset = histoDataSets.get(0).getHistogramDataset();
                           OtsuRegion otsuRegion = params.getOtsuRegion().getValue();
-                          double z = params.getChangePointZ().getValue();
+                          int width = params.getSmoothWidth().getValue();
                           double lowerThr;
                           double upperThr;
                           if (otsuRegion.equals(OtsuRegion.UPPER)) {
-                            lowerThr = HistogramFilters.computelogDerivativeChangePointThreshold(
-                                histogramDataset,
-                                0, z);
+                            lowerThr = HistogramFilters.findSplitPoint(histogramDataset, width);
                             upperThr = ArrUtils.getMax(data) + 1; // make sure we are larger than max
                           } else {
                             lowerThr = ArrUtils.getMin(data) - 1; // make sure we are smaller than min
-                            upperThr = HistogramFilters.computelogDerivativeChangePointThreshold(
-                                histogramDataset,
-                                0, z);
+                            upperThr = HistogramFilters.findSplitPoint(histogramDataset, width);
                           }
 
                           // include computed threshold bounds
@@ -715,7 +737,8 @@ public class FilterTask extends AbstractWorkingTask implements WorkingTask {
                                 oldPop,
                                 new SubEventCollection(trace, eventsToKeep, oldPop),
                                 idCopy.toString(),
-                                inputPopSummary));
+                                inputPopSummary),
+                            false);
                         // (4) Make this new head of branch!
                         branch.overrideID(trace, idCopy);
 
@@ -733,7 +756,8 @@ public class FilterTask extends AbstractWorkingTask implements WorkingTask {
                                 oldPop,
                                 new SubEventCollection(trace, eventsToKeep, oldPop),
                                 idCopy.toString(),
-                                inputPopSummary));
+                                inputPopSummary),
+                            false);
                         // (4) Updating the branch: not necessary as it still has the pointer and ID was only
                         // "appended"
                       }
@@ -792,7 +816,8 @@ public class FilterTask extends AbstractWorkingTask implements WorkingTask {
                               oldPop,
                               new SubEventCollection(trace, matchFromEval, oldPop),
                               idCopyTemp.toString(),
-                              inputPopSummary));
+                              inputPopSummary),
+                          false);
                       // (4) Updating the branch: when ID was not just "appended"
                       // branch.overrideID(trace, );
                     }
@@ -812,7 +837,8 @@ public class FilterTask extends AbstractWorkingTask implements WorkingTask {
                               oldPop,
                               new SubEventCollection(trace, noMatchEval, oldPop),
                               idCopyTemp.toString(),
-                              inputPopSummary));
+                              inputPopSummary),
+                          false);
                       // (4) Updating the branch: when ID was not just "appended"
                       // branch.overrideID(trace, );
                     }
@@ -862,7 +888,7 @@ public class FilterTask extends AbstractWorkingTask implements WorkingTask {
                             inputPopSummary);
                       }
 
-                      trace.addOverridePopulation(idCopyTemp, falseNegatives);
+                      trace.addOverridePopulation(idCopyTemp, falseNegatives, false);
                       // (4) Updating the branch: when ID was not just "appended"
                       // branch.overrideID(trace, );
                     }

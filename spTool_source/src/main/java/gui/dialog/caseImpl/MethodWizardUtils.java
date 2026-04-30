@@ -55,7 +55,7 @@ public abstract class MethodWizardUtils {
     ));
     instrumentType.getSelectionModel().select("Quadrupole (QMS)");
 
-    final CheckBox csvImport = new CheckBox("Add csv import");
+    final CheckBox csvImport = new CheckBox("Add import parameters");
     csvImport.setSelected(SpTool3Main.getANALYZER());
     final CheckBox addSimulation = new CheckBox("Add data generator");
     final TextField numOfPopFld = new TextField();
@@ -103,18 +103,22 @@ public abstract class MethodWizardUtils {
 
     if (res.isPresent()) {
 
-      if (csvImport.selectedProperty().get()) {
-        CsvInterpreterParams csvParams = new CsvInterpreterParams();
-        method.getSets().add(csvParams);
-      }
 
       if (addSimulation.selectedProperty().get()) {
         MCSimGeneralParams generalParams = new MCSimGeneralParams();
 
         if (Objects.equals(instrumentType.getSelectionModel().getSelectedItem(), "Time-of-flight (TOF)")) {
           generalParams.detectorDistribution.setValue(PDF.COMPOUND_POISSON);
+          if (csvImport.selectedProperty().get()) {
+            NuInterpreterParams nuParams = new NuInterpreterParams();
+            method.getSets().add(nuParams);
+          }
         } else {
           generalParams.detectorDistribution.setValue(PDF.POISSON);
+          if (csvImport.selectedProperty().get()) {
+            CsvInterpreterParams csvParams = new CsvInterpreterParams();
+            method.getSets().add(csvParams);
+          }
         }
 
         method.getSets().add(generalParams);

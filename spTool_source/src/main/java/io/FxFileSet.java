@@ -55,7 +55,7 @@ public class FxFileSet implements FxWrapper, EditableLabel, ListableDate,
 
   @Override
   public ViewListDialog<Path> getListDialog() {
-    return new ViewListDialog<>(this, new SimpleEntryFactory<>());
+    return new ViewListDialog<>(this, new FxEntryFactory.ImportPathEntryFactory());
   }
 
 

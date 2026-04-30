@@ -56,6 +56,7 @@ public class TraceImpl implements Trace, Serializable {
   protected final MZValue mzValue;
   protected TISeries tiSeries;
   protected TISeries tiSeriesCopy;
+  protected final double siaShape;
   protected HashMap<DataFlag, List<Integer>> rawDataFlags;
 
   protected Baseline baseline;
@@ -70,6 +71,7 @@ public class TraceImpl implements Trace, Serializable {
     this.mzValue = new SQmz();
     this.tiSeries = new TISeriesRAM();
     this.tiSeriesCopy = tiSeries;
+    this.siaShape = 0;
     this.rawDataFlags = new HashMap<>();
     this.baseline = new Baseline();
     this.populations = new LinkedHashMap<>();
@@ -81,6 +83,20 @@ public class TraceImpl implements Trace, Serializable {
     this.mzValue = mzValue;
     this.tiSeries = tiSeries;
     this.tiSeriesCopy = tiSeries;
+    this.siaShape = 0;
+    this.rawDataFlags = new HashMap<>();
+    this.baseline = new Baseline();
+    this.populations = new LinkedHashMap<>();
+    xySeriesPlotCache = new SoftReference<>(null);
+  }
+
+  // For TOF data including SIA
+  public TraceImpl(Sample sample, MZValue mzValue, TISeries tiSeries, double siaShape) {
+    this.parentSample = sample;
+    this.mzValue = mzValue;
+    this.tiSeries = tiSeries;
+    this.tiSeriesCopy = tiSeries;
+    this.siaShape = siaShape;
     this.rawDataFlags = new HashMap<>();
     this.baseline = new Baseline();
     this.populations = new LinkedHashMap<>();
@@ -89,13 +105,15 @@ public class TraceImpl implements Trace, Serializable {
 
   // Copy
   public TraceImpl(Sample parentSample, MZValue mzValue, TISeries tiSeries,
-                   TISeries tiSeriesCopy, HashMap<DataFlag, List<Integer>> rawDataFlags,
+                   TISeries tiSeriesCopy, double siaShape,
+                   HashMap<DataFlag, List<Integer>> rawDataFlags,
                    Baseline baseline,
                    HashMap<PopulationID, Population> populations) {
     this.parentSample = parentSample;
     this.mzValue = mzValue.copy();
     this.tiSeries = tiSeries.copy();
     this.tiSeriesCopy = tiSeriesCopy.copy();
+    this.siaShape = siaShape;
     this.rawDataFlags = new HashMap<>();
     for (DataFlag flag : rawDataFlags.keySet()) {
       List<Integer> values = rawDataFlags.get(flag);
@@ -110,10 +128,11 @@ public class TraceImpl implements Trace, Serializable {
     this.xySeriesPlotCache = new SoftReference<>(null);
   }
 
+
   @Override
   public Trace copy(Sample newSample) {
     Trace newTrace = new TraceImpl(newSample,
-        mzValue, tiSeries, tiSeriesCopy, rawDataFlags, baseline, populations);
+        mzValue, tiSeries, tiSeriesCopy, siaShape, rawDataFlags, baseline, populations);
     return newTrace;
   }
 
@@ -122,11 +141,48 @@ public class TraceImpl implements Trace, Serializable {
 
   @Serial
   private void writeObject(ObjectOutputStream out) throws IOException {
-    // Load data into RAM
-    toRAM();
+    // Keep old references to the HDD TISeries to avoid creating new buffers in toHDD()!
+    TISeries tiSeriesHDD = null;
+    TISeries tiSeriesCopyHDD = null;
+    if (tiSeries instanceof TISeriesHDD) {
+      tiSeriesHDD = tiSeries;
+    }
+    if (tiSeriesCopy instanceof TISeriesHDD) {
+      tiSeriesCopyHDD = tiSeriesCopy;
+    }
+
+    // Load data into RAM:
+    // No region has been cut
+    if (tiSeriesCopy == tiSeries) {
+      // Convert ONE series to RAM, and pass pointer to the other. Else: do noting, they are RAM already.
+      if (tiSeries instanceof TISeriesHDD) {
+        this.tiSeries = new TISeriesRAM(tiSeries);
+        this.tiSeriesCopy = this.tiSeries;
+      }
+      // ELSE: We have two different series, regions has been cut!
+    } else {
+      if (tiSeries instanceof TISeriesHDD) {
+        this.tiSeries = new TISeriesRAM(tiSeries);
+      }
+      if (tiSeriesCopy instanceof TISeriesHDD) {
+        this.tiSeriesCopy = new TISeriesRAM(tiSeriesCopy);
+      }
+    }
+
+
+    this.baseline.toRAM();
+    this.xySeriesPlotCache = new SoftReference<>(null);
 
     // Default serialization
     out.defaultWriteObject();
+
+    // Before calling to HDD, restore the HDD references to avoid creating new buffers on drive
+    if (tiSeriesHDD != null) {
+      tiSeries = tiSeriesHDD;
+    }
+    if (tiSeriesCopyHDD != null) {
+      tiSeriesCopy = tiSeriesCopyHDD;
+    }
 
     // Offload data back to HDD
     toHDD();
@@ -142,41 +198,33 @@ public class TraceImpl implements Trace, Serializable {
       this.rawDataFlags = new HashMap<>();
     }
 
+    // If no time region was applied, tiSeries and tiSeriesCopy hold equal data but
+    // are now separate objects. Restore the identity to avoid duplicate HDD files.
+    if (tiSeries.size() == tiSeriesCopy.size()) {
+      this.tiSeriesCopy = this.tiSeries;
+    }
+
     // Offload to HDD immediately after reading
     toHDD();
   }
 
-  public void toRAM() {
-    if (tiSeries instanceof TISeriesHDD) {
-      if (tiSeriesCopy == tiSeries) {
-        this.tiSeries = new TISeriesRAM(tiSeries);
-        this.tiSeriesCopy = tiSeries;
-      } else {
-        this.tiSeries = new TISeriesRAM(tiSeries);
-      }
-    }
-
-    if (tiSeriesCopy instanceof TISeriesHDD) {
-      this.tiSeriesCopy = new TISeriesRAM(tiSeriesCopy);
-    }
-
-    this.baseline.toRAM();
-    this.xySeriesPlotCache = new SoftReference<>(null);
-  }
-
   public void toHDD() {
-    if (tiSeries instanceof TISeriesRAM) {
-      TISeries hddSeries = new TISeriesHDD(tiSeries);
-      if (tiSeriesCopy == tiSeries) {
+    // No region has been cut
+    if (tiSeriesCopy == tiSeries) {
+      // Convert ONE series to HDD, and pass pointer to the other. Else: do noting, they are HDD already.
+      if (tiSeries instanceof TISeriesRAM) {
+        TISeries hddSeries = new TISeriesHDD(tiSeries);
         this.tiSeries = hddSeries;
         this.tiSeriesCopy = hddSeries;
-      } else {
-        this.tiSeries = hddSeries;
       }
-    }
-
-    if (tiSeriesCopy instanceof TISeriesRAM) {
-      this.tiSeriesCopy = new TISeriesHDD(tiSeriesCopy);
+      // ELSE: We have two different series, regions has been cut!
+    } else {
+      if (tiSeries instanceof TISeriesRAM) {
+        this.tiSeries = new TISeriesHDD(tiSeries);
+      }
+      if (tiSeriesCopy instanceof TISeriesRAM) {
+        this.tiSeriesCopy = new TISeriesHDD(tiSeriesCopy);
+      }
     }
 
     this.baseline.toHDD();
@@ -244,6 +292,10 @@ public class TraceImpl implements Trace, Serializable {
     return new ArrayList<>(populations.values());
   }
 
+  public double getSiaShape() {
+    return siaShape;
+  }
+
   @Override
   @Nullable
   public Population getPopulation(PopulationID id) {
@@ -276,7 +328,7 @@ public class TraceImpl implements Trace, Serializable {
   }
 
   @Override
-  public void addOverridePopulation(PopulationID id, Population population) {
+  public void addOverridePopulation(PopulationID id, Population population, boolean preserveSpectra) {
 //    System.out.println("\nnew :"+id.toString());
 //    for (PopulationID populationID : populations.keySet()) {
 //      System.out.println("old :"+populationID.toString());
@@ -287,12 +339,17 @@ public class TraceImpl implements Trace, Serializable {
 //      }
 //    }
     this.populations.put(id, population);
+    // spectra only look for equal ID. ID may be equal but processing details (baseline, ...) may change
+    if (!preserveSpectra) {
+      parentSample.clearSpectralData();
+    }
   }
 
   @Override
   public void removePopulation(PopulationID id) {
-    if (id.getType() == PopulationType.SIMULATION
-        || id.getType() == PopulationType.EXTERNAL) {
+    // use steps.size() to allow deleting derived populations
+    if (id.getSteps().isEmpty() && (id.getType() == PopulationType.SIMULATION
+        || id.getType() == PopulationType.EXTERNAL)) {
       // Do nothing
     } else {
       this.populations.remove(id);
@@ -302,7 +359,15 @@ public class TraceImpl implements Trace, Serializable {
   @Override
   public void clearEvaluation() {
     this.baseline = new Baseline();
+    // retain the "External population"
+    HashMap<PopulationID, Population> externals = new LinkedHashMap<>();
+    for (PopulationID popID : populations.keySet()) {
+      if (popID.getType().equals(PopulationType.EXTERNAL)){
+        externals.put(popID, populations.get(popID));
+      }
+    }
     this.populations.clear();
+    this.populations.putAll(externals); // do not remove the external populations
     this.xySeriesPlotCache = new SoftReference<>(null);
   }
 

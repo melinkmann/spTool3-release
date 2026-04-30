@@ -17,7 +17,6 @@
 
 package processing.parameterSets.impl;
 
-import com.google.common.math.DoubleMath;
 import core.CpuThreadOption;
 import core.SpTool3Main;
 import dataModelNew.Sample;
@@ -40,6 +39,8 @@ import javafx.stage.FileChooser.ExtensionFilter;
 
 import javax.annotation.Nullable;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
@@ -64,6 +65,8 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
   @Serial
   private static final long serialVersionUID = 1000_000_000;
 
+  private static final Logger LOGGER = LogManager.getLogger(ConfParams.class.getName());
+
 
   public static final File CONFIG_FILE = GlobalIO.makeConfFile().toFile();
   private static final File METHODS_PATH = GlobalIO.makeMethodsFolder().toFile();
@@ -87,11 +90,16 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
   private final Parameter<Integer> dragDropImportFolderDepth;
   private final Parameter<String> dragDropImportFileType;
   private final Parameter<LogLevel> logLevel;
-
+  private final Parameter<Integer> zstdCompressionLevel;
+  private final Parameter<Boolean> allowMultithreadingCompression;
+  private final Parameter<Double> imageExportDpiLevel;
+  private final Parameter<Double> axisLabelSpacing;
   private final Parameter<Boolean> expertMode;
 
   private final Parameter<Integer> axisFontSize;
+  private final Parameter<Boolean> jfreePlotsWhiteOnly;
   private final Parameter<Boolean> lockZoomInGraphs;
+  private final Parameter<Boolean> refocusGraphGraphs;
 
   private final Parameter<Boolean> showReadmeToggle;
   private final Parameter<Boolean> showMethodToggle;
@@ -100,6 +108,8 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
   private final Parameter<Boolean> showHistoMCToggle;
   private final Parameter<Boolean> showScatterMCToggle;
   private final Parameter<Boolean> showBoxPlotToggle;
+  private final Parameter<Boolean> showSpectrumToggle;
+  private final Parameter<Boolean> showHACToggle;
   private final Parameter<Boolean> showSingleEventView;
   private final Parameter<Boolean> showAverageView;
   private final Parameter<Boolean> showIclToggle;
@@ -107,6 +117,8 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
   private final Parameter<Boolean> showQuantToggle;
   private final Parameter<Boolean> showLoggerToggle;
   private final Parameter<Boolean> loadDockingSizes;
+
+  private final Parameter<String> nuImportSelectedIsotopes;
 
   private final Parameter<String> isotopeColorIsotopePar;
   // Uses the String value, that is shown in the isotopeNamePar as key to retrieve the parameters.
@@ -129,8 +141,12 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
   private final Parameter<Double> default_y_mu;
   private final Parameter<Double> default_y_SD;
 
+  private final Parameter<Double> siaLowerLimit;
+  private final Parameter<Double> siaUpperLimit;
+  private final Parameter<Double> siaSigmaClip;
+
   public ConfParams() {
-    super("SpTool core parameters", XML_ELEMENT_TAG);
+    super("SpTool configuration", XML_ELEMENT_TAG);
     this.defaultProjectPath = new PathParameter(
         "Project path",
         "Default path for project data such as saving projects, exporting data",
@@ -238,6 +254,16 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
         false,
         "axisFontSize"
     );
+    this.jfreePlotsWhiteOnly = new BooleanParameter(
+        "Graphs",
+        "Make background white",
+        """
+            Makes region around chart white
+            """,
+        false,
+        false,
+        "jfreePlotsWhiteOnly");
+
 
     lockZoomInGraphs = new BooleanParameter(
         "Zoom",
@@ -248,6 +274,19 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
         false,
         "lockZoomInGraphs");
 
+    refocusGraphGraphs = new BooleanParameter(
+        "Focus",
+        "Refocus graphs after creation",
+        """
+            Activate this option if you want to navigate graphs quickly.
+            After each redraw, the graph will be focused by the UI so that arrow navigation and so forth
+            will be available.
+            Deactivate this option if you want to keep text fields and other settings in focus instead.
+            """,
+        false,
+        true,
+        "refocusGraphGraphs");
+
     logLevel = new ComboEnumParameter<>(
         "Logger level",
         "Initial level of the logger in the logger view",
@@ -256,6 +295,54 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
         LogLevel.class,
         false,
         "logLevel");
+
+    zstdCompressionLevel = new IntegerParameter(
+        "Compression level",
+        """
+            Pick a compression level for project files:
+                1: fastest
+                3: default
+                10-15: smaller files at slower speed
+                22: highest compression level but very slow""",
+        10,
+        TextFormatterOption.ASSURE_NONZERO_POSITIVE_INTEGER,
+        false,
+        "zstdCompressionLevel");
+
+    allowMultithreadingCompression = new BooleanParameter(
+        "Compression",
+        "Enable multithreading",
+        """
+            This may speed up saving projects depending on your system
+            CPS and RAM""",
+        false,
+        false,
+        "allowMultithreadingCompression");
+
+    imageExportDpiLevel = new DoubleParameter("Figure DPI",
+        """
+            For the export, choose how strongly the image is scaled up.
+            At one, resolution will be as is on screen.
+            Larger numbers significantly increase quality,
+            change plot area size,
+            and increase image file size
+            """,
+        10d,
+        NF.D1C2,
+        TextFormatterOption.ASSURE_NONZERO_POSITIVE_DOUBLE,
+        false,
+        "imageExportDpiLevel");
+
+    this.axisLabelSpacing = new DoubleParameter(
+        "Axis label space",
+        """
+            Spacing between the main tick labels of axis in pts.
+            Reduce this number to, e.g., 5 whe small cropped figures show not enough main tick labels""",
+        10d,
+        NF.D1C2,
+        TextFormatterOption.ASSURE_NONZERO_POSITIVE_INTEGER,
+        false,
+        "axisLabelSpacing");
 
     this.expertMode = new BooleanParameter(
         "Expert mode",
@@ -310,15 +397,31 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
         "Graphs",
         "Show box plots",
         "Visualize data as box plots",
-        SpTool3Main.getANALYZER(),
+        false,
         false,
         "showBoxPlotToggle");
+
+    this.showSpectrumToggle = new BooleanParameter(
+        "Graphs",
+        "Show spectrum",
+        "Visualize mass spectrum of population",
+        false,
+        false,
+        "showSpectrumToggle");
+
+    this.showHACToggle = new BooleanParameter(
+        "Graphs",
+        "Show HAC clustering",
+        "Visualize composition of population",
+        false,
+        false,
+        "showHACToggle");
 
     this.showSingleEventView = new BooleanParameter(
         "Graphs",
         "Show single event view",
         "Visualize single picked event peaks",
-        true,
+        false,
         false,
         "showSingleEventView");
 
@@ -326,7 +429,7 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
         "Graphs",
         "Show average event view",
         "Visualize averaged time series",
-        SpTool3Main.getANALYZER(),
+        false,
         false,
         "showAverageView");
 
@@ -334,7 +437,7 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
         "Graphs",
         "Show scatter plot view",
         "Show the monte carlo scatter plot section in the user interface",
-        SpTool3Main.getANALYZER(),
+        false,
         false,
         "showScatterMCToggle");
 
@@ -358,7 +461,7 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
         "Graphs",
         "Show quantification manager",
         "Show the quantification section in the user interface",
-        true,
+        SpTool3Main.getANALYZER(),
         false,
         "showQuantToggle");
 
@@ -383,6 +486,19 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
         true,
         false,
         "loadDockingSizes");
+
+    this.nuImportSelectedIsotopes = new FeedbackStringParameter(
+        "NU isotopes",
+        """
+            For the NU import when using the option 'Prompt with dialog'.
+            Here, you may set/store/change the default isotopes that are used in the dialog.
+            Note that this does not affect the 'Select' option""",
+        "",
+        TextFormatterOption.ALL_PASS,
+        false,
+        "nuImportSelectedIsotopes"
+    );
+
 
     String[] isotopeNames = dataModelNew.mz.Element.getAllIsotopeFullUINames();
 
@@ -415,7 +531,20 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
 
     defaultIsotopeElementPar = new ComboStringParameter(
         "Default isotope",
-        "Specify the default isotope for each element",
+        """
+            Specify the default isotope for each element.
+            The default isotope is used in the following cases:
+            
+            1) It defines which isotopes are selected in the isotope table in the main window
+               when you click 'Default'.
+            
+            2) In the periodic table popup, e.g., used for TOF data import,
+               when clicking 'Select all' all elements are selected.
+               However, it does not pick all isotopes but only the default isotope.
+            
+            3) When importing data, e.g., from .csv files, spTool tries to assign an isotope to the data.
+               If only an element is given or the isotope cannot be identified due to formatting issues,
+               the default isotope will be used to continue""",
         dataModelNew.mz.Element.H.getLongName(),
         dataModelNew.mz.Element.getAllElementNames(),
         true,
@@ -448,8 +577,19 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
         .collect(Collectors.toList());
     resolveIsotopeConflictPar = new ComboStringParameter(
         "Conflicting isotopes",
-        "For SpCal export: Specify the default isotope for a nominal isotopic number if it appears multiple" +
-            " times",
+        """
+            Specify the default isotope instances of equal nominal masses.
+            This is used to resolve isobaric isotope conflicts in the following cases:
+            
+            1) In the TOF data import using the 'Threshold' option,
+               the spectral raw data obviously cannot specify if, e.g., m/z 48 is Ca or Ti.
+               In the Nu import submethod you may specify to either load all conflicting isotopes
+               or to resolve by using the conflict resolution specified here in the configuration.
+               As an example, you can use this parameter to state that m/z 48 shall be loaded as 48Ti.
+            
+            2) When importing data, e.g., from .csv files, spTool tries to assign an isotope to the data.
+               If only an isotopic number is given or the element cannot be identified due to formatting issues,
+               the default isotope will be used to continue""",
         potentialConflictMasses.get(0),
         ArrUtils.stringListToArr(potentialConflictMasses),
         true,
@@ -473,7 +613,7 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
     }
 
     eventParameter = new ComboEnumParameter<>(
-        "Event parameter",
+        "Table: Event parameter",
         "Choose a custom event parameter that is shown in the results table",
         EventParameter.BACKGROUND_PER_NP,
         EventParameter.histo(),
@@ -483,7 +623,7 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
     );
 
     eventMathModification = new ComboEnumParameter<>(
-        "Math",
+        "Table: Math",
         "Choose a custom data transformation that is shown in the results table",
         MathMod.NONE,
         MathMod.values(),
@@ -494,21 +634,25 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
 
 
     default_D_mu = new DoubleParameter("Diffusion coefficient (D) [cm2/s]",
-        "Default value for the mean diffusion coefficient of the element in the plasma."
-            + "\nHigher values lead to broader peaks."
-            + "\nWhy? When the diffusion coefficient of an ion is greater,"
-            + "\nthe peak will spread out more strongly (i.e., the ion cloud become more diffuse)."
-            + "\nA good starting point is D=90 cm2/s",
-        90d,
+        """
+            Default value for the mean diffusion coefficient of the element in the plasma.
+            Higher values lead to broader peaks.
+            Why? When the diffusion coefficient of an ion is greater,
+            the peak will spread out more strongly (i.e., the ion cloud become more diffuse).
+            A good starting point is D=20 cm2/s
+            but values closer to 100 cm2/s are also plausible (to obtain broader peaks)""",
+        21d,
         NF.D1C1,
         TextFormatterOption.ASSURE_NONZERO_POSITIVE_DOUBLE,
         false,
         "default_D_mu");
 
-    default_D_SD = new DoubleParameter("Diffusion coefficient (±SD)",
-        "Default value for the standard deviation of D."
-            + "\nThis number specifies how broadly the random numbers vary",
-        5d,
+    default_D_SD = new DoubleParameter("Diffusion coefficient (SD)",
+        """
+            Default value for the standard deviation of D.
+            This number specifies how broadly the random numbers vary.
+            A good starting point is SD=5 cm2/s""",
+        4d,
         NF.D1C1,
         TextFormatterOption.ASSURE_POSITIVE_DOUBLE,
         false,
@@ -520,45 +664,83 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
             Higher values lead to narrower peaks.
             Why? Higher velocities lead to a shorter residence time in the plasma
             which means that there is less time available for the ions to diffuse.
-             A good starting point is v=18 m/s""",
-        18d,
+            A good starting point is v=15 m/s""",
+        15d,
         NF.D1C1,
         TextFormatterOption.ASSURE_NONZERO_POSITIVE_DOUBLE,
         false,
         "default_v_mu");
 
-    default_v_SD = new DoubleParameter("Plasma velocity (±SD) [m/s]",
-        "Default value for the standard deviation of v."
-            + "\nThis number specifies how broadly the random numbers vary",
-        6d,
+    default_v_SD = new DoubleParameter("Plasma velocity (SD) [m/s]",
+        """
+            Default value for the standard deviation of v.
+            This number specifies how broadly the random numbers vary.
+            A good starting point is SD=5 m/s""",
+        5d,
         NF.D1C1,
         TextFormatterOption.ASSURE_POSITIVE_DOUBLE,
         false,
         "default_v_SD");
 
     default_y_mu = new DoubleParameter("Distance of vaporization (y) [mm]",
-        "Default value for the mean distance from the sampler orifice where a particle is completely ionized."
-            + "\nHigher values lead the broader peaks."
-            + "\nWhy? The model assumes an instantaneous vaporization of the particle."
-            + "\nAfter that, the ions start to diffuse into the surrounding plasma, causing peak broadening."
-            + "\nWhen the distance from the orifice is greater, the residence time in the plasma increases,"
-            + "\nwhich means that there is more time available for the ions to diffuse."
-            + "\nA good starting point is y=6.5 mm",
-        6.5d,
+        """
+            Default value for the mean distance from the sampler orifice where a particle is completely ionized.
+            Higher values lead the broader peaks.
+            Why? The model assumes an instantaneous vaporization of the particle.
+            After that, the ions start to diffuse into the surrounding plasma, causing peak broadening.
+            When the distance from the orifice is greater, the residence time in the plasma increases,
+            which means that there is more time available for the ions to diffuse.
+            A good starting point is y=10 mm""",
+        9.5d,
         NF.D1C4,
         TextFormatterOption.ASSURE_NONZERO_POSITIVE_DOUBLE,
         false,
         "default_y_mu");
 
-    default_y_SD = new DoubleParameter("Distance of vaporization (±SD) [mm]",
-        "Default value for the standard deviation of y."
-            + "\nThis number specifies how broadly the random numbers vary",
-        4d,
+    default_y_SD = new DoubleParameter("Distance of vaporization (SD) [mm]",
+        """
+            Default value for the standard deviation of y.
+            This number specifies how broadly the random numbers vary.
+            A good starting point is SD=3 mm""",
+        3d,
         NF.D1C1,
         TextFormatterOption.ASSURE_POSITIVE_DOUBLE,
         false,
         "default_y_SD");
 
+
+    siaLowerLimit = new DoubleParameter("SIA lower limit",
+        """
+            Lower tolerated limit of the SIA shape factor for baseline computation.
+            If exceeded, an average of all isotopes is used
+            or if that is ill, too, the user specified parameter""",
+        0.2d,
+        NF.D1C3,
+        TextFormatterOption.ASSURE_NONZERO_POSITIVE_DOUBLE,
+        false,
+        "siaLowerLimit");
+
+    siaUpperLimit = new DoubleParameter("SIA upper limit",
+        """
+            Lower tolerated limit of the SIA shape factor for baseline computation.
+            If exceeded, an average of all isotopes is used
+            or if that is ill, too, the user specified parameter""",
+        1d,
+        NF.D1C3,
+        TextFormatterOption.ASSURE_NONZERO_POSITIVE_DOUBLE,
+        false,
+        "siaUpperLimit");
+
+
+    siaSigmaClip = new DoubleParameter("SIA sigma clip",
+        """
+            Tightens the intensity range for SIA determination.
+            Larger values tend to yield larger SIA shape estimates""",
+        5d,
+        NF.D1C1,
+        TextFormatterOption.ASSURE_NONZERO_POSITIVE_DOUBLE,
+        false,
+        "siaSigmaClip");
 
     organize();
   }
@@ -583,11 +765,17 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
     this.dragDropImportFileType = confParams.dragDropImportFileType.copyWithoutChildren();
 
     this.logLevel = confParams.logLevel.copyWithoutChildren();
+    this.zstdCompressionLevel = confParams.zstdCompressionLevel.copyWithoutChildren();
+    this.allowMultithreadingCompression = confParams.allowMultithreadingCompression.copyWithoutChildren();
+    this.imageExportDpiLevel = confParams.imageExportDpiLevel.copyWithoutChildren();
+    this.axisLabelSpacing = confParams.axisLabelSpacing.copyWithoutChildren();
 
     this.expertMode = confParams.expertMode.copyWithoutChildren();
 
     this.axisFontSize = confParams.axisFontSize.copyWithoutChildren();
+    this.jfreePlotsWhiteOnly = confParams.jfreePlotsWhiteOnly.copyWithoutChildren();
     this.lockZoomInGraphs = confParams.lockZoomInGraphs.copyWithoutChildren();
+    this.refocusGraphGraphs = confParams.refocusGraphGraphs.copyWithoutChildren();
     this.showReadmeToggle = confParams.showReadmeToggle.copyWithoutChildren();
     this.showMethodToggle = confParams.showMethodToggle.copyWithoutChildren();
     this.showTableToggle = confParams.showTableToggle.copyWithoutChildren();
@@ -595,6 +783,8 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
     this.showHistoMCToggle = confParams.showHistoMCToggle.copyWithoutChildren();
     this.showScatterMCToggle = confParams.showScatterMCToggle.copyWithoutChildren();
     this.showBoxPlotToggle = confParams.showBoxPlotToggle.copyWithoutChildren();
+    this.showSpectrumToggle = confParams.showSpectrumToggle.copyWithoutChildren();
+    this.showHACToggle = confParams.showHACToggle.copyWithoutChildren();
     this.showIclToggle = confParams.showIclToggle.copyWithoutChildren();
     this.showLoggerToggle = confParams.showLoggerToggle.copyWithoutChildren();
     this.showSingleEventView = confParams.showSingleEventView.copyWithoutChildren();
@@ -611,6 +801,12 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
     this.default_v_SD = confParams.default_v_SD.copyWithoutChildren();
     this.default_y_mu = confParams.default_y_mu.copyWithoutChildren();
     this.default_y_SD = confParams.default_y_SD.copyWithoutChildren();
+
+    this.siaLowerLimit = confParams.siaLowerLimit.copyWithoutChildren();
+    this.siaUpperLimit = confParams.siaUpperLimit.copyWithoutChildren();
+    this.siaSigmaClip = confParams.siaSigmaClip.copyWithoutChildren();
+
+    this.nuImportSelectedIsotopes = confParams.nuImportSelectedIsotopes.copyWithoutChildren();
 
     // Default colors
 
@@ -681,13 +877,20 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
           dragDropImportFileType,
           useMethodsCsvReader,
           createNewSampleSetOnImport,
+          nuImportSelectedIsotopes,
           defaultMethodPath,
           currentMethodFile,
+          new SeparatorParameter(),
           isotopeColorIsotopePar,
           defaultIsotopeElementPar,
           resolveIsotopeConflictPar,
-          axisFontSize,
+          new SeparatorParameter(),
           lockZoomInGraphs,
+          axisFontSize,
+          jfreePlotsWhiteOnly,
+          refocusGraphGraphs,
+          imageExportDpiLevel,
+          axisLabelSpacing,
           showReadmeToggle,
           showMethodToggle,
           showTableToggle,
@@ -695,23 +898,33 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
           showHistoMCToggle,
           showScatterMCToggle,
           showBoxPlotToggle,
+          showSpectrumToggle,
+          showHACToggle,
           showSingleEventView,
-          showIclToggle,
           showCompareHistoToggle,
           showAverageView,
           showQuantToggle,
+          showIclToggle,
           showLoggerToggle,
           loadDockingSizes,
           eventParameter,
           eventMathModification,
+          new SeparatorParameter(),
           default_D_mu,
           default_D_SD,
           default_v_mu,
           default_v_SD,
           default_y_mu,
           default_y_SD,
+          new SeparatorParameter(),
+          siaLowerLimit,
+          siaUpperLimit,
+          siaSigmaClip,
+          new SeparatorParameter(),
           logLevel,
-          numberOfThreadsModel
+          numberOfThreadsModel,
+          zstdCompressionLevel,
+          allowMultithreadingCompression
       );
     } else {
       super.setParentParameters(
@@ -722,8 +935,12 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
           isotopeColorIsotopePar,
           defaultIsotopeElementPar,
           resolveIsotopeConflictPar,
-          axisFontSize,
           lockZoomInGraphs,
+          axisFontSize,
+          jfreePlotsWhiteOnly,
+          refocusGraphGraphs,
+          imageExportDpiLevel,
+          axisLabelSpacing,
           showReadmeToggle,
           showMethodToggle,
           showTableToggle,
@@ -745,12 +962,22 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
           default_v_SD,
           default_y_mu,
           default_y_SD,
+          siaLowerLimit,
+          siaUpperLimit,
+          siaSigmaClip,
           logLevel,
-          numberOfThreadsModel
+          numberOfThreadsModel,
+          zstdCompressionLevel,
+          allowMultithreadingCompression
       );
     }
     if (!SpTool3Main.SHOW_PEAK_MODEL) {
       super.parentParameters.remove(showIclToggle);
+    }
+
+    if (!SpTool3Main.SHOW_PVALUE_EXPORT) {
+      super.parentParameters.remove(showSpectrumToggle);
+      super.parentParameters.remove(showHACToggle);
     }
 
 
@@ -806,6 +1033,8 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
     showHistoMCToggle.setDecoration(new ImageDecoration<>("/img/histoViewMC.png"));
     showScatterMCToggle.setDecoration(new ImageDecoration<>("/img/scatter.png"));
     showBoxPlotToggle.setDecoration(new ImageDecoration<>("/img/boxplot.png"));
+    showSpectrumToggle.setDecoration(new ImageDecoration<>("/img/spectrumView.png"));
+    showHACToggle.setDecoration(new ImageDecoration<>("/img/clusterDendrogram.png"));
     showSingleEventView.setDecoration(new ImageDecoration<>("/img/singlePeakView.png"));
     showIclToggle.setDecoration(new ImageDecoration<>("/img/ICL.png"));
     showLoggerToggle.setDecoration(new ImageDecoration<>("/img/warnInfo.png"));
@@ -845,9 +1074,15 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
           case "dragDropImportFolderDepth" -> dragDropImportFolderDepth;
           case "dragDropImportFileType" -> dragDropImportFileType;
           case "logLevel" -> logLevel;
+          case "zstdCompressionLevel" -> zstdCompressionLevel;
+          case "allowMultithreadingCompression" -> allowMultithreadingCompression;
           case "expertMode" -> expertMode;
           case "axisFontSize" -> axisFontSize;
+          case "jfreePlotsWhiteOnly" -> jfreePlotsWhiteOnly;
           case "lockZoomInGraphs" -> lockZoomInGraphs;
+          case "imageExportDpiLevel" -> imageExportDpiLevel;
+          case "axisLabelSpacing" -> axisLabelSpacing;
+          case "refocusGraphGraphs" -> refocusGraphGraphs;
           case "showReadmeToggle" -> showReadmeToggle;
           case "showMethodToggle" -> showMethodToggle;
           case "showTableToggle" -> showTableToggle;
@@ -856,6 +1091,8 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
           case "showSingleEventView" -> showSingleEventView;
           case "showScatterMCToggle" -> showScatterMCToggle;
           case "showBoxPlotToggle" -> showBoxPlotToggle;
+          case "showSpectrumToggle" -> showSpectrumToggle;
+          case "showHACToggle" -> showHACToggle;
           case "showIclToggle" -> showIclToggle;
           case "showAverageView" -> showAverageView;
           case "showLoggerToggle" -> showLoggerToggle;
@@ -874,6 +1111,12 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
           case "default_v_SD" -> default_v_SD;
           case "default_y_mu" -> default_y_mu;
           case "default_y_SD" -> default_y_SD;
+
+          case "siaLowerLimit" -> siaLowerLimit;
+          case "siaUpperLimit" -> siaUpperLimit;
+          case "siaSigmaClip" -> siaSigmaClip;
+
+          case "nuImportSelectedIsotopes" -> nuImportSelectedIsotopes;
 
           default -> null;
         };
@@ -1026,12 +1269,53 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
     return logLevel.getValue();
   }
 
+  public Parameter<Integer> getZstdCompressionLevel() {
+    return zstdCompressionLevel;
+  }
+
+  public int calcNumberOfCompressorThreads() {
+    int threads = 1;
+
+    if (allowMultithreadingCompression.getValue()) {
+      // inspired by parallel garbage collector's rules
+      final int runtimeCores = Runtime.getRuntime().availableProcessors();
+      if (runtimeCores < 4) {
+        threads = runtimeCores;
+      } else {
+        // recommendedThreads = (int) (0.625 * runtimeCores);
+        threads = (int) Math.floor(0.625 * runtimeCores);
+      }
+    }
+
+    return threads;
+  }
+
   public int getAxisFontSize() {
     return axisFontSize.getValue();
   }
 
+  public Parameter<Boolean> getJfreePlotsWhiteOnly() {
+    return jfreePlotsWhiteOnly;
+  }
+
   public boolean isLockZoomInGraphs() {
     return lockZoomInGraphs.getValue();
+  }
+
+  public synchronized Boolean getRefocusGraphGraphs() {
+    return refocusGraphGraphs.getValue();
+  }
+
+  public Parameter<Double> getImageExportDpiLevel() {
+    return imageExportDpiLevel;
+  }
+
+  public float getImageExportDpiLevelFloat() {
+    return imageExportDpiLevel.getValue().floatValue();
+  }
+
+  public double getAxisLabelSpacing() {
+    return axisLabelSpacing.getValue();
   }
 
   public boolean showAllParamsAsExpert() {
@@ -1056,6 +1340,14 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
 
   public boolean isShowHistoMC() {
     return showHistoMCToggle.getValue();
+  }
+
+  public boolean isShowSpectrum() {
+    return showSpectrumToggle.getValue();
+  }
+
+  public boolean isShowHAC() {
+    return showHACToggle.getValue();
   }
 
   public boolean isShowScatterMC() {
@@ -1138,6 +1430,10 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
     }
   }
 
+  public Parameter<String> getNuImportSelectedIsotopes() {
+    return nuImportSelectedIsotopes;
+  }
+
   public Isotope getDefaultIsotope(dataModelNew.mz.Element element) {
     // Default (Backup initialization)
     Isotope defaultIsotope = element.getMostAbundant();
@@ -1160,8 +1456,8 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
   @Nullable
   public Isotope resolveConflictOrGet(int isotopicNumber) {
     Isotope suggestion = dataModelNew.mz.Element.UNKNOWN.getMostAbundant();
-    String isotopicNumberStr = Integer.toString(isotopicNumber);
-    Parameter<dataModelNew.mz.Element> resolvePar = isotopeConflictMap.get(isotopicNumberStr);
+    String nominalMassStr = Integer.toString(isotopicNumber);
+    Parameter<dataModelNew.mz.Element> resolvePar = isotopeConflictMap.get(nominalMassStr);
     if (resolvePar != null) {
       dataModelNew.mz.Element prefElement = resolvePar.getValue();
       for (Isotope isotope : prefElement.getIsotopes()) {
@@ -1171,13 +1467,25 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
         }
       }
     } else {
-      // there was no entry in the conflict map with that key --> isotope does not conflict
-      for (Isotope candidate : dataModelNew.mz.Element.getAllIsotopes()) {
-        if (DoubleMath.fuzzyEquals(isotopicNumber, candidate.getIsotopicNumber(), 1E-6)) {
-          suggestion = candidate;
-          break;
+      double maxAbundant = 0;
+      for (dataModelNew.mz.Element ele : dataModelNew.mz.Element.values()) {
+        for (Isotope isotope : ele.getIsotopes()) {
+          if (isotope.getIsotopicNumber() == isotopicNumber && isotope.getAbundance() > maxAbundant) {
+            maxAbundant = isotope.getAbundance();
+            suggestion = isotope;
+          }
         }
       }
+      LOGGER.trace("Used most abundant isotope " + suggestion.getName() + " for mz " + isotopicNumber);
+      //} else {
+      //  // there was no entry in the conflict map with that key --> isotope does not conflict
+      //  for (Isotope candidate : dataModelNew.mz.Element.getAllIsotopes()) {
+      //    if (isotopicNumber == candidate.getIsotopicNumber()) {
+      //      suggestion = candidate;
+      //      LOGGER.trace("Had to read/guess isotope as first match for " + isotopicNumber);
+      //      break;
+      //    }
+      //  }
     }
     return suggestion;
   }
@@ -1214,4 +1522,16 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
     return default_y_SD;
   }
 
+
+  public Parameter<Double> getSiaLowerLimit() {
+    return siaLowerLimit;
+  }
+
+  public Parameter<Double> getSiaUpperLimit() {
+    return siaUpperLimit;
+  }
+
+  public Parameter<Double> getSiaSigmaClip() {
+    return siaSigmaClip;
+  }
 }

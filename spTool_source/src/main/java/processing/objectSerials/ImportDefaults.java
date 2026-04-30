@@ -17,8 +17,11 @@
 
 package processing.objectSerials;
 
+import core.SpTool3Main;
 import io.FileSet;
 import io.VisitedFile;
+
+import java.io.File;
 import java.io.Serial;
 import java.io.Serializable;
 import java.net.URI;
@@ -26,6 +29,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
+
 import org.apache.commons.lang3.SystemUtils;
 
 public class ImportDefaults implements Serializable {
@@ -33,7 +37,7 @@ public class ImportDefaults implements Serializable {
   @Serial
   private static final long serialVersionUID = 2;
 
-  /////////////////////////////////////////////////////////////////////////////////////////////
+  /// //////////////////////////////////////////////////////////////////////////////////////////
 
   private URI currentDir;
   private List<VisitedFile> previousLocations;
@@ -44,7 +48,7 @@ public class ImportDefaults implements Serializable {
 
   private List<FileSet> previousFileSets;
 
-  /////////////////////////////////////////////////////////////////////////////////////////////
+  /// //////////////////////////////////////////////////////////////////////////////////////////
 
   public ImportDefaults() {
     this.currentDir = Path.of(SystemUtils.getUserHome().getAbsolutePath()).toUri();
@@ -71,7 +75,19 @@ public class ImportDefaults implements Serializable {
 
 
   public Path getCurrentDir() {
-    return Path.of(currentDir);
+    Path result;
+    Path home = Path.of(SystemUtils.getUserHome().getAbsolutePath());
+    Path current = Path.of(currentDir);
+    if (current.toString().equals(home.toString())) {
+      result = SpTool3Main.getRunTime().getConfParams().getDefaultImportPath();
+      File resFile = result.toFile();
+      if (!resFile.isDirectory() && resFile.exists()) {
+        result = current;
+      }
+    } else {
+      result = current;
+    }
+    return result;
   }
 
   public List<VisitedFile> getCopyOfPreviousLocations() {
@@ -113,7 +129,7 @@ public class ImportDefaults implements Serializable {
     previousFileSets.addAll(sets);
   }
 
-  ///////////////////////////////////////////////////////////////////////////////////
+  /// ////////////////////////////////////////////////////////////////////////////////
 
   public void setCurrentDir(Path currentDir) {
     this.currentDir = currentDir.toUri();
@@ -173,7 +189,6 @@ public class ImportDefaults implements Serializable {
   public void addPreviousFileSet(FileSet set) {
     previousFileSets.add(set);
   }
-
 
 
 }

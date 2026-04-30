@@ -61,7 +61,7 @@ public class DTGroupTask extends AbstractWorkingTask implements WorkingTask {
       setProgress(0);
       // START ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ##
       LOGGER.info("Starting dwell time change operation"
-          + " in thread " + Thread.currentThread());
+          + " in thread " + Thread.currentThread().getId());
 
       RawProcessingUtils.groupDT(selSamples,
           selIsotopes,

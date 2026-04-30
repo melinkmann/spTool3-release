@@ -27,7 +27,7 @@ public enum FilterOptions {
   OVERLAP {
     @Override
     public String toString() {
-      return "Overlap";
+      return "Coincidence";
     }
   },
 

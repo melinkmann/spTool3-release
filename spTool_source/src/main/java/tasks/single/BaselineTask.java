@@ -19,11 +19,14 @@ package tasks.single;
 
 import analysis.Baseline;
 import analysis.BaselineGenerator;
+import core.SpTool3Main;
 import dataModelNew.Sample;
 import dataModelNew.SampleImpl;
 import dataModelNew.Trace;
+
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
+
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -38,6 +41,9 @@ public class BaselineTask extends AbstractWorkingTask implements WorkingTask {
 
   private final BaselineParams params;
   private final AtomicReference<Sample> sampleRef;
+
+  private final double lowerSIALim = SpTool3Main.getRunTime().getConfParams().getSiaLowerLimit().getValue();
+  private final double upperSIALim = SpTool3Main.getRunTime().getConfParams().getSiaUpperLimit().getValue();
 
   public BaselineTask(String taskName, BaselineParams params, AtomicReference<Sample> sampleRef) {
     super(taskName);
@@ -56,7 +62,7 @@ public class BaselineTask extends AbstractWorkingTask implements WorkingTask {
       // START ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ##
       if (sampleRef.get() != null) {
         LOGGER.info("Baseline computation starts for " + sampleRef.get().getNickName()
-            + " in thread " + Thread.currentThread());
+            + " in thread " + Thread.currentThread().getId());
         double counter = 0;
         mainLoop:
         while (!getIsStopped().get()) {
@@ -64,6 +70,8 @@ public class BaselineTask extends AbstractWorkingTask implements WorkingTask {
           Sample sample = sampleRef.get();
 
           if (sample instanceof SampleImpl) {
+
+            double meanSIA = sample.getMeanSiaShape();
 
             List<Trace> traces = sample.getTraces();
             for (Trace trace : traces) {
@@ -74,7 +82,17 @@ public class BaselineTask extends AbstractWorkingTask implements WorkingTask {
               }
 
               double[] data = trace.getTISeries().getIntensity();
-              Baseline bln = BaselineGenerator.generateBaseline(params, data);
+              double siaShape = trace.getSiaShape();
+              if (siaShape < lowerSIALim || siaShape > upperSIALim) {
+                LOGGER.info(trace.getMzValue().getName() + ": " +
+                    "Empirical SIA shape was ill conditioned: " + siaShape
+                    + ". Passing average SIA of all isotopes to the baseline computation: " + meanSIA
+                    + ". Allowed limits are set in configuration:" +
+                    "Lower: " + lowerSIALim + ", upper: " + upperSIALim + ".");
+                siaShape = meanSIA;
+              }
+              Baseline bln = BaselineGenerator.generateBaseline(params, data, trace.getTISeries().getDT(),
+                  siaShape, lowerSIALim, upperSIALim);
               trace.setBaseline(bln);
 
               setProgress(counter / traces.size());

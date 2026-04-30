@@ -123,7 +123,7 @@ public abstract class SignificanceTests {
   }
 
   public static double kruskalWallisTest(List<double[]> data) {
-    KruskallWallisGPT.Result kw = KruskallWallisGPT.kruskalWallis(data);
+    KruskalWallisGPT.Result kw = KruskalWallisGPT.kruskalWallis(data);
     return kw.pValue;
   }
 

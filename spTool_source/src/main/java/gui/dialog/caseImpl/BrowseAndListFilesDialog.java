@@ -97,7 +97,7 @@ public class BrowseAndListFilesDialog extends AbstractListDialog<Path> {
 
     listSearchView.addSelectAllMenu();
     listSearchView.addSelectDeselectMenus();
-    listSearchView.addViewContentOfItemMenu();
+    listSearchView.addViewContentOfItemMenu(); // shows the list of files in the file set
 
     final DialogPane dialogPane = getDialogPane();
 
@@ -117,11 +117,11 @@ public class BrowseAndListFilesDialog extends AbstractListDialog<Path> {
       importDefaults.setLimitIsSelected(limitTypeBox.isSelected());
     });
 
-    PauseTransition limitTypePause = new PauseTransition(Duration.seconds(0.5));
+    PauseTransition limitTypePause = new PauseTransition(Duration.seconds(0.1));
     AtomicReference<String> pendingNewTypeLimitation = new AtomicReference<>("");
     limitTypePause.setOnFinished(event -> importDefaults.setLimitType(pendingNewTypeLimitation.get()));
 
-    limitTypeBox.textProperty().addListener(new ChangeListener<String>() {
+    typeFld.textProperty().addListener(new ChangeListener<String>() {
       @Override
       public void changed(ObservableValue<? extends String> observable, String oldValue,
                           String newValue) {
@@ -170,7 +170,7 @@ public class BrowseAndListFilesDialog extends AbstractListDialog<Path> {
     currentDirFld.getContextMenu().getItems().add(menuBrowse);
 
     // Change of Field should also affect the storage
-    PauseTransition currentDirPause = new PauseTransition(Duration.seconds(0.5));
+    PauseTransition currentDirPause = new PauseTransition(Duration.seconds(0.1));
     AtomicReference<String> pendingOldDir = new AtomicReference<>("");
     AtomicReference<String> pendingNewDir = new AtomicReference<>("");
     currentDirPause.setOnFinished(event -> {
@@ -182,6 +182,7 @@ public class BrowseAndListFilesDialog extends AbstractListDialog<Path> {
         LOGGER.error("No such directory: " + pendingNewDir.get());
       }
     });
+
     currentDirFld.textProperty().addListener(new ChangeListener<String>() {
       @Override
       public void changed(ObservableValue<? extends String> observable, String oldValue,

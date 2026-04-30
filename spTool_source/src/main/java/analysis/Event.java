@@ -55,9 +55,15 @@ public interface Event extends Serializable {
 
   TISeries getProfile();
 
+  TISeries getLogProfile();
+
   TISeries getPreviousDP(int preview);
 
   TISeries getFollowingDP(int preview);
+
+  TISeries getLogPreviousDP(int preview);
+
+  TISeries getLogFollowingDP(int preview);
 
   String getLabel();
 

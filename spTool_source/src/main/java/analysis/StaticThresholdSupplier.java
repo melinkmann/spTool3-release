@@ -48,10 +48,16 @@ public class StaticThresholdSupplier implements ThresholdSupplier, Serializable 
 
 
   @Override
-  public double interpolate(int i, int rawLength) {
+  public double interpolateProtected(int i, int rawLength) {
     // Yield at least 0.1. There are issues with e.g. CompoundPoisson where 0 may be returned.
-     return Math.max(staticThresholdValue, LEAST_THR);
+    return Math.max(staticThresholdValue, LEAST_THR);
     // return staticThresholdValue;
+  }
+
+  @Override
+  public double interpolateUnprotected(int i, int rawLength) {
+    // e.g. for alpha values in gating
+    return staticThresholdValue;
   }
 
   @Override

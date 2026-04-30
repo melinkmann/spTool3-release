@@ -36,11 +36,7 @@ import processing.options.OutlierModel;
 import processing.parameterSets.AbstractParamSet;
 import processing.parameterSets.AvailableParameterSets;
 import processing.parameterSets.ParamSet;
-import processing.parameters.BooleanParameter;
-import processing.parameters.ComboEnumParameter;
-import processing.parameters.DoubleParameter;
-import processing.parameters.IntegerParameter;
-import processing.parameters.Parameter;
+import processing.parameters.*;
 import util.NF;
 
 public class BaselineParams extends AbstractParamSet implements ParamSet {
@@ -51,7 +47,7 @@ public class BaselineParams extends AbstractParamSet implements ParamSet {
   public static final String XML_ELEMENT_TAG = "BaselineParams";
 
   private final Parameter<BaselineDynamic> baselineDynamics;
-  private final Parameter<Integer> baselinePointsPerSegment;
+  private Parameter<Double> baselineWidthPerSegment;
 
   // Parameter: Only decide what model is to be used. Actual significance is chosen later at search.
   private final Parameter<DistributionModel> generalDistributionApproach;
@@ -65,6 +61,7 @@ public class BaselineParams extends AbstractParamSet implements ParamSet {
 
   private final Parameter<CompoundPoissonModel> compoundPoissonModel;
   private final Parameter<Double> siaShape;
+  private Parameter<Boolean> preferEmpiricalSIA;
 
   // Outlier test
   private final Parameter<OutlierModel> outlierTestTypeGauss;
@@ -100,19 +97,24 @@ public class BaselineParams extends AbstractParamSet implements ParamSet {
         "baselineDynamics"
     );
 
-    this.baselinePointsPerSegment = new IntegerParameter(
-        "Points per segment [-]",
-        "Data points per segment of the dynamic baseline[-]",
-        2000,
+    this.baselineWidthPerSegment = new DoubleParameter(
+        "Segment width [ms]",
+        "Width defines data points per segment of the dynamic baseline [ms]",
+        100d,
+        NF.D1C2,
         TextFormatterOption.ASSURE_NONZERO_POSITIVE_INTEGER,
         false,
-        "baselinePointsPerSegment"
+        "baselineWidthPerSegment"
     );
 
     // Parameter: Only decide what model is to be used. Actual significance is chosen later at search.
     this.generalDistributionApproach = new ComboEnumParameter<>(
         "Select model",
-        "Specify how spTool decided which model it will use",
+        "Specify how spTool decides which model it will use:" +
+            "1) Automatic: Use Poisson model if mean BG µ < 10" +
+            "2) Highest: Calculate Poisson and Gaussian model. Pick the one with the higher threshold" +
+            "3) Gaussian: Force using Gaussian model." +
+            "4) Poisson: Force using Poisson model",
         DistributionModel.THRESHOLD,
         DistributionModel.listGeneralOptions(),
         DistributionModel.class,
@@ -156,13 +158,25 @@ public class BaselineParams extends AbstractParamSet implements ParamSet {
             Shape parameter of the single ion are (SIA) distribution of the detector
              assuming lognormal distribution.
              The shape parameter refers to the lognormal distribution
-             and not the empirical standard deviation of the SIA data.
-            """,
+             and not the empirical standard deviation of the SIA data""",
         0.47,
         NF.D1C3,
         TextFormatterOption.ASSURE_NONZERO_POSITIVE_DOUBLE,
         false,
         "siaShape"
+    );
+
+    preferEmpiricalSIA = new BooleanParameter(
+        "SIA",
+        "Use empirical shape if available",
+        """
+            Shape parameter of the single ion are (SIA) distribution of the detector
+             assuming lognormal distribution.
+             The shape parameter refers to the lognormal distribution
+             and not the empirical standard deviation of the SIA data""",
+        true,
+        false,
+        "preferEmpiricalSIA"
     );
 
     this.gaussianChoice = new ComboEnumParameter<>(
@@ -177,7 +191,7 @@ public class BaselineParams extends AbstractParamSet implements ParamSet {
 
     this.measureOfLocationPoisson = new ComboEnumParameter<>(
         "Measure of location",
-        "Measure of position for the Poisson distribution",
+        "Measure of location for the Poisson distribution",
         MeasureOfLocation.MEAN,
         MeasureOfLocation.baseline(),
         MeasureOfLocation.class,
@@ -187,7 +201,7 @@ public class BaselineParams extends AbstractParamSet implements ParamSet {
 
     this.measureOfLocationGauss = new ComboEnumParameter<>(
         "Measure of location",
-        "Measure of position for the Gaussian distribution",
+        "Measure of location for the Gaussian distribution",
         MeasureOfLocation.MEAN,
         MeasureOfLocation.baseline(),
         MeasureOfLocation.class,
@@ -367,7 +381,7 @@ public class BaselineParams extends AbstractParamSet implements ParamSet {
 
     this.outlierMeasureOfLocationPoisson = new ComboEnumParameter<>(
         "Measure of location (outlier)",
-        "Measure of position for the outlier test of the Poisson distribution",
+        "Measure of location for the outlier test of the Poisson distribution",
         MeasureOfLocation.MEAN,
         MeasureOfLocation.baseline(),
         MeasureOfLocation.class,
@@ -431,11 +445,12 @@ public class BaselineParams extends AbstractParamSet implements ParamSet {
     super(baselineParams.getLabelParameter().getValue(), XML_ELEMENT_TAG);
     super.setComment(baselineParams.getCommentParameter());
     this.baselineDynamics = baselineParams.baselineDynamics.copyWithoutChildren();
-    this.baselinePointsPerSegment = baselineParams.baselinePointsPerSegment.copyWithoutChildren();
+    this.baselineWidthPerSegment = baselineParams.baselineWidthPerSegment.copyWithoutChildren();
     this.generalDistributionApproach = baselineParams.generalDistributionApproach
         .copyWithoutChildren();
     this.poissonChoice = baselineParams.poissonChoice.copyWithoutChildren();
     this.siaShape = baselineParams.siaShape.copyWithoutChildren();
+    this.preferEmpiricalSIA = baselineParams.preferEmpiricalSIA.copyWithoutChildren();
     this.gaussianChoice = baselineParams.gaussianChoice.copyWithoutChildren();
     this.measureOfLocationPoisson = baselineParams.measureOfLocationPoisson
         .copyWithoutChildren();
@@ -506,7 +521,7 @@ public class BaselineParams extends AbstractParamSet implements ParamSet {
     // Attach Children.
     baselineDynamics.addConditionalChild(
         BaselineDynamic.SEGMENTED,
-        baselinePointsPerSegment);
+        baselineWidthPerSegment);
 
     generalDistributionApproach.addConditionalChild(
         DistributionModel.THRESHOLD,
@@ -514,15 +529,19 @@ public class BaselineParams extends AbstractParamSet implements ParamSet {
 
     generalDistributionApproach.addConditionalChild(
         DistributionModel.listOptionsRequiringPoissonOption(),
+        new SeparatorParameter(),
         poissonChoice);
 
     generalDistributionApproach.addConditionalChild(
         DistributionModel.listOptionsRequiringGaussianOption(),
+        new SeparatorParameter(),
         gaussianChoice);
 
     poissonChoice.addUnconditionalChild(measureOfLocationPoisson);
     poissonChoice.addConditionalChild(DistributionModel.POISSON_COMPOUND,
-        compoundPoissonModel, siaShape);
+        compoundPoissonModel, siaShape, preferEmpiricalSIA);
+    poissonChoice.addConditionalChild(DistributionModel.POISSON,
+        applyPoissonContinuityCorrection);
     poissonChoice.addConditionalChild(DistributionModel.POISSON_CURRIE,
         applyPoissonContinuityCorrection);
     poissonChoice.addConditionalChild(DistributionModel.POISSON_APPROXIMATION,
@@ -586,7 +605,7 @@ public class BaselineParams extends AbstractParamSet implements ParamSet {
           case UUID_PAR_XML_ID -> super.uuidString;
 
           case "baselineDynamics" -> baselineDynamics;
-          case "baselinePointsPerSegment" -> baselinePointsPerSegment;
+          case "baselineWidthPerSegment" -> baselineWidthPerSegment;
 
           case "generalDistributionApproach" -> generalDistributionApproach;
           case "poissonNormalCutoff" -> poissonNormalCutoff;
@@ -599,6 +618,7 @@ public class BaselineParams extends AbstractParamSet implements ParamSet {
 
           case "compoundPoissonModel" -> compoundPoissonModel;
           case "siaShape" -> siaShape;
+          case "preferEmpiricalSIA" -> preferEmpiricalSIA;
 
           case "applyPoissonContinuityCorrection" -> applyPoissonContinuityCorrection;
           case "poissonContinuityCorrection" -> poissonContinuityCorrection;
@@ -671,8 +691,8 @@ public class BaselineParams extends AbstractParamSet implements ParamSet {
     return baselineDynamics;
   }
 
-  public Parameter<Integer> getBaselinePointsPerSegment() {
-    return baselinePointsPerSegment;
+  public Parameter<Double> getBaselinePointsPerSegment() {
+    return baselineWidthPerSegment;
   }
 
   public Parameter<DistributionModel> getGeneralDistributionApproach() {
@@ -693,6 +713,10 @@ public class BaselineParams extends AbstractParamSet implements ParamSet {
 
   public Parameter<Double> getSiaShape() {
     return siaShape;
+  }
+
+  public Parameter<Boolean> getPreferEmpiricalSIA() {
+    return preferEmpiricalSIA;
   }
 
   public Parameter<DistributionModel> getGaussianChoice() {
@@ -770,7 +794,12 @@ public class BaselineParams extends AbstractParamSet implements ParamSet {
     // default supplier
     final BaselineParams defaults = new BaselineParams();
 
-    // Fix missing fields from old serialized versions: we have to use
+    // Fix missing fields from old serialized versions: we have to use,
+
+    if (baselineWidthPerSegment == null) {
+      this.baselineWidthPerSegment = defaults.baselineWidthPerSegment;
+    }
+
     if (poissonContinuityCorrection == null) {
       this.poissonContinuityCorrection = defaults.poissonContinuityCorrection;
     }
@@ -779,6 +808,8 @@ public class BaselineParams extends AbstractParamSet implements ParamSet {
       this.applyPoissonContinuityCorrection = defaults.applyPoissonContinuityCorrection;
     }
 
-
+    if (preferEmpiricalSIA == null) {
+      this.preferEmpiricalSIA = defaults.preferEmpiricalSIA;
+    }
   }
 }

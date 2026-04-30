@@ -41,7 +41,6 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 import javafx.animation.PauseTransition;
-import javafx.application.Platform;
 import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
 import javafx.collections.ListChangeListener;
@@ -51,7 +50,6 @@ import javafx.geometry.Orientation;
 import javafx.geometry.Pos;
 import javafx.geometry.Rectangle2D;
 import javafx.scene.Node;
-import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
@@ -89,7 +87,6 @@ import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.stage.Screen;
 import javafx.stage.Stage;
-import javafx.stage.WindowEvent;
 import javafx.util.Duration;
 import javafx.util.converter.IntegerStringConverter;
 import org.apache.logging.log4j.LogManager;
@@ -305,7 +302,7 @@ public abstract class UiUtil {
   }
 
 
-  public static void formatElementFieldBlue(Label label){
+  public static void formatElementFieldBlue(Label label) {
     label.setStyle(
         "-fx-font-weight: bold;" +
             "-fx-text-fill: white;" +       // text color
@@ -316,7 +313,7 @@ public abstract class UiUtil {
     );
   }
 
-  public static void formatElementFieldGreen(Label label){
+  public static void formatElementFieldGreen(Label label) {
     label.setStyle(
         "-fx-font-weight: bold;" +
             "-fx-text-fill: white;" +       // text color
@@ -1502,7 +1499,7 @@ public abstract class UiUtil {
     AtomicReference<String> isoPauseValue = new AtomicReference<>("");
     isoPause.setOnFinished(event -> {
       if (isoField.isFocused()) {
-        Isotope isotope = Isotope.getFromString(isoPauseValue.get());
+        Isotope isotope = Isotope.guessFromString(isoPauseValue.get());
         if (isotope != null && !isotope.equals(Element.UNKNOWN.getMostAbundant())) {
           currentIsotope.set(isotope);
           parsedIsotopeResult.setText(isotope.getFullUIName());

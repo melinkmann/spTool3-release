@@ -64,7 +64,7 @@ public class TimeRoiTask extends AbstractWorkingTask implements WorkingTask {
       setProgress(0);
       // START ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ##
       LOGGER.info("Time cutting starts."
-          + " in thread " + Thread.currentThread());
+          + " in thread " + Thread.currentThread().getId());
 
       if (timeRoiParams.getReset().getValue()) {
         for (Sample selSample : selSamples) {
@@ -116,8 +116,9 @@ public class TimeRoiTask extends AbstractWorkingTask implements WorkingTask {
       LOGGER.error(ExceptionUtils.getStackTrace(e));
     }
     return new FunctionalTaskResult(() -> {
-      List<Sample> samples = new ArrayList<>(result);
-      SpTool3Main.getRunTime().getSampleReg().addNewSampleToWaitingList(samples);
+      // We override in the trace - no need for new sample
+    //      List<Sample> samples = new ArrayList<>(result);
+    //      SpTool3Main.getRunTime().getSampleReg().addNewSampleToWaitingList(samples);
     });
   }
 }

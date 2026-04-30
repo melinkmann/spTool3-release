@@ -53,13 +53,13 @@ public class TraceMC extends TraceImpl implements Trace, Serializable {
     this.macroDTSeconds = 0;
   }
 
-  public TraceMC(Sample sample, MZValue mzValue, TISeries tiSeries, double macroDTSeconds) {
-    super(sample, mzValue, tiSeries);
+  public TraceMC(Sample sample, MZValue mzValue, TISeries tiSeries, double macroDTSeconds, double siaShape) {
+    super(sample, mzValue, tiSeries,siaShape);
     this.macroDTSeconds = macroDTSeconds;
     // always add simulation as population
     PopulationID id = new PopulationID(PopulationType.SIMULATION);
     super.addOverridePopulation(id,
-        new MCPopulation(id, id.toString(), new MCEventCollection(this)));
+        new MCPopulation(id, id.toString(), new MCEventCollection(this)),false);
   }
 
   // Deep copy: note that the populations are cloned in the super class, we may pass direct pointers
@@ -67,6 +67,7 @@ public class TraceMC extends TraceImpl implements Trace, Serializable {
                  MZValue mzValue,
                  TISeries tiSeries,
                  TISeries tiSeriesCopy,
+                 double siaShape,
                  HashMap<DataFlag, List<Integer>> rawDataFlags,
                  double macroDTSeconds,
                  double empiricalMeanBG,
@@ -75,7 +76,7 @@ public class TraceMC extends TraceImpl implements Trace, Serializable {
                  HashMap<PopulationID, Population> populations) {
 
     super(parentSample, mzValue, tiSeries,
-        tiSeriesCopy, rawDataFlags, baseline,
+        tiSeriesCopy, siaShape, rawDataFlags, baseline,
         populations);
     this.macroDTSeconds = macroDTSeconds;
     this.empiricalMeanBG = empiricalMeanBG;
@@ -89,6 +90,7 @@ public class TraceMC extends TraceImpl implements Trace, Serializable {
         super.mzValue.copy(),
         super.tiSeries.copy(),
         super.tiSeriesCopy.copy(),
+        super.siaShape,
         super.rawDataFlags,
         macroDTSeconds,
         empiricalMeanBG,

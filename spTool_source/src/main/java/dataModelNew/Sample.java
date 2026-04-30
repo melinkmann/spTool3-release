@@ -17,8 +17,7 @@
 
 package dataModelNew;
 
-import analysis.Event;
-import analysis.PopulationID;
+import analysis.*;
 import analysis.quant.Cal;
 import dataModelNew.mz.Element;
 import io.export.ExportSimulationEventContainer;
@@ -68,6 +67,10 @@ public interface Sample extends Serializable {
 
   public void setCalibration(Cal quant);
 
+  List<String> getRemovedIsotopeInfo();
+
+  double getMeanSiaShape();
+
   /**
    * This method serves to create a list of isotopes present in this sample. In case of merged
    * samples, one isotope may represent several traces. However, each of these traces returns the
@@ -78,6 +81,7 @@ public interface Sample extends Serializable {
   public default List<Element> listElements() {
     return listIsotopes().stream()
         .map(Isotope::getElement)
+        .distinct()
         .collect(Collectors.toList());
   }
 
@@ -104,6 +108,39 @@ public interface Sample extends Serializable {
   List<Trace> getTraces(List<Isotope> isotopes);
 
   List<ParticlePopulationMatrix> getMatrices();
+
+  List<SpectralArray> getSpectralData(PopulationID popID);
+
+  @org.jetbrains.annotations.Nullable
+  HacCrWrapper getHacWrapper(PopulationID popID);
+
+  void putHacWrapper(PopulationID popID, HacCrWrapper wrapper);
+
+  public void addSpectralData(PopulationID populationID, List<SpectralArray> spectralData);
+
+  default double[] getSpectralMZ(PopulationID popID) {
+    List<SpectralArray> spectralData = getSpectralData(popID);
+    double[] spectralMZ = new double[spectralData.size()];
+    for (int i = 0; i < spectralData.size(); i++) {
+      spectralMZ[i] = spectralData.get(i).getMz();
+    }
+    return spectralMZ;
+  }
+
+  default double[] getSpectralValues(PopulationID popID) {
+    List<SpectralArray> spectralData = getSpectralData(popID);
+    double[] spectralValues = new double[spectralData.size()];
+    for (int i = 0; i < spectralData.size(); i++) {
+      spectralValues[i] = spectralData.get(i).getMean();
+    }
+    return spectralValues;
+  }
+
+  default SpectralRegion getSpectralRegions(PopulationID popID) {
+    return new SpectralRegion(getSpectralData(popID));
+  }
+
+  void clearSpectralData();
 
   /**
    * @param isotope Isotope that may or may not be present in this sample.
@@ -142,6 +179,12 @@ public interface Sample extends Serializable {
 
   void removePopulations(List<Isotope> isotopes, PopulationID populationID);
 
+  void removeIsotopes(List<Isotope> isotopes);
+
+  void removeTraces(List<Trace> traces);
+
+  void removeTrace(Trace traceToRemove, String message);
+
   void addTrace(Trace trace);
 
   void addMatrices(List<ParticlePopulationMatrix> matrices);
@@ -151,6 +194,10 @@ public interface Sample extends Serializable {
   Color getColor();
 
   void setColor(Color color);
+
+  List<Isotope> getSampleDefaultIsotopes();
+
+  void setSampleDefaultIsotopes(List<Isotope> sampleDefaultIsotopes);
 
   Method getMethod();
 
@@ -231,6 +278,10 @@ public interface Sample extends Serializable {
   String tabHighlight();
   // String tabTraceMZ (Isotope isotope);
 
+  default String tabRemovedIsotopes() {
+    return String.join("_", getRemovedIsotopeInfo());
+  }
+
   String tabDwellTime(Isotope isotope); // average
 
   String tabDuration(Isotope isotope); // sum
@@ -241,11 +292,19 @@ public interface Sample extends Serializable {
 
   String tabRawMean(Isotope isotope);
 
+  String tabRawMeanCPS(Isotope isotope);
+
   String tabRawMedian(Isotope isotope);
+
+  String tabRawMedianCPS(Isotope isotope);
 
   String tabRawSD(Isotope isotope);
 
   String tabRawMAD(Isotope isotope);
+
+  String tabSIAShape(Isotope isotope);
+
+  String tabMeanSIAShape(Isotope isotope);
 
   String tabPopName(Isotope isotope, PopulationID populationID);
 

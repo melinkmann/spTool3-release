@@ -20,6 +20,7 @@ package analysis;
 import dataModelNew.TISeries;
 import dataModelNew.Trace;
 import dataModelNew.TraceImpl;
+
 import java.io.Serial;
 import java.io.Serializable;
 import java.lang.ref.SoftReference;
@@ -29,6 +30,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+
 import processing.options.EventParameter;
 import util.ArrUtils;
 
@@ -88,17 +90,17 @@ public class MainEventCollection implements EventCollection, Serializable {
     return this;
   }
 
-
   @Override
   public void add(Event event) {
     npEvents.add(event);
+    backgroundIndicesRef = new SoftReference<>(null); // invalidate
   }
 
   @Override
   public void add(List<Event> events) {
     npEvents.addAll(events);
+    backgroundIndicesRef = new SoftReference<>(null); // invalidate
   }
-
 
   @Override
   public List<Event> getNpEvents() {
@@ -174,13 +176,32 @@ public class MainEventCollection implements EventCollection, Serializable {
        */
       bgIndices = new ArrayList<>(getTotalDataPoints() - npBitSet.cardinality());
       for (int i = npBitSet.nextClearBit(0);
-          i >= 0 && i < getTotalDataPoints();
-          i = npBitSet.nextClearBit(i + 1)) {
+           i >= 0 && i < getTotalDataPoints();
+           i = npBitSet.nextClearBit(i + 1)) {
         bgIndices.add(i);
       }
 
     }
     backgroundIndicesRef = new SoftReference<>(bgIndices);
+    return bgIndices;
+  }
+
+  // Above method optimized with claude sonnet 4.6
+  public static List<Integer> getBGIndicesBitSet(int totalDP, List<Integer> npIndices, int subSampleSize) {
+    BitSet npBitSet = new BitSet(totalDP);
+    for (int index : npIndices) {
+      npBitSet.set(index);
+    }
+
+    int bgCount = totalDP - npBitSet.cardinality();
+    int capacity = Math.min(subSampleSize, bgCount);
+    List<Integer> bgIndices = new ArrayList<>(capacity);
+
+    for (int i = npBitSet.nextClearBit(0);
+         i >= 0 && i < totalDP && bgIndices.size() < capacity;
+         i = npBitSet.nextClearBit(i + 1)) {
+      bgIndices.add(i);
+    }
     return bgIndices;
   }
 

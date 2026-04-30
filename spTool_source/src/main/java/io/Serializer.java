@@ -17,19 +17,21 @@
 
 package io;
 
+import com.github.luben.zstd.Zstd;
+import com.github.luben.zstd.ZstdInputStream;
+import com.github.luben.zstd.ZstdOutputStream;
 import core.RunTimeInstance;
 import core.SampleRegister;
 import core.SpTool3Main;
 import gui.dialog.notification.NotificationFactory;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
+
+import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.zip.Deflater;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
+
 import javafx.application.Platform;
 import javafx.stage.FileChooser;
 import javafx.stage.FileChooser.ExtensionFilter;
@@ -55,7 +57,11 @@ public abstract class Serializer {
 
     // directoryChooser: set start point for the chooser
     Path path = SpTool3Main.getRunTime().getConfParams().getDefaultProjectPath();
-    if (Files.isDirectory(path)) {
+    Path lastProjectFile = SpTool3Main.getRunTime().getLastProjectFile();
+    if (lastProjectFile != null && Files.isRegularFile(lastProjectFile) && Files.isReadable(lastProjectFile)) {
+      chooser.setInitialDirectory(lastProjectFile.toFile().getParentFile());
+      chooser.setInitialFileName(lastProjectFile.getFileName().toString());
+    } else if (Files.isDirectory(path)) {
       chooser.setInitialDirectory(path.toFile());
     } else {
       PathUtil.createDir(path);
@@ -69,6 +75,18 @@ public abstract class Serializer {
     if (returnedDir != null) {
       NotificationFactory.openAutocloseInfo("Saving project...");
       SampleRegister reg = SpTool3Main.getRunTime().getSampleReg();
+
+      SpTool3Main.getRunTime().setLastProjectFile(returnedDir.toPath());
+
+      int compressionLevel = SpTool3Main.getRunTime().getConfParams()
+          .getZstdCompressionLevel().getValue();
+      // must be at least 1
+      compressionLevel = Math.max(compressionLevel, Zstd.minCompressionLevel());
+      // must be at largest 22
+      compressionLevel = Math.min(compressionLevel, Zstd.maxCompressionLevel());
+      int finalCompressionLevel = compressionLevel;
+
+      int parallelThreads = SpTool3Main.getRunTime().getConfParams().calcNumberOfCompressorThreads();
 
       // THE HEAVY LIFTING
       FunctionalTask task = new FunctionalTask("Save project",
@@ -95,6 +113,8 @@ public abstract class Serializer {
               }
             };
              */
+              /*
+              older version: claude sonnet 4.6 recommends Zstd
               ObjectOutputStream objectOutputStream;
               FileOutputStream fileOutputStream = new FileOutputStream(returnedDir);
               GZIPOutputStream zipStream = new GZIPOutputStream(fileOutputStream);
@@ -103,7 +123,19 @@ public abstract class Serializer {
               objectOutputStream.close();
               zipStream.close();
               fileOutputStream.close();
-              LOGGER.info("Wrote "  + SnF
+              */
+
+              FileOutputStream fileOutputStream = new FileOutputStream(returnedDir);
+              BufferedOutputStream buffered = new BufferedOutputStream(fileOutputStream);
+              ZstdOutputStream zipStream =
+                  new ZstdOutputStream(buffered).setLevel(finalCompressionLevel).setWorkers(parallelThreads);
+              ObjectOutputStream objectOutputStream = new ObjectOutputStream(zipStream);
+              objectOutputStream.writeObject(reg);
+              objectOutputStream.close();
+              zipStream.close();
+              fileOutputStream.close();
+
+              LOGGER.info("Wrote " + SnF
                   .doubleToString(Files.size(returnedDir.toPath()) / (1024.0 * 1024.0), NF.D1C1)
                   + " MB to file: " + returnedDir);
 
@@ -138,7 +170,8 @@ public abstract class Serializer {
              But this explains why only yData was scrambled.
 
              It seems, it was due to the removeOutlier calls...
-             Older versions of Median from Smiles library modified the original array. Now the wrapper function
+             Older versions of Median from Smiles library modified the original array. Now the wrapper
+             function
              creates a copy when calling Median through measure of position.
 
              Anyway: We should convert to HDD here to save RAM!
@@ -169,12 +202,16 @@ public abstract class Serializer {
   public static void loadSampleRegister() {
     Path path = SpTool3Main.getRunTime().getConfParams().getDefaultProjectPath();
     PathUtil.createDir(path);
+    Path lastProjectFile = SpTool3Main.getRunTime().getLastProjectFile();
 
     FileChooser chooser = new FileChooser();
     chooser.getExtensionFilters().addAll(new ExtensionFilter("Project files",
         "*" + GlobalIO.SERIALIZED_PROJECT_EXTENSION));
 
-    if (Files.isDirectory(path)) {
+    if (lastProjectFile != null && Files.isRegularFile(lastProjectFile) && Files.isReadable(lastProjectFile)) {
+      chooser.setInitialDirectory(lastProjectFile.toFile().getParentFile());
+      chooser.setInitialFileName(lastProjectFile.getFileName().toString());
+    } else if (Files.isDirectory(path)) {
       chooser.setInitialDirectory(path.toFile());
     } else {
       PathUtil.createDir(path);
@@ -197,11 +234,30 @@ public abstract class Serializer {
           () -> {
             try {
               FileInputStream fis = new FileInputStream(file);
-              GZIPInputStream zipInput = new GZIPInputStream(fis);
-              ObjectInputStream objectInputStream = new ObjectInputStream(zipInput);
+              // Changed by recommendation of claude sonnet 4.6
+              BufferedInputStream buffered = new BufferedInputStream(fis);
+
+              // Peek at magic bytes to detect format
+              buffered.mark(2);
+              int byte1 = buffered.read();
+              int byte2 = buffered.read();
+              buffered.reset();
+
+              InputStream decompressed;
+              if (byte1 == 0x1f && byte2 == 0x8b) {
+                // Legacy GZIP file
+                LOGGER.info("Reading GZIP compressed project file.");
+                decompressed = new GZIPInputStream(buffered);
+              } else {
+                // New Zstd file
+                LOGGER.info("Reading Zstd compressed project file.");
+                decompressed = new ZstdInputStream(buffered);
+              }
+
+              ObjectInputStream objectInputStream = new ObjectInputStream(decompressed);
               Object obj = objectInputStream.readObject();
               objectInputStream.close();
-              zipInput.close();
+              decompressed.close();
               fis.close();
 
               if (obj instanceof SampleRegister) {
@@ -215,6 +271,9 @@ public abstract class Serializer {
                 */
                 //reg.toHDD();
                 RunTimeInstance.setSampleRegister(reg);
+
+                // save and set as String in UI
+                SpTool3Main.getRunTime().setLastProjectFile(file.toPath());
 
 
               }

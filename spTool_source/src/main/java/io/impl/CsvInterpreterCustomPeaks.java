@@ -115,12 +115,8 @@ public class CsvInterpreterCustomPeaks implements CsvInterpreter {
 
     // The format is not supposed to provide m/z.
     MZValue mzValue;
-    if (params.getMzSource().getValue().equals(Source.CUSTOM)) {
-      Isotope isotope = params.getIsotopeParameter().getValue().unwrap();
-      mzValue = new SQmz(isotope);
-    } else {
-      mzValue = new SQmz();
-    }
+    Isotope isotope = params.getIsotopeParameter().getValue().unwrap();
+    mzValue = new SQmz(isotope);
 
     IncompleteParticleMatrix matrix = new IncompleteParticleMatrix(csv.size());
     String sampleName = PathUtil.removeExtension(file.getFileName().toString());
@@ -151,7 +147,7 @@ public class CsvInterpreterCustomPeaks implements CsvInterpreter {
       PopulationID populationID = new PopulationID(PopulationType.EXTERNAL);
       Population population = new NpPopulation(populationID,
           new IncompleteEventCollection(trace, matrix));
-      trace.addOverridePopulation(populationID, population);
+      trace.addOverridePopulation(populationID, population,false);
 
       sample.addTrace(trace);
 

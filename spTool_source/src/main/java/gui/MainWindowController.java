@@ -28,12 +28,7 @@ import gui.dialog.FxEntryFactory.RecentLocationsDialogEntryFactory;
 import gui.dialog.FxEntryFactory.SimpleEntryFactory;
 import gui.dialog.FxEntryFactory.SingleFileSetEntryFactory;
 import gui.dialog.FxStageButton;
-import gui.dialog.caseImpl.BrowseAndListFilesDialog;
-import gui.dialog.caseImpl.CsvLoader;
-import gui.dialog.caseImpl.RecentLocationsDialog;
-import gui.dialog.caseImpl.SignificanceTester;
-import gui.dialog.caseImpl.SingleFileSetDialog;
-import gui.dialog.caseImpl.SubmethodEditor;
+import gui.dialog.caseImpl.*;
 import gui.dialog.notification.NotificationFactory;
 import gui.listAndSearch.SampleListAndTable;
 import gui.util.TextFieldUtils;
@@ -52,10 +47,9 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
+import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 import javafx.application.Platform;
@@ -84,6 +78,7 @@ import javafx.stage.DirectoryChooser;
 
 import javax.annotation.Nullable;
 
+import javafx.stage.Stage;
 import javafx.util.StringConverter;
 import math.units.Unit;
 import math.units.enums.*;
@@ -91,13 +86,12 @@ import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import processing.objectSerials.ImportDefaults;
-import processing.parameterSets.AvailableParameterSets;
 import processing.parameterSets.Method;
-import processing.parameterSets.ParamSet;
 import processing.parameterSets.action.Actions;
 import processing.parameterSets.impl.ConfParams;
 import processing.parameterSets.impl.CsvInterpreterParams;
 import processing.parameterSets.impl.ExporterParams;
+import processing.parameterSets.impl.NuInterpreterParams;
 import processing.parameterSets.uiParams.GuiParameterManager;
 import sandbox.montecarlo.Isotope;
 import tasks.BatchTask;
@@ -105,6 +99,7 @@ import tasks.Task;
 import tasks.WorkingTask;
 import tasks.batch.SimpleLinearBatch;
 import tasks.single.CsvImportTask;
+import tasks.single.NuImportTask;
 import util.Util;
 
 public class MainWindowController {
@@ -116,6 +111,7 @@ public class MainWindowController {
   public ProgressBar progressIndicator;
   public Text progressIndicatorPercent;
   public Text ramStatusLbl;
+  public Text storageStatusLbl;
   public Button stopBtn;
   public Button executeMethodBtn;
   public Button reprocessSamplesBtn;
@@ -149,6 +145,8 @@ public class MainWindowController {
   private SampleListAndTable combinedSampleListAndSearchView;
 
   private final MethodView methodView = new MethodView();
+
+  private final AtomicReference<MenuItem> lastMenuItem = new AtomicReference<>(null);
 
   // After constructor call and building of pane this method is called and it can fill Views with Lists, ...
   public void initialize() {
@@ -263,7 +261,7 @@ public class MainWindowController {
     executeMethodBtn.setOnAction(e -> {
       Method current = getMethodView().getCurrentMethod();
       if (current != null) {
-        Actions.executeMethod(current, repetitionSpinner.getValue());
+        Actions.executeMethodCreateBtn(current, repetitionSpinner.getValue());
       }
     });
 
@@ -281,6 +279,7 @@ public class MainWindowController {
     SpTool3Main.getRunTime().getTaskManager().setMainProgressIndicator(progressIndicator,
         progressIndicatorPercent);
     SpTool3Main.getRunTime().getTaskManager().setRamStatusLbl(ramStatusLbl);
+    SpTool3Main.getRunTime().getTaskManager().setStorageStatusLbl(storageStatusLbl);
 
     ///////////////////////////////////////// MENUS /////////////////////////////////////////
     if (SpTool3Main.getANALYZER()) {
@@ -336,8 +335,10 @@ public class MainWindowController {
 
     // Action
 
-    Actions.makeIncreaseDTMenuItem(actionMenu);
-    Actions.makeTimeRoiMenuItem(actionMenu);
+    Actions.makeIncreaseDTMenuItem(actionMenu, lastMenuItem);
+    Actions.makeTimeRoiMenuItem(actionMenu, lastMenuItem);
+    Actions.makeBasicRoiMenuItem(actionMenu, lastMenuItem);
+    Actions.makeIsotopeRatioMenu(actionMenu, lastMenuItem);
 
     MenuItem confMenu = new MenuItem("Configuration");
     confMenu.setOnAction(e -> {
@@ -369,7 +370,7 @@ public class MainWindowController {
           importDefaults, factory);
 
       Optional<List<Path>> result = filesDialog.showAndWait();
-      result.ifPresent(this::startImport);
+      result.ifPresent(r->startImportNewFiles(result.get(), SpTool3Main.getMainStage()));
     });
 
     MenuItem browseMenu = new MenuItem("Browse folder");
@@ -399,7 +400,7 @@ public class MainWindowController {
             importDefaults, factory);
 
         Optional<List<Path>> result = filesDialog.showAndWait();
-        result.ifPresent(this::startImport);
+        result.ifPresent(r->startImportNewFiles(result.get(), SpTool3Main.getMainStage()));
       }
     });
 
@@ -422,7 +423,7 @@ public class MainWindowController {
               importDefaults, factory);
 
           Optional<List<Path>> result = filesDialog.showAndWait();
-          result.ifPresent(this::startImport);
+          result.ifPresent(r->startImportNewFiles(result.get(), SpTool3Main.getMainStage()));
         }
       }
     });
@@ -440,7 +441,7 @@ public class MainWindowController {
         List<FxFileSet> sets = result.get();
         if (!sets.isEmpty()) {
           FileSet set = sets.get(0).getPlainFileSet();
-          startImport(set.getFiles().stream().map(Path::of).collect(Collectors.toList()));
+          this.startImportNewFiles(set.getFiles().stream().map(Path::of).collect(Collectors.toList()),SpTool3Main.getMainStage());
         }
       }
     });
@@ -482,7 +483,10 @@ public class MainWindowController {
 
     MenuItem aboutMenuItem = new MenuItem("About");
     aboutMenu.getItems().add(aboutMenuItem);
-    aboutMenuItem.setOnAction(e -> UiUtil.showAboutPopup());
+    aboutMenuItem.setOnAction(evt -> {
+      UiUtil.showAboutPopup();
+      // startStressTest();
+    });
 
     // Show the method name of whatever method is loaded first
     updateMethodMetaDataInUI();
@@ -534,47 +538,83 @@ public class MainWindowController {
                 }
               }
             } else {
-              // System file exhausted, now lets try csv import
-              // Collect the paths
-              List<Path> recursivePaths = new ArrayList<>();
+              // SpTool3 custom files exhausted, now lets try nu import
 
+              List<Path> nuFolders = new ArrayList<>();
               for (File fileFromClipboard : filesFromClipboard) {
-                // Check if Dir --> then list files.
-                if (fileFromClipboard.isDirectory() && fileFromClipboard.canRead()) {
+                if (fileFromClipboard.isDirectory() &&
+                    fileFromClipboard.canRead()) {
 
-                  // Check how deep to look
-                  // int levels = Integer.MAX_VALUE; // else: levels =1 --> just the content
-                  int levels = SpTool3Main.getRunTime().getConfParams().getDragDropFolderDepth().getValue();
+                  // "generate" the run.info file and check if it exists
+                  File runInfoFile = new File(fileFromClipboard, "run.info");
 
-                  // And look into the folder structure.
-                  try {
-                    Files.find(fileFromClipboard.toPath(),
-                            levels,
-                            (filePath, fileAttr) -> fileAttr.isRegularFile())
-                        .forEach(recursivePaths::add);
-                  } catch (IOException ioException) {
-                    ioException.printStackTrace();
+                  // Check if folder is readable and contains readable "run.info" file
+                  if (runInfoFile.exists() && runInfoFile.isFile() && runInfoFile.canRead()) {
+                    nuFolders.add(fileFromClipboard.toPath());
                   }
-
-                  // Check if File --> then list it.
-                } else if (fileFromClipboard.isFile() && fileFromClipboard.canRead()) {
-                  recursivePaths.add(fileFromClipboard.toPath());
                 }
               }
 
-              // check file type
-              String limitingType = SpTool3Main.getRunTime().getConfParams()
-                  .getDragDropImportFileType().getValue();
-              // Check if limit is given
-              if (!limitingType.isEmpty()) {
-                recursivePaths.removeIf(p -> !PathUtil.getExtensionWithDot(p).equals(limitingType));
-              }
+              if (!nuFolders.isEmpty()) {
+                // These lines are from the CSV reader and show how we remember previous places...
+                Util.windowsSortFile(nuFolders);
+                this.startImportNewFiles(nuFolders, SpTool3Main.getMainStage());
+                // store the previous files
+                List<Path> runInfoFiles = new ArrayList<>();
+                for (Path nuFolder : nuFolders) {
+                  // in the locations, we store previous folders, i.e., the NU folder in this case
+                  SpTool3Main.getRunTime().getImportDefaults().addPreviousLocation(nuFolder.getParent());
+                  // we must store the run.info file in prev files (I assume...)
+                  File runInfoFile = new File(nuFolder.toFile(), "run.info");
+                  runInfoFiles.add(runInfoFile.toPath());
+                }
+                SpTool3Main.getRunTime().getImportDefaults().addPreviousFileSet(new FileSet(runInfoFiles));
+                SpTool3Main.getRunTime().storeImportDefaults();
 
-              Util.windowsSortFile(recursivePaths);
-              startImport(recursivePaths);
-              // store the previous files
-              SpTool3Main.getRunTime().getImportDefaults().addPreviousFileSet(new FileSet(recursivePaths));
-              SpTool3Main.getRunTime().storeImportDefaults();
+                // Neither .spm, ... or NU folder -> try csv import
+              } else {
+
+                // Collect the paths
+                List<Path> recursivePaths = new ArrayList<>();
+
+                for (File fileFromClipboard : filesFromClipboard) {
+                  // Check if Dir --> then list files.
+                  if (fileFromClipboard.isDirectory() && fileFromClipboard.canRead()) {
+
+                    // Check how deep to look
+                    // int levels = Integer.MAX_VALUE; // else: levels =1 --> just the content
+                    int levels = SpTool3Main.getRunTime().getConfParams().getDragDropFolderDepth().getValue();
+
+                    // And look into the folder structure.
+                    try {
+                      Files.find(fileFromClipboard.toPath(),
+                              levels,
+                              (filePath, fileAttr) -> fileAttr.isRegularFile())
+                          .forEach(recursivePaths::add);
+                    } catch (IOException ioException) {
+                      ioException.printStackTrace();
+                    }
+
+                    // Check if File --> then list it.
+                  } else if (fileFromClipboard.isFile() && fileFromClipboard.canRead()) {
+                    recursivePaths.add(fileFromClipboard.toPath());
+                  }
+                }
+
+                // check file type
+                String limitingType = SpTool3Main.getRunTime().getConfParams()
+                    .getDragDropImportFileType().getValue();
+                // Check if limit is given
+                if (!limitingType.isEmpty()) {
+                  recursivePaths.removeIf(p -> !PathUtil.getExtensionWithDot(p).equals(limitingType));
+                }
+
+                Util.windowsSortFile(recursivePaths);
+                this.startImportNewFiles(recursivePaths,SpTool3Main.getMainStage());
+                // store the previous files
+                SpTool3Main.getRunTime().getImportDefaults().addPreviousFileSet(new FileSet(recursivePaths));
+                SpTool3Main.getRunTime().storeImportDefaults();
+              }
             }
           }
         }
@@ -586,6 +626,7 @@ public class MainWindowController {
       event.consume();
     });
 
+    // Field to identify ctl+A
     SpTool3Main.getMainStage().addEventFilter(KeyEvent.KEY_PRESSED, new EventHandler<KeyEvent>() {
       public void handle(KeyEvent ke) {
 
@@ -638,8 +679,10 @@ public class MainWindowController {
         }
 
         // Save method
-        if (new KeyCodeCombination(KeyCode.S, KeyCombination.SHIFT_ANY, KeyCombination.CONTROL_DOWN).match(ke)) {
-          methodView.executeSave();
+        if (new KeyCodeCombination(KeyCode.S, KeyCombination.SHIFT_DOWN, KeyCombination.CONTROL_DOWN).match(ke)) {
+
+          NotificationFactory.openYesNo("Do you want to save the method?",
+              methodView::executeSave);
           ke.consume();
         }
 
@@ -654,6 +697,17 @@ public class MainWindowController {
           combinedSampleListAndSearchView.incrementSelectedSample();
           ke.consume();
         }
+
+        // refire last menu
+        if (new KeyCodeCombination(KeyCode.SPACE, KeyCombination.CONTROL_DOWN).match(ke)) {
+          MenuItem item = lastMenuItem.get();
+          if (item != null) {
+            item.fire();
+          }
+          ke.consume();
+        }
+
+
       }
     });
   }
@@ -720,56 +774,178 @@ public class MainWindowController {
   }
 
   //
+  public void startImportNewFiles(List<Path> files, @Nullable Stage parentStage) {
+    if (!files.isEmpty()) {
+      List<Task> importTasks = new ArrayList<>();
 
-  public void startImport(List<Path> files) {
+      boolean useMethodCSV = SpTool3Main.getRunTime().getConfParams().getUseMethodsCsvReader().getValue();
 
-    if (files.isEmpty()) {
-      NotificationFactory.openError("Did not receive any files for input.");
-    } else {
-
-      boolean useMethodCSV = SpTool3Main.getRunTime()
-          .getConfParams().getUseMethodsCsvReader().getValue();
-
-      CsvInterpreterParams csvParams = null;
+      Method current = null;
       if (useMethodCSV) {
-        // Check if current method has any csv sub methods
-        List<ParamSet> csvSets = methodView.getCurrentMethod().getSets().stream()
-            .filter(s -> s.getEnum().equals(AvailableParameterSets.CSV_READER))
-            .collect(Collectors.toList());
-        if (!csvSets.isEmpty() && csvSets.get(0) instanceof CsvInterpreterParams) {
-          csvParams = (CsvInterpreterParams) csvSets.get(0);
-        }
+        current = methodView.getCurrentMethod();
       }
-      // If method was not selected or method had no csv parameter
-      if (!useMethodCSV || csvParams == null) {
-        CsvLoader launcher = new CsvLoader(files);
-        Optional<ParamSet> csvReaderOptional = launcher.showAndWait();
 
-        if (csvReaderOptional.isPresent()) {
-          ParamSet params = csvReaderOptional.get();
-          if (params instanceof CsvInterpreterParams) {
-            csvParams = (CsvInterpreterParams) params;
+      // Pre instantiate
+      NuInterpreterParams nuParams = null;
+      CsvInterpreterParams csvParams = null;
+
+      for (int i = 0; i < files.size(); i++) {
+        Path file = files.get(i);
+
+        boolean isNuTof = Util.isNuPath(file);
+
+        if (isNuTof) {
+          /// NU TOF
+
+          // Default: read from method
+          if (nuParams == null && current != null) {
+            nuParams = Util.getNuParametersFromMethod(current);
+          }
+          // If still null, try dialog. Dialog is only called once, then params!=null.
+          if (nuParams == null) {
+            nuParams = Util.getNuParametersFromDialog();
+          }
+          // check if !=null at last
+          if (nuParams != null) {
+            // make sure we pass the folder and not the file!
+            file = Util.getCheckedNuPathDir(file);
+            WorkingTask csv = new NuImportTask(nuParams, file, parentStage);
+            importTasks.add(csv);
+          } else {
+            // else the window opens for every file
+            break;
+          }
+
+
+        } else {
+          /// CSV
+          // Default: read from method
+          if (csvParams == null && current != null) {
+            csvParams = Util.getCSVParamsFromMethod(current);
+          }
+          // If still null, try dialog. Dialog is only called once, then params!=null.
+          if (csvParams == null) {
+            csvParams = Util.getCSVParamsFromDialog(files);
+          }
+          // check if !=null at last
+          if (csvParams != null) {
+            if (Util.isCsvLikeFile(file)) {
+              WorkingTask csv = new CsvImportTask(csvParams, file);
+              importTasks.add(csv);
+            }
+          } else {
+            // else the window opens for every file
+            break;
           }
         }
       }
 
-      if (csvParams != null) {
-        List<Task> importTasks = new ArrayList<>();
-
-        for (Path file : files) {
-          WorkingTask csv = new CsvImportTask(csvParams, file);
-          importTasks.add(csv);
-        }
-
-        BatchTask linear = new SimpleLinearBatch<>("Csv import", importTasks, false,
-            () -> SpTool3Main.getRunTime().getSampleReg()
-                .createSetAndFlushWaitingList("Import"));
+      if (!importTasks.isEmpty()) {
+        BatchTask linear = new SimpleLinearBatch<>("Raw data import", importTasks, false,
+            () -> SpTool3Main.getRunTime().getSampleReg().createSetAndFlushWaitingList("Import"));
         SpTool3Main.getRunTime().getTaskManager().queueToHousekeepingPool(linear);
       } else {
-        LOGGER.info("CSV import did not receive proper parameters to start.");
+        LOGGER.info("Import did not receive proper files or parameters to start. Are the files still " +
+            "available on your system?");
       }
     }
   }
+
+
+  public List<Boolean> startImportLoadAgain(List<Path> files, List<Method> methods,
+                                            @Nullable Stage parentStage) {
+    List<Boolean> successes = new ArrayList<>();
+
+    List<Task> importTasks = new ArrayList<>();
+
+    if (files.size() == methods.size()) {
+      boolean success = false;
+
+      for (int i = 0; i < files.size(); i++) {
+        Path file = files.get(i);
+        Method method = methods.get(i);
+
+        boolean isNuTof = Util.isNuPath(file);
+
+        if (isNuTof) {
+          /// NU TOF
+          NuInterpreterParams nuParams = Util.getNuParametersFromMethod(method);
+          if (nuParams != null) {
+            // make sure we pass the folder and not the file!
+            file = Util.getCheckedNuPathDir(file);
+            WorkingTask csv = new NuImportTask(nuParams, file, parentStage);
+            importTasks.add(csv);
+            success = true;
+          }
+        } else {
+          /// CSV
+          if (Util.isCsvLikeFile(file)) {
+            CsvInterpreterParams csvParams = Util.getCSVParamsFromMethod(method);
+            if (csvParams != null) {
+              WorkingTask csv = new CsvImportTask(csvParams, file);
+              importTasks.add(csv);
+              success = true;
+            }
+          }
+        }
+        successes.add(success);
+      }
+    }
+
+    if (!importTasks.isEmpty()) {
+      BatchTask linear = new SimpleLinearBatch<>("Raw data import", importTasks, false,
+          () -> SpTool3Main.getRunTime().getSampleReg().createSetAndFlushWaitingList("Import"));
+      SpTool3Main.getRunTime().getTaskManager().queueToHousekeepingPool(linear);
+    } else {
+      LOGGER.info("Import did not receive proper files or parameters to start. Are the files still " +
+          "available on your system?");
+    }
+
+    return successes;
+  }
+
+  public void startImportReplaceMZ(List<Sample> sampleRefs, List<Path> files,
+                                   List<Method> methods, @Nullable Stage parentStage) {
+    List<Task> importTasks = new ArrayList<>();
+
+    if (files.size() == methods.size() && files.size() == sampleRefs.size()) {
+      boolean success = false;
+
+      for (int i = 0; i < files.size(); i++) {
+        Path file = files.get(i);
+        Method method = methods.get(i);
+
+        boolean isNuTof = Util.isNuPath(file);
+
+        if (isNuTof) {
+          /// NU TOF
+          NuInterpreterParams nuParams = Util.getNuParametersFromMethod(method);
+          if (nuParams != null) {
+            // make sure we pass the folder and not the file!
+            file = Util.getCheckedNuPathDir(file);
+            Sample existingSample = sampleRefs.get(i);
+            WorkingTask csv = new NuImportTask(existingSample, nuParams, file, parentStage);
+            importTasks.add(csv);
+          }
+        } else {
+          /// CSV
+          if (Util.isCsvLikeFile(file)) {
+            LOGGER.info("This options is meant for TOF data only.");
+          }
+        }
+      }
+    }
+
+    if (!importTasks.isEmpty()) {
+      BatchTask linear = new SimpleLinearBatch<>("Raw data import", importTasks, false,
+          () -> SpTool3Main.getRunTime().getSampleReg().createSetAndFlushWaitingList("Import"));
+      SpTool3Main.getRunTime().getTaskManager().queueToHousekeepingPool(linear);
+    } else {
+      LOGGER.info("Import did not receive proper files or parameters to start. Are the files still " +
+          "available on your system?");
+    }
+  }
+
 
   public void enableDividerPositions() {
     // Initial positions
@@ -806,6 +982,13 @@ public class MainWindowController {
   public void updatePopulations() {
     Platform.runLater(() -> {
       combinedSampleListAndSearchView.fillAndReselectPopulations();
+    });
+  }
+
+
+  public void updateIsotopes() {
+    Platform.runLater(() -> {
+      combinedSampleListAndSearchView.fireSampleChange();
     });
   }
 
@@ -850,6 +1033,106 @@ public class MainWindowController {
 
   public Unit getUnit() {
     return mainUnitComboBox.getSelectionModel().getSelectedItem().getUnit();
+  }
+
+  private void startStressTest() {
+    // STRESS TEST: randomly select isotopes to trigger refreshGraph() repeatedly
+    // Remove this block after confirming the NPE fix holds
+    Thread stressThread = new Thread(() -> {
+      long endTime = System.currentTimeMillis() + 5 * 60 * 1000; // 5 minutes
+      java.util.Random random = new java.util.Random();
+
+      while (System.currentTimeMillis() < endTime) {
+        try {
+          // Random delay between 5ms and 1000ms
+          int delay = 5 + random.nextInt(996);
+          Thread.sleep(delay);
+
+          Platform.runLater(() -> {
+            try {
+              int itemCount = isotopeTableView.getItems().size();
+              if (itemCount == 0) return;
+
+              // Randomly choose single or multi selection
+              boolean multiSelect = random.nextBoolean();
+              isotopeTableView.getSelectionModel().clearSelection();
+
+              if (multiSelect) {
+                // Select 1 to min(5, itemCount) random isotopes
+                int count = 1 + random.nextInt(Math.min(5, itemCount));
+                for (int i = 0; i < count; i++) {
+                  int idx = random.nextInt(itemCount);
+                  isotopeTableView.getSelectionModel().select(idx);
+                }
+              } else {
+                // Single selection
+                int idx = random.nextInt(itemCount);
+                isotopeTableView.getSelectionModel().select(idx);
+              }
+            } catch (Exception ex) {
+              LOGGER.warn("Stress test selection failed: " + ex.getMessage());
+            }
+          });
+
+        } catch (InterruptedException ie) {
+          Thread.currentThread().interrupt();
+          break;
+        }
+      }
+      LOGGER.info("Stress test complete.");
+    });
+
+    stressThread.setDaemon(true); // don't block app shutdown
+    stressThread.setName("isotope-stress-test");
+    stressThread.start();
+
+    Thread stressThread2 = new Thread(() -> {
+      long endTime = System.currentTimeMillis() + 5 * 60 * 1000; // 5 minutes
+      java.util.Random random = new java.util.Random();
+
+      while (System.currentTimeMillis() < endTime) {
+        try {
+          // Random delay between 5ms and 1000ms
+          int delay = 5 + random.nextInt(496);
+          Thread.sleep(delay);
+
+          Platform.runLater(() -> {
+            try {
+              int itemCount = populationView.getItems().size();
+              if (itemCount == 0) return;
+
+              // Randomly choose single or multi selection
+              boolean multiSelect = random.nextBoolean();
+              populationView.getSelectionModel().clearSelection();
+
+              if (multiSelect) {
+                // Select 1 to min(5, itemCount) random isotopes
+                int count = 1 + random.nextInt(Math.min(5, itemCount));
+                for (int i = 0; i < count; i++) {
+                  int idx = random.nextInt(itemCount);
+                  populationView.getSelectionModel().select(idx);
+                }
+              } else {
+                // Single selection
+                int idx = random.nextInt(itemCount);
+                populationView.getSelectionModel().select(idx);
+              }
+            } catch (Exception ex) {
+              LOGGER.warn("Stress test selection failed: " + ex.getMessage());
+            }
+          });
+
+        } catch (InterruptedException ie) {
+          Thread.currentThread().interrupt();
+          break;
+        }
+      }
+      LOGGER.info("Stress test complete.");
+    });
+
+    stressThread2.setDaemon(true); // don't block app shutdown
+    stressThread2.setName("isotope-stress-test");
+    stressThread2.start();
   }
 }
 

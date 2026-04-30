@@ -24,28 +24,28 @@ public enum DistributionModel implements Serializable {
   PESSIMISTIC {
     @Override
     public String toString() {
-      return "Use model with higher threshold";
+      return "Highest";
     }
   },
 
   THRESHOLD {
     @Override
     public String toString() {
-      return "Use Poisson if µ < cutoff";
+      return "Automatic";
     }
   },
 
   GAUSSIAN_MODEL {
     @Override
     public String toString() {
-      return "Use the Gaussian model";
+      return "Force Gaussian";
     }
   },
 
   POISSON_MODEL {
     @Override
     public String toString() {
-      return "Use the Poisson model";
+      return "Force Poisson";
     }
   },
 

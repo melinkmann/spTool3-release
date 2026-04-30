@@ -37,6 +37,13 @@ public class NoFieldTextParameter extends AbstractParameter<String> implements S
   private final TextFormatterOption textFormatterOption; // has to be a SOURCE, i.e. a method reference!
 
   public NoFieldTextParameter(String label,
+                              String value) {
+    super(label, value, value, false, "NoFieldTextParameter");
+    this.value = value;
+    this.textFormatterOption = TextFormatterOption.ALL_PASS;
+  }
+
+  public NoFieldTextParameter(String label,
       String explanation,
       String value,
       TextFormatterOption textFormatterOption,

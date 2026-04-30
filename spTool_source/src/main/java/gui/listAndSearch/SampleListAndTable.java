@@ -35,16 +35,12 @@ import gui.util.UiUtil;
 import gui.viewerCells.SampleSetListCell;
 import io.SampleSet;
 
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.HashSet;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
+import io.nu.IsotopePtoeDialog;
 import javafx.animation.PauseTransition;
 import javafx.beans.Observable;
 import javafx.beans.value.ChangeListener;
@@ -54,12 +50,15 @@ import javafx.collections.ListChangeListener;
 import javafx.event.EventHandler;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.image.ImageView;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.StackPane;
 import javafx.scene.paint.Color;
 import javafx.scene.text.Text;
+import javafx.stage.Stage;
+import javafx.stage.Window;
 import javafx.util.Duration;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.logging.log4j.LogManager;
@@ -170,8 +169,8 @@ public class SampleListAndTable {
     // Context Menu
     provideContextMenu(sampleSetListView);
     addAddMenu();
-    addRemoveMenu();
-    addDeleteSampleMenu();
+    // addRemoveMenu(); -> moved to the TableFactory which is called from SampleListAndTable
+    // addDeleteSampleMenu(); -> moved to the TableFactory which is called from SampleListAndTable
     addDeleteSetMenu();
 
     // Fill
@@ -330,7 +329,14 @@ public class SampleListAndTable {
       public void handle(MouseEvent click) {
         // @ double click
         if (click.getClickCount() == 2) {
-          selectDefaultIsotopes();
+          if (click.isControlDown()) {
+            isotopeTableView.getSelectionModel().clearSelection();
+            getSampleDefaultIsotopes().forEach(iso -> {
+              isotopeTableView.getSelectionModel().select(iso);
+            });
+          } else {
+            selectDefaultIsotopes();
+          }
         }
       }
     });
@@ -338,11 +344,21 @@ public class SampleListAndTable {
     provideContextMenu(isotopeTableView);
     addSelectMostAbundantMenu();
     addSelectAllMenu();
+    addDefaultList();
     addIsotopeColorPicker();
+    addIsotopeRemover();
   }
   // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // //
   // Methods
   // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // //
+
+  private List<Isotope> getSampleDefaultIsotopes() {
+    Set<Isotope> isotopes = new HashSet<>();
+    for (Sample selSample : getSelSamples()) {
+      isotopes.addAll(selSample.getSampleDefaultIsotopes());
+    }
+    return new ArrayList<>(isotopes);
+  }
 
   private void provideContextMenu(Control control) {
     if (control.getContextMenu() == null) {
@@ -364,47 +380,6 @@ public class SampleListAndTable {
     sampleSetListView.getContextMenu().getItems().add(new SeparatorMenuItem());
     sampleSetListView.getContextMenu().getItems().add(notFavouriteMenu);
     sampleSetListView.getContextMenu().getItems().add(new SeparatorMenuItem());
-  }
-
-  public void addDeleteSampleMenu() {
-    MenuItem notFavouriteMenu = UiUtil
-        .getImageMenuItem("Delete Samples Globally", "/img/delete.png");
-    notFavouriteMenu.setOnAction(e ->
-        NotificationFactory
-            .openYesCancel("Delete Sample from all Sets? This is irreversible.", () -> {
-              List<Sample> selSamples = sampleTableView.getSelectionModel().getSelectedItems()
-                  .stream()
-                  .filter(Objects::nonNull)
-                  .map(FxSample::getPlainSample)
-                  .collect(Collectors.toList());
-              SampleSet selSet = getSampleSetListView().getSelectionModel().getSelectedItem()
-                  .unwrap();
-              if (selSet != null) {
-                SpTool3Main.getRunTime().getSampleReg().removeSamplesEntirely(selSamples);
-              }
-              filterSampleSets();
-            }));
-    sampleSetListView.getContextMenu().getItems().add(notFavouriteMenu);
-  }
-
-  public void addRemoveMenu() {
-    MenuItem notFavouriteMenu = UiUtil.getImageMenuItem("Remove samples", "/img/remove.png");
-    notFavouriteMenu.setOnAction(e ->
-        NotificationFactory.openYesCancel("Remove selected samples from set? This is irreversible.",
-            () -> {
-              List<Sample> selSamples = sampleTableView.getSelectionModel().getSelectedItems()
-                  .stream()
-                  .filter(Objects::nonNull)
-                  .map(FxSample::getPlainSample)
-                  .collect(Collectors.toList());
-              SampleSet selSet = getSampleSetListView().getSelectionModel().getSelectedItem()
-                  .unwrap();
-              if (selSet != null) {
-                selSet.getSamples().removeAll(selSamples);
-              }
-              filterSampleSets();
-            }));
-    sampleSetListView.getContextMenu().getItems().add(notFavouriteMenu);
   }
 
   public void addAddMenu() {
@@ -698,12 +673,25 @@ public class SampleListAndTable {
     // reselect
     List<Integer> prevSelIndices = new ArrayList<>();
     List<Isotope> availableIsotopes = new ArrayList<>(isotopeTableView.getItems());
-    for (int i = 0; i < availableIsotopes.size(); i++) {
-      Isotope isotope = availableIsotopes.get(i);
-      if (prevSelIsotopes.contains(isotope)) {
-        prevSelIndices.add(i);
+    if (!prevSelIsotopes.isEmpty()) {
+      for (int i = 0; i < availableIsotopes.size(); i++) {
+        Isotope isotope = availableIsotopes.get(i);
+        if (prevSelIsotopes.contains(isotope)) {
+          prevSelIndices.add(i);
+        }
       }
     }
+
+    // select "always selected": This must be added here since below selectDefaultIsotopes();
+    // only fires if there is no prevSel --> MOVED THIS TO CTL DOUBLE CLICK
+    // if (!pseSelIsotopes.isEmpty()) {
+    //   for (int i = 0; i < availableIsotopes.size(); i++) {
+    //     Isotope isotope = availableIsotopes.get(i);
+    //     if (pseSelIsotopes.contains(isotope) && !prevSelIndices.contains(i)) {
+    //       prevSelIndices.add(i);
+    //     }
+    //   }
+    // }
 
 //    isotopeTableView.getSelectionModel()
 //        .selectIndices(-1, ArrUtils.integerListToArr(prevSelIndices));
@@ -720,7 +708,7 @@ public class SampleListAndTable {
         }
       }
     } else {
-      // else, select most abundant
+      // else, select default case or else most abundant
       selectDefaultIsotopes();
     }
 
@@ -779,11 +767,69 @@ public class SampleListAndTable {
     isotopeTableView.getContextMenu().getItems().add(menu);
   }
 
+  private void addIsotopeRemover() {
+    MenuItem menu = UiUtil.getImageMenuItem("Remove isotopes", "/img/delete.png");
+    menu.setOnAction(e -> {
+      NotificationFactory.openYesCancel("Delete isotope(s)? This is irreversible.", () -> {
+
+        List<Isotope> selIsotopes = getSelIsotopes();
+        List<Sample> selSamples = getAllSamples();
+        for (Sample selSample : selSamples) {
+          selSample.removeIsotopes(selIsotopes);
+        }
+        prevSelIsotopes.clear(); // force reselect from default: else, index-based reselection fails
+        fireSampleChange(); // essentially, refresh all!
+      });
+
+    });
+    isotopeTableView.getContextMenu().getItems().add(new SeparatorMenuItem());
+    isotopeTableView.getContextMenu().getItems().add(menu);
+  }
+
+  private void addDefaultList() {
+    MenuItem menu = UiUtil.getImageMenuItem("Fix isotopes", "/img/tableTrace.png");
+    menu.setOnAction(e -> {
+
+      List<Isotope> sampleDefaultIsotopes = getSampleDefaultIsotopes();
+
+      // needed for the PTOE popup
+      Window owner = menu.getParentPopup().getOwnerWindow();
+      Stage parent = null;
+      if (owner != null) {
+        parent = (Stage) owner;
+      }
+
+      IsotopePtoeDialog dlg = IsotopePtoeDialog.forIsotopeSelection(
+          parent,
+          dataModelNew.mz.Element.getAllIsotopes(),   // all isotopes available
+          sampleDefaultIsotopes);                  // null or empty = open blank
+
+      List<MZValue> resultingMZ = dlg.showAndWait();
+      if (resultingMZ != null) {
+        List<Isotope> resultingIsotopes = new ArrayList<>();
+        for (MZValue mzValue : resultingMZ) {
+          resultingIsotopes.add(mzValue.getIsotope());
+        }
+        sampleDefaultIsotopes.clear();
+        sampleDefaultIsotopes.addAll(resultingIsotopes);
+      }
+      // set to samples
+      for (Sample selSample : getSelSamples()) {
+        selSample.setSampleDefaultIsotopes(sampleDefaultIsotopes);
+      }
+
+      fireSampleChange(); // refresh
+    });
+    isotopeTableView.getContextMenu().getItems().add(new SeparatorMenuItem());
+    isotopeTableView.getContextMenu().getItems().add(menu);
+  }
+
   private void selectDefaultIsotopes() {
     // Deselect all, else the right-clicked isotope remains.
     isotopeTableView.getSelectionModel().clearSelection();
     List<Element> elements = isotopeTableView.getItems().stream()
         .map(Isotope::getElement)
+        .distinct()
         .collect(Collectors.toList());
 
     List<Isotope> defaultIsotopes = new ArrayList<>();
@@ -797,6 +843,7 @@ public class SampleListAndTable {
         // by abundance
         List<Isotope> allIsoOfEle = element.getIsotopes();
         allIsoOfEle.sort(Comparator.comparingDouble(Isotope::getAbundance));
+        Collections.reverse(allIsoOfEle); // select MOST abundant not LEAST
         for (Isotope isotope : allIsoOfEle) {
           if (isotopeTableView.getItems().contains(isotope)) {
             defaultIsotopes.add(isotope);
@@ -805,6 +852,13 @@ public class SampleListAndTable {
         }
       }
     }
+
+    // check if the always on top isotopes are also to be selected. Works but feels a bit annoying.
+    // for (Isotope alwaysOnTopIsotope : alwaysOnTopIsotopes) {
+    //   if (!defaultIsotopes.contains(alwaysOnTopIsotope)) {
+    //     defaultIsotopes.add(alwaysOnTopIsotope);
+    //   }
+    // }
 
     defaultIsotopes.forEach(iso -> {
       isotopeTableView.getSelectionModel().select(iso);
@@ -929,6 +983,10 @@ public class SampleListAndTable {
 
   public TextField getSearchFld() {
     return sampleSetSearchField;
+  }
+
+  public TableView<FxSample> getSampleTableView() {
+    return sampleTableView;
   }
 
   //

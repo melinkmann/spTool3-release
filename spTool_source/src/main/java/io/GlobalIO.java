@@ -51,6 +51,16 @@ public abstract class GlobalIO {
     return confFile;
   }
 
+
+  public static Path makeDefaultNuReaderFile() {
+    Path confFile = PathUtil.getUserDir();
+    confFile = PathUtil.addDir(confFile, "spTool3", "config");
+    PathUtil.createDir(confFile);
+    confFile = PathUtil.addFile(confFile, "defaultNuReader" + METHOD_EXTENSION);
+    PathUtil.createFile(confFile);
+    return confFile;
+  }
+
   public static Path makeExporterFile() {
     Path confFile = PathUtil.getUserDir();
     confFile = PathUtil.addDir(confFile, "spTool3", "config");

@@ -21,12 +21,14 @@ import core.SpTool3Main;
 import dataModelNew.mz.Element;
 import gui.dialog.FillCollection;
 import gui.dialog.Fillable;
+
 import java.io.Serial;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
+
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
@@ -123,11 +125,21 @@ public class Isotope implements Fillable<Isotope>, FillCollection<Isotope>, Comp
   }
 
   // TODO: at some point we may want to allow identification by precision comparison!
-    //  @Nullable
-    //  public static Isotope getFromDouble(double exactMass) {
-    //  }
+  //  @Nullable
+  //  public static Isotope getFromDouble(double exactMass) {
+  //  }
 
-  public static Isotope getFromString(String symbol) {
+  public static List<Isotope> getFromNominalMass(int nominal) {
+    List<Isotope> matches = new ArrayList<>();
+    for (Isotope isotope : Element.getAllIsotopes()) {
+      if (isotope.getIsotopicNumber() == nominal) {
+        matches.add(isotope);
+      }
+    }
+    return matches;
+  }
+
+  public static Isotope guessFromString(String symbol) {
     Isotope isotope = Element.UNKNOWN.getMostAbundant();
     if (symbol != null) {
 
@@ -166,7 +178,12 @@ public class Isotope implements Fillable<Isotope>, FillCollection<Isotope>, Comp
           }
         } else {
           // we just have an isotopic number and not an element
-          if (SnF.isValidInt(justDigits)) {
+          if (SnF.isValidInt(symbol)) {
+            int isoNumber = SnF.strToInt(symbol);
+            isotope = SpTool3Main.getRunTime().getConfParams().resolveConflictOrGet(isoNumber);
+            LOGGER.trace("Had to read/guess ELEMENT from isotope conflict list"
+                + "list as just an isotopic number was passed: " + symbol);
+          } else {
             int isoNumber = SnF.strToInt(justDigits);
             isotope = SpTool3Main.getRunTime().getConfParams().resolveConflictOrGet(isoNumber);
             LOGGER.trace("Had to read/guess ELEMENT from isotope conflict list"
@@ -183,7 +200,7 @@ public class Isotope implements Fillable<Isotope>, FillCollection<Isotope>, Comp
     return isotope;
   }
 
-  public boolean isValid(){
+  public boolean isValid() {
     return getElement() != Element.UNKNOWN;
   }
 

@@ -17,7 +17,7 @@
 
 package visualizer.styles;
 
-public enum LineLineDashDefaults implements LineDash {
+public enum LineDashDefaults implements LineDash {
 
 
   STRAIGHT {
@@ -27,45 +27,38 @@ public enum LineLineDashDefaults implements LineDash {
     }
   },
 
+  XL {
+    @Override
+    public float[] get() {
+      return new float[]{LARGE_GAP + 2, LARGE_GAP};
+    }
+  },
+
   L {
     @Override
     public float[] get() {
-      return new float[]{10.0f, LARGE_GAP};
-    }
-  },
-
-  L_2 {
-    @Override
-    public float[] get() {
-      return new float[]{10.0f, LARGE_GAP + 3};
-    }
-  },
-
-  L_3 {
-    @Override
-    public float[] get() {
-      return new float[]{10.0f, LARGE_GAP - 3};
+      return new float[]{NORMAL_GAP + 2,NORMAL_GAP};
     }
   },
 
   M {
     @Override
     public float[] get() {
-      return new float[]{6.0f, NORMAL_GAP};
+      return new float[]{SMALL_GAP + 2, SMALL_GAP};
     }
   },
 
   S {
     @Override
     public float[] get() {
-      return new float[]{2.0f, NORMAL_GAP};
+      return new float[]{SMALLER_GAP + 2, SMALLER_GAP};
     }
   },
 
   TINY {
     @Override
     public float[] get() {
-      return new float[]{0.1f, LARGE_GAP};
+      return new float[]{0.1f, SMALL_GAP};
     }
   },
 
@@ -80,6 +73,8 @@ public enum LineLineDashDefaults implements LineDash {
 
   public static final float LARGE_GAP = 10.0f;
   public static final float NORMAL_GAP = 6.0f;
+  public static final float SMALL_GAP = 3.0f;
+  public static final float SMALLER_GAP = 1.0f;
 
 
   @Override

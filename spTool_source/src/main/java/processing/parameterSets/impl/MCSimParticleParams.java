@@ -157,8 +157,7 @@ public class MCSimParticleParams extends AbstractParamSet implements ParamSet {
             When 'a' approaches 1, the expected value gets more and more volatile and at a <= 1,
             it tends towards infinity. If you desire a better match between the specified mean µ
             and the simulated mean particle signal, you should try to increase the value of a.
-            Usually, this can be achieved by increasing the scale parameter k or by lowering the mean µ
-            """,
+            Usually, this can be achieved by increasing the scale parameter k or by lowering the mean µ""",
         5d,
         NF.D1C1,
         TextFormatterOption.ASSURE_NONZERO_POSITIVE_DOUBLE,
@@ -200,9 +199,9 @@ public class MCSimParticleParams extends AbstractParamSet implements ParamSet {
             The key parameters are:
             Linear plasma flow velocity 'v', diffusion coefficient 'D', distance of vaporization 'y'.\
             Each parameter has a mean value ± a standard deviation (SD) to simulate random ion clouds.
-            The default values can be changed in the configuration of spTool.
-            Alternatively, it is also possible to select custom values here in this method
-            """,
+            The default values can be changed in the configuration of spTool
+            (Edit -> Configuration -> *scroll down*).
+            Alternatively, it is also possible to select custom values here in this method""",
         MCSimIclShapeParameters.DEFAULT,
         MCSimIclShapeParameters.validOptions(),
         MCSimIclShapeParameters.class,
@@ -210,20 +209,24 @@ public class MCSimParticleParams extends AbstractParamSet implements ParamSet {
         "peakShape");
 
     v_mu = new DoubleParameter("Plasma velocity (v) [m/s]",
-        "Mean plasma gas linear velocity. "
-            + "\nHigher values lead to narrower peaks."
-            + "\nWhy? Higher velocities lead to a shorter residence time in the plasma"
-            + "\nwhich means that there is less time available for the ions to diffuse."
-            + "\n A good starting point is v=24 m/s",
-        24d,
+        """
+            Mean plasma gas linear velocity.
+            Higher values lead to narrower and more symmetric peaks.
+            Why? Higher velocities lead to a shorter residence time in the plasma
+            which means that there is less time available for the ions to diffuse.
+            A good starting point is v=15 m/s
+            but values closer to 24 m/s are also plausible (to obtain narrower and symmetric peaks)""",
+        15d,
         NF.D1C1,
         TextFormatterOption.ASSURE_NONZERO_POSITIVE_DOUBLE,
         false,
         "v_mu");
 
     v_SD = new DoubleParameter("Plasma velocity (±SD) [m/s]",
-        "Standard deviation of v."
-            + "\nThis number specifies how broadly the random numbers vary",
+        """
+            Standard deviation of v.
+            This number specifies how broadly the random numbers vary.
+            A good starting point is SD=5""",
         5d,
         NF.D1C1,
         TextFormatterOption.ASSURE_POSITIVE_DOUBLE,
@@ -231,23 +234,26 @@ public class MCSimParticleParams extends AbstractParamSet implements ParamSet {
         "v_SD");
 
     y_mu = new DoubleParameter("Distance of vaporization (y) [mm]",
-        "Mean distance from the sampler orifice where a particle is completely ionized."
-            + "\nHigher values lead the broader peaks."
-            + "\nWhy? The model assumes an instantaneous vaporization of the particle."
-            + "\nAfter that, the ions start to diffuse into the surrounding plasma, causing peak broadening."
-            + "\nWhen the distance from the orifice is greater, the residence time in the plasma increases,"
-            + "\nwhich means that there is more time available for the ions to diffuse."
-            + "\nA good starting point is y=15 mm",
-        15d,
+        """
+            Mean distance from the sampler orifice where a particle is completely ionized.
+            Higher values lead the broader peaks.
+            Why? The model assumes an instantaneous vaporization of the particle.
+            After that, the ions start to diffuse into the surrounding plasma, causing peak broadening.
+            When the distance from the orifice is greater, the residence time in the plasma increases,
+            which means that there is more time available for the ions to diffuse.
+            A good starting point is y=10 mm""",
+        9.5d,
         NF.D1C4,
         TextFormatterOption.ASSURE_NONZERO_POSITIVE_DOUBLE,
         false,
         "y_mu");
 
     y_SD = new DoubleParameter("Distance of vaporization (±SD) [mm]",
-        "Standard deviation of y."
-            + "\nThis number specifies how broadly the random numbers vary",
-        15d,
+        """
+            Standard deviation of y.
+            This number specifies how broadly the random numbers vary.
+            A good starting point is SD=3 mm""",
+        3d,
         NF.D1C1,
         TextFormatterOption.ASSURE_POSITIVE_DOUBLE,
         false,

@@ -30,6 +30,8 @@ import gui.dialog.SimpleFxEntry.VisitedDirectoryEntry;
 import io.FxFileSet;
 import io.FxVisitedFile;
 import io.SampleSet;
+
+import java.nio.file.Path;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -74,7 +76,7 @@ public interface FxEntryFactory<T> {
 
   }
 
-  ///////////////////////////////////////////////////////////////////////////////
+  /// ////////////////////////////////////////////////////////////////////////////
 
   public static class SimpleEntryFactory<T> extends AbstractFxEntryFactory<T> {
 
@@ -91,7 +93,22 @@ public interface FxEntryFactory<T> {
     }
   }
 
-  ///////////////////////////////////////////////////////////////////////////////
+  public static class ImportPathEntryFactory extends AbstractFxEntryFactory<Path> {
+
+    @Override
+    public FxEntry<Path> create(Path t) {
+      return new SimpleFxEntry.FileFxEntry(t, isSortable());
+    }
+
+    @Override
+    public List<FxEntry<Path>> create(List<Path> tList) {
+      return tList.stream()
+          .map(t -> new SimpleFxEntry.FileFxEntry(t, isSortable()))
+          .collect(Collectors.toList());
+    }
+  }
+
+  /// ////////////////////////////////////////////////////////////////////////////
 
   public static class RecentLocationsDialogEntryFactory extends
       AbstractFxEntryFactory<FxVisitedFile> {
@@ -109,7 +126,7 @@ public interface FxEntryFactory<T> {
     }
   }
 
-  ///////////////////////////////////////////////////////////////////////////////
+  /// ////////////////////////////////////////////////////////////////////////////
 
   public static class SingleFileSetEntryFactory extends AbstractFxEntryFactory<FxFileSet> {
 
@@ -126,7 +143,7 @@ public interface FxEntryFactory<T> {
     }
   }
 
-  ///////////////////////////////////////////////////////////////////////////////
+  /// ////////////////////////////////////////////////////////////////////////////
 
   public static class ParamSetEntryFactory extends
       AbstractFxEntryFactory<FxParamSet> {
@@ -144,7 +161,7 @@ public interface FxEntryFactory<T> {
     }
   }
 
-  ///////////////////////////////////////////////////////////////////////////////
+  /// ////////////////////////////////////////////////////////////////////////////
 
   public static class ContainerFactory extends
       AbstractFxEntryFactory<SpCalDensity.Container> {
@@ -162,7 +179,7 @@ public interface FxEntryFactory<T> {
     }
   }
 
-  ///////////////////////////////////////////////////////////////////////////////
+  /// ////////////////////////////////////////////////////////////////////////////
 
   public static class ParamSetWithDateEntryFactory extends
       AbstractFxEntryFactory<FxParamSet> {
@@ -180,7 +197,7 @@ public interface FxEntryFactory<T> {
     }
   }
 
-  ///////////////////////////////////////////////////////////////////////////////
+  /// ////////////////////////////////////////////////////////////////////////////
 
   public static class MethodDateEntryFactory extends AbstractFxEntryFactory<FxMethod> {
 
@@ -197,7 +214,7 @@ public interface FxEntryFactory<T> {
     }
   }
 
-  ///////////////////////////////////////////////////////////////////////////////
+  /// ////////////////////////////////////////////////////////////////////////////
 
   public static class MethodDateFileEntryFactory extends AbstractFxEntryFactory<FxMethod> {
 
@@ -214,7 +231,7 @@ public interface FxEntryFactory<T> {
     }
   }
 
-  ///////////////////////////////////////////////////////////////////////////////
+  /// ////////////////////////////////////////////////////////////////////////////
 
   public static class SampleSetEntryFactory extends AbstractFxEntryFactory<SampleSet> {
 
@@ -231,7 +248,7 @@ public interface FxEntryFactory<T> {
     }
   }
 
-  ///////////////////////////////////////////////////////////////////////////////
+  /// ////////////////////////////////////////////////////////////////////////////
 
   public static class SampleEntryFactory extends AbstractFxEntryFactory<FxSample> {
 
@@ -247,7 +264,8 @@ public interface FxEntryFactory<T> {
           .collect(Collectors.toList());
     }
   }
-  ///////////////////////////////////////////////////////////////////////////////
+
+  /// ////////////////////////////////////////////////////////////////////////////
 
   public static class TableParFactory extends AbstractFxEntryFactory<TablePar> {
 

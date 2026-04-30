@@ -34,6 +34,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
+
 import org.jfree.chart.LegendItem;
 import org.jfree.chart.axis.CategoryAxis;
 import org.jfree.chart.axis.ValueAxis;
@@ -434,8 +435,8 @@ public class CustomBoxAndWhiskerRenderer extends AbstractCategoryItemRenderer
    */
   @Override
   public CategoryItemRendererState initialise(Graphics2D g2,
-      Rectangle2D dataArea, CategoryPlot plot, int rendererIndex,
-      PlotRenderingInfo info) {
+                                              Rectangle2D dataArea, CategoryPlot plot, int rendererIndex,
+                                              PlotRenderingInfo info) {
 
     CategoryItemRendererState state = super.initialise(g2, dataArea, plot,
         rendererIndex, info);
@@ -491,9 +492,9 @@ public class CustomBoxAndWhiskerRenderer extends AbstractCategoryItemRenderer
    */
   @Override
   public void drawItem(Graphics2D g2, CategoryItemRendererState state,
-      Rectangle2D dataArea, CategoryPlot plot, CategoryAxis domainAxis,
-      ValueAxis rangeAxis, CategoryDataset dataset, int row, int column,
-      int pass) {
+                       Rectangle2D dataArea, CategoryPlot plot, CategoryAxis domainAxis,
+                       ValueAxis rangeAxis, CategoryDataset dataset, int row, int column,
+                       int pass) {
 
     // do nothing if item is not visible
     if (!getItemVisible(row, column)) {
@@ -533,9 +534,9 @@ public class CustomBoxAndWhiskerRenderer extends AbstractCategoryItemRenderer
    * @param column     the column index (zero-based).
    */
   public void drawHorizontalItem(Graphics2D g2,
-      CategoryItemRendererState state, Rectangle2D dataArea,
-      CategoryPlot plot, CategoryAxis domainAxis, ValueAxis rangeAxis,
-      CategoryDataset dataset, int row, int column) {
+                                 CategoryItemRendererState state, Rectangle2D dataArea,
+                                 CategoryPlot plot, CategoryAxis domainAxis, ValueAxis rangeAxis,
+                                 CategoryDataset dataset, int row, int column) {
 
     BoxAndWhiskerCategoryDataset bawDataset
         = (BoxAndWhiskerCategoryDataset) dataset;
@@ -677,8 +678,8 @@ public class CustomBoxAndWhiskerRenderer extends AbstractCategoryItemRenderer
    * @param column     the column index (zero-based).
    */
   public void drawVerticalItem(Graphics2D g2, CategoryItemRendererState state,
-      Rectangle2D dataArea, CategoryPlot plot, CategoryAxis domainAxis,
-      ValueAxis rangeAxis, CategoryDataset dataset, int row, int column) {
+                               Rectangle2D dataArea, CategoryPlot plot, CategoryAxis domainAxis,
+                               ValueAxis rangeAxis, CategoryDataset dataset, int row, int column) {
 
     BoxAndWhiskerCategoryDataset bawDataset
         = (BoxAndWhiskerCategoryDataset) dataset;
@@ -787,17 +788,42 @@ public class CustomBoxAndWhiskerRenderer extends AbstractCategoryItemRenderer
       }
 
       // draw median...
-      if (this.medianVisible) {
+      if (this.medianVisible && shortLabels.get(row) != null && !shortLabels.get(row).isEmpty()) {
         Number yMedian = bawDataset.getMedianValue(row, column);
         if (yMedian != null) {
           String label = shortLabels.get(row);
-          g2.setPaint(Color.BLACK);
-          g2.setFont(g2.getFont().deriveFont(11f));
-          float textWidth = g2.getFontMetrics().stringWidth(label) / 2f;
-          g2.drawString(label, (float) (xx + state.getBarWidth() / 2.0 - textWidth),
-              (float) (Math.min(yyQ1, yyQ3) - 28));
+          if (!label.isEmpty()) {
+            g2.setPaint(Color.BLACK);
+            g2.setFont(g2.getFont().deriveFont(11f));
+
+            String[] lines = label.split("\n");
+            float lineHeight = g2.getFontMetrics().getHeight();
+            float totalHeight = lines.length * lineHeight;
+            // smaller number > closer to box
+            float startY = (float) (Math.min(yyQ1, yyQ3) - 6) - totalHeight + lineHeight;
+
+            for (String line : lines) {
+              float textWidth = g2.getFontMetrics().stringWidth(line) / 2f;
+              g2.drawString(line, (float) (xx + state.getBarWidth() / 2.0 - textWidth), startY);
+              startY += lineHeight;
+            }
+          }
         }
       }
+      /*
+      Used to be:
+            if (this.medianVisible) {
+               Number yMedian = bawDataset.getMedianValue(row, column);
+                 if (yMedian != null) {
+                    String label = shortLabels.get(row);
+                    g2.setPaint(Color.BLACK);
+                    g2.setFont(g2.getFont().deriveFont(11f));
+                    float textWidth = g2.getFontMetrics().stringWidth(label) / 2f;
+                    g2.drawString(label, (float) (xx + state.getBarWidth() / 2.0 - textWidth),
+                    (float) (Math.min(yyQ1, yyQ3) - 28));
+                  }
+               }
+       */
     }
 
     // draw yOutliers...
@@ -840,7 +866,7 @@ public class CustomBoxAndWhiskerRenderer extends AbstractCategoryItemRenderer
       // appropriate outlier list or a new outlier list is made
 
       for (Iterator<Outlier> iterator = customOutliers.iterator();
-          iterator.hasNext(); ) {
+           iterator.hasNext(); ) {
         Outlier outlier = iterator.next();
         Point2D point = outlier.getPoint();
         drawEllipse(point, oRadius, g2);

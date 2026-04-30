@@ -323,6 +323,41 @@ public class NpEvent implements Event, Serializable {
   }
 
   @Override
+  public TISeries getLogProfile() {
+    TISeries data = new TISeriesRAM();
+
+    if (!isEmpty()) {
+
+      /*
+       If we want to plot simulated data, do not use the potentially time-roi cut series.
+       So far, we do not implement filtering the simulated events by a time roi
+       and since the indices of the simulated events all refer to the original series,
+       we would get totally wrong event indices.
+       */
+      TISeries tiSeries = collection.getCheckedTISeries();
+
+      int seriesSize = tiSeries.size();
+      double[] time = tiSeries.getTime();
+      double[] mainSignal = tiSeries.getIntensity();
+
+      // Cap to yield inclusive indices
+      int start = Math.max(0, getStartIndexInclusive() - 1);
+      int end = Math.min(seriesSize - 1, getEndIndexInclusive() + 1);
+
+      List<Double> xData = new ArrayList<>();
+      List<Double> yData = new ArrayList<>();
+
+      for (int i = start; i <= end; i++) {
+        xData.add(time[i]);
+        yData.add(Math.log10(1+mainSignal[i]));
+      }
+
+      data = new TISeriesRAM(xData, yData);
+    }
+    return data;
+  }
+
+  @Override
   public TISeries getPreviousDP(int preview) {
     TISeries data = new TISeriesRAM();
 
@@ -385,6 +420,76 @@ public class NpEvent implements Event, Serializable {
       for (int i = start; i <= end; i++) {
         xData.add(time[i]);
         yData.add(mainSignal[i]);
+      }
+
+      data = new TISeriesRAM(xData, yData);
+    }
+    return data;
+  }
+
+  @Override
+  public TISeries getLogPreviousDP(int preview) {
+    TISeries data = new TISeriesRAM();
+
+    if (!isEmpty()) {
+
+      /*
+       If we want to plot simulated data, do not use the potentially time-roi cut series.
+       So far, we do not implement filtering the simulated events by a time roi
+       and since the indices of the simulated events all refer to the original series,
+       we would get totally wrong event indices.
+       */
+      TISeries tiSeries = collection.getCheckedTISeries();
+
+      int seriesSize = tiSeries.size();
+      double[] time = tiSeries.getTime();
+      double[] mainSignal = tiSeries.getIntensity();
+
+      // Cap to yield inclusive indices
+      int start = Math.max(0, getStartIndexInclusive() - 1 - preview);
+      int end = Math.min(seriesSize - 1, getStartIndexInclusive() - 1);
+
+      List<Double> xData = new ArrayList<>();
+      List<Double> yData = new ArrayList<>();
+
+      for (int i = start; i <= end; i++) {
+        xData.add(time[i]);
+        yData.add(Math.log10(1+mainSignal[i]));
+      }
+
+      data = new TISeriesRAM(xData, yData);
+    }
+    return data;
+  }
+
+  @Override
+  public TISeries getLogFollowingDP(int preview) {
+    TISeries data = new TISeriesRAM();
+
+    if (!isEmpty()) {
+
+      /*
+       If we want to plot simulated data, do not use the potentially time-roi cut series.
+       So far, we do not implement filtering the simulated events by a time roi
+       and since the indices of the simulated events all refer to the original series,
+       we would get totally wrong event indices.
+       */
+      TISeries tiSeries = collection.getCheckedTISeries();
+
+      int seriesSize = tiSeries.size();
+      double[] time = tiSeries.getTime();
+      double[] mainSignal = tiSeries.getIntensity();
+
+      // Cap to yield inclusive indices
+      int start = Math.max(0, getEndIndexInclusive() + 1);
+      int end = Math.min(seriesSize - 1, getEndIndexInclusive() + 1 + preview);
+
+      List<Double> xData = new ArrayList<>();
+      List<Double> yData = new ArrayList<>();
+
+      for (int i = start; i <= end; i++) {
+        xData.add(time[i]);
+        yData.add(Math.log10(1+mainSignal[i]));
       }
 
       data = new TISeriesRAM(xData, yData);

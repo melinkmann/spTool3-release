@@ -39,7 +39,7 @@ public class TOFmz implements MZValue, Serializable {
   public TOFmz(double nominalMass, double theoreticalMass, String isotope) {
     this.nominalMass = nominalMass;
     this.theoreticalMass = theoreticalMass;
-    this.isotope = Isotope.getFromString(isotope);
+    this.isotope = Isotope.guessFromString(isotope);
   }
 
   public TOFmz(Isotope isotope) {

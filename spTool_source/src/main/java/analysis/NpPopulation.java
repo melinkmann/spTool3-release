@@ -25,14 +25,10 @@ import dataModelNew.Trace;
 import java.io.IOException;
 import java.io.Serial;
 import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.List;
-import java.util.stream.Collectors;
+import java.util.*;
 
 import dataModelNew.mz.MZValue;
-import processing.parameterSets.impl.NormalSearchParams;
+import processing.options.SearchAlgorithm;
 import util.ArrUtils;
 import visualizer.styles.MarkerStyle;
 
@@ -54,6 +50,16 @@ public class NpPopulation implements Population, Serializable {
   private final ThresholdSupplierInstructions stopInstructions;
   private final ThresholdSupplierInstructions heightInstructions;
   private final List<ThresholdSupplierInstructions> gatingInstr;
+
+  /*
+  TODO: Store the spectral data in the sample.
+   - It does not make any sense to have a copy in each population in each trace.
+   - Keep a reference to the SAME SpectralArray to avoid losing object identity
+     when serialization is involved.
+   - Restructure the NpPop class to essentially remove all references/redirect to
+     the HasMap in the sample.
+   - Adjust export as well as creation of the spectra...
+   */
 
   // Dummy
   public NpPopulation() {
@@ -82,6 +88,19 @@ public class NpPopulation implements Population, Serializable {
     this.inputSummary = new PopParSummary();
     this.contributingMZs = new ArrayList<>();
   }
+  // Create an "Incomplete population" ROI
+  public NpPopulation(PopulationID id, EventCollection mainEventCollection, PopParSummary popParSummary) {
+    this.id = id;
+    this.mainEventCollection = mainEventCollection;
+    this.name = id.toString();
+    this.drift = DEFAULT_DRIFT;
+    this.startInstructions = new ThresholdSupplierInstructions();
+    this.stopInstructions = new ThresholdSupplierInstructions();
+    this.heightInstructions = new ThresholdSupplierInstructions();
+    this.gatingInstr = new ArrayList<>();
+    this.inputSummary = popParSummary.copy();
+    this.contributingMZs = new ArrayList<>();
+  }
 
   // Gating
   public NpPopulation(PopulationID id, Population npPopulation,
@@ -99,6 +118,29 @@ public class NpPopulation implements Population, Serializable {
     this.gatingInstr.add(gatingInstr);
     this.inputSummary = npPopulation.getInputSummary(); // keep summary from search
     this.contributingMZs = new ArrayList<>(npPopulation.getContributingMZs());
+  }
+
+  // Align
+  public NpPopulation(PopulationID id,
+                      Population npPopulation,
+                      EventCollection mainEventCollection,
+                      String newName,
+                      List<MZValue> contributingMZs) {
+    this.id = id;
+    this.mainEventCollection = mainEventCollection;
+    this.name = newName;
+    this.drift = DEFAULT_DRIFT;
+    this.startInstructions = npPopulation.getStartInstructions();
+    this.stopInstructions = npPopulation.getStopInstructions();
+    this.heightInstructions = npPopulation.getHeightInstructions();
+    this.gatingInstr = new ArrayList<>(npPopulation.getGatingInstr());
+    this.inputSummary = npPopulation.getInputSummary(); // keep summary from search
+    this.contributingMZs = new ArrayList<>(npPopulation.getContributingMZs());
+    for (MZValue mz : contributingMZs) {
+      if (!contributingMZs.contains(mz)) {
+        this.contributingMZs.add(mz);
+      }
+    }
   }
 
   // Filtering
@@ -146,7 +188,8 @@ public class NpPopulation implements Population, Serializable {
                       ThresholdSupplierInstructions heightInstructions,
                       List<ThresholdSupplierInstructions> gatingInstr,
                       PopParSummary inputSummary,
-                      List<MZValue> contributingMZs) {
+                      List<MZValue> contributingMZs
+  ) {
     this.id = id;
     this.mainEventCollection = mainEventCollection;
     this.name = name;
@@ -169,7 +212,7 @@ public class NpPopulation implements Population, Serializable {
 
     List<MZValue> contributingMZs = this.contributingMZs.stream()
         .map(MZValue::copy)
-        .collect(Collectors.toList());
+        .toList();
 
     return new NpPopulation(id,
         mainEventCollection.copy(newTrace),
@@ -180,7 +223,8 @@ public class NpPopulation implements Population, Serializable {
         heightInstructions.copy(),
         newGatingInstr,
         inputSummary.copy(),
-        contributingMZs);
+        new ArrayList<>(contributingMZs)
+    );
   }
 
   public PopulationID getId() {
@@ -319,10 +363,28 @@ public class NpPopulation implements Population, Serializable {
     Trace trace = mainEventCollection.getTrace();
     Sample sample = trace.getSample();
 
+    // some visual distinction
+    MarkerStyle markerStyle = MarkerStyle.CROSS_UPRIGHT;
+    if (id.getSteps().stream().anyMatch(step -> step instanceof PopulationStep.AlignSubtype)) {
+      markerStyle = MarkerStyle.DIAMOND;
+    }
+
+    boolean isPValSearch = false;
+    for (PopulationStep step : id.getSteps()) {
+      if (step instanceof PopulationStep.SearchSubtype) {
+        isPValSearch = ((PopulationStep.SearchSubtype) step).getSearchAlgorithm()
+            .equals(SearchAlgorithm.P_VALUE_ACCUMULATION);
+        if (isPValSearch) break;
+      }
+    }
+    if (isPValSearch) {
+      markerStyle = MarkerStyle.CIRCLE;
+    }
+
     results.add(new PlottableSubPopulation(
         getName(),
         mainEventCollection.getTrace().getColor(sample),
-        MarkerStyle.CROSS_UPRIGHT,
+        markerStyle,
         markers,
         Collections.singletonList(trace.getMzValue().getIsotope()),
         trace.getTISeries().size(),
@@ -344,5 +406,6 @@ public class NpPopulation implements Population, Serializable {
     if (contributingMZs == null) {
       this.contributingMZs = new ArrayList<>();
     }
+
   }
 }

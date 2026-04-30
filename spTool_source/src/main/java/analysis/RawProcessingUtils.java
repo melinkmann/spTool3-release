@@ -215,9 +215,12 @@ public class RawProcessingUtils {
                   sample.getSampleFile().getNameWithinFile()),
               new LinkedHashMap<>(),
               new ArrayList<>(),
+              new HashMap<>(),
               sample.getMethod(),
               sample.getQuant(),
-              sample.getColor());
+              sample.getColor(),
+              sample.getSampleDefaultIsotopes(),
+              sample.getRemovedIsotopeInfo());
           for (Trace ogTrace : groupCollection.keySet()) {
             List<TISeries> tiSeriesList = groupCollection.get(ogTrace);
             if (i < tiSeriesList.size()) {

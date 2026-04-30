@@ -47,37 +47,44 @@ public class AverageUtils {
                                  MeasureOfStat measure,
                                  PreFilter preFilter) {
 
-    // raw data averaging
-    double[] rawTime = trace.getTISeries().getTime();
-    double[] rawIntensity = trace.getTISeries().getIntensity();
+    TISeries result;
 
-    // Create new time frame
-    double startTime = rawTime.length > 0 ? rawTime[0] : 0;
-    double finalTimeStamp = rawTime[rawTime.length - 1];
-    double[] newTime = getTime(startTime, widthSec, finalTimeStamp);
-    double[] centerTimeStamps = getCenterTime(newTime, widthSec);
+    // (double) check if window is larger than the DT, else return original
+    double dt = trace.getTISeries().getDT();
 
-    // Bin
-    List<double[]> bins = binIntensities(rawTime, rawIntensity, newTime);
+    if (dt < widthSec) {
 
-    // check last bin -> should have at least 10 data points or else will look like outlier
-    if (bins.size() > 2 && bins.get(bins.size() - 1).length < 10) {
-      double[] last = bins.get(bins.size() - 1);
-      double[] penultimate = bins.get(bins.size() - 2);
-      double[] newLast = ArrUtils.merge(penultimate, last);
-      bins.remove(last);
-      bins.remove(penultimate);
-      bins.add(newLast);
-    }
+      // raw data averaging
+      double[] rawTime = trace.getTISeries().getTime();
+      double[] rawIntensity = trace.getTISeries().getIntensity();
 
-    // filter
-    if (!preFilter.equals(PreFilter.NONE)) {
-      for (int i = 0; i < bins.size(); i++) {
-        bins.set(i, preFilter.filter(bins.get(i)));
+      // Create new time frame
+      double startTime = rawTime.length > 0 ? rawTime[0] : 0;
+      double finalTimeStamp = rawTime.length > 0 ? rawTime[rawTime.length - 1] : 0;
+      double[] newTime = getTime(startTime, widthSec, finalTimeStamp);
+      double[] centerTimeStamps = getCenterTime(newTime, widthSec);
+
+      // Bin
+      List<double[]> bins = binIntensities(rawTime, rawIntensity, newTime);
+
+      // check last bin -> should have at least 10 data points or else will look like outlier
+      if (bins.size() > 2 && bins.get(bins.size() - 1).length < 10) {
+        double[] last = bins.get(bins.size() - 1);
+        double[] penultimate = bins.get(bins.size() - 2);
+        double[] newLast = ArrUtils.merge(penultimate, last);
+        bins.remove(last);
+        bins.remove(penultimate);
+        bins.add(newLast);
       }
-    }
 
-    //
+      // filter
+      if (!preFilter.equals(PreFilter.NONE)) {
+        for (int i = 0; i < bins.size(); i++) {
+          bins.set(i, preFilter.filter(bins.get(i)));
+        }
+      }
+
+      //
       /*
        1. Outlier test only within the subunits or else SD -> INF
        2. Outlier testing BEFORE averaging!
@@ -85,20 +92,22 @@ public class AverageUtils {
           is actually correct.
        */
 
-    double[] newData = new double[bins.size()];
-    for (int i = 0; i < bins.size(); i++) {
-      newData[i] = measure.calc(bins.get(i));
-    }
+      double[] newData = new double[bins.size()];
+      for (int i = 0; i < bins.size(); i++) {
+        newData[i] = measure.calc(bins.get(i));
+      }
 
-    TISeries result;
-    if (newData.length != 0) {
-      // there may be one more center stamp than time stamps due to fuzzy double < / >
-      int maxLen = Math.min(centerTimeStamps.length, newData.length);
-      result = new TISeriesRAM(Arrays.copyOfRange(centerTimeStamps, 0, maxLen), newData);
+      if (newData.length != 0) {
+        // there may be one more center stamp than time stamps due to fuzzy double < / >
+        int maxLen = Math.min(centerTimeStamps.length, newData.length);
+        result = new TISeriesRAM(Arrays.copyOfRange(centerTimeStamps, 0, maxLen), newData);
+      } else {
+        result = new TISeriesRAM();
+      }
+
     } else {
-      result = new TISeriesRAM();
+      result = trace.getTISeries();
     }
-
     return result;
   }
 

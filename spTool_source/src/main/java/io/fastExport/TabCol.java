@@ -17,6 +17,8 @@
 
 package io.fastExport;
 
+import java.util.List;
+
 public class TabCol {
 
   private final String[] overhead;
@@ -47,7 +49,13 @@ public class TabCol {
     this.values = values;
   }
 
-  public boolean isEmpty(){
+  public TabCol(List<String> values) {
+    this.overhead = new String[0];
+    this.label = new String[0];
+    this.values = values.toArray(new String[0]);
+  }
+
+  public boolean isEmpty() {
     return overhead.length + label.length + values.length == 0;
   }
 

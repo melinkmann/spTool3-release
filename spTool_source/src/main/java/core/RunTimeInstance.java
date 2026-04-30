@@ -22,22 +22,14 @@ import dataModelNew.mz.InterferenceDatabase;
 import dataModelNew.mz.InterferenceDatabase.InterferenceEntry;
 import gui.MainWindowController;
 import gui.dialog.SingleParameterDialog;
-import gui.dialog.caseImpl.ListPaneDialog;
 import io.*;
 
+import java.nio.file.Path;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import javafx.application.Platform;
-import javafx.collections.FXCollections;
-import javafx.collections.ObservableListBase;
-import javafx.geometry.Pos;
-import javafx.scene.Node;
-import javafx.scene.control.CheckBox;
-import javafx.scene.control.ComboBox;
 import javafx.scene.control.Dialog;
-import javafx.scene.control.Label;
-import javafx.scene.layout.FlowPane;
-import javafx.scene.layout.VBox;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -45,13 +37,14 @@ import processing.objectSerials.ImportDefaults;
 import processing.objectSerials.SettingsSerializer;
 import processing.options.StartupConfiguration;
 import processing.parameterSets.ParamSet;
-import processing.parameterSets.impl.ConfParams;
-import processing.parameterSets.impl.ExporterParams;
+import processing.parameterSets.impl.*;
 import processing.parameterSets.uiParams.GuiParameterManager;
 import processing.parameters.ComboEnumParameter;
 import tasks.TaskManager;
 import util.storage.MemoryMapStorage;
 import visualizer.styles.Colors;
+
+import javax.annotation.Nullable;
 
 public class RunTimeInstance {
   private static final Logger LOGGER = LogManager.getLogger(RunTimeInstance.class);
@@ -71,8 +64,15 @@ public class RunTimeInstance {
   private static final MemoryMapStorage SIMULATION_BUFFER_STORAGE = new MemoryMapStorage();
   private static final MemoryMapStorage INDEX_BUFFER_STORAGE = new MemoryMapStorage();
   private static final MemoryMapStorage BACKGROUND_BUFFER_STORAGE = new MemoryMapStorage();
+  private static final MemoryMapStorage SPECTRA_BUFFER_STORAGE = new MemoryMapStorage();
   private static final Iterator<Colors> SAMPLE_COLOR_ITERATOR
-      = Colors.getDefaultIterator().iterator();
+      = Colors.getDefaultIterator().iterator ();
+  private Path lastProjectFile = Path.of("");
+
+  public final TimeRoiParams timeRoiParams = new TimeRoiParams();
+  public final EventDataRangeParams eventDataRangeParams = new EventDataRangeParams();
+  public final IsotopeCalculatorParams isotopeCalculatorParams = new IsotopeCalculatorParams();
+  public final DTGroupParams dtGroupParams = new DTGroupParams();
 
   private final AtomicDouble xPosition = new AtomicDouble(0);
   private final AtomicDouble yPosition = new AtomicDouble(0);
@@ -158,6 +158,24 @@ public class RunTimeInstance {
     RunTimeInstance.mainWindowController = mainWindowController;
   }
 
+  public void setLastProjectFile(Path currentProjectFile) {
+    Platform.runLater(() -> {
+      SpTool3Main.getMainStage().setTitle("spTool " + SpTool3Main.VERSION_ID + " - "
+          + currentProjectFile.toString());
+    });
+
+    this.lastProjectFile = currentProjectFile;
+  }
+
+  @Nullable
+  public Path getLastProjectFile() {
+    if (lastProjectFile.toString().isEmpty()) {
+      return null;
+    } else {
+      return lastProjectFile;
+    }
+  }
+
   // Getter because field is not final (declaration above) and thus private
   public MainWindowController getMainWindowCtl() {
     return mainWindowController;
@@ -219,6 +237,10 @@ public class RunTimeInstance {
 
   public MemoryMapStorage getBackgroundBufferStorage() {
     return BACKGROUND_BUFFER_STORAGE;
+  }
+
+  public static MemoryMapStorage getSpectraBufferStorage() {
+    return SPECTRA_BUFFER_STORAGE;
   }
 
   public MemoryMapStorage getIndexBufferStorage() {

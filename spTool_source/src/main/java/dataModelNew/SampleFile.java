@@ -39,6 +39,13 @@ public class SampleFile implements Serializable {
     this.nameWithinFile = nameWithinFile;
   }
 
+  public SampleFile(Path filePath) {
+    this.filePath = filePath.toUri();
+    this.fileName = filePath.getFileName().toString();
+    this.nameWithinFile = filePath.getFileName().toString();
+
+  }
+
   public SampleFile(String nameWithinFile) {
     this.filePath = URI.create("");
     this.fileName = "N/A";
@@ -67,7 +74,13 @@ public class SampleFile implements Serializable {
   }
 
   public Path getFilePath() {
-    return Paths.get(filePath);
+    Path path = Path.of("");
+    if (filePath == null) return path;
+    try {
+      return Path.of(filePath);
+    } catch (IllegalArgumentException e) {
+      return path;
+    }
   }
 
   public String getFolder() {

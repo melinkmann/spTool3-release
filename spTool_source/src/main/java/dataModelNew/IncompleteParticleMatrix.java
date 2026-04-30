@@ -50,10 +50,8 @@ public class IncompleteParticleMatrix implements Serializable {
   }
 
   // Deep copy
-
-
   public IncompleteParticleMatrix(List<Double> peakTimes, List<Double> areas,
-      List<Double> heights, List<Double> durations, List<Double> points) {
+                                  List<Double> heights, List<Double> durations, List<Double> points) {
     this.peakTimes = new ArrayList<>(peakTimes);
     this.areas = new ArrayList<>(areas);
     this.heights = new ArrayList<>(heights);
@@ -61,8 +59,35 @@ public class IncompleteParticleMatrix implements Serializable {
     this.points = new ArrayList<>(points);
   }
 
-  public IncompleteParticleMatrix copy(){
-    return new IncompleteParticleMatrix(peakTimes,areas,heights,durations,points);
+  public IncompleteParticleMatrix copy() {
+    return new IncompleteParticleMatrix(peakTimes, areas, heights, durations, points);
+  }
+
+  public IncompleteParticleMatrix roi(List<Integer> indices) {
+    List<Double> roiPeakTimes = new ArrayList<>();
+    List<Double> roiAreas = new ArrayList<>();
+    List<Double> roiHeights = new ArrayList<>();
+    List<Double> roiDurations = new ArrayList<>();
+    List<Double> roiPoints = new ArrayList<>();
+    for (Integer index : indices) {
+      if (index < peakTimes.size()) {
+        roiPeakTimes.add(peakTimes.get(index));
+      }
+      if (index < areas.size()) {
+        roiAreas.add(areas.get(index));
+      }
+      if (index < heights.size()) {
+        roiHeights.add(heights.get(index));
+      }
+      if (index < durations.size()) {
+        roiDurations.add(durations.get(index));
+      }
+      if (index < points.size()) {
+        roiPoints.add(points.get(index));
+      }
+    }
+    return new IncompleteParticleMatrix(roiPeakTimes, roiAreas,
+        roiHeights, roiDurations, roiPoints);
   }
 
   public void add(double peakTime, double area, double height, double duration, double point) {

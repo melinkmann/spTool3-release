@@ -40,7 +40,6 @@ import processing.parameterSets.bundle.RoiSigFactorBundle;
 import processing.parameterSets.bundle.RoiStartStopBundle;
 import processing.parameters.*;
 import util.NF;
-import util.SnF;
 
 public class FilterParams extends AbstractParamSet implements ParamSet {
 
@@ -72,8 +71,7 @@ public class FilterParams extends AbstractParamSet implements ParamSet {
   private Parameter<BinWidthEstimator> binWidthEstimator; // for otsu
   private Parameter<Double> customBinWidth; // for otsu
   private Parameter<OtsuRegion> otsuRegion; // for otsu
-  private Parameter<Double> changePointZ; // for change point
-
+  private Parameter<Integer> smoothWidth; // for change point
 
   public Parameter<Double> start;
   public Parameter<Double> end;
@@ -81,6 +79,7 @@ public class FilterParams extends AbstractParamSet implements ParamSet {
 
   public Parameter<Integer> roiExceptionsStartStop;
   public Parameter<Integer> roiExceptionsSigFactor;
+  private Parameter<Boolean> roiExceptionExclusive;
 
   private Parameter<Boolean> listMatches;
   private Parameter<Boolean> listFalsePositives;
@@ -180,8 +179,7 @@ public class FilterParams extends AbstractParamSet implements ParamSet {
         "Branch",
         "Set as new main population",
         """
-            If selected, this population become the new main branch and further processing is applied to it
-            """,
+            If selected, this population become the new main branch and further processing is applied to it""",
         false,
         true,
         "setAsMainBranch"
@@ -198,7 +196,32 @@ public class FilterParams extends AbstractParamSet implements ParamSet {
     );
 
     roiCategory = new ComboEnumParameter<>("Type",
-        "Choose the type of ROI",
+        """
+            Choose how the region of interest (ROI) boundaries are determined:
+            
+            Custom limits: You set the lower and upper boundary directly as fixed values.
+            
+            Percentiles: Boundaries are set at two percentiles of your data, e.g. keep the events between the 5th and 95th percentile.
+            
+            Inter-quartile range (IQR): Boundaries are placed symmetrically around the middle 50% of your data.
+            A factor controls how far beyond the quartiles the boundaries extend.
+            This mirrors the creation of box plot diagrams.
+            
+            Mean absolute deviation (MAD): Similar to IQR, but boundaries are placed around the median
+            using the average spread of the data.
+            This mirror a '3sigma' criterion but it is less sensitive to outliers.
+            
+            Otsu method: Based on the histogram of the population!
+            Automatically finds a threshold by looking for the most distinct split in the histogram of your data.
+            Works only if pronounced bimodality needs to be resolved.
+            Else, the method is prone to splitting at values where it feels counterintuitive.
+            
+            Change point: Based on the histogram of the population!
+            Finds a threshold automatically from a histogram, looking for the point where the data distribution changes slope.
+            This is meant for cases where some particulate background is present at the left side
+            of a histogram and needs to be removed to obtain the unbiased mean of the right-hand side mode.
+            Split point is placed in the valley between the two modes by identifying the position
+            where histogram bar height starts to rise""",
         RoiCategory.ABSOLUTE_VALUES,
         RoiCategory.values(),
         RoiCategory.class,
@@ -217,7 +240,7 @@ public class FilterParams extends AbstractParamSet implements ParamSet {
         """
             Choose conversion.
             For Otsu's method, it is recommended to test if log10 transformation
-            helps to remove remaining background.""",
+            helps to remove remaining background""",
         MathMod.NONE,
         MathMod.values(),
         MathMod.class,
@@ -271,16 +294,13 @@ public class FilterParams extends AbstractParamSet implements ParamSet {
         "otsuRegion"
     );
 
-    this.changePointZ = new DoubleParameter("Magnitude z",
+    this.smoothWidth = new IntegerParameter("Width",
         """
-            Defines how strong the bar height needs to change before begin of particle mode is detected.
-            Higher values shift the split to thr right, lower shift it to the left.
-            If ROIs are empty, try z=0 and start incrementing in small steps such as 0.1""",
-        0.5d,
-        NF.D1C3,
-        TextFormatterOption.ASSURE_DOUBLE,
+            Defines smoothing window width in histogram bars""",
+        3,
+        TextFormatterOption.ASSURE_NONZERO_POSITIVE_INTEGER,
         false,
-        "changePointZ");
+        "smoothWidth");
 
     this.start = new DoubleParameter("Start",
         """
@@ -326,6 +346,19 @@ public class FilterParams extends AbstractParamSet implements ParamSet {
         true,
         "roiExceptionsSigFactor");
 
+    this.roiExceptionExclusive = new BooleanParameter(
+        "Target",
+        "Apply to specified isotopes only",
+        """
+            If selected, the 'Isotope ROIs' will be applied to the specified isotope only.
+            Otherwise, the ROI settings above are applied to all isotopes and the
+            'Isotope ROIs' will be applied to the specified isotope.
+            TLDR: Check if you only want a ROI for the specified isotope""",
+        false,
+        true,
+        "roiExceptionExclusive"
+    );
+
     this.suppressNegativeValues = new BooleanParameter("Negative value handling",
         "Set areas <0 to 0",
         """
@@ -339,8 +372,8 @@ public class FilterParams extends AbstractParamSet implements ParamSet {
             When these peaks are transferred into the context of noisy data, background subtraction may
             overshoot and subtract too much signal. Then negative peak areas may result.
             This checkbox makes sure that the lowest possible signal to obtain is zero
-             and not something negative. The respective events may be removed with the follow-up
-             check box""",
+            and not something negative. The respective events may be removed with the follow-up
+            check box""",
         false,
         true,
         "suppressNegativeValues"
@@ -412,10 +445,11 @@ public class FilterParams extends AbstractParamSet implements ParamSet {
     this.binWidthEstimator = gatingParams.binWidthEstimator.copyWithoutChildren();
     this.customBinWidth = gatingParams.customBinWidth.copyWithoutChildren();
     this.otsuRegion = gatingParams.otsuRegion.copyWithoutChildren();
-    this.changePointZ = gatingParams.changePointZ.copyWithoutChildren();
+    this.smoothWidth = gatingParams.smoothWidth.copyWithoutChildren();
 
     this.roiExceptionsStartStop = gatingParams.roiExceptionsStartStop.copyWithoutChildren();
     this.roiExceptionsSigFactor = gatingParams.roiExceptionsSigFactor.copyWithoutChildren();
+    this.roiExceptionExclusive = gatingParams.roiExceptionExclusive.copyWithoutChildren();
 
     this.suppressNegativeValues = gatingParams.suppressNegativeValues.copyWithoutChildren();
     this.removeNegativeValues = gatingParams.removeNegativeValues.copyWithoutChildren();
@@ -476,8 +510,11 @@ public class FilterParams extends AbstractParamSet implements ParamSet {
     roiCategory.addConditionalChild(RoiCategory.IQR, mathConversion, sigFactor, roiExceptionsSigFactor);
     roiCategory.addConditionalChild(RoiCategory.MAD, mathConversion, sigFactor, roiExceptionsSigFactor);
     roiCategory.addConditionalChild(RoiCategory.OTSU, mathConversion, binWidthEstimator, otsuRegion);
-    roiCategory.addConditionalChild(RoiCategory.CHANGE_POINT, binWidthEstimator, otsuRegion, changePointZ);
+    roiCategory.addConditionalChild(RoiCategory.CHANGE_POINT, mathConversion, binWidthEstimator, otsuRegion, smoothWidth);
     binWidthEstimator.addConditionalChild(BinWidthEstimator.CUSTOM, customBinWidth);
+
+    roiExceptionsStartStop.addUnconditionalChild(roiExceptionExclusive);
+    roiExceptionsSigFactor.addUnconditionalChild(roiExceptionExclusive);
 
     filterOption.addConditionalChild(FilterOptions.MATCH_SIM,
         listMatches,
@@ -523,12 +560,13 @@ public class FilterParams extends AbstractParamSet implements ParamSet {
           case "start" -> start;
           case "end" -> end;
           case "sigFactor" -> sigFactor;
+          case "roiExceptionExclusive" -> roiExceptionExclusive;
           case "roiExceptionsStartStop" -> roiExceptionsStartStop;
           case "roiExceptionsSigFactor" -> roiExceptionsSigFactor;
           case "binWidthEstimator" -> binWidthEstimator;
           case "customBinWidth" -> customBinWidth;
           case "otsuRegion" -> otsuRegion;
-          case "changePointZ" -> changePointZ;
+          case "smoothWidth" -> smoothWidth;
           ///
           case "suppressNegativeValues" -> suppressNegativeValues;
           case "removeNegativeValues" -> removeNegativeValues;
@@ -641,8 +679,8 @@ public class FilterParams extends AbstractParamSet implements ParamSet {
     return otsuRegion;
   }
 
-  public Parameter<Double> getChangePointZ() {
-    return changePointZ;
+  public Parameter<Integer> getSmoothWidth() {
+    return smoothWidth;
   }
 
   public List<RoiStartStopBundle> getRoiStartStopBundles() {
@@ -677,6 +715,10 @@ public class FilterParams extends AbstractParamSet implements ParamSet {
       }
     }
     return elementBundles;
+  }
+
+  public Parameter<Boolean> getRoiExceptionExclusive() {
+    return roiExceptionExclusive;
   }
 
   public Parameter<Boolean> getSuppressNegativeValues() {
@@ -755,6 +797,10 @@ public class FilterParams extends AbstractParamSet implements ParamSet {
       this.sigFactor = defaults.sigFactor;
     }
 
+    if (roiExceptionExclusive == null) {
+      this.roiExceptionExclusive = defaults.roiExceptionExclusive;
+    }
+
     if (roiExceptionsStartStop == null) {
       this.roiExceptionsStartStop = defaults.roiExceptionsStartStop;
     }
@@ -775,8 +821,8 @@ public class FilterParams extends AbstractParamSet implements ParamSet {
       this.otsuRegion = defaults.otsuRegion;
     }
 
-    if (changePointZ == null) {
-      this.changePointZ = defaults.changePointZ;
+    if (smoothWidth == null) {
+      this.smoothWidth = defaults.smoothWidth;
     }
     ///
     if (suppressNegativeValues == null) {

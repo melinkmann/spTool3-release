@@ -19,23 +19,38 @@ package processing.parameterSets.action;
 
 import analysis.*;
 import core.SpTool3Main;
-import dataModelNew.Sample;
-import dataModelNew.SampleImpl;
-import dataModelNew.Trace;
+import dataModelNew.*;
 import dataModelNew.fxImpl.FxSample;
+import dataModelNew.mz.IsotopeMZ;
 import gui.dialog.FxEntry;
 import gui.dialog.FxEntryFactory;
 import gui.dialog.FxStageButton;
 import gui.dialog.ListContainer;
 import gui.dialog.caseImpl.ExecuteSubmethod;
 
+import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import gui.dialog.mainImpl.ViewListDialog;
+import gui.dialog.notification.NotificationFactory;
+import io.GlobalIO;
+import io.PathUtil;
+import io.export.ClipboardWriter;
+import io.export.CsvExportWriter;
+import io.export.DataExport;
+import io.export.ExportWriter;
+import io.fastExport.TabBlock;
+import io.fastExport.TabBlockColl;
+import javafx.application.Platform;
 import javafx.scene.control.Menu;
 import javafx.scene.control.MenuItem;
 import org.apache.commons.lang3.exception.ExceptionUtils;
@@ -47,16 +62,8 @@ import processing.parameterSets.AvailableParameterSets;
 import processing.parameterSets.ListMethod;
 import processing.parameterSets.Method;
 import processing.parameterSets.ParamSet;
-import processing.parameterSets.impl.BaselineParams;
-import processing.parameterSets.impl.CsvInterpreterParams;
-import processing.parameterSets.impl.DTGroupParams;
-import processing.parameterSets.impl.ExporterParams;
-import processing.parameterSets.impl.FilterParams;
-import processing.parameterSets.impl.GatingParams;
-import processing.parameterSets.impl.MCSimGeneralParams;
-import processing.parameterSets.impl.MCSimParticleParams;
-import processing.parameterSets.impl.NormalSearchParams;
-import processing.parameterSets.impl.TimeRoiParams;
+import processing.parameterSets.bundle.ElementBundle;
+import processing.parameterSets.impl.*;
 import sandbox.montecarlo.Isotope;
 import tasks.BatchTask;
 import tasks.Task;
@@ -64,16 +71,12 @@ import tasks.WorkingTask;
 import tasks.batch.SimpleLinearBatch;
 import tasks.batch.SimpleParallelBatch;
 import tasks.results.EmptyTaskResult;
-import tasks.single.BaselineTask;
-import tasks.single.DTGroupTask;
-import tasks.single.FilterTask;
-import tasks.single.GatingTask;
-import tasks.single.MonteCarloGeneratorTask;
-import tasks.single.PreCalculateDrift;
-import tasks.single.SearchTask;
-import tasks.single.TimeRoiTask;
+import tasks.results.FunctionalTaskResult;
+import tasks.single.*;
+import util.ArrUtils;
 import util.NF;
 import util.SnF;
+import util.Util;
 
 /*
 - save processing history (at least store the method!)
@@ -101,7 +104,7 @@ public abstract class Actions {
   private static final Logger LOGGER = LogManager.getLogger(Actions.class);
 
 
-  public static void executeMethod(Method method, int n) {
+  public static void executeMethodCreateBtn(Method method, int n) {
 
     // Copy to make sure that concurrent changes in the UI do not affect processing.
     method = method.getCopyWithoutFile();
@@ -126,6 +129,7 @@ public abstract class Actions {
 
       tasks.addAll(getProcessingSteps(method, sampleRef));
     }
+
 
     // Cannot parallelize due to lack of RAM in case of Monte Carlo. --> SimpleLinearBatch
     // SimpleParallelBatch
@@ -193,6 +197,7 @@ public abstract class Actions {
         // refill with old generator methods and new all later other methods
         for (ParamSet oldSet : oldMethodFromSample.getSets()) {
           if (oldSet instanceof CsvInterpreterParams
+              || oldSet instanceof NuInterpreterParams
               || oldSet instanceof MCSimGeneralParams
               || oldSet instanceof MCSimParticleParams
               || oldSet instanceof ExporterParams) {
@@ -209,10 +214,20 @@ public abstract class Actions {
           }
         }
 
+        // same logic for nu reader
+        if (newMethod.getSets().stream().noneMatch(s -> s instanceof NuInterpreterParams)) {
+          for (ParamSet currentSet : currentMethodOnUI.getSets()) {
+            if (currentSet instanceof NuInterpreterParams)
+              newMethod.addSet(currentSet);
+          }
+        }
+
         // add all processing param sets but not the Csv/Sim, ... sets. Why?
-        // When the method in the UI changes, the sample is still made/loaded with the old param settings!!
+        // When the method in the UI changes, the sample has still been made/loaded with the old param
+        // settings!!
         for (ParamSet currentSet : currentMethodOnUI.getSets()) {
           if (!(currentSet instanceof CsvInterpreterParams)
+              && !(currentSet instanceof NuInterpreterParams)
               && !(currentSet instanceof MCSimGeneralParams)
               && !(currentSet instanceof MCSimParticleParams)
               && !(currentSet instanceof ExporterParams)) {
@@ -251,6 +266,11 @@ public abstract class Actions {
         tasks.add(new TimeRoiTask("TimeRegion", (TimeRoiParams) set, sample.get()));
       }
 
+      // Then this should be executed
+      if (set instanceof SignalModificationParams) {
+        tasks.add(new SignalModificationTask("Modify", branch, (SignalModificationParams) set, sample));
+      }
+
       if (set instanceof BaselineParams) {
         tasks.add(new BaselineTask("Baseline", (BaselineParams) set, sample));
       }
@@ -268,20 +288,33 @@ public abstract class Actions {
         tasks.add(new GatingTask("Gating", branch, (GatingParams) set, sample));
       }
 
+      if (set instanceof IsotopeRemoverParams && hasActiveSearchBlock) {
+        tasks.add(new IsotopeRemoverTask("Isotope removal", branch, (IsotopeRemoverParams) set, sample));
+      }
+
+      if (set instanceof AlignerParams && hasActiveSearchBlock) {
+        tasks.add(new AlignTask("Align", branch, (AlignerParams) set, sample));
+      }
+
       if (set instanceof FilterParams && hasActiveSearchBlock) {
         tasks.add(new FilterTask("Filter", branch, (FilterParams) set, sample));
       }
 
       // This creates new samples - does not make much sense in the Method workflow.
 
-//      if (set instanceof DTGroupParams) {
-//        tasks.add(new DTGroupTask("DTGrouping", (DTGroupParams) set, sample.get()));
-//      }
-//
+      //      if (set instanceof DTGroupParams) {
+      //        tasks.add(new DTGroupTask("DTGrouping", (DTGroupParams) set, sample.get()));
+      //      }
+      //
     }
     // Pre-calculate the drift factor
     PreCalculateDrift driftTask = new PreCalculateDrift(sample);
     tasks.add(driftTask);
+
+    // Pre-calculate the spectral data for each population
+    PreCalculateSpectra spectraTask = new PreCalculateSpectra(sample);
+    tasks.add(spectraTask);
+
 
     return tasks;
   }
@@ -289,13 +322,14 @@ public abstract class Actions {
   /// /////////////////////////////////////////////////////////////////////////////////////////////
   /// /////////////////////////////////////////////////////////////////////////////////////////////
 
-  public static void makeIncreaseDTMenuItem(Menu actionMenu) {
-    MenuItem groupDTITem = new MenuItem("Increase dwell time");
-    actionMenu.getItems().add(groupDTITem);
-    groupDTITem.setOnAction(e -> {
+  public static void makeIncreaseDTMenuItem(Menu actionMenu, AtomicReference<MenuItem> lastRef) {
+    MenuItem item = new MenuItem("Increase dwell time");
+    actionMenu.getItems().add(item);
+    item.setOnAction(e -> {
+      lastRef.set(item);
       ExecuteSubmethod executeSubmethod = new ExecuteSubmethod(
-          new DTGroupParams(),
           null,
+          SpTool3Main.getRunTime().dtGroupParams,
           AvailableParameterSets.getOptionAsList(AvailableParameterSets.DT_GROUPING),
           "Group data points to increase dwell time.",
           FxStageButton.RUN,
@@ -329,13 +363,169 @@ public abstract class Actions {
     });
   }
 
-  public static void makeTimeRoiMenuItem(Menu menu) {
-    MenuItem groupDTITem = new MenuItem("Cut time region");
-    menu.getItems().add(groupDTITem);
-    groupDTITem.setOnAction(e -> {
+  public static void makeClipboardIsotopeRatioMenu(Menu actionMenu, AtomicReference<MenuItem> lastRef) {
+    MenuItem item = new MenuItem("Copy isotope ratios");
+    actionMenu.getItems().add(item);
+    item.setOnAction(e -> {
+      lastRef.set(item);
+
       ExecuteSubmethod executeSubmethod = new ExecuteSubmethod(
-          new TimeRoiParams(),
           null,
+          new IsotopeCalculatorParams(),
+          AvailableParameterSets.getOptionAsList(AvailableParameterSets.ISOTOPE_CALCULATOR),
+          "Export isotope ratios to clipboard.",
+          FxStageButton.RUN,
+          600d,
+          350d
+      );
+
+      // Automatically size to fit content
+      executeSubmethod.getDialogPane().getScene().getWindow().sizeToScene();
+      Optional<ParamSet> exe = executeSubmethod.showAndWait();
+      IsotopeCalculatorParams isotopeParams = null;
+      if (exe.isPresent()) {
+        ParamSet params = exe.get();
+        if (params instanceof IsotopeCalculatorParams) {
+          isotopeParams = (IsotopeCalculatorParams) params;
+        }
+      }
+
+      if (isotopeParams != null) {
+
+        ExportWriter writer = new ClipboardWriter();
+        List<Sample> selSamples = SpTool3Main.getRunTime().getMainWindowCtl().getSelSamples();
+        List<Isotope> selIsotopes = SpTool3Main.getRunTime().getMainWindowCtl().getSelIsotopes();
+
+        // only export non-merge samples
+        List<SampleImpl> samples = selSamples.stream()
+            .map(Sample::getAllSamples)
+            .flatMap(List::stream)
+            .filter(s -> s instanceof SampleImpl)
+            .map(s -> (SampleImpl) s)
+            .toList();
+
+        TabBlockColl coll = new TabBlockColl(writer, true);
+        for (SampleImpl selSample : samples) {
+          List<TabBlock> blocks = DataExport.extractIsotopeRatioData(selSample, selIsotopes,
+              isotopeParams.getInvertIsotopeRatio().getValue());
+          blocks.forEach(coll::add);
+        }
+
+        coll.write(DataExport.getShortMeta(null));
+        coll.export();
+
+      }
+    });
+  }
+
+  public static void makeIsotopeRatioMenu(Menu actionMenu, AtomicReference<MenuItem> lastRef) {
+    MenuItem item = new MenuItem("Compute isotope ratio");
+    actionMenu.getItems().add(item);
+    item.setOnAction(e -> {
+      lastRef.set(item);
+
+      ExecuteSubmethod executeSubmethod = new ExecuteSubmethod(
+          null,
+          SpTool3Main.getRunTime().isotopeCalculatorParams,
+          AvailableParameterSets.getOptionAsList(AvailableParameterSets.ISOTOPE_CALCULATOR),
+          "Compute isotope ratio.",
+          FxStageButton.RUN,
+          600d,
+          350d
+      );
+
+      // Automatically size to fit content
+      executeSubmethod.getDialogPane().getScene().getWindow().sizeToScene();
+      Optional<ParamSet> exe = executeSubmethod.showAndWait();
+      IsotopeCalculatorParams isotopeParams = null;
+      if (exe.isPresent()) {
+        ParamSet params = exe.get();
+        if (params instanceof IsotopeCalculatorParams) {
+          isotopeParams = (IsotopeCalculatorParams) params;
+        }
+      }
+
+      if (isotopeParams != null) {
+
+        List<Sample> selSamples = SpTool3Main.getRunTime().getMainWindowCtl().getSelSamples();
+        List<Isotope> selIsotopes = SpTool3Main.getRunTime().getMainWindowCtl().getSelIsotopes();
+
+        // extract non-merged samples
+        List<SampleImpl> samples = selSamples.stream()
+            .map(Sample::getAllSamples)
+            .flatMap(List::stream)
+            .filter(s -> s instanceof SampleImpl)
+            .map(s -> (SampleImpl) s)
+            .toList();
+
+        for (SampleImpl sample : samples) {
+
+          List<Trace> traces = sample.getTraces(selIsotopes);
+
+          // ensure we have 2 traces at least
+          if (traces.size() > 1) {
+
+            // we simply divide first by second
+            if (isotopeParams.getInvertIsotopeRatio().getValue()) {
+              Collections.reverse(traces);
+            }
+
+            // get data
+            Trace upperFrac = traces.get(0);
+            Trace lowerFrac = traces.get(1);
+
+            TISeries upperFracTiSeries = upperFrac.getTISeries();
+            TISeries lowerFracTiSeries = lowerFrac.getTISeries();
+
+            double[] upperFracTime = upperFracTiSeries.getTime();
+            double[] upperFracIntensity = upperFracTiSeries.getIntensity();
+            double[] lowerFracIntensity = lowerFracTiSeries.getIntensity();
+
+            if (lowerFracIntensity.length == upperFracIntensity.length) {
+
+              List<Double> ratioDoubles = new ArrayList<>(upperFracTiSeries.size());
+              List<Double> ratioTimes = new ArrayList<>(upperFracTiSeries.size());
+
+              for (int i = 0; i < lowerFracIntensity.length; i++) {
+                double low = lowerFracIntensity[i];
+                double up = upperFracIntensity[i];
+                double time = upperFracTime[i];
+                if (low > 0) {
+                  double ratio = up / low;
+                  ratioTimes.add(time);
+                  ratioDoubles.add(ratio);
+                } else {
+                }
+              }
+
+              // store
+              String combinedIsotopicNumberStr =
+                  upperFrac.getMzValue().getIsotope().getIsotopicNumber()
+                      + ""
+                      + lowerFrac.getMzValue().getIsotope().getIsotopicNumber(); //
+              int combinedIsotopicNumber = Integer.parseInt(combinedIsotopicNumberStr);
+
+              Isotope sumIso = new Isotope(upperFrac.getMzValue().getIsotope().getElement(),
+                  combinedIsotopicNumber, 0, 1);
+              TISeries sumSeries = new TISeriesHDD(ratioTimes, ratioDoubles);
+              Trace sumTrace = new TraceImpl(sample, new IsotopeMZ(sumIso), sumSeries);
+              sample.addTrace(sumTrace);
+            }
+          }
+        }
+        SpTool3Main.getRunTime().getMainWindowCtl().updateIsotopes();
+      }
+    });
+  }
+
+  public static void makeTimeRoiMenuItem(Menu menu, AtomicReference<MenuItem> lastRef) {
+    MenuItem item = new MenuItem("Cut time region");
+    menu.getItems().add(item);
+    item.setOnAction(e -> {
+      lastRef.set(item);
+      ExecuteSubmethod executeSubmethod = new ExecuteSubmethod(
+          null,
+          SpTool3Main.getRunTime().timeRoiParams,
           AvailableParameterSets.getOptionAsList(AvailableParameterSets.TIME_ROI),
           "Cut time region.",
           FxStageButton.RUN,
@@ -357,8 +547,50 @@ public abstract class Actions {
       if (method != null) {
         List<Task> importTasks = new ArrayList<>();
 
-        List<Sample> selSamples = SpTool3Main.getRunTime().getMainWindowCtl().getSamples();
+        List<Sample> selSamples = SpTool3Main.getRunTime().getMainWindowCtl().getSelSamples();
         WorkingTask task = new TimeRoiTask(method, selSamples);
+        importTasks.add(task);
+
+        BatchTask parallel = new SimpleParallelBatch("Time roi", importTasks, false,
+            () -> SpTool3Main.getRunTime().getMainWindowCtl().updateSampleSets());
+        SpTool3Main.getRunTime().getTaskManager().queueToHousekeepingPool(parallel);
+      }
+    });
+  }
+
+  public static void makeBasicRoiMenuItem(Menu menu, AtomicReference<MenuItem> lastRef) {
+    MenuItem item = new MenuItem("Select event data range");
+    menu.getItems().add(item);
+    item.setOnAction(e -> {
+      lastRef.set(item);
+      ExecuteSubmethod executeSubmethod = new ExecuteSubmethod(
+          null,
+          SpTool3Main.getRunTime().eventDataRangeParams,
+          AvailableParameterSets.getOptionAsList(AvailableParameterSets.EVENT_DATA_ROI),
+          "Select event data range.",
+          FxStageButton.RUN,
+          600d,
+          350d
+      );
+
+      // Automatically size to fit content
+      executeSubmethod.getDialogPane().getScene().getWindow().sizeToScene();
+      Optional<ParamSet> exe = executeSubmethod.showAndWait();
+      EventDataRangeParams method = null;
+      if (exe.isPresent()) {
+        ParamSet params = exe.get();
+        if (params instanceof EventDataRangeParams) {
+          method = (EventDataRangeParams) params;
+        }
+      }
+
+      if (method != null) {
+        List<Task> importTasks = new ArrayList<>();
+
+        List<Sample> selSamples = SpTool3Main.getRunTime().getMainWindowCtl().getSelSamples();
+        List<PopulationID> selPops = SpTool3Main.getRunTime().getMainWindowCtl().getSelPops();
+
+        WorkingTask task = new EventRangeRoiTask(method, selSamples, selPops);
         importTasks.add(task);
 
         BatchTask parallel = new SimpleParallelBatch("Time roi", importTasks, false,

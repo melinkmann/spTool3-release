@@ -82,7 +82,7 @@ public class DataDependentThresholdSupplier implements ThresholdSupplier, Serial
 
   // TODO: Double check the interpolation.
   @Override
-  public double interpolate(int dpIdx, int rawLength) {
+  public double interpolateUnprotected(int dpIdx, int rawLength) {
 
     double thr;
 
@@ -149,9 +149,13 @@ public class DataDependentThresholdSupplier implements ThresholdSupplier, Serial
       }
     }
 
+    return thr;
+  }
+
+  @Override
+  public double interpolateProtected(int i, int rawLength) {
     // Yield at least 0.1. There are issues with e.g. CompoundPoisson where 0 may be returned.
-    return Math.max(thr, LEAST_THR);
-    // return thr;
+    return Math.max(interpolateUnprotected(i, rawLength), LEAST_THR);
   }
 
   // For plotting

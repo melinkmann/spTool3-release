@@ -158,6 +158,11 @@ public class PeakFunction implements UnivariateFunction {
       double factor2,
       double y_vap,
       double v) {
+    /*
+    TODO: Consider adding acceleration; in the latter half of the central channel,
+     the gas accelerates. If that is a trivial improvement, good.
+     Else, consider lognormal for v again.
+     */
     return factor1 / (Math.pow(t, 1.5))
         * Math.exp(-Math.pow(y_vap - v * t, 2) / (factor2 * t));
   }

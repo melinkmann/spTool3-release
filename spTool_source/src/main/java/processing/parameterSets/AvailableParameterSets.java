@@ -170,6 +170,29 @@ public enum AvailableParameterSets {
     }
   },
 
+  NU_READER {
+    @Override
+    public String toString() {
+      return "NU TOF import";
+    }
+
+    @Override
+    public ParamSet get() {
+      return new NuInterpreterParams();
+    }
+
+    @Override
+    public Color getColor() {
+      return UiColors.BLACK.getFX();
+    }
+
+    @Override
+    public Node getShape() {
+      return UiUtil.getRectangleForListView(getColor());
+    }
+  },
+
+
   SPICPMS_MC_SIMUL {
     @Override
     public String toString() {
@@ -284,7 +307,7 @@ public enum AvailableParameterSets {
   ALIGNMENT {
     @Override
     public String toString() {
-      return "Align isotopes";
+      return "Align events";
     }
 
     @Override
@@ -302,6 +325,30 @@ public enum AvailableParameterSets {
       return UiUtil.getCircleForListView(getColor());
     }
   },
+
+
+  SIGNAL_MOD {
+    @Override
+    public String toString() {
+      return "Modify raw data";
+    }
+
+    @Override
+    public ParamSet get() {
+      return new SignalModificationParams();
+    }
+
+    @Override
+    public Color getColor() {
+      return UiColors.BLACK.getFX();
+    }
+
+    @Override
+    public Node getShape() {
+      return UiUtil.getCircleForListView(getColor());
+    }
+  },
+
 
   DT_GROUPING {
     @Override
@@ -326,6 +373,29 @@ public enum AvailableParameterSets {
     }
   },
 
+  ISOTOPE_CALCULATOR {
+    @Override
+    public String toString() {
+      return "Isotope calculator";
+    }
+
+    @Override
+    public ParamSet get() {
+      return new IsotopeCalculatorParams();
+    }
+
+    @Override
+    public Color getColor() {
+      return UiColors.BLACK.getFX();
+    }
+
+
+    @Override
+    public Node getShape() {
+      return UiUtil.getRectangleForListView(getColor());
+    }
+  },
+
   TIME_ROI {
     @Override
     public String toString() {
@@ -335,6 +405,29 @@ public enum AvailableParameterSets {
     @Override
     public ParamSet get() {
       return new TimeRoiParams();
+    }
+
+    @Override
+    public Color getColor() {
+      return UiColors.GRAY.getFX();
+    }
+
+
+    @Override
+    public Node getShape() {
+      return UiUtil.getRectangleForListView(getColor());
+    }
+  },
+
+  EVENT_DATA_ROI {
+    @Override
+    public String toString() {
+      return "Select event data range";
+    }
+
+    @Override
+    public ParamSet get() {
+      return new EventDataRangeParams();
     }
 
     @Override
@@ -374,6 +467,31 @@ public enum AvailableParameterSets {
 
   },
 
+  ISOTOPE_REMOVER {
+    @Override
+    public String toString() {
+      return "Remove isotopes";
+    }
+
+    @Override
+    public ParamSet get() {
+      return new IsotopeRemoverParams();
+    }
+
+    @Override
+    public Color getColor() {
+      return UiColors.FILTERING_MUSTARD.getFX();
+    }
+
+
+    @Override
+    public Node getShape() {
+      return UiUtil.getCircleForListView(getColor());
+    }
+
+  },
+
+
   GENERAL_FILTER {
     @Override
     public String toString() {
@@ -398,7 +516,7 @@ public enum AvailableParameterSets {
   },
 
 
-   SIGNIFICANCE_TEST {
+  SIGNIFICANCE_TEST {
     @Override
     public String toString() {
       return "Significance test";
@@ -432,16 +550,19 @@ public enum AvailableParameterSets {
 
     if (SpTool3Main.getANALYZER()) {
       sets.add(CSV_READER);
+      sets.add(NU_READER);
       sets.add(SPICPMS_MC_SIMUL);
       sets.add(SPICPMS_MC_SIMUL_NP_POPULATION);
+      sets.add(SIGNAL_MOD);
       // sets.add(SPICPMS_MC_TESTER);
       sets.add(TIME_ROI);
       // sets.add(DT_GROUPING);
       sets.add(BASELINE);
       sets.add(NORMAL_EVENT_SEARCH);
-      // sets.add(ALIGNMENT);
+      sets.add(ALIGNMENT);
       sets.add(GATE_FILTER);
       sets.add(GENERAL_FILTER);
+      sets.add(ISOTOPE_REMOVER);
     } else {
       sets.add(SPICPMS_MC_SIMUL);
       sets.add(SPICPMS_MC_SIMUL_NP_POPULATION);

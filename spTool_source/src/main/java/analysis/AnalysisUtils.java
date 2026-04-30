@@ -33,11 +33,11 @@ import java.util.HashMap;
 import java.util.List;
 import javax.annotation.Nullable;
 
-import math.stat.DriftFactor;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import processing.options.EventParameter;
 import processing.options.EventType;
+import processing.options.SearchAlgorithm;
 import sandbox.montecarlo.Isotope;
 import sandbox.montecarlo.ParticlePopulationMatrix;
 import sandbox.montecarlo.ParticlePopulationMatrixRAM;
@@ -55,11 +55,16 @@ public abstract class AnalysisUtils {
   /// /////////////////////////////////// LABELS //////////////////////////////////////////////////
   /// /////////////////////////////////////////////////////////////////////////////////////////////
   public static String getShortCodeNameForPlots(Sample sample, List<Sample> samples,
-                                                Isotope isotope, PopulationID popID, List<PopulationID> popIDs) {
-    return
-        "S" + SnF.intToString(samples.indexOf(sample) + 1, NF.D1C0) + ""
-            + "\nP" + SnF.intToString(popIDs.indexOf(popID) + 1, NF.D1C0) + ""
-            + "\n" + isotope.getIsotopicNumber();
+                                                @Nullable Isotope isotope, PopulationID popID,
+                                                List<PopulationID> popIDs) {
+
+    String shortHand = "S" + SnF.intToString(samples.indexOf(sample) + 1, NF.D1C0) +
+        "\nP" + SnF.intToString(popIDs.indexOf(popID) + 1, NF.D1C0);
+    if (isotope != null) {
+      shortHand = shortHand + "\n" + isotope.getIsotopicNumber();
+    }
+
+    return shortHand;
   }
 
 
@@ -288,7 +293,8 @@ public abstract class AnalysisUtils {
           asymmetry[i] = integResult[10];
         }
 
-        // Here we have to make sure that we do not use the cut TISeries as the simulation is relative to full time series
+        // Here we have to make sure that we do not use the cut TISeries as the simulation is relative to
+        // full time series
         double[] time = traceMC.getOriginalTISeries().getTime();
 
         dataMap.put(EventParameter.AREA, area);
@@ -362,7 +368,8 @@ public abstract class AnalysisUtils {
         asymmetry[i] = integResult[10];
       }
 
-      // Here we have to make sure that we do not use the cut TISeries as the simulation is relative to full time series
+      // Here we have to make sure that we do not use the cut TISeries as the simulation is relative to
+      // full time series
       double[] time = traceMC.getOriginalTISeries().getTime();
 
       subDataMap.computeIfAbsent(EventParameter.AREA, k -> new ArrayList<>()).add(area);
@@ -540,7 +547,8 @@ public abstract class AnalysisUtils {
    * Why? When a=b, 2b/(a+b) = 1. When b gets more pronounced, then we get larger
    * asymmetry.
    */
-  public static double computeAsymmetryFactor(int length, double startInclusive, double endInclusive, double apex) {
+  public static double computeAsymmetryFactor(int length, double startInclusive, double endInclusive,
+                                              double apex) {
     double asymmetry = 1;
     if (length > 2) {
       double a = apex - startInclusive;
@@ -608,11 +616,33 @@ public abstract class AnalysisUtils {
     for (PopulationID popID : selPops) {
 
       // do not add populations doubly if they share isotopes (mostly for aligned / simulated)
+
+      traceLoop:
       for (Trace trace : selTraces) {
         if (trace.hasType(popID) && trace.getPopulation(popID) != null && trace.getMzValue().hasIsotope()) {
           Population pop = trace.getPopulation(popID);
           List<PlottableSubPopulation> popMarkers = pop.getPopulationMarkers();
           for (PlottableSubPopulation popMarker : popMarkers) {
+            // only add one marker for the Aligned/pValue-aligned populations
+            if (popID.getSteps().stream().anyMatch(step -> step instanceof PopulationStep.AlignSubtype)) {
+              // add once, then break
+              resultPopulations.add(popMarker);
+              break traceLoop;
+            }
+            boolean isPValSearch = false;
+            for (PopulationStep step : popID.getSteps()) {
+              if (step instanceof PopulationStep.SearchSubtype) {
+                isPValSearch = ((PopulationStep.SearchSubtype) step).getSearchAlgorithm()
+                    .equals(SearchAlgorithm.P_VALUE_ACCUMULATION);
+                if (isPValSearch) break;
+              }
+            }
+            if (isPValSearch) {
+              // add once, then break
+              resultPopulations.add(popMarker);
+              break traceLoop;
+            }
+
             if (resultPopulations.stream().noneMatch(p -> p.isSameMatrix(popMarker))) {
               resultPopulations.add(popMarker);
             }
@@ -637,7 +667,7 @@ public abstract class AnalysisUtils {
     double[] values = new double[anchorIndices.length];
     for (int i = 0; i < anchorIndices.length; i++) {
       time[i] = globalTime[anchorIndices[i]];
-      values[i] = thr.interpolate(anchorIndices[i], tiSeries.size());
+      values[i] = thr.interpolateProtected(anchorIndices[i], tiSeries.size());
     }
     return new TISeriesRAM(time, values);
   }

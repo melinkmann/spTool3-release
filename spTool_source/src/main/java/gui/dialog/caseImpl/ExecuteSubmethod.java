@@ -283,7 +283,7 @@ public class ExecuteSubmethod extends Dialog<ParamSet> implements ParameterView,
     }
 
     // now call the daughters
-    calls.forEach(Functional::proceed);
+    calls.forEach(f->f.proceed(getOwner()));
   }
 
   protected void makeStyles() {
@@ -298,6 +298,7 @@ public class ExecuteSubmethod extends Dialog<ParamSet> implements ParameterView,
     setTitle("Execute submethod.");
     Stage dialogStage = (Stage) getDialogPane().getScene().getWindow();
     dialogStage.initModality(Modality.NONE); // Make it non-modal
+    dialogStage.setAlwaysOnTop(true);
     dialogStage.getIcons().add(UiUtil.getImage("/img/start.png"));
     dialogStage.setResizable(true);
     // TODO: Manage whether this is used or the automatic fit

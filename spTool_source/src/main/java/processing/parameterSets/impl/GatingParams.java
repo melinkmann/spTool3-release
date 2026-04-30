@@ -78,7 +78,41 @@ public class GatingParams extends AbstractParamSet implements ParamSet {
 
     this.gatingOption = new ComboEnumParameter<>(
         "Gating mode",
-        "Choose gating mode",
+        """
+            Choose gating mode:
+            
+            Peak height:
+            Keep events whose peak height exceeds the threshold.
+            
+            Peak area:
+            Keep events whose peak area exceeds the threshold.
+            Area is the sum of all intensity values across the event.
+            
+            Net peak area:
+            Keep events whose net peak area exceeds the threshold.
+            Net area subtracts the background level from the area, so only the signal above baseline is considered.
+              - This option can be used to exclude events with apparently zero or negative area
+                which can occur when aligning peaks across all isotopes and certain isotopes have virtually no signal.
+            
+            More points than:
+            Keep events that have more than a minimum number of data points.
+            Useful for removing very short spikes.
+            
+            Fewer points than:
+            Keep events that span fewer than a maximum number of data points.
+            Useful for removing very broad, smeared events."
+            
+            Mean signal of peak:
+            Keep events whose average intensity across the peak profile exceeds the threshold.
+            This option may help filtering peaks at very short dwell times when the peak height is not a good indicator.
+            
+            Peak dominance:
+            Keep events where the signal is spread across multiple data points
+            rather than concentrated in a single spike.
+            Rejects sharp, narrow peaks that look like background noise.
+            
+            Accumulated probability:
+            Keep events whose data points are collectively unlikely to come from the background based on probability""",
         GatingOption.HEIGHT,
         GatingOption.getActiveValues(),
         GatingOption.class,
@@ -120,7 +154,7 @@ public class GatingParams extends AbstractParamSet implements ParamSet {
             to calculate a detection limit according to the Currie formalism
             z(detection) = 2 · z(critical).
             It then multiplies this detection limit with a factor.
-            The result is the gate.""",
+            The result is the gate""",
         false,
         false,
         "factorBoolean"
@@ -156,14 +190,19 @@ public class GatingParams extends AbstractParamSet implements ParamSet {
 
     this.peakDominancePct = new DoubleParameter(
         "Area percent",
-        "Key idea: at low DT of DT < 50 µs, we try to exclude events," +
-            "\n where most of the signal comes from 1 or 2 high outlier data points." +
-            "\nIdeally, we want a peak where many data points contribute substantially to the peak area" +
-            "\nas this means that the certainty increases that it actually is a particle-related peak." +
-            "\n\nFor this filter, we take the highest data point in the peak and say that its percentage of the area" +
-            "\nmust be smaller than p% (both BG subtracted)." +
-            "\nAll in all, a smaller p% value ensures that the filter rejects peaks that contain many data points" +
-            "\nbut are rather noisy and do not have a typical peak structure with some dominant points at the center",
+        """
+            At, e.g., DT = 10 µs, we can expect that peaks consist of many data points that are sometimes just
+            slightly higher than the detection threshold.
+            
+            Hence, we want to filter and keep a peak where many data points contribute substantially to the peak area
+            as this means that the certainty increases that it actually is a particle-related peak.
+            Accordingly, we try to exclude events where most of the signal comes from 1 or 2 high outlier data points.
+            
+            We compute the ratio of the highest data point to the total area (both background-subtracted).
+            An event is kept if this ratio, expressed as the percentage 'height/area',
+            is below p%, indicating no single data point dominates the peak.
+            
+            Note that this filter may cause undesired effects at DT on the order of 100 µs""",
         10D,
         NF.D1C1,
         TextFormatterOption.ASSURE_POSITIVE_DOUBLE,
@@ -174,6 +213,7 @@ public class GatingParams extends AbstractParamSet implements ParamSet {
     this.pValueAccumulationAlpha = new DoubleParameter(
         "Combined alpha",
         """
+            Combined probability of observing all data points in the peak based on their signal intensity
             """,
         1E-6,
         NF.D1C3Exp,
@@ -187,9 +227,15 @@ public class GatingParams extends AbstractParamSet implements ParamSet {
         "Define background data by this gate",
         """
             The BG is defined as 'all data points that are not part of a particle event'.
+            
             Thus, when a gate is applied, this may change. However, may not actually be desired,
-             e.g., when the gate restricts number of points: This does not necessarily change the true BG definition
-            """,
+            e.g., when the gate restricts number of points: This does not necessarily change the true BG definition.
+            
+            Select this option when you think that the events that you exclude with this gate
+            are truly background signal and that they should be used for index-based background subtraction.
+            Note: When using the baseline mean for background subtraction, this has no effect.
+            
+            When you plot or export background, the data to plot or export are also defined by this option""",
         false,
         true,
         "forceNewBGDefinition"
@@ -317,7 +363,7 @@ public class GatingParams extends AbstractParamSet implements ParamSet {
           case "absoluteCutoff" -> absoluteCutoff;
 
           case "spikeBalancePercent" -> peakDominancePct;
-          case "pValueAccumulationAlpha"->pValueAccumulationAlpha;
+          case "pValueAccumulationAlpha" -> pValueAccumulationAlpha;
 
           case "forceNewBGDefinition" -> forceNewBGDefinition;
 

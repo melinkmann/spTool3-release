@@ -41,18 +41,28 @@ public enum MarkerStyle {
   CIRCLE {
     @Override
     public Shape getAwt(int size) {
-      double dbSize = (double) size;
+      double dbSize = (double) Math.max(1, size - 1);
       return new Ellipse2D.Double(-dbSize / 2, -dbSize / 2, dbSize, dbSize);
     }
   },
 
   BAR {
+    // Bars were offset downward
+//    @Override
+//    public Shape getAwt(int size) {
+//      int width = (int) (2 * size);
+//      int height = Math.max(size / 3, 1);
+//      int x = -width / 2;
+//      int y = Math.max(size - 1, 1); // vertical offset from origin
+//
+//      return new Rectangle(x, y, width, height);
+//    }
     @Override
     public Shape getAwt(int size) {
-      int width = (int) (2.5 * size);
+      int width = 2 * size;
       int height = Math.max(size / 3, 1);
-      int x = -width / 2;
-      int y = Math.max(size - 1, 1); // vertical offset from origin
+      int x = -width / 2;      // horizontal center
+      int y = -height / 2;     // vertical center
 
       return new Rectangle(x, y, width, height);
     }
@@ -68,14 +78,14 @@ public enum MarkerStyle {
   TRIANGLE_DOWN {
     @Override
     public Shape getAwt(int size) {
-      return ShapeUtils.createDownTriangle(size / 2f);
+      return ShapeUtils.createDownTriangle((size + 2) / 2f);
     }
   },
 
   TRIANGLE_UP {
     @Override
     public Shape getAwt(int size) {
-      return ShapeUtils.createUpTriangle(size / 2f);
+      return ShapeUtils.createUpTriangle((size + 2) / 2f);
     }
   },
 
@@ -125,8 +135,9 @@ public enum MarkerStyle {
     List<MarkerStyle> markers = new ArrayList<>();
     markers.add(CIRCLE);
     markers.add(CROSS);
-    markers.add(TRIANGLE_UP);
+    markers.add(BAR);
     markers.add(CROSS_UPRIGHT);
+    markers.add(TRIANGLE_UP);
     markers.add(TRIANGLE_DOWN);
     markers.add(RECTANGLE);
     markers.add(DIAMOND);

@@ -38,6 +38,7 @@ import processing.parameterSets.AvailableParameterSets;
 import processing.parameterSets.ParamSet;
 import processing.parameterSets.XmlInstanceDictionary;
 import processing.parameters.DoubleParameter;
+import processing.parameters.IntegerParameter;
 import processing.parameters.Parameter;
 import processing.parameters.StringParameter;
 import util.NF;
@@ -82,6 +83,8 @@ public class UiLayoutParameters extends AbstractParamSet implements ParamSet {
 
   private final HashMap<String, Parameter<String>> plotPopupPositions;
 
+  private final Parameter<Integer> defaultGraphWidth;
+  private final Parameter<Integer> defaultGraphHeight;
 
   // try default mz
   // private final List<Parameter<String>> defaultIsotopeList = new ArrayList<>();
@@ -149,6 +152,25 @@ public class UiLayoutParameters extends AbstractParamSet implements ParamSet {
     plotPopupPositions.put("Table viewer", makeStringParameter("Table viewer"));
     plotPopupPositions.put("Logger viewer", makeStringParameter("Logger viewer"));
 
+    defaultGraphWidth = new IntegerParameter(
+        "Global default graph width",
+        """
+            Global default graph width""",
+        750,
+        TextFormatterOption.ASSURE_NONZERO_POSITIVE_INTEGER,
+        false,
+        "defaultGraphWidth");
+
+    defaultGraphHeight = new IntegerParameter(
+        "Global default graph height",
+        """
+            Global default graph height
+            """,
+        500,
+        TextFormatterOption.ASSURE_NONZERO_POSITIVE_INTEGER,
+        false,
+        "defaultGraphHeight");
+
 
 //    for (dataModelNew.mz.Element element : dataModelNew.mz.Element.values()) {
 //      defaultIsotopeList.add(new ComboStringParameter(
@@ -179,6 +201,9 @@ public class UiLayoutParameters extends AbstractParamSet implements ParamSet {
     for (Parameter<String> plotPopupPosition : params.plotPopupPositions.values()) {
       plotPopupPositions.put(plotPopupPosition.getXmlID(), plotPopupPosition.copyWithoutChildren());
     }
+
+    this.defaultGraphWidth = params.defaultGraphWidth.copyWithoutChildren();
+    this.defaultGraphHeight = params.defaultGraphWidth.copyWithoutChildren();
 
     organize();
   }
@@ -212,6 +237,8 @@ public class UiLayoutParameters extends AbstractParamSet implements ParamSet {
     allParents.add(bottomSplitDiv3);
     allParents.add(chartLegendSplitDiv);
     allParents.add(mainMethodEditorSplitDiv);
+    allParents.add(defaultGraphWidth);
+    allParents.add(defaultGraphHeight);
 
     allParents.addAll(plotPopupPositions.values());
 
@@ -254,6 +281,9 @@ public class UiLayoutParameters extends AbstractParamSet implements ParamSet {
           case "Average trend viewer" -> plotPopupPositions.get("Average trend viewer");
           case "Table viewer" -> plotPopupPositions.get("Table viewer");
           case "Logger viewer" -> plotPopupPositions.get("Logger viewer");
+
+          case "defaultGraphWidth" -> defaultGraphWidth;
+          case "defaultGraphHeight" -> defaultGraphHeight;
 
           default -> null;
         };
@@ -358,4 +388,11 @@ public class UiLayoutParameters extends AbstractParamSet implements ParamSet {
     );
   }
 
+  public Parameter<Integer> getDefaultGraphHeight() {
+    return defaultGraphHeight;
+  }
+
+  public Parameter<Integer> getDefaultGraphWidth() {
+    return defaultGraphWidth;
+  }
 }

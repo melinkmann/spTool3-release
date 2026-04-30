@@ -19,10 +19,14 @@ package processing.parameters;
 
 
 import gui.util.UiUtil;
+
 import java.io.Serial;
 import java.io.Serializable;
+
 import javafx.scene.Node;
+import javafx.scene.Scene;
 import javafx.scene.control.Button;
+import javafx.stage.Stage;
 import util.Functional;
 
 public class ButtonDecoration<T extends Serializable> implements Decoration<T>, Serializable {
@@ -43,11 +47,25 @@ public class ButtonDecoration<T extends Serializable> implements Decoration<T>, 
   public void setControlFxParameter(FxParameter<?> controlFxParameter) {
     // Do nothing.
   }
+
   @Override
   public Node getControl(FxParameter<T> fxParameter) {
     Button btn = UiUtil.getDecorationButton(resource, tooltip);
 
-    btn.setOnAction(e -> buttonFunction.proceed());
+    btn.setOnAction(e -> {
+      // needed for the PTOE popup
+      Scene scene = btn.getScene();
+      Stage parent = null;
+      if (scene != null) {
+        parent = (Stage) scene.getWindow();
+      }
+
+      if (parent != null) {
+        buttonFunction.proceed(parent);
+      } else {
+        buttonFunction.proceed();
+      }
+    });
     return btn;
   }
 

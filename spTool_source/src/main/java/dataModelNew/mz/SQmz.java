@@ -18,9 +18,15 @@
 package dataModelNew.mz;
 
 import com.google.common.math.DoubleMath;
+import core.SpTool3Main;
 import io.FileInterpreterUtils;
+
 import java.io.Serial;
 import java.io.Serializable;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import processing.options.IsotopeConflictReaderOption;
 import sandbox.montecarlo.Isotope;
 import util.NF;
 import util.SnF;
@@ -30,6 +36,8 @@ public class SQmz implements MZValue, Serializable {
 
   @Serial
   private static final long serialVersionUID = 1_000_000L;
+
+  private static final Logger LOGGER = LogManager.getLogger(SQmz.class.getName());
 
   private static final NF MZ_FORMAT = NF.D1C0;
 

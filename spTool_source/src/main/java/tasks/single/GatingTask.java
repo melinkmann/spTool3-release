@@ -27,6 +27,7 @@ import dataModelNew.TISeries;
 import dataModelNew.Trace;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -41,6 +42,11 @@ import processing.parameterSets.impl.GatingParams;
 import tasks.TaskResult;
 import tasks.WorkingTask;
 import tasks.results.EmptyTaskResult;
+import util.Key1;
+import util.Key4;
+import util.MultiKey;
+
+import static sandbox.montecarlo.Statistics.MIN_P_VALUE;
 
 public class GatingTask extends AbstractWorkingTask implements WorkingTask {
 
@@ -69,8 +75,8 @@ public class GatingTask extends AbstractWorkingTask implements WorkingTask {
       // START ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ##
       if (sampleRef.get() != null && params.getEnableBoolean().getValue()) {
 
-        LOGGER.info("Gating starts for " + sampleRef.get().getNickName()
-            + " in thread " + Thread.currentThread());
+        LOGGER.info("Gating (" + params.getLabelParameter().getValue() + ") starts for " + sampleRef.get().getNickName()
+            + " in thread " + Thread.currentThread().getId());
         double counter = 0;
         mainLoop:
         while (!getIsStopped().get()) {
@@ -102,8 +108,15 @@ public class GatingTask extends AbstractWorkingTask implements WorkingTask {
                   double[] time = tiSeries.getTime();
                   double[] intensity = tiSeries.getIntensity();
 
+                  StatCollection bgDist = new StatCollectionRAM(bln.getBackgroundDistribution());
+                  boolean hasSlices = bgDist.size() > 1;
+
                   List<Event> chosenEvents = new ArrayList<>();
                   Population oldPop = trace.getPopulation(popID);
+
+                  // some buffers to recycle in pValue computation
+                  HashMap<Integer, ChiSquaredDistribution> chSquareDistributionMap = new HashMap<>();
+                  HashMap<MultiKey, Double> pStorage = new HashMap<>();
 
                   if (oldPop != null) {
                     for (Event event : oldPop.getEvents().getNpEvents()) {
@@ -112,7 +125,7 @@ public class GatingTask extends AbstractWorkingTask implements WorkingTask {
                         break;
                       }
 
-                      double target = supplier.interpolate(event.getPeak(), time.length);
+                      double target = supplier.interpolateUnprotected(event.getPeak(), time.length);
                       switch (gatingOption) {
 
                         case HEIGHT -> {
@@ -167,19 +180,61 @@ public class GatingTask extends AbstractWorkingTask implements WorkingTask {
                         }
 
                         case ACCUMULATED_P -> {
-                          int[] evtIdcs = event.getIndices();
-                          // Chi-square distribution with 2k degrees of freedom
-                          ChiSquaredDistribution chiSquared = new ChiSquaredDistribution(2 * evtIdcs.length);
                           double chiSquareStat = 0;
                           double lowestP = 1;
-                          StatCollection bgDist = bln.getBackgroundDistribution();
+
+                          int[] evtIdcs = event.getIndices();
+                          // Chi-square distribution with 2k degrees of freedom
+                          ChiSquaredDistribution chiSquared;
+                          if (chSquareDistributionMap.containsKey(evtIdcs.length)) {
+                            chiSquared = chSquareDistributionMap.get(evtIdcs.length);
+                          } else {
+                            chiSquared = new ChiSquaredDistribution(2 * evtIdcs.length);
+                            chSquareDistributionMap.put(evtIdcs.length, chiSquared);
+                          }
+
                           for (int evtIdc : evtIdcs) {
                             StatDataSet distribution = bgDist.interpolate(evtIdc, tiSeries.size());
-                            double value = tiSeries.getIntensity()[evtIdc];
-                            double p = distribution.calcPValue(value);
-                            // prevent failure here by clamping p.
-                            p = Math.max(Math.nextUp(0d), p);
-                            p = Math.min(p, 1);
+                            int distKey = distribution.getDistrID();
+
+                            double value = intensity[evtIdc];
+
+                            MultiKey key;
+                            // heavy rounding for slices; keep intensity as precise as possible for good p
+                            double roundedIntensity = Math.round(value * 1000d) / 1000d;
+
+                            if (!hasSlices) {
+                              key = new Key1(roundedIntensity);
+                            } else {
+                              double roundedMean = Math.round(distribution.getLocation() * 100d) / 100d;
+                              // applying continuity correction b/c else y=0-->p=0.4 (and all becomes
+                              // significant)
+                              double roundedSpread;
+                              if (ResettableStatDataSet.Limit.isPoisson(distKey)) {
+                                roundedSpread = 0; // not needed in Poisson
+                              } else {
+                                roundedSpread = Math.round(distribution.getSpread() * 100d) / 100d;
+                              }
+                              key = new Key4(distKey, roundedMean, roundedSpread, roundedIntensity);
+                            }
+
+                            double p;
+
+                            if (pStorage.containsKey(key)) {
+                              p = pStorage.get(key);
+                            } else {
+                              p = distribution.calcPValue(roundedIntensity);
+                              // prevent failure here by clamping p.
+                              // p = Math.max(Math.nextUp(0d), p);
+                              p = Math.max(MIN_P_VALUE, p);
+                              p = Math.min(p, 1);
+                              pStorage.put(key, p);
+                            }
+                            //System.out.println(" ");
+                            //System.out.println("Intensity: " + roundedIntensity);
+                            //System.out.println("p: " + p);
+                            //System.out.println("distribution.getLocation(): " + distribution.getLocation());
+
                             chiSquareStat += -2.0 * Math.log(p);
                             lowestP = Math.min(lowestP, p);
                           }
@@ -190,7 +245,7 @@ public class GatingTask extends AbstractWorkingTask implements WorkingTask {
                             combinedPValue = lowestP;
                           }
 
-                          ///
+                          //
                           // double area = event.get(EventParameter.NET_AREA);
 //                          System.out.println(
 //                              "mz: " +  event.getCollection().getTrace().getMzValue().getName()+
@@ -200,6 +255,10 @@ public class GatingTask extends AbstractWorkingTask implements WorkingTask {
                           if (combinedPValue < target) {
                             chosenEvents.add(event);
                           }
+                          // System.out.println("Finished event... " + oldPop.getEvents().getNpEvents()
+                          // .indexOf(event)
+                          // + " / " + oldPop.getEvents().getNpEvents().size() + ". nDP= "+event
+                          // .getNoOfPoints());
                         }
                       }
                     }
@@ -218,7 +277,8 @@ public class GatingTask extends AbstractWorkingTask implements WorkingTask {
                               oldPop,
                               new SubEventCollection(trace, chosenEvents, oldPop),
                               idCopy.toString(),
-                              instr));
+                              instr),
+                          false);
                     } else {
                       // we want the new population to also define the BG
                       trace.addOverridePopulation(idCopy,
@@ -227,7 +287,8 @@ public class GatingTask extends AbstractWorkingTask implements WorkingTask {
                               oldPop,
                               new MainEventCollection(trace, chosenEvents),
                               idCopy.toString(),
-                              instr));
+                              instr),
+                          false);
                     }
                     // (4) Updating the branch:
                     // Make this new head of branch! Else, OG ID in HashMap is altered, affecting bucketing

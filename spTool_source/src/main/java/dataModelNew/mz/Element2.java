@@ -471,7 +471,7 @@ public enum Element2 implements Fillable<Element2>, FillCollection<Element2> {
       Isotope isotope = isotopes.get(i);
       fractions[i] = Statistics.randomifyPercent(isotope.getAbundance(), isotopicUncertainty);
     }
-    ArrUtils.normalizeOverriding(fractions);
+    ArrUtils.normalizeBySumOverriding(fractions);
     ArrUtils.multiplyOverriding(fractions, elementSignal);
 
     for (int i = 0; i < isotopes.size(); i++) {

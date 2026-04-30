@@ -19,24 +19,20 @@ package io.export;
 
 import analysis.*;
 import core.SpTool3Main;
-import dataModelNew.Sample;
-import dataModelNew.SampleImpl;
-import dataModelNew.TISeries;
-import dataModelNew.Trace;
-import dataModelNew.TraceMC;
+import dataModelNew.*;
 import dataModelNew.mz.Element;
+import dataModelNew.mz.IsotopeMZ;
 import gui.table.TableUtils;
+import io.GlobalIO;
+import io.PathUtil;
 import io.fastExport.TabBlock;
 import io.fastExport.TabBlockColl;
 import io.fastExport.TabCol;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.List;
+import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.*;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import javax.annotation.Nullable;
@@ -193,19 +189,19 @@ public abstract class DataExport {
     hBlock.addColumn(elementLabel,
         "Peak time [s]", peakTime);
     hBlock.addColumn(elementLabel,
-        "Gross area ["+ IntensityUnit.CTS.getLiteralString()+"]", grossArea);
+        "Gross area [" + IntensityUnit.CTS.getLiteralString() + "]", grossArea);
     hBlock.addColumn(elementLabel,
-        "Net area ["+ IntensityUnit.CTS.getLiteralString()+"]", netArea);
+        "Net area [" + IntensityUnit.CTS.getLiteralString() + "]", netArea);
     hBlock.addColumn(elementLabel,
-        "Gross height ["+ IntensityUnit.CTS.getLiteralString()+"]", grossHeight);
+        "Gross height [" + IntensityUnit.CTS.getLiteralString() + "]", grossHeight);
     hBlock.addColumn(elementLabel,
-        "Net height ["+ IntensityUnit.CTS.getLiteralString()+"]", netHeight);
+        "Net height [" + IntensityUnit.CTS.getLiteralString() + "]", netHeight);
     hBlock.addColumn(elementLabel,
-        "Width ["+ TimeUnit.MICROSECOND.getLiteralString()+"]", duration);
+        "Width [" + TimeUnit.MICROSECOND.getLiteralString() + "]", duration);
     hBlock.addColumn(elementLabel,
-        "Number of points ["+ ViewUnits.NONE.getLiteralString()+"]", noOfPoints);
+        "Number of points [" + ViewUnits.NONE.getLiteralString() + "]", noOfPoints);
     hBlock.addColumn(elementLabel,
-        "BG per NP ["+ IntensityUnit.CTS.getLiteralString()+"]", bgPerNP);
+        "BG per NP [" + IntensityUnit.CTS.getLiteralString() + "]", bgPerNP);
 
     blockList.add(hBlock);
     return blockList;
@@ -238,16 +234,16 @@ public abstract class DataExport {
           double[] bg = sample.getData(isotope, popID, EventType.BG, EventParameter.AREA);
           if (applyJitter) {
             bg = Statistics.quantileSampleWithMurmurHashedJitter(bg, noOfBgDP, 2);
-            AxisLabel bgLabel = AxisLabel.getUnit(EventParameter.AREA);
-            String label = "BG @ " + bgLabel.getLabel() + " [" + bgLabel.getUnit().getLiteralString() + "]";
-            hBlock.addColumn(populationOverheadDescriptors, label, SnF.doubleToStrList(bg, NF.D1C6));
           }
+          AxisLabel bgLabel = AxisLabel.getUnit(EventParameter.AREA);
+          String label = "BG @ " + bgLabel.getLabel() + " [" + bgLabel.getUnit().getLiteralString() + "]";
+          hBlock.addColumn(populationOverheadDescriptors, label, SnF.doubleToStrList(bg, NF.D1C6));
         }
         if (exportNP) {
           double[] np = sample.getData(isotope, popID, EventType.NP, npPar, NMPUnit.getUnit());
           AxisLabel npLabel = AxisLabel.getUnit(npPar);
           String unitStr = npLabel.getUnit().getLiteralString();
-          if (!NMPUnit.equals(NMPUnit.CTS)){
+          if (!NMPUnit.equals(math.units.enums.NMPUnit.CTS)) {
             unitStr = NMPUnit.getLiteralString();
           }
           String label = "NMPs @ " + npLabel.getLabel() + " [" + unitStr + "]";
@@ -313,42 +309,43 @@ public abstract class DataExport {
         for (Isotope isotope : isotopes) {
 
           hBlock.addColumn(Arrays.asList(element.getSymbol(), isotope.getName()),
-              "Initial net signal ["+ IntensityUnit.CTS.getLiteralString()+"]",
+              "Initial net signal [" + IntensityUnit.CTS.getLiteralString() + "]",
               SnF.doubleToStrArr(cont.getRandNetSignal().get(isotope), NF.D1C6));
 
           if (cont.getDataMap().containsKey(isotope)) {
             hBlock.addColumn(Arrays.asList(element.getSymbol(), isotope.getName()),
-                "Gross area (integrated at >1cts & calculated) ["+ IntensityUnit.CTS.getLiteralString()+"]",
+                "Gross area (integrated at >1cts & calculated) [" + IntensityUnit.CTS.getLiteralString() +
+                    "]",
                 SnF.doubleToStrArr(cont.getDataMap().get(isotope).get(EventParameter.AREA),
                     NF.D1C6));
 
             hBlock.addColumn(Arrays.asList(element.getSymbol(), isotope.getName()),
-                "Net area (integrated at >1cts) ["+ IntensityUnit.CTS.getLiteralString()+"]",
+                "Net area (integrated at >1cts) [" + IntensityUnit.CTS.getLiteralString() + "]",
                 SnF.doubleToStrArr(cont.getDataMap().get(isotope).get(EventParameter.NET_AREA),
                     NF.D1C6));
 
             hBlock.addColumn(Arrays.asList(element.getSymbol(), isotope.getName()),
-                "Gross height (integrated at >1cts & calculated) ["+ IntensityUnit.CTS.getLiteralString()+"]",
+                "Gross height (integrated at >1cts & calculated) [" + IntensityUnit.CTS.getLiteralString() + "]",
                 SnF.doubleToStrArr(cont.getDataMap().get(isotope).get(EventParameter.HEIGHT),
                     NF.D1C6));
 
             hBlock.addColumn(Arrays.asList(element.getSymbol(), isotope.getName()),
-                "Net height (integrated at >1cts) ["+ IntensityUnit.CTS.getLiteralString()+"]",
+                "Net height (integrated at >1cts) [" + IntensityUnit.CTS.getLiteralString() + "]",
                 SnF.doubleToStrArr(cont.getDataMap().get(isotope).get(EventParameter.NET_HEIGHT),
                     NF.D1C6));
 
             hBlock.addColumn(Arrays.asList(element.getSymbol(), isotope.getName()),
-                "Width (integrated at >1cts) ["+ TimeUnit.MICROSECOND.getLiteralString()+"]",
+                "Width (integrated at >1cts) [" + TimeUnit.MICROSECOND.getLiteralString() + "]",
                 SnF.doubleToStrArr(cont.getDataMap().get(isotope).get(EventParameter.DURATION),
                     NF.D1C6));
 
             hBlock.addColumn(Arrays.asList(element.getSymbol(), isotope.getName()),
-                "Number of points (integrated at >1cts) ["+ ViewUnits.NONE.getLiteralString()+"]",
+                "Number of points (integrated at >1cts) [" + ViewUnits.NONE.getLiteralString() + "]",
                 SnF.doubleToStrArr(cont.getDataMap().get(isotope).get(EventParameter.NO_OF_POINTS),
                     NF.D1C6));
 
             hBlock.addColumn(Arrays.asList(element.getSymbol(), isotope.getName()),
-                "BG per NP (summed at >1cts) ["+ IntensityUnit.CTS.getLiteralString()+"]",
+                "BG per NP (summed at >1cts) [" + IntensityUnit.CTS.getLiteralString() + "]",
                 SnF.doubleToStrArr(
                     cont.getDataMap().get(isotope).get(EventParameter.BACKGROUND_PER_NP),
                     NF.D1C6));
@@ -978,6 +975,110 @@ public abstract class DataExport {
     return blocks;
   }
 
+  public static List<TabBlock> extractIsotopeRatioData(SampleImpl sample, List<Isotope> selIsotopes,
+                                                       boolean invertRatio) {
+
+    List<TabBlock> blocks = new ArrayList<>();
+
+    TabBlock xyBlock = new TabBlock();
+    TabBlock eventMarkerBlock = new TabBlock();
+    TabBlock populationMarkerBlock = new TabBlock();
+    blocks.add(xyBlock);
+    blocks.add(populationMarkerBlock);
+    blocks.add(eventMarkerBlock);
+
+    List<Trace> traces = sample.getTraces(selIsotopes);
+
+    // ensure we have 2 traces at least
+    if (traces.size() > 1) {
+
+      // we simply divide first by second
+      if (invertRatio) {
+        Collections.reverse(traces);
+      }
+
+      // get data
+      Trace upperFrac = traces.get(0);
+      Trace lowerFrac = traces.get(1);
+
+      TISeries upperFracTiSeries = upperFrac.getTISeries();
+      TISeries lowerFracTiSeries = lowerFrac.getTISeries();
+
+      double[] upperFracTime = upperFracTiSeries.getTime();
+      double[] upperFracIntensity = upperFracTiSeries.getIntensity();
+      double[] lowerFracIntensity = lowerFracTiSeries.getIntensity();
+
+      if (lowerFracIntensity.length == upperFracIntensity.length) {
+
+        List<String> ratios = new ArrayList<>(upperFracTiSeries.size());
+        List<Double> ratioDoubles = new ArrayList<>(upperFracTiSeries.size());
+        List<Double> ratioTimes = new ArrayList<>(upperFracTiSeries.size());
+
+        for (int i = 0; i < lowerFracIntensity.length; i++) {
+          double low = lowerFracIntensity[i];
+          double up = upperFracIntensity[i];
+          double time = upperFracTime[i];
+          if (low > 0) {
+            double ratio = up / low;
+            ratios.add(SnF.doubleToString(ratio, NF.D1C9));
+            ratioTimes.add(time);
+            ratioDoubles.add(ratio);
+          } else {
+            ratios.add("");
+          }
+        }
+
+        String[] ratioArr = ArrUtils.stringListToArr(ratios);
+
+        // store
+        String combinedIsotopicNumberStr =
+            upperFrac.getMzValue().getIsotope().getIsotopicNumber()
+                + ""
+                + lowerFrac.getMzValue().getIsotope().getIsotopicNumber(); //
+        int combinedIsotopicNumber = Integer.parseInt(combinedIsotopicNumberStr);
+
+        Isotope sumIso = new Isotope(upperFrac.getMzValue().getIsotope().getElement(),
+            combinedIsotopicNumber, 0, 1);
+        TISeries sumSeries = new TISeriesHDD(ratioTimes, ratioDoubles);
+        Trace sumTrace = new TraceImpl(sample, new IsotopeMZ(sumIso), sumSeries);
+        sample.addTrace(sumTrace);
+
+        String upperSeriesLabel;
+        if (upperFrac.getMzValue().hasIsotope()) {
+          upperSeriesLabel = upperFrac.getMzValue().getIsotope().getName();
+        } else {
+          upperSeriesLabel = upperFrac.getMzValue().getElementTransition();
+        }
+
+        String lowerSeriesLabel;
+        if (lowerFrac.getMzValue().hasIsotope()) {
+          lowerSeriesLabel = lowerFrac.getMzValue().getIsotope().getName();
+        } else {
+          lowerSeriesLabel = lowerFrac.getMzValue().getElementTransition();
+        }
+
+        String ratioLabel;
+        if (upperFrac.getMzValue().hasIsotope()
+            && lowerFrac.getMzValue().hasIsotope()) {
+          ratioLabel = upperFrac.getMzValue().getIsotope().getName()
+              + "/" + lowerFrac.getMzValue().getIsotope().getName();
+        } else {
+          ratioLabel = upperFrac.getMzValue().getElementTransition()
+              + "/" + lowerFrac.getMzValue().getElementTransition();
+        }
+
+        String timeLabel = "Time [s]";
+
+        xyBlock.addCol(new TabCol(timeLabel, SnF.doubleToStrArr(upperFracTime, NF.D1C6)));
+        xyBlock.addCol(new TabCol(upperSeriesLabel, SnF.doubleToStrArr(upperFracIntensity, NF.D1C6)));
+        xyBlock.addCol(new TabCol(lowerSeriesLabel, SnF.doubleToStrArr(lowerFracIntensity, NF.D1C6)));
+        xyBlock.addCol(new TabCol(ratioLabel, ratioArr));
+      }
+    }
+
+    return blocks;
+  }
+
   /**
    * Intended for the exporter if one wants to show the p-value approach.
    */
@@ -1257,6 +1358,98 @@ public abstract class DataExport {
       }
     }
   }
+
+
+  public static void exportRegionSpectra(Sample mainSample, List<PopulationID> pops, Path dir) {
+
+    if (Files.isDirectory(dir)) {
+
+      for (PopulationID popID : pops) {
+
+        Path subDir = dir.resolve(GlobalIO.cleanupWindowsFileName(popID.toString()));
+        PathUtil.createDir(subDir);
+
+        // Load / create the spectral array data
+        List<SpectralArray> spectralArrays = mainSample.getSpectralData(popID);
+        if (spectralArrays.isEmpty()) {
+          for (Sample s : mainSample.getAllSamples()) {
+            SpectralUtil.computeSpectra(s, popID);
+          }
+          spectralArrays = mainSample.getSpectralData(popID);
+        }
+
+        if (!spectralArrays.isEmpty()) {
+
+          // Collect all feature keys from the first array that has any
+          List<String> featureKeys = new ArrayList<>();
+          for (SpectralArray sa : spectralArrays) {
+            List<String> keys = sa.listAdditionalFeatures();
+            if (!keys.isEmpty()) {
+              featureKeys.addAll(keys);
+              break;
+            }
+          }
+
+          // Build a combined list: null = intensity, non-null = feature key
+          List<String> allExports = new ArrayList<>();
+          allExports.add(null); // intensity first
+          allExports.addAll(featureKeys);
+
+          int regionCount = spectralArrays.get(0).getIntensity().length;
+
+          for (String featureKey : allExports) {
+            String label = featureKey == null ? "Intensity" : featureKey;
+            Path filePath = subDir.resolve(label + ".csv");
+            ExportWriter writer = new CsvExportWriter(filePath.toFile());
+
+            writer.writeLine(DataExport.getShortMeta(mainSample));
+            writer.writeLine(List.of("SP_COMPOSITION_MATRIX_SPTOOL"));
+            writer.writeLine(List.of("feature=" + label));
+
+            // Header row
+            List<String> header = new ArrayList<>();
+            header.add("MZ");
+            header.add("Isotope");
+            header.add("Element");
+            for (int r = 0; r < regionCount; r++) {
+              header.add("Particle " + (r + 1));
+            }
+            writer.writeLine(header);
+
+            // One row per SpectralArray (i.e. per m/z)
+            for (SpectralArray spectralArray : spectralArrays) {
+              List<String> row = new ArrayList<>();
+
+              String mz = SnF.doubleToString(spectralArray.getMz(), NF.D1C6);
+              row.add(mz);
+
+              Isotope iso = spectralArray.getIsotope();
+              if (iso != null) {
+                row.add(iso.getName());
+                row.add(iso.getElement().getSymbol());
+              } else {
+                row.add(mz);
+                row.add(mz);
+              }
+
+              double[] values = featureKey == null
+                  ? spectralArray.getIntensity()
+                  : spectralArray.getAdditionalFeature(featureKey);
+
+              if (values != null) {
+                row.addAll(SnF.doubleToStrList(values, NF.D1C6));
+              }
+
+              writer.writeLine(row);
+            }
+
+            writer.close();
+          }
+        }
+      }
+    }
+  }
+
 
   public static List<String> getShortMeta(@Nullable Sample sample) {
     List<String> strings = new ArrayList<>();

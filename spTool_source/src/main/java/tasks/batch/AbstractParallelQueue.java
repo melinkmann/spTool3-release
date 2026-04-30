@@ -155,11 +155,11 @@ public abstract class AbstractParallelQueue implements BatchTask {
         // Status to console.
         if (loggerTimer % TaskManager.HOUSEKEEPING_MODULO == 0) {
           long finishedCount = futures.stream().filter(Future::isDone).count();
-          LOGGER.trace("Parallel Batch completed "
+          LOGGER.trace("Parallel Queue completed "
               + (finishedCount) + "/" + (tasks.size())
               + " tasks. Time spent running: "
               + loggerTimer * TaskManager.HOUSEKEEPING_SLEEP / 1000 + " seconds."
-              + " Queue has thread " + Thread.currentThread());
+              + " Queue is in thread " + Thread.currentThread().getId());
         }
 
         // End if no futures are there (i.e. add was never called due to checking conditions)

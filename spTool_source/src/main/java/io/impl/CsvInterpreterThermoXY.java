@@ -325,6 +325,7 @@ public class CsvInterpreterThermoXY implements CsvInterpreter {
             indexCounterColIdx = colIdx;
           } else if (cell.toLowerCase(Locale.ROOT).contains(TIME.toLowerCase(Locale.ROOT))) {
             timeColIdx = colIdx;
+            // Else: we are in intensity: check if parsed correctly
           } else if (mz.getKey()) {
             mzColAndEntries.add(mz.getValue());
             if (csv.size() > headerLineIndex + 1) {

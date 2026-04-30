@@ -20,8 +20,8 @@
 plugins {
     id "java"
     id "application"
-    id "org.openjfx.javafxplugin" version "0.0.8"
-    //    id 'org.openjfx.javafxplugin' version '0.0.10' // testet Feb2022
+    id "org.openjfx.javafxplugin" version "0.0.13"
+    //    id 'org.openjfx.javafxplugin' version '0.0.10' // tested Feb2022
     /*
     Returned
     > Configure project :
@@ -29,11 +29,11 @@ plugins {
         OS detected as Windows
 
      */
-    id "org.beryx.runtime" version "1.8.0"
+    id "org.beryx.runtime" version "1.9.0" // "1.8.0"
 }
 
-sourceCompatibility = "15"
-targetCompatibility = "15"
+sourceCompatibility = "17"
+targetCompatibility = "17"
 /*
 used to run with 12
  */
@@ -62,14 +62,14 @@ repositories {
 
 ext {
     guavaVersion = "29.0-jre"
-    controlsfxVersion = "11.0.1"
+    // controlsfxVersion = "11.0.1"
     opencsvVersion = "5.1"
 }
 
 
 // https://openjfx.io/openjfx-docs/#gradle --> Suggests reducing redundany and using v17 but 17 does not work...
 javafx {
-    version = "12"
+    version = "21" //17: has bug: when selecting multiple cells in table and clicking on one, null pointer.
     modules = ["javafx.controls",
                "javafx.fxml",
                "javafx.web", // HTML view
@@ -115,7 +115,8 @@ javafx {
         implementation 'it.unimi.dsi:dsiutils:2.7.3'
         implementation 'org.jetbrains:annotations:20.1.0'
 // https://mvnrepository.com/artifact/com.github.haifengl/smile-math
-        implementation 'com.github.haifengl:smile-math:2.6.0'
+        // implementation 'com.github.haifengl:smile-math:2.6.0'
+        implementation 'com.github.haifengl:smile-core:2.6.0' // should include HCA
         // https://mvnrepository.com/artifact/org.hipparchus/hipparchus -- apache commons statistics is not that good apparently.
         implementation 'org.hipparchus:hipparchus-stat:2.0'
         implementation 'org.apache.commons:commons-statistics-distribution:1.2'
@@ -131,10 +132,12 @@ javafx {
         // implementation 'jdistlib:jdistlib:0.5.1' old, fails, but would offer useful stats
         // murmurhash3
         implementation 'commons-codec:commons-codec:1.20.0'
+        // compression
+        implementation 'com.github.luben:zstd-jni:1.5.5-11'
 
 
         // faster plotting library
-        //implementation 'io.fair-acc:chartfx:11.3.1' // needs java17 at least
+        implementation 'io.fair-acc:chartfx:11.3.1' // needs java17 at least
 
         /*
          read pdf
@@ -144,7 +147,7 @@ javafx {
         // implementation 'org.jpedal:OpenViewerFX:6.6.14'
 
         // https://mvnrepository.com/artifact/com.github.haifengl/smile-core
-        // Copied b/c the implemented logger crashed with sp looger.
+        // Copied b/c the implemented logger crashed with sp logger.
         // implementation group: 'com.github.haifengl', name: 'smile-core', version: '3.0.2'
 
 

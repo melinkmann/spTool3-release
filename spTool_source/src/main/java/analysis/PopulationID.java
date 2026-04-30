@@ -22,9 +22,21 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+
 import processing.options.PopulationType;
 
 public class PopulationID implements Serializable {
+
+  /*
+  TODO
+    - currently, we cannot have two popIDs with exact same steps.
+    - however, when e.g., changing just an alpha value for search,
+      we get the same step history.
+      As such, the HashMap storage structure only keeps one instance.
+    - Idea: we could add the label of the search instructions to the popID.
+      This gives more customization of pop-label AND if applied correctly avoids HashMap
+      conflicts/makes them more controllable.
+   */
 
   @Serial
   private static final long serialVersionUID = 1_000_000L;
@@ -113,9 +125,9 @@ public class PopulationID implements Serializable {
       isEqual = true;
       // only make sure each step is also equivalent
       for (int i = 0; i < history.size(); i++) {
-        PopulationStep thisStep =  history.get(i);
-        PopulationStep thatStep =  that.history.get(i);
-        isEqual = isEqual &&thisStep.isEquivalent(thatStep);
+        PopulationStep thisStep = history.get(i);
+        PopulationStep thatStep = that.history.get(i);
+        isEqual = isEqual && thisStep.isEquivalent(thatStep);
       }
     }
     return isEqual;

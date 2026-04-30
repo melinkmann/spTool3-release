@@ -28,7 +28,6 @@ import java.util.Locale;
 import java.util.stream.Collectors;
 import javax.annotation.Nullable;
 
-import math.stat.MeasureOfLocation;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import sandbox.montecarlo.Isotope;
@@ -164,7 +163,7 @@ public enum Element implements Fillable<Element>, FillCollection<Element> {
       new double[]{141.907719, 142.909810, 143.910083, 144.912569, 145.913112, 147.916889,
           149.920887}),
   Pm("Promethium ", 61, new int[]{147},
-      new double[]{100}, new double[]{146.9151449}),
+      new double[]{1}, new double[]{146.9151449}),
   Sm("Samarium", 62, new int[]{144, 147, 148, 149, 150, 152, 154},
       new double[]{0.0307, 0.1499, 0.1124, 0.1382, 0.0738, 0.2675, 0.2275},
       new double[]{143.911995, 146.914893, 147.914818, 148.917180, 149.917271, 151.919728,
@@ -338,7 +337,7 @@ public enum Element implements Fillable<Element>, FillCollection<Element> {
       Isotope isotope = isotopes.get(i);
       fractions[i] = Statistics.randomifyPercent(isotope.getAbundance(), isotopicUncertainty);
     }
-    ArrUtils.normalizeOverriding(fractions);
+    ArrUtils.normalizeBySumOverriding(fractions);
     ArrUtils.multiplyOverriding(fractions, elementSignal);
 
     for (int i = 0; i < isotopes.size(); i++) {

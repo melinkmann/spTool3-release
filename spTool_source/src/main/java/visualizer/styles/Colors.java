@@ -19,12 +19,14 @@ package visualizer.styles;
 
 import com.google.common.collect.Iterables;
 import dataModelNew.mz.Element;
+
 import java.awt.Color;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+
 import sandbox.montecarlo.Isotope;
 import util.SnF;
 
@@ -37,13 +39,16 @@ public interface Colors {
   java.awt.Color PLOT_ZERO_MARKER = new java.awt.Color(0x373742);
   java.awt.Color PLOT_ANY_AXIS_MARKER = new java.awt.Color(0x08083D);
 
-  java.awt.Color BOXPLOT_BACKGROUND = new java.awt.Color(250, 250, 250);
+  // Make all plots the same! Replaced: java.awt.Color BOXPLOT_BACKGROUND = new java.awt.Color(250, 250, 250);
+  java.awt.Color BOXPLOT_BACKGROUND = new java.awt.Color(255, 255, 255);
 
   java.awt.Color CHART_PLOT_TRANSPARENT = new java.awt.Color(0xFFFFFF, true);
   java.awt.Color RANGER_MARKERS = new java.awt.Color(0x780404);
 
   java.awt.Color LABEL_LIGHT = new java.awt.Color(0xD4D4D4);
   java.awt.Color LABEL_DARK = new java.awt.Color(0x575757);
+
+  java.awt.Color OTHER_PIE_SLICE = new java.awt.Color(0x000000); // 0x888888
 
   static final HashMap<Isotope, Colors> DEFAULT_ISOTOPE_MAP = new HashMap<>();
 
@@ -171,6 +176,15 @@ public interface Colors {
     int b = (int) Math.round(fxColor.getBlue() * 255);
     int a = (int) Math.round(fxColor.getOpacity() * 255);
     return new java.awt.Color(r, g, b, a);
+  }
+
+  public static String toHex(Colors col) {
+    java.awt.Color c = col.get();
+    return String.format("#%02x%02x%02x%02x",
+        c.getRed(),
+        c.getGreen(),
+        c.getBlue(),
+        c.getAlpha()); // alpha 0–255
   }
 
   ///////////////////////////////////////////////////////////
@@ -399,7 +413,28 @@ public interface Colors {
     return (t3 > 0.008856) ? t3 : (t - 16.0 / 116.0) / 7.787;
   }
 
-  //////////////////////////////////////////////////////////////////////////////////
+
+  /// ///////////////////////////////////////////////////////////////////////////////
+  /// ########### Default fall back palette if we run into issues for Pie charts ##########################
+  static final Color[] PALETTE = {
+      new Color(0x1f77b4), new Color(0xff7f0e), new Color(0x2ca02c),
+      new Color(0x17becf), new Color(0x393b79), new Color(0x637939),
+      new Color(0xe377c2), new Color(0x7f7f7f), new Color(0xbcbd22),
+      new Color(0xd62728), new Color(0x9467bd), new Color(0x8c564b),
+      new Color(0x8c6d31), new Color(0x843c39), new Color(0x7b4173),
+      new Color(0x5254a3), new Color(0x8ca252), new Color(0xbd9e39),
+      new Color(0xad494a), new Color(0xa55194), new Color(0x6b6ecf),
+      new Color(0xb5cf6b), new Color(0xe7ba52), new Color(0xce6dbd),
+      new Color(0x9c9ede), new Color(0xcedb9c)
+  };
+
+  static Color paletteColor(int i) {
+    return PALETTE[i % PALETTE.length];
+  }
+  /// ######################################################################################################
+
+
+  /// ///////////////////////////////////////////////////////////////////////////////
 
 
   public static class SpColor implements Colors {
@@ -460,6 +495,17 @@ public interface Colors {
     @Override
     public javafx.scene.paint.Color getFX(double alpha) {
       return javafx.scene.paint.Color.color(r, g, b, alpha);
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+      boolean equals = false;
+      if (obj instanceof SpColor) {
+        equals = ((SpColor) obj).b == b
+            && ((SpColor) obj).r == r
+            && ((SpColor) obj).g == g;
+      }
+      return equals;
     }
   }
 

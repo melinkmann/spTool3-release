@@ -519,30 +519,41 @@ public class Statistics {
    */
   public static double[] quantileSampleWithGoldenRatioJitter(double[] data, int targetSize,
                                                              int jitterWindow) {
-    if (targetSize >= data.length) {
-      return Arrays.copyOf(data, data.length); // No reduction needed
+
+    double[] result = new double[0];
+
+    if (data != null && data.length > 0 && targetSize > 0) {
+
+      if (targetSize >= data.length) {
+        result = Arrays.copyOf(data, data.length);
+      } else {
+
+        double[] sorted = Arrays.copyOf(data, data.length);
+        Arrays.sort(sorted);
+
+        // return "median" (central value)
+        if (targetSize == 1) {
+          result = new double[]{sorted[sorted.length / 2]};
+        } else {
+          result = new double[targetSize];
+          final double golden = 0.6180339887; // golden ratio fraction for deterministic jitter
+
+          for (int i = 0; i < targetSize; i++) {
+            double quantileIndex = ((double) i / (targetSize - 1)) * (sorted.length - 1);
+
+            // Compute jittered index deterministically within a small window
+            int jitterRange = Math.max(1, jitterWindow); // size of jitter range
+            int center = (int) Math.round(quantileIndex);
+
+            // Deterministic offset based on golden ratio + index (bounded jitter)
+            int offset = (int) Math.floor((i * golden % 1) * (2 * jitterRange + 1)) - jitterRange;
+            int jitteredIndex = Math.min(sorted.length - 1, Math.max(0, center + offset));
+
+            result[i] = sorted[jitteredIndex];
+          }
+        }
+      }
     }
-
-    double[] sorted = Arrays.copyOf(data, data.length);
-    Arrays.sort(sorted);
-
-    double[] result = new double[targetSize];
-    final double golden = 0.6180339887; // golden ratio fraction for deterministic jitter
-
-    for (int i = 0; i < targetSize; i++) {
-      double quantileIndex = ((double) i / (targetSize - 1)) * (sorted.length - 1);
-
-      // Compute jittered index deterministically within a small window
-      int jitterRange = Math.max(1, jitterWindow); // size of jitter range
-      int center = (int) Math.round(quantileIndex);
-
-      // Deterministic offset based on golden ratio + index (bounded jitter)
-      int offset = (int) Math.floor((i * golden % 1) * (2 * jitterRange + 1)) - jitterRange;
-      int jitteredIndex = Math.min(sorted.length - 1, Math.max(0, center + offset));
-
-      result[i] = sorted[jitteredIndex];
-    }
-
     return result;
   }
 
@@ -583,31 +594,43 @@ public class Statistics {
    * It's especially useful in visualizations or downsampling
    * large datasets without losing important distribution characteristics.
    */
-  public static double[] quantileSampleWithHashedJitter(double[] data, int targetSize,
-                                                        int jitterWindow) {
-    if (targetSize >= data.length) {
-      return Arrays.copyOf(data, data.length);
+
+  public static double[] quantileSampleWithHashedJitter(
+      double[] data, int targetSize, int jitterWindow) {
+
+    double[] result = new double[0];
+
+    if (data != null && data.length > 0 && targetSize > 0) {
+
+      if (targetSize >= data.length) {
+        result = Arrays.copyOf(data, data.length);
+      } else {
+
+        double[] sorted = Arrays.copyOf(data, data.length);
+        Arrays.sort(sorted);
+
+        // return "median" (central value)
+        if (targetSize == 1) {
+          result = new double[]{sorted[sorted.length / 2]};
+        } else {
+          result = new double[targetSize];
+
+          for (int i = 0; i < targetSize; i++) {
+            double quantileIndex = ((double) i / (targetSize - 1)) * (sorted.length - 1);
+            int center = (int) Math.round(quantileIndex);
+
+            // Hash function (simple integer hash)
+            int hash = Integer.hashCode(i); // or use something like MurmurHash if available
+            int offset = (hash % (2 * jitterWindow + 1)) - jitterWindow;
+
+            // Jittered index, clamped
+            int jitteredIndex = Math.max(0, Math.min(sorted.length - 1, center + offset));
+
+            result[i] = sorted[jitteredIndex];
+          }
+        }
+      }
     }
-
-    double[] sorted = Arrays.copyOf(data, data.length);
-    Arrays.sort(sorted);
-
-    double[] result = new double[targetSize];
-
-    for (int i = 0; i < targetSize; i++) {
-      double quantileIndex = ((double) i / (targetSize - 1)) * (sorted.length - 1);
-      int center = (int) Math.round(quantileIndex);
-
-      // Hash function (simple integer hash)
-      int hash = Integer.hashCode(i); // or use something like MurmurHash if available
-      int offset = (hash % (2 * jitterWindow + 1)) - jitterWindow;
-
-      // Jittered index, clamped
-      int jitteredIndex = Math.max(0, Math.min(sorted.length - 1, center + offset));
-
-      result[i] = sorted[jitteredIndex];
-    }
-
     return result;
   }
 
@@ -618,48 +641,51 @@ public class Statistics {
    */
   public static double[] quantileSampleWithMurmurHashedJitter(
       double[] data, int targetSize, int jitterWindow) {
-    if (data == null || data.length == 0 || targetSize <= 0) {
-      return new double[0];
+
+    double[] result = new double[0];
+
+    if (data != null && data.length > 0 && targetSize > 0) {
+
+      if (targetSize >= data.length) {
+        result = Arrays.copyOf(data, data.length);
+      } else {
+
+        double[] sorted = Arrays.copyOf(data, data.length);
+        Arrays.sort(sorted);
+
+        // return "median" (central value)
+        if (targetSize == 1) {
+          result = new double[]{sorted[sorted.length / 2]};
+        } else {
+
+          result = new double[targetSize];
+
+          for (int i = 0; i < targetSize; i++) {
+            double quantileIndex = ((double) i / (targetSize - 1)) * (sorted.length - 1);
+            int center = (int) Math.round(quantileIndex);
+
+            // Use MurmurHash3 on the integer i to get a stable 32‑bit hash
+            byte[] bytes = new byte[]{
+                (byte) (i >>> 24),
+                (byte) (i >>> 16),
+                (byte) (i >>> 8),
+                (byte) (i)
+            };
+            int hash = MurmurHash3.hash32x86(bytes, 0, bytes.length, 0);
+
+            // Constrain jitter so we stay within valid index bounds
+            int minOffset = -Math.min(jitterWindow, center);
+            int maxOffset = Math.min(jitterWindow, sorted.length - 1 - center);
+
+            int range = maxOffset - minOffset + 1;
+            int offset = minOffset + Math.floorMod(hash, range);
+
+            int jitteredIndex = center + offset;
+            result[i] = sorted[jitteredIndex];
+          }
+        }
+      }
     }
-
-    if (targetSize >= data.length) {
-      return Arrays.copyOf(data, data.length);
-    }
-
-    double[] sorted = Arrays.copyOf(data, data.length);
-    Arrays.sort(sorted);
-
-    // return "median" (central value)
-    if (targetSize == 1) {
-      return new double[]{sorted[sorted.length / 2]};
-    }
-
-    double[] result = new double[targetSize];
-
-    for (int i = 0; i < targetSize; i++) {
-      double quantileIndex = ((double) i / (targetSize - 1)) * (sorted.length - 1);
-      int center = (int) Math.round(quantileIndex);
-
-      // Use MurmurHash3 on the integer i to get a stable 32‑bit hash
-      byte[] bytes = new byte[]{
-          (byte) (i >>> 24),
-          (byte) (i >>> 16),
-          (byte) (i >>> 8),
-          (byte) (i)
-      };
-      int hash = MurmurHash3.hash32x86(bytes, 0, bytes.length, 0);
-
-      // Constrain jitter so we stay within valid index bounds
-      int minOffset = -Math.min(jitterWindow, center);
-      int maxOffset = Math.min(jitterWindow, sorted.length - 1 - center);
-
-      int range = maxOffset - minOffset + 1;
-      int offset = minOffset + Math.floorMod(hash, range);
-
-      int jitteredIndex = center + offset;
-      result[i] = sorted[jitteredIndex];
-    }
-
     return result;
   }
 

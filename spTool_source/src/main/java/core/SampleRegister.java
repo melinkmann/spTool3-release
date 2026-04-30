@@ -45,6 +45,8 @@ public class SampleRegister implements Serializable {
   // Organize import of newly added samples.
   private final List<Sample> waitingSamples = Collections.synchronizedList(new ArrayList<>());
 
+  //
+
   public SampleRegister() {
   }
 

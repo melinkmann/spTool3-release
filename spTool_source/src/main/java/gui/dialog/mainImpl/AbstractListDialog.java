@@ -321,6 +321,7 @@ public abstract class AbstractListDialog<T> extends Dialog<List<T>> implements H
     // call it by overriding this method in the respective dialog instance.
   }
 
+
   //////////////////////////////////////////////////////////////////////////////////
 
 

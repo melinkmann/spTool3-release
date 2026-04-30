@@ -31,6 +31,10 @@ import java.nio.channels.FileChannel;
 import java.util.HashSet;
 import java.util.Set;
 import javax.annotation.Nonnull;
+
+import core.SpTool3Main;
+import gui.dialog.DialogUtil;
+import gui.dialog.notification.NotificationFactory;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -94,6 +98,7 @@ public class MemoryMapStorage {
     File storageFileName = File.createTempFile(FILE_IDENTIFIER, ".tmp");
     temporaryFiles.add(storageFileName);
     LOGGER.info("Created a temporary file " + storageFileName);
+    SpTool3Main.getRunTime().getTaskManager().notifyNewStorageFile();
 
     // Open the file for writing
     RandomAccessFile storageFile = new RandomAccessFile(storageFileName, "rw");
@@ -113,8 +118,24 @@ public class MemoryMapStorage {
     // to delete remaining .tmp files
     storageFileName.deleteOnExit();
 
-    return mappedFileBuffer;
 
+    // update storage
+    try {
+      double freeSpaceGB = storageFileName.getUsableSpace() / (1024.0 * 1024 * 1024);
+      LOGGER.info("Remaining space on drive for temp files: " + Math.round(freeSpaceGB) + " GB.");
+      if (freeSpaceGB < 5) {
+        String warnStr = "The disk/drive for temp files is running low on memory!";
+        warnStr += "\nRemaining space is: " + Math.round(freeSpaceGB) + " GB.";
+        warnStr += "\nThe latest file is: " + storageFileName;
+        warnStr += "\nPlease ensure there is enough on the respective drive!";
+
+        NotificationFactory.openInfo(warnStr);
+      }
+    } catch (Exception e) {
+      LOGGER.error("Cannot access remaining space on drive!");
+    }
+
+    return mappedFileBuffer;
   }
 
   /**
@@ -215,7 +236,7 @@ public class MemoryMapStorage {
    * @throws IOException
    */
   public synchronized IntBuffer storeData(@Nonnull final int[] data, int offset,
-      int length) throws IOException {
+                                          int length) throws IOException {
 
     // If we have no storage file or if the current file is full, create a new one
     if ((currentMappedFile == null)

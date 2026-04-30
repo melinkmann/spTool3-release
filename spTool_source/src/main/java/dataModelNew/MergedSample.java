@@ -17,12 +17,7 @@
 
 package dataModelNew;
 
-import analysis.Event;
-import analysis.NpPopulation;
-import analysis.Population;
-import analysis.PopulationID;
-import analysis.StatCollection;
-import analysis.ThresholdSupplier;
+import analysis.*;
 import analysis.quant.Calibration;
 import analysis.quant.Cal;
 import core.SpTool3Main;
@@ -35,13 +30,10 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.Serial;
 import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Objects;
+import java.lang.ref.SoftReference;
+import java.util.*;
 import java.util.stream.Collectors;
 
-import javafx.print.Collation;
 import math.stat.DriftFactor;
 import math.units.Unit;
 import math.units.enums.FlowUnit;
@@ -61,6 +53,7 @@ import sandbox.montecarlo.Isotope;
 import sandbox.montecarlo.ParticlePopulationMatrix;
 import util.ArrUtils;
 import util.NF;
+import util.SnF;
 
 import static visualizer.ResultsTable.EMPTY_CELL;
 
@@ -78,6 +71,8 @@ public class MergedSample implements Sample, Serializable {
   private Sample principleSample;
   private Cal quant;
   private Color color;
+  private List<Isotope> sampleDefaultIsotopes;
+  private List<String> removedIsotopeInfo;
 
   public MergedSample() {
     this.samples = new ArrayList<>();
@@ -88,6 +83,8 @@ public class MergedSample implements Sample, Serializable {
     this.comment = "";
     this.quant = new Calibration();
     this.color = SpTool3Main.getRunTime().getNextSampleColor().get();
+    this.sampleDefaultIsotopes = new ArrayList<>();
+    this.removedIsotopeInfo = new ArrayList<>();
   }
 
   public MergedSample(String nickName, List<Sample> samples) {
@@ -106,11 +103,23 @@ public class MergedSample implements Sample, Serializable {
     this.comment = commentBuilder.toString();
     this.quant = new Calibration(nickName);
     this.color = SpTool3Main.getRunTime().getNextSampleColor().get();
+    this.sampleDefaultIsotopes = new ArrayList<>();
+    this.removedIsotopeInfo = new ArrayList<>();
+    for (Sample sample : samples) {
+      for (Isotope isotope : sample.getSampleDefaultIsotopes()) {
+        if (!sampleDefaultIsotopes.contains(isotope)) {
+          sampleDefaultIsotopes.add(isotope);
+        }
+      }
+      removedIsotopeInfo.addAll(sample.getRemovedIsotopeInfo());
+    }
   }
 
   // Deep copy: note: this constructor does not copy. You have to pass copies as arguments.
   public MergedSample(String nickName, boolean highlighted, String comment, Color color,
-                      List<Sample> samples, Sample principleSample, Cal quant) {
+                      List<Sample> samples, Sample principleSample, Cal quant,
+                      List<Isotope> sampleDefaultIsotopes,
+                      List<String> removedIsotopeInfo) {
     this.nickName = nickName;
     this.samples = new ArrayList<>(samples);
     // no nesting
@@ -121,6 +130,8 @@ public class MergedSample implements Sample, Serializable {
     this.color = color;
     this.quant = quant;
     this.principleSample = principleSample;
+    this.sampleDefaultIsotopes = new ArrayList<>(sampleDefaultIsotopes);
+    this.removedIsotopeInfo = new ArrayList<>();
   }
 
   public Sample copy() {
@@ -139,7 +150,9 @@ public class MergedSample implements Sample, Serializable {
         color,
         copySamples,
         principleSampleCopy,
-        quant.copy());
+        quant.copy(),
+        sampleDefaultIsotopes,
+        removedIsotopeInfo);
     return newSample;
   }
 
@@ -160,7 +173,9 @@ public class MergedSample implements Sample, Serializable {
         copySamples,
         principleSampleCopy,
         // I assume, here we would have to requantify as after merging q is not defined clearly
-        new Calibration());
+        new Calibration(),
+        sampleDefaultIsotopes,
+        removedIsotopeInfo);
     return newSample;
   }
 
@@ -178,6 +193,12 @@ public class MergedSample implements Sample, Serializable {
     in.defaultReadObject();
     if (quant == null) {
       this.quant = new Calibration();
+    }
+    if (sampleDefaultIsotopes == null) {
+      this.sampleDefaultIsotopes = new ArrayList<>();
+    }
+    if (removedIsotopeInfo == null) {
+      this.removedIsotopeInfo = new ArrayList<>();
     }
     LOGGER.trace("Read from object: " + getNickName());
   }
@@ -218,6 +239,24 @@ public class MergedSample implements Sample, Serializable {
 
   public void setCalibration(Cal quant) {
     this.quant = quant;
+  }
+
+  @Override
+  public List<String> getRemovedIsotopeInfo() {
+    return removedIsotopeInfo;
+  }
+
+  @Override
+  public double getMeanSiaShape() {
+    double lowerLimit = SpTool3Main.getRunTime().getConfParams().getSiaLowerLimit().getValue();
+    double upperLimit = SpTool3Main.getRunTime().getConfParams().getSiaUpperLimit().getValue();
+    double sia = samples.stream()
+        .map(Sample::getMeanSiaShape)
+        .filter(d -> d > lowerLimit)
+        .filter(d -> d < upperLimit)
+        .mapToDouble(Double::doubleValue)
+        .average().orElse(0);
+    return sia;
   }
 
   /**
@@ -279,6 +318,104 @@ public class MergedSample implements Sample, Serializable {
   }
 
   @Override
+  @Nullable
+  public HacCrWrapper getHacWrapper(PopulationID popID) {
+    return null; // TODO manage how we can assign the merged Spectral Array back tom its samples...
+  }
+
+  @Override
+  public void putHacWrapper(PopulationID popID, HacCrWrapper wrapper) {
+    // nada --> TODO manage how we can assign the merged Spectral Array back tom its samples...
+  }
+
+  @Override
+  public List<SpectralArray> getSpectralData(PopulationID popID) {
+    List<SpectralArray> result = new ArrayList<>();
+
+    HashMap<Double, Isotope> allMZ = new HashMap<>();
+    for (Sample sample : samples) {
+      List<SpectralArray> specArrays = sample.getSpectralData(popID);
+      if (specArrays != null) {
+        for (SpectralArray spectralArr : specArrays) {
+          allMZ.put(spectralArr.getMz(), spectralArr.getIsotope());
+        }
+      }
+    }
+
+    List<Double> sortedMZ = new ArrayList<>(allMZ.keySet());
+    sortedMZ.sort(Double::compare);
+
+    for (Double mz : sortedMZ) {
+      Isotope isotope = allMZ.get(mz);
+
+      // --- Pass 1: collect all feature keys and determine maxLen for this mz ---
+      Set<String> allFeatureKeys = new LinkedHashSet<>();
+      int maxLen = 0;
+      for (Sample sample : samples) {
+        List<SpectralArray> specArrays = sample.getSpectralData(popID);
+        if (specArrays != null) {
+          for (SpectralArray spectralArr : specArrays) {
+            int len = spectralArr.getIntensity().length;
+            if (len > maxLen) maxLen = len;
+            if (spectralArr.getMz() == mz) {
+              allFeatureKeys.addAll(spectralArr.listAdditionalFeatures());
+            }
+          }
+        }
+      }
+
+      // --- Pass 2: merge intensities and additional features ---
+      List<double[]> data = new ArrayList<>();
+      HashMap<String, List<double[]>> additionalFeatures = new HashMap<>();
+      for (String key : allFeatureKeys) {
+        additionalFeatures.put(key, new ArrayList<>());
+      }
+
+      for (Sample sample : samples) {
+        List<SpectralArray> specArrays = sample.getSpectralData(popID);
+        if (specArrays != null) {
+          for (SpectralArray spectralArr : specArrays) {
+            if (spectralArr.getMz() == mz) {
+              data.add(spectralArr.getIntensity());
+              for (String key : allFeatureKeys) {
+                double[] featureData = spectralArr.getAdditionalFeature(key);
+                // pad if this SpectralArray doesn't have the key
+                additionalFeatures.get(key).add(featureData != null ? featureData : new double[maxLen]);
+              }
+            } else {
+              data.add(new double[maxLen]);
+              for (String key : allFeatureKeys) {
+                additionalFeatures.get(key).add(new double[maxLen]);
+              }
+            }
+          }
+        }
+      }
+
+      HashMap<String, double[]> mergedFeatures = new HashMap<>();
+      for (String key : allFeatureKeys) {
+        mergedFeatures.put(key, ArrUtils.merge(additionalFeatures.get(key)));
+      }
+
+      result.add(new SpectralArray(isotope, mz, ArrUtils.merge(data), mergedFeatures));
+    }
+    return result;
+  }
+
+  @Override
+  public void addSpectralData(PopulationID populationID, List<SpectralArray> spectralData) {
+    // do nothing: this is done at sub.sample level
+  }
+
+  @Override
+  public void clearSpectralData() {
+    for (Sample sample : samples) {
+      sample.clearSpectralData();
+    }
+  }
+
+
+  @Override
   public List<PopulationID> listAllPopulations() {
     List<PopulationID> pops = new ArrayList<>();
     for (Sample sample : samples) {
@@ -311,6 +448,27 @@ public class MergedSample implements Sample, Serializable {
   public void removePopulations(List<Isotope> isotopes, PopulationID populationID) {
     for (Sample sample : samples) {
       sample.removePopulations(isotopes, populationID);
+    }
+  }
+
+  @Override
+  public void removeIsotopes(List<Isotope> isotopes) {
+    for (Sample sample : samples) {
+      sample.removeIsotopes(isotopes);
+    }
+  }
+
+  @Override
+  public void removeTraces(List<Trace> tracesToRemove) {
+    for (Sample sample : samples) {
+      sample.removeTraces(tracesToRemove);
+    }
+  }
+
+  @Override
+  public void removeTrace(Trace traceToRemove, String message) {
+    for (Sample sample : samples) {
+      sample.removeTrace(traceToRemove, message);
     }
   }
 
@@ -352,6 +510,17 @@ public class MergedSample implements Sample, Serializable {
 
   public void setColor(Color color) {
     this.color = color;
+  }
+
+  @Override
+  public List<Isotope> getSampleDefaultIsotopes() {
+    return new ArrayList<>(sampleDefaultIsotopes);
+  }
+
+  @Override
+  public void setSampleDefaultIsotopes(List<Isotope> sampleDefaultIsotopes) {
+    this.sampleDefaultIsotopes.clear();
+    this.sampleDefaultIsotopes.addAll(sampleDefaultIsotopes);
   }
 
   /// /////////////////////////////////////////////////////////////////////////////////////////////
@@ -669,6 +838,27 @@ public class MergedSample implements Sample, Serializable {
   }
 
   @Override
+  public String tabRawMeanCPS(Isotope isotope) {
+    String val = EMPTY_CELL;
+    Trace trace = getTrace(isotope);
+    if (trace != null) {
+      double cps = getAllSamples().stream()
+          .map(s -> s.getTrace(isotope))
+          .filter(Objects::nonNull)
+          .mapToDouble(t -> {
+            double dtSec = t.getTISeries().getDT();
+            double ctsPerDT = t.getTISeries().getMeanIntensity();
+            double cpsi = ctsPerDT/dtSec;
+            return cpsi;
+          })
+          .average()
+          .orElse(0);
+      val = SnF.doubleToString(cps, NF.D1C1, NF.D1C1Exp);
+    }
+    return val;
+  }
+
+  @Override
   public String tabRawMedian(Isotope isotope) {
     String val = EMPTY_CELL;
     double mean = getAllSamples().stream()
@@ -678,6 +868,27 @@ public class MergedSample implements Sample, Serializable {
         .average()
         .orElse(0);
     val = str(mean, NF.D1C2);
+    return val;
+  }
+
+  @Override
+  public String tabRawMedianCPS(Isotope isotope) {
+    String val = EMPTY_CELL;
+    Trace trace = getTrace(isotope);
+    if (trace != null) {
+      double cps = getAllSamples().stream()
+          .map(s -> s.getTrace(isotope))
+          .filter(Objects::nonNull)
+          .mapToDouble(t -> {
+            double dtSec = t.getTISeries().getDT();
+            double ctsPerDT = t.getTISeries().getMedianIntensity();
+            double cpsi = ctsPerDT/dtSec;
+            return cpsi;
+          })
+          .average()
+          .orElse(0);
+      val = SnF.doubleToString(cps, NF.D1C1, NF.D1C1Exp);
+    }
     return val;
   }
 
@@ -705,6 +916,25 @@ public class MergedSample implements Sample, Serializable {
         .orElse(0);
     val = str(mean, NF.D1C2);
     return val;
+  }
+
+  @Override
+  public String tabSIAShape(Isotope isotope) {
+    String val = EMPTY_CELL;
+    double mean = getAllSamples().stream()
+        .map(s -> s.getTrace(isotope))
+        .filter(Objects::nonNull)
+        .mapToDouble(Trace::getSiaShape)
+        .filter(d -> d > 0)
+        .average()
+        .orElse(0);
+    val = str(mean, NF.D1C2);
+    return val;
+  }
+
+  @Override
+  public String tabMeanSIAShape(Isotope isotope) {
+    return str(getMeanSiaShape(), NF.D1C4);
   }
 
   @Override

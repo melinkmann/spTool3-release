@@ -17,16 +17,28 @@
 
 package util;
 
+import javafx.stage.Window;
+
 import java.io.Serializable;
 
 public interface Functional extends Serializable {
 
   public void proceed();
 
+  // for functions that need a window/parent (e.g., the PTOE popup)
+  default void proceed(Window parent) {
+    proceed(); // fall back to no-window version by default
+  }
+
   static Functional empty() {
     return new Functional() {
       @Override
       public void proceed() {
+        // do nothing
+      }
+
+      @Override
+      public void proceed(Window parent) {
         // do nothing
       }
     };

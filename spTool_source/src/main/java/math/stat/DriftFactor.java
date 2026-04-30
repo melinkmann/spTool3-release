@@ -17,10 +17,13 @@
 
 package math.stat;
 
+import analysis.BaselineGenerator;
 import analysis.NpPopulation;
 import analysis.PopulationID;
 import dataModelNew.Trace;
+
 import java.util.List;
+
 import math.AverageUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -53,13 +56,21 @@ public class DriftFactor {
      */
 
       double averageDistance = 1;
-      double[] yBK = AverageUtils.averageDrift(trace, populationID, windowSec / 3).getY();
+      double[] yBK = AverageUtils.averageDrift(trace, populationID, windowSec).getY();
+      double[] yBKCopy = ArrUtils.copy(yBK);
       if (yBK.length > 3) {
+
+        double mean = MeasureOfLocation.MEAN.calc(yBK);
+        // try clean-up in case false picked events at low BG
+        double sdRoot = Math.sqrt(mean + 1);
+        yBK = BaselineGenerator.removeOutliers(yBK, mean - 1 * sdRoot, mean + 0.25 * sdRoot);
+
         double max = ArrUtils.getMax(yBK);
         double min = ArrUtils.getMin(yBK);
-        double mean = MeasureOfLocation.MEAN.calc(yBK);
         averageDistance = 1 + (max - min) / (mean + 1);
       }
+      // System.out.println("\n" + trace.getMzValue().getName());
+      // System.out.println("averageDistance: " + averageDistance);
 
     /*
     RSD
@@ -77,6 +88,8 @@ public class DriftFactor {
     */
 
       double rsd = 1;
+      // avoid higher "noise" from zero blocks
+      yBK = ArrUtils.nonzero(yBK);
       List<Double> moav = MovingAverage.evaluate(yBK, TOTAL_POINTS, FRAME_RSD);
       if (moav.size() > 1) {
 
@@ -84,6 +97,7 @@ public class DriftFactor {
         double mean = MeasureOfLocation.MEAN.calc(moav);
         rsd = 100 * sd / (mean + 1);
       }
+      // System.out.println("rsd: " + rsd);
 
      /*
      Trend
@@ -102,7 +116,7 @@ public class DriftFactor {
        */
 
       double continuityCounter = 1;
-      yBK = AverageUtils.averageDrift(trace, populationID, windowSec).getY();
+      yBK = yBKCopy; //AverageUtils.averageDrift(trace, populationID, windowSec).getY();
       moav = MovingAverage.evaluate(yBK, TOTAL_POINTS, FRAME_TREND);
       if (moav.size() > 1) {
         // Check for continuity (drift)
@@ -125,7 +139,11 @@ public class DriftFactor {
         continuityCounter = Math.max(1, continuityCounter);
       }
 
+      // System.out.println("continuityCounter: " + continuityCounter);
+
       drift = averageDistance * rsd * continuityCounter;
+
+      // System.out.println("drift: " + drift);
 
       //    System.out.println(trace.getMzValue().getName());
       //    System.out.println("rsd:" + rsd);

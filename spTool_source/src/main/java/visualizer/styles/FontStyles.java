@@ -99,5 +99,10 @@ public enum FontStyles {
     return new Font(FONT_NAME, Font.BOLD, size);
   }
 
+  public static Font getBold(int decrease) {
+    int size = SpTool3Main.getRunTime().getConfParams().getAxisFontSize()-decrease;
+    return new Font(FONT_NAME, Font.BOLD, size);
+  }
+
 
 }

@@ -399,7 +399,7 @@ public class ResettableStatDataSet implements StatDataSet, Serializable {
       return Math.pow(z, 2) + poissonCriticalLimit(1 - alpha, mean);
     }
 
-    public static double calcSurvival(double mean, double intensity) {
+    public static double   calcSurvival(double mean, double intensity) {
       if (mean > 0) {
         //        org.apache.commons.statistics.distribution.PoissonDistribution pd =
         //            org.apache.commons.statistics.distribution.PoissonDistribution.of(mean);
@@ -410,7 +410,7 @@ public class ResettableStatDataSet implements StatDataSet, Serializable {
             org.apache.commons.statistics.distribution.PoissonDistribution.of(mean);
 
         int k = (int) Math.floor(intensity);
-        double pGreater = pd.survivalProbability(k + 1); // P(X > k)
+        double pGreater = pd.survivalProbability(k); // per Commons Statistics source
         double pEqual = pd.probability(k);             // P(X = k)
         double pVal = pGreater + 0.5 * pEqual;
 

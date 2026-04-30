@@ -109,7 +109,7 @@ public enum GatingOption {
     }
   },
 
-  ACCUMULATED_P{
+  ACCUMULATED_P {
     @Override
     public String toString() {
       return "Accumulated probability";
@@ -124,7 +124,7 @@ public enum GatingOption {
   MEAN_SIGNAL {
     @Override
     public String toString() {
-      return "Mean signal of peak profile";
+      return "Mean signal of peak";
     }
 
     @Override

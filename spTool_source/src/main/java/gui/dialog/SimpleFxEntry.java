@@ -83,6 +83,7 @@ public class SimpleFxEntry<T> extends AbstractFxEntry<T> {
     }
   }
 
+
   /// ////////////////////////////////////////////////////////////////////////////////////
 
   public static class DirectoryFxEntry extends SimpleFxEntry<Path> {

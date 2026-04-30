@@ -19,14 +19,19 @@ package visualizer.charts;
 
 import java.awt.geom.Point2D;
 import java.awt.geom.Rectangle2D;
+
 import javafx.scene.input.MouseEvent;
+import org.jfree.chart.axis.LogAxis;
 import org.jfree.chart.fx.ChartCanvas;
 import org.jfree.chart.fx.ChartViewer;
 import org.jfree.chart.fx.interaction.AbstractMouseHandlerFX;
 import org.jfree.chart.plot.Plot;
 import org.jfree.chart.plot.PlotRenderingInfo;
+import org.jfree.chart.plot.XYPlot;
 import org.jfree.chart.plot.Zoomable;
 import org.jfree.chart.util.ShapeUtils;
+import org.jfree.data.Range;
+import org.jfree.data.xy.XYDataset;
 
 /**
  * Handles drag zooming of charts on a {@link ChartCanvas}.  This handler should be configured with
@@ -71,8 +76,8 @@ public class SpZoomHandlerFX extends AbstractMouseHandlerFX {
    * @param shiftKey require SHIFT key?
    */
   public SpZoomHandlerFX(String id, ChartViewer parent, ViewerZoomMemory zoomMemory,
-      boolean altKey,
-      boolean ctrlKey, boolean metaKey, boolean shiftKey) {
+                         boolean altKey,
+                         boolean ctrlKey, boolean metaKey, boolean shiftKey) {
     super(id, altKey, ctrlKey, metaKey, shiftKey);
     this.viewer = parent;
     this.zoomMemory = zoomMemory;
@@ -176,10 +181,8 @@ public class SpZoomHandlerFX extends AbstractMouseHandlerFX {
       vZoom = z.isRangeZoomable();
     }
 
-    boolean zoomTrigger1 = hZoom && Math.abs(e.getX()
-        - this.startPoint.getX()) >= 10;
-    boolean zoomTrigger2 = vZoom && Math.abs(e.getY()
-        - this.startPoint.getY()) >= 10;
+    boolean zoomTrigger1 = hZoom && Math.abs(e.getX() - this.startPoint.getX()) >= 10;
+    boolean zoomTrigger2 = vZoom && Math.abs(e.getY() - this.startPoint.getY()) >= 10;
     if (zoomTrigger1 || zoomTrigger2) {
       Point2D endPoint = new Point2D.Double(e.getX(), e.getY());
       PlotRenderingInfo pri = canvas.getRenderingInfo().getPlotInfo();
@@ -193,6 +196,17 @@ public class SpZoomHandlerFX extends AbstractMouseHandlerFX {
         z.zoomDomainAxes(0, pri, endPoint);
         z.zoomRangeAxes(0, pri, endPoint);
         p.setNotify(saved);
+
+        // Fix log axis bounds after reset. Added later in 3.1.2 for MS spectrum
+        if (p instanceof XYPlot plot && plot.getRangeAxis() instanceof LogAxis logAxis) {
+          double[] minMax = getMinMaxYFromDataset(canvas);
+          double yLimLow = Math.max(Math.nextUp(0d), 0.5 * minMax[0]);
+          double yLimUp = minMax[1];
+          if (!(yLimLow < yLimUp)) yLimUp = Math.nextUp(yLimLow);
+          logAxis.setAutoRange(false);
+          logAxis.setRange(new Range(yLimLow, 2 * yLimUp));
+        }
+
       } else {
         double x = this.startPoint.getX();
         double y = this.startPoint.getY();
@@ -256,8 +270,29 @@ public class SpZoomHandlerFX extends AbstractMouseHandlerFX {
     return (y - r.getMinY()) / r.getHeight();
   }
 
-
-
-
+  private double[] getMinMaxYFromDataset(ChartCanvas canvas) {
+    if (!(canvas.getChart().getPlot() instanceof XYPlot plot)) {
+      return new double[]{Math.nextUp(0d), Double.MAX_VALUE};
+    }
+    double min = Double.MAX_VALUE;
+    double max = -Double.MAX_VALUE;
+    for (int ds = 0; ds < plot.getDatasetCount(); ds++) {
+      XYDataset dataset = plot.getDataset(ds);
+      if (dataset == null) continue;
+      for (int s = 0; s < dataset.getSeriesCount(); s++) {
+        for (int i = 0; i < dataset.getItemCount(s); i++) {
+          double y = dataset.getYValue(s, i);
+          if (y > 0) {
+            if (y < min) min = y;
+            if (y > max) max = y;
+          }
+        }
+      }
+    }
+    return new double[]{
+        min == Double.MAX_VALUE ? Math.nextUp(0d) : min,
+        max == -Double.MAX_VALUE ? Math.nextUp(min) : max
+    };
+  }
 
 }
