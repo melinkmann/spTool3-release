@@ -15,35 +15,35 @@
  *
  */
 
-/*
- *  Java port of spcal/io/nu.py  (https://github.com/djdt/spcal)
- *  Original Python by djdt – ported to Java 15 for spTool3.
- */
-
 package io.nu;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+import java.io.Serial;
+import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.List;
 
+
 /**
- * Written by claude sonnet 4.6 to create Java port of spcal nu parser  (https://github.com/djdt/spcal)
- * Original Python by djdt – ported to Java 15 for spTool.
- * Immutable container for all parameters read from the {@code run.info} JSON file
- * in a Nu Instruments ICP-ToF data directory.
- *
- * <p>Instances are created exclusively by {@link NuReader_v1}.
+ * Java port of spcal nu parser (https://github.com/djdt/spcal)
+ * Original Python by djdt – ported to Java for spTool.
  */
+public class NuRunInfo_new implements Serializable {
 
-public final class NuRunInfo {
+  @Serial
+  long serialVersionUID = 1_000_000L;
 
-  // -------------------------------------------------------------------------
-  // Mass-calibration
-  // -------------------------------------------------------------------------
+  private static final Logger LOGGER = LogManager.getLogger(NuRunInfo_new.class.getName());
+
+
+  // false if dummy instance
+  private final boolean isValid;
 
   /**
+   * Mass calibration:
    * Two-element [a, b] such that sqrt(m/q) = a + t * b.
-   * <p>
-   * Explanation by claude sonnet 4.6:
-   * massCalCoefficients [a, b] are the core time-to-mass calibration.
    * The relationship is √(m/q) = a + t·b, so m/q = (a + t·b)².
    * Every peak _centre time_ coming out of the .integ files goes through this to become
    * a Da value.
@@ -51,7 +51,7 @@ public final class NuRunInfo {
   public final double[] massCalCoefficients;
 
   /**
-   * Explanation by claude sonnet 4.6:
+   * Blanker calibration:
    * Two-element [a, b] blanker-open mass-calibration coefficients.
    * <p> blMassCalStartCoef [a, b] and blMassCalEndCoef [a, b] —
    * the same style of calibration as the main mass cal but specifically for the blanker hardware.
@@ -61,22 +61,16 @@ public final class NuRunInfo {
    *
    */
   public final double[] blMassCalStartCoef;
-
-  /**
-   * Two-element [a, b] blanker-close mass-calibration coefficients.
-   */
   public final double[] blMassCalEndCoef;
 
-  // -------------------------------------------------------------------------
-  // Accumulations
-  // -------------------------------------------------------------------------
 
-  /*
-  numAccumulations1 and numAccumulations2 — the Nu instrument fires the ToF pulser many times per
-  "acquisition" to build up signal. These two numbers multiply together to give the total number of
-  individual ToF shots averaged into one data point. Their product (totalAccumulations()) is the divisor
-  used to convert raw acquisition numbers into time-point indices, and it feeds into the dwell time
-  calculation.
+  /**
+   * Number of accumulations - for DT computation.
+   * numAccumulations1 and numAccumulations2 - the Vitesse fires the ToF pulser many times per
+   * "acquisition" to build up signal. These two are numbers multiplied to give the total number of
+   * individual ToF shots averaged into one data point. Their product (totalAccumulations()) is the divisor
+   * used to convert raw acquisition numbers into time-point indices, and it feeds into the dwell time
+   * calculation.
    */
   public final int numAccumulations1;
   public final int numAccumulations2;
@@ -86,17 +80,25 @@ public final class NuRunInfo {
    */
   public final double averageSingleIonArea;
 
-  // -------------------------------------------------------------------------
-  // Segment descriptors
-  // -------------------------------------------------------------------------
-
+  /// Segment descriptors.
   public final List<SegmentInfo> segmentInfoList;
 
-  // -------------------------------------------------------------------------
-  // Package-private constructor – only NuReader creates instances
-  // -------------------------------------------------------------------------
 
-  NuRunInfo(
+  // Dummy constructor
+
+  public NuRunInfo_new() {
+    this.isValid = false;
+    this.massCalCoefficients = new double[0];
+    this.blMassCalStartCoef = new double[0];
+    this.blMassCalEndCoef = new double[0];
+    this.numAccumulations1 = 0;
+    this.numAccumulations2 = 0;
+    this.averageSingleIonArea = 0;
+    this.segmentInfoList = new ArrayList<>();
+  }
+
+  // Main constructor
+  public NuRunInfo_new(
       double[] massCalCoefficients,
       double[] blMassCalStartCoef,
       double[] blMassCalEndCoef,
@@ -105,24 +107,42 @@ public final class NuRunInfo {
       double averageSingleIonArea,
       List<SegmentInfo> segmentInfoList) {
 
+    this.isValid = true;
     this.massCalCoefficients = massCalCoefficients;
     this.blMassCalStartCoef = blMassCalStartCoef;
     this.blMassCalEndCoef = blMassCalEndCoef;
     this.numAccumulations1 = numAccumulations1;
     this.numAccumulations2 = numAccumulations2;
     this.averageSingleIonArea = averageSingleIonArea;
-    this.segmentInfoList = List.copyOf(segmentInfoList);
+    this.segmentInfoList = new ArrayList<>(segmentInfoList);
   }
 
-  // -------------------------------------------------------------------------
-  // Derived helpers
-  // -------------------------------------------------------------------------
+  /// =========================================================================
+  /// ############# UTILITY METHODS ##################
+  /// =========================================================================
 
   /**
-   * Product of both accumulation counts — total accumulations per acquisition.
+   * Product of both accumulation counts which is the total accumulations per acquisition.
    */
   public int totalAccumulations() {
     return numAccumulations1 * numAccumulations2;
+  }
+
+  /**
+   * Dwell time in seconds: for each segment: acquisition period × total accumulations,
+   * rounded to the nearest nanosecond (mirrors Python {@code np.around(..., 9)}).
+   */
+  public List<Double> segmentDwellTimeSeconds() {
+    List<Double> segmentDwellTimes = new ArrayList<>();
+    for (SegmentInfo segmentInfo : segmentInfoList) {
+      // NU uses nanoseconds here!
+      double acqPeriodS = segmentInfo.acquisitionPeriodNs * 1e-9;
+      double raw = acqPeriodS * totalAccumulations();
+      // round to nanoseconds since this is the highest precision available
+      double dt = Math.round(raw * 1e9) / 1e9;
+      segmentDwellTimes.add(dt);
+    }
+    return segmentDwellTimes;
   }
 
   /**
@@ -132,30 +152,31 @@ public final class NuRunInfo {
   public double dwellTimeSeconds() {
     double result = 0.0;
     if (!segmentInfoList.isEmpty()) {
-      // MElin: NU uses nanoseconds here.
+      // NU uses nanoseconds here!
       double acqPeriodS = segmentInfoList.get(0).acquisitionPeriodNs * 1e-9;
       double raw = acqPeriodS * totalAccumulations();
+      // round to nanoseconds since this is the highest precision available
       result = Math.round(raw * 1e9) / 1e9;
     }
     return result;
   }
 
   public int acquisitionCountForSegment(int segNum) {
+    int count = -1;
     for (SegmentInfo s : segmentInfoList) {
-      if (s.num == segNum) return s.acquisitionCount;
+      if (s.num == segNum) {
+        count = s.acquisitionCount;
+      }
     }
-    throw new IllegalArgumentException("NuRunInfo: unknown segment number: " + segNum);
+    if (count == -1) {
+      LOGGER.error("NuRunInfo: unknown segment number: {} returned count = 0.", segNum);
+      count = 0;
+    }
+    return count;
   }
 
-  // -------------------------------------------------------------------------
-  // Nested segment descriptor
-  // -------------------------------------------------------------------------
 
-  /**
-   * Mirrors one entry in the {@code SegmentInfo} JSON array of {@code run.info}.
-   */
-
-  /*
+/*
   Explanation by claude sonnet 4.6:
   segmentInfoList — a Nu run can be divided into segments, each covering a different mass range or timing
   configuration. Each SegmentInfo has:
@@ -191,16 +212,25 @@ public final class NuRunInfo {
   .integ file is in some internal ToF clock unit where one tick = 2 ns (or similar), so multiplying by 0.5
   converts to the same nanosecond units that acquisitionTriggerDelayNs is expressed in. That would make the
   addition of the delay dimensionally consistent.
-
-
+  TODO: check NU manual - m/z match SpCal and NuQuant export masses so the conversion is OK.
    */
 
-  public static final class SegmentInfo {
+  public static final class SegmentInfo implements Serializable {
+    @Serial
+    long serialVersionUID = 1_000_000L;
 
     public final int num;
     public final double acquisitionPeriodNs;
     public final double acquisitionTriggerDelayNs;
     public final int acquisitionCount;
+
+    // optional dummy constructor
+    public SegmentInfo() {
+      this.num = 0;
+      this.acquisitionPeriodNs = 0;
+      this.acquisitionTriggerDelayNs = 0;
+      this.acquisitionCount = 0;
+    }
 
     SegmentInfo(int num, double acquisitionPeriodNs, double acquisitionTriggerDelayNs, int acquisitionCount) {
       this.num = num;

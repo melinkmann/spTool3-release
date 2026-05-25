@@ -88,6 +88,7 @@ public class NpPopulation implements Population, Serializable {
     this.inputSummary = new PopParSummary();
     this.contributingMZs = new ArrayList<>();
   }
+
   // Create an "Incomplete population" ROI
   public NpPopulation(PopulationID id, EventCollection mainEventCollection, PopParSummary popParSummary) {
     this.id = id;
@@ -137,7 +138,7 @@ public class NpPopulation implements Population, Serializable {
     this.inputSummary = npPopulation.getInputSummary(); // keep summary from search
     this.contributingMZs = new ArrayList<>(npPopulation.getContributingMZs());
     for (MZValue mz : contributingMZs) {
-      if (!contributingMZs.contains(mz)) {
+      if (!this.contributingMZs.contains(mz)) {
         this.contributingMZs.add(mz);
       }
     }
@@ -365,19 +366,11 @@ public class NpPopulation implements Population, Serializable {
 
     // some visual distinction
     MarkerStyle markerStyle = MarkerStyle.CROSS_UPRIGHT;
-    if (id.getSteps().stream().anyMatch(step -> step instanceof PopulationStep.AlignSubtype)) {
+    if (AnalysisUtils.isAligned(id)) {
       markerStyle = MarkerStyle.DIAMOND;
     }
 
-    boolean isPValSearch = false;
-    for (PopulationStep step : id.getSteps()) {
-      if (step instanceof PopulationStep.SearchSubtype) {
-        isPValSearch = ((PopulationStep.SearchSubtype) step).getSearchAlgorithm()
-            .equals(SearchAlgorithm.P_VALUE_ACCUMULATION);
-        if (isPValSearch) break;
-      }
-    }
-    if (isPValSearch) {
+    if (AnalysisUtils.isPVal(id)) {
       markerStyle = MarkerStyle.CIRCLE;
     }
 

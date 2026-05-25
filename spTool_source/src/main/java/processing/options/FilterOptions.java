@@ -49,6 +49,13 @@ public enum FilterOptions {
     }
   },
 
+  ALIGNED_FILTER {
+    @Override
+    public String toString() {
+      return "Aligned filtering";
+    }
+  },
+
   MATCH_SIM {
     @Override
     public String toString() {

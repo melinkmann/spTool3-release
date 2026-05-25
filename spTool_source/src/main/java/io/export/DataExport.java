@@ -48,6 +48,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import processing.options.EventParameter;
 import processing.options.EventType;
+import processing.options.IsotopeSelection;
 import processing.options.PopulationType;
 import processing.parameterSets.Method;
 import processing.parameterSets.ParamSet;
@@ -1105,6 +1106,10 @@ public abstract class DataExport {
       int pAccMinEvents = params.getPrescreenMinEvents().getValue();
       boolean considerSingleComponent = params.getEnableSingleComponentPValueThreshold().getValue();
 
+      IsotopeSelection isotopeSelection = params.getIsotopeSelection().getValue();
+      List<Isotope> excludedIsotopes = params.listExcludedIsotopes();
+      List<Isotope> includedIsotopes = params.listIncludedIsotopes();
+
       // Iterate
       List<Trace> traces = sample.getTraces();
 
@@ -1126,9 +1131,22 @@ public abstract class DataExport {
       // for constructing a large enough p value array
       int rawDataMaxSize = 0;
 
-      // check if we only want the selected isotopes?
-      if (params.getOnlyUseSelectedIsotopesForPValue().getValue()) {
-        traces.removeIf(t -> !selIsotopes.contains(t.getMzValue().getIsotope()));
+      // enable exclusion of certain isotopes
+      switch (isotopeSelection) {
+        case ALL_LOADED -> {
+        }
+        case SELECTED -> {
+          traces.removeIf(t -> !selIsotopes.contains(t.getMzValue().getIsotope()));
+        }
+        case POSITIVE_LIST_SELECTION -> {
+          traces.removeIf(t -> !includedIsotopes.contains(t.getMzValue().getIsotope()));
+        }
+        case NEGATIVE_LIST_EXCLUSION -> {
+          traces.removeIf(t -> excludedIsotopes.contains(t.getMzValue().getIsotope()));
+        }
+        default -> {
+          // keep as is, we should not reach this branch
+        }
       }
 
       for (Trace trace : traces) {
@@ -1364,86 +1382,172 @@ public abstract class DataExport {
 
     if (Files.isDirectory(dir)) {
 
-      for (PopulationID popID : pops) {
+      if (mainSample instanceof IncompleteSample) {
 
-        Path subDir = dir.resolve(GlobalIO.cleanupWindowsFileName(popID.toString()));
+        // blacklist string that we do not need for UMAP
+        List<String> blacklistKeys = new ArrayList<>();
+        blacklistKeys.add("TARGET");
+        //blacklistKeys.add("id");
+        blacklistKeys.add("frame");
+        blacklistKeys.add("x");
+        blacklistKeys.add("y");
+
+        //blacklistKeys.add("particle_id");
+        blacklistKeys.add("detection_time");
+        blacklistKeys.add("frame_id");
+        blacklistKeys.add("centroid_row");
+        blacklistKeys.add("centroid_col");
+
+        // output dir
+        Path subDir = dir.resolve(GlobalIO.cleanupWindowsFileName("LPC_" + mainSample.getNickName()));
         PathUtil.createDir(subDir);
 
-        // Load / create the spectral array data
-        List<SpectralArray> spectralArrays = mainSample.getSpectralData(popID);
-        if (spectralArrays.isEmpty()) {
-          for (Sample s : mainSample.getAllSamples()) {
-            SpectralUtil.computeSpectra(s, popID);
-          }
-          spectralArrays = mainSample.getSpectralData(popID);
+        String label = "LPC";
+        Path filePath = subDir.resolve(label + ".csv");
+        ExportWriter writer = new CsvExportWriter(filePath.toFile());
+
+        // Data
+        IncompleteParticleMatrix matrix = ((IncompleteSample) mainSample).getMatrix();
+        int validKeyCounter = 0;
+        List<Character> alphabet = new ArrayList<>();
+        for (char c = 'a'; c <= 'z'; c++) {
+          alphabet.add(c);
         }
 
-        if (!spectralArrays.isEmpty()) {
+        if (matrix instanceof LPCParticleMatrix) {
+          HashMap<String, List<Double>> allData = ((LPCParticleMatrix) matrix).getAllData();
 
-          // Collect all feature keys from the first array that has any
-          List<String> featureKeys = new ArrayList<>();
-          for (SpectralArray sa : spectralArrays) {
-            List<String> keys = sa.listAdditionalFeatures();
-            if (!keys.isEmpty()) {
-              featureKeys.addAll(keys);
-              break;
+          int size = Integer.MAX_VALUE;
+          for (String key : allData.keySet()) {
+            if (!blacklistKeys.contains(key)) {
+              List<Double> data = allData.get(key);
+              size = Math.min(size, data.size());
             }
           }
 
-          // Build a combined list: null = intensity, non-null = feature key
-          List<String> allExports = new ArrayList<>();
-          allExports.add(null); // intensity first
-          allExports.addAll(featureKeys);
 
-          int regionCount = spectralArrays.get(0).getIntensity().length;
+          // WRITE META DATA AND KEYWORD
+          writer.writeLine(DataExport.getShortMeta(mainSample));
+          writer.writeLine(List.of("SP_COMPOSITION_MATRIX_SPTOOL"));
+          writer.writeLine(List.of("feature=" + label));
 
-          for (String featureKey : allExports) {
-            String label = featureKey == null ? "Intensity" : featureKey;
-            Path filePath = subDir.resolve(label + ".csv");
-            ExportWriter writer = new CsvExportWriter(filePath.toFile());
+          // WRITE Header row
+          List<String> header = new ArrayList<>();
+          header.add("Feature");
+          header.add("Feature");
+          header.add("Feature");
+          for (int r = 0; r < size; r++) {
+            header.add("Particle " + (r + 1));
+          }
+          writer.writeLine(header);
 
-            writer.writeLine(DataExport.getShortMeta(mainSample));
-            writer.writeLine(List.of("SP_COMPOSITION_MATRIX_SPTOOL"));
-            writer.writeLine(List.of("feature=" + label));
+          for (String key : allData.keySet()) {
+            // filter keys
+            if (!blacklistKeys.contains(key)) {
+              List<Double> data = allData.get(key);
+              // trims data just in case3
+              if (data.size() > size) {
+                data.subList(size, data.size()).clear();
+              }
+              validKeyCounter++;
 
-            // Header row
-            List<String> header = new ArrayList<>();
-            header.add("MZ");
-            header.add("Isotope");
-            header.add("Element");
-            for (int r = 0; r < regionCount; r++) {
-              header.add("Particle " + (r + 1));
-            }
-            writer.writeLine(header);
-
-            // One row per SpectralArray (i.e. per m/z)
-            for (SpectralArray spectralArray : spectralArrays) {
+              // WRITE data line
               List<String> row = new ArrayList<>();
-
-              String mz = SnF.doubleToString(spectralArray.getMz(), NF.D1C6);
-              row.add(mz);
-
-              Isotope iso = spectralArray.getIsotope();
-              if (iso != null) {
-                row.add(iso.getName());
-                row.add(iso.getElement().getSymbol());
-              } else {
-                row.add(mz);
-                row.add(mz);
-              }
-
-              double[] values = featureKey == null
-                  ? spectralArray.getIntensity()
-                  : spectralArray.getAdditionalFeature(featureKey);
-
-              if (values != null) {
-                row.addAll(SnF.doubleToStrList(values, NF.D1C6));
-              }
-
+              row.add(String.valueOf(validKeyCounter));
+              // row.add(String.valueOf(validKeyCounter) + alphabet.get(validKeyCounter));
+              row.add(key);
+              row.add(key);
+              row.addAll(SnF.doubleToStrList(data, NF.D1C6));
               writer.writeLine(row);
+
+            }
+          }
+          writer.close();
+        }
+
+      } else {
+
+        for (PopulationID popID : pops) {
+
+          Path subDir = dir.resolve(GlobalIO.cleanupWindowsFileName(popID.toString()));
+          PathUtil.createDir(subDir);
+
+          // Load / create the spectral array data
+          List<SpectralArray> spectralArrays = mainSample.getSpectralData(popID);
+          if (spectralArrays.isEmpty()) {
+            for (Sample s : mainSample.getAllSamples()) {
+              SpectralUtil.computeSpectra(s, popID);
+            }
+            spectralArrays = mainSample.getSpectralData(popID);
+          }
+
+          if (!spectralArrays.isEmpty()) {
+
+            // Collect all feature keys from the first array that has any
+            List<String> featureKeys = new ArrayList<>();
+            for (SpectralArray sa : spectralArrays) {
+              List<String> keys = sa.listAdditionalFeatures();
+              if (!keys.isEmpty()) {
+                featureKeys.addAll(keys);
+                break;
+              }
             }
 
-            writer.close();
+            // Build a combined list: null = intensity, non-null = feature key
+            List<String> allExports = new ArrayList<>();
+            allExports.add(null); // intensity first
+            allExports.addAll(featureKeys);
+
+            int regionCount = spectralArrays.get(0).getIntensity().length;
+
+            for (String featureKey : allExports) {
+              String label = featureKey == null ? "Intensity" : featureKey;
+              Path filePath = subDir.resolve(label + ".csv");
+              ExportWriter writer = new CsvExportWriter(filePath.toFile());
+
+              writer.writeLine(DataExport.getShortMeta(mainSample));
+              writer.writeLine(List.of("SP_COMPOSITION_MATRIX_SPTOOL"));
+              writer.writeLine(List.of("feature=" + label));
+
+              // Header row
+              List<String> header = new ArrayList<>();
+              header.add("MZ");
+              header.add("Isotope");
+              header.add("Element");
+              for (int r = 0; r < regionCount; r++) {
+                header.add("Particle " + (r + 1));
+              }
+              writer.writeLine(header);
+
+              // One row per SpectralArray (i.e. per m/z)
+              for (SpectralArray spectralArray : spectralArrays) {
+                List<String> row = new ArrayList<>();
+
+                String mz = SnF.doubleToString(spectralArray.getMz(), NF.D1C6);
+                row.add(mz);
+
+                Isotope iso = spectralArray.getIsotope();
+                if (iso != null) {
+                  row.add(iso.getName());
+                  row.add(iso.getElement().getSymbol());
+                } else {
+                  row.add(mz);
+                  row.add(mz);
+                }
+
+                double[] values = featureKey == null
+                    ? spectralArray.getIntensity()
+                    : spectralArray.getAdditionalFeature(featureKey);
+
+                if (values != null) {
+                  row.addAll(SnF.doubleToStrList(values, NF.D1C6));
+                }
+
+                writer.writeLine(row);
+              }
+
+              writer.close();
+            }
           }
         }
       }

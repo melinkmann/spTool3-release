@@ -19,6 +19,7 @@ package dataModelNew.mz;
 
 import gui.dialog.FillCollection;
 import gui.dialog.Fillable;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -255,7 +256,7 @@ public enum Element implements Fillable<Element>, FillCollection<Element> {
   Lv("Livermorium", 116, new int[]{293}, new double[]{0.0}, new double[]{293.201000}),
   Ts("Tennessine", 117, new int[]{294}, new double[]{0.0}, new double[]{294.210000}),
   Og("Oganesson", 118, new int[]{294}, new double[]{0.0}, new double[]{294.214000}),
-  ///add at the end or else all colors shift by one
+  /// add at the end or else all colors shift by one
   UNKNOWN("Unknown", 0, new int[]{0}, new double[]{1.0}, new double[]{0});
 
   public static final Logger LOGGER = LogManager.getLogger(Element.class.getName());
@@ -267,7 +268,7 @@ public enum Element implements Fillable<Element>, FillCollection<Element> {
   private final double[] abundances;
 
   Element(String name, int atomicNumber, int[] isotopes, double[] abundances,
-      double[] exactMasses) {
+          double[] exactMasses) {
     this.name = name;
     this.atomicNumber = atomicNumber;
     this.isotopes = isotopes;
@@ -326,7 +327,7 @@ public enum Element implements Fillable<Element>, FillCollection<Element> {
 
 
   public HashMap<Isotope, Double> calcRandomizedIsotopeSignalLvl(double elementSignal,
-      double isotopicUncertainty) {
+                                                                 double isotopicUncertainty) {
     HashMap<Isotope, Double> isotopicFractions = new LinkedHashMap<>();
 
     List<Isotope> isotopes = getIsotopes();
@@ -463,6 +464,113 @@ public enum Element implements Fillable<Element>, FillCollection<Element> {
     }
     return mapArr;
   }
+
+  // Has some preference as to which element is first
+  public static HashMap<Integer, Element[]> getAllConflictingIsotopicNumbersSorted() {
+    HashMap<Integer, Element[]> map = getAllConflictingIsotopicNumbers();
+    for (Integer i : map.keySet()) {
+      Element[] arr = map.get(i);
+      // Find priority element index
+      int priorityIdx = -1;
+      for (int j = 0; j < arr.length; j++) {
+        if (isPriority(i, arr[j])) {
+          priorityIdx = j;
+          break;
+        }
+      }
+      // Swap priority element to front if found and not already there
+      if (priorityIdx > 0) {
+        Element temp = arr[0];
+        arr[0] = arr[priorityIdx];
+        arr[priorityIdx] = temp;
+      }
+    }
+    return map;
+  }
+
+  private static boolean isPriority(int nomIsotopicMass, Element element) {
+    return switch (nomIsotopicMass) {
+      case 3 -> element == H;    // He is noble gas; H trace but preferred
+      case 36 -> element == S;    // Ar is noble gas
+      case 40 -> element == Ca;   // Ar is noble gas; Ca 96.9% >> K 0.01%
+      case 46 -> element == Ti;   // Ti 8.2% >> Ca 0.004%
+      case 48 -> element == Ti;   // Ti 73.7% >> Ca 0.187%
+      case 50 -> element == Ti;    // 51V is main; Ti is most abundant and wide-spread in NPs (more than Cr)
+      case 54 -> element == Fe;   // Fe 5.8% > Cr 2.4%
+      case 58 -> element == Ni;   // Ni 68.1% >> Fe 0.28%
+      case 64 -> element == Zn;   // Zn 48.6% >> Ni 0.93%
+      case 70 -> element == Ge;   // Ge 20.8% >> Zn 0.6% // Zn likely undetectable
+      case 74 -> element == Ge;   // Ge 36.3% >> Se 0.87% // Se likely undetectable
+      case 76 -> element == Se;   // Se 9.4% > Ge 7.6% (close, but Se more analytically relevant)
+      case 78 -> element == Se;   // Se 23.8% >> Kr is noble gas
+      case 80 -> element == Se;   // Se 49.6% >> Kr is noble gas
+      case 82 -> element == Se;   // Kr 11.6% > Se 8.7% but Kr is noble gas
+      case 84 -> element == Sr;   // Kr is noble gas
+      case 86 -> element == Sr;   // Kr is noble gas
+      case 87 -> element == Rb;   // Sr 7.0% vs Rb 27.8%, Sr main is 88;
+      // Ru main is 85- I put Rb b/c often present with K
+      case 92 -> element == Zr;   // Zr 17.2% ≈ Mo 14.8%; Zr slightly higher Zr main is 90, Mo has others
+      case 94 -> element == Zr;   // Zr 17.4% >> Mo 9.2%
+      case 96 -> element == Mo;   // Mo 16.7% >> Zr 2.8%, Ru 5.5% (Ru main is 102)
+      case 98 -> element == Mo;   // Mo 24.1%; Tc is radioactive/no stable isotope; Ru 1.9%
+      case 100 -> element == Ru;   // Ru 12.6% > Mo 9.6%
+      case 102 -> element == Ru;   // Ru 31.6% >> Pd 1.0%
+      case 104 -> element == Ru;   // Ru 18.6% >> Pd 11.1%  (close; Ru higher)
+      case 106 -> element == Pd;   // Pd 27.3% >> Cd 1.2%
+      case 108 -> element == Pd;   // Pd 26.5% >> Cd 0.9%
+      case 110 -> element == Cd;   // Cd 12.5% ≈ Pd 11.7%; Cd slightly higher
+      case 112 -> element == Cd;   // Cd 24.1% >> Sn 1.0%
+      case 113 ->element == In;   // In 4.3% vs Cd 12.2%;
+      // but In has only 2 isotopes — 113/115 both used; keep In
+      case 114 -> element == Cd;   // Cd 28.7% >> Sn 0.7%
+      case 115 -> element == In;   // In 95.7% >> Sn 0.3%; classic In internal standard mass
+      case 116 -> element == Sn;   // Sn 14.5% >> Cd 7.5%
+      case 120 -> element == Sn;   // Sn 32.6% >> Te 0.09%
+      case 122 -> element == Sn;   // Te 2.5% > Sn 4.6%
+      case 123 -> element == Sb;   // Sb 42.8% >> Te 0.89%
+      case 124 -> element == Sn;   // Sn 5.8% > Te 4.7%; Xe is noble gas
+      case 126 -> element == Te;   // Xe is noble gas
+      case 128 -> element == Te;   // Te 31.7% >> Xe 1.9%
+      case 130 -> element == Te;   // Te 34.1% >> Xe 4.1%, Ba 0.1%
+      case 132 -> element == Ba;   // Xe 26.9% >> Ba 0.1% — but Xe is noble gas; Ba preferred
+      case 134 -> element == Ba;   // Xe is noble gas; Ba 2.4%
+      case 136 -> element == Ba;   // Xe is noble gas; Ba 7.9% >> Ce 0.19%
+      case 138 -> element == Ba;   // Ba 71.7% >> La 0.09%, Ce 0.25%
+      case 142 -> element == Nd;   // Nd 27.2% >> Ce 11.1%
+      case 144 -> element == Nd;   // Nd 23.8% >> Sm 3.1%
+      case 147 -> element == Sm;   // Pm is radioactive (no stable isotope); Sm 15.0%
+      case 148 -> element == Sm;   // Sm 11.2% >> Nd 5.7%
+      case 150 -> element == Sm;   // Sm 7.4% > Nd 5.6%
+      case 152 -> element == Sm;   // Sm 26.8% >> Gd 0.2%
+      case 154 -> element == Sm;   // Sm 22.8% >> Gd 2.2%
+      case 156 -> element == Gd;   // Gd 20.5% >> Dy 0.06%
+      case 158 -> element == Gd;   // Gd 24.8% >> Dy 0.10%
+      case 160 -> element == Gd;   // Dy 2.3% vs Gd... Gd 21.9% is actually higher; swap if needed
+      case 162 -> element == Dy;   // Dy 25.5% >> Er 0.14%
+      case 164 -> element == Dy;   // Dy 28.2% >> Er 1.6%
+      case 168 -> element == Er;   // Er 26.8% >> Yb 0.13%
+      case 170 -> element == Er;   // Er 14.9% >> Yb 3.0%
+      case 174 -> element == Yb;   // Yb 31.8% >> Hf 0.16%
+      case 176 -> element == Yb;   // Yb 12.8% > Hf 5.3%; Lu 2.6% — Yb highest
+      case 180 -> element == Hf;   // Hf 35.1% >> W 0.12%; Ta 0.012%
+      case 184 -> element == W;    // W 30.6%; Os is near-zero (0.0002%)
+      case 186 -> element == W;    // W 28.4% >> Os 1.6%
+      case 187 -> element == Re;   // Re 62.6% >> Os 2.0%
+      case 190 -> element == Os;   // Os 26.3%, Pt ~0% (Pt is more typical but not detectable at >0.1%)
+      case 192 -> element == Os;   // Os 40.8% >> Pt 0.79%
+      case 196 -> element == Pt;   // Pt 25.2% >> Hg 0.15%
+      case 198 -> element == Hg;   // Hg 10.0% > Pt 7.2%
+      case 204 -> element == Pb;   // Pb 1.4% vs Hg 6.9% — but Pb is the classic 204 mass; context-dependent
+      //        -> element == Hg; // uncomment for abundance-based
+      case 209 -> element == Bi;   // Bi 100%; Po is radioactive
+      case 247 -> element == Bk;   // Both radioactive/synthetic; Bk slightly more stable (320d vs Cm varies)
+      //        -> element == Cm; // either is defensible; Cm more commonly encountered
+      case 262 -> element == Db;   // Both synthetic; arbitrary — flip if needed
+      case 294 -> element == Ts;   // Both synthetic superheavies; arbitrary
+      default -> false;
+    };
+  }
+
 
   public static String[] getAllIsotopeFullUINames() {
     List<Isotope> isotopes = getAllIsotopes();

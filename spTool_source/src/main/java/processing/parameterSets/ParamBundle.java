@@ -25,6 +25,7 @@ import processing.parameters.SpawnControlParameter;
 
 public interface ParamBundle extends Serializable {
 
+  public static final String BUNDLE_ID_ALIGN_FILTER_START_STOP = "AlignFilterStartStopBundle";
   public static final String BUNDLE_ID_ROI_START_STOP = "roiStartStopBundle";
   public static final String BUNDLE_ID_ROI_SIG_FACTOR = "roiSigFactorBundle";
   public static final String BUNDLE_ID_ELEMENT = "elementBundle";

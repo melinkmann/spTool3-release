@@ -36,6 +36,7 @@ import processing.parameterSets.AbstractParamSet;
 import processing.parameterSets.AvailableParameterSets;
 import processing.parameterSets.ParamBundle;
 import processing.parameterSets.ParamSet;
+import processing.parameterSets.bundle.AlignFilterStartStopBundle;
 import processing.parameterSets.bundle.RoiSigFactorBundle;
 import processing.parameterSets.bundle.RoiStartStopBundle;
 import processing.parameters.*;
@@ -81,12 +82,17 @@ public class FilterParams extends AbstractParamSet implements ParamSet {
   public Parameter<Integer> roiExceptionsSigFactor;
   private Parameter<Boolean> roiExceptionExclusive;
 
+  // Matches
   private Parameter<Boolean> listMatches;
   private Parameter<Boolean> listFalsePositives;
   private Parameter<Boolean> listFalseNegatives;
 
   private Parameter<Boolean> suppressNegativeValues;
   private Parameter<Boolean> removeNegativeValues;
+
+  // Align filter
+  public Parameter<Integer> alignFilterStartStop;
+  public Parameter<String> alignFilterID;
 
   public FilterParams() {
     super("Filter parameters", XML_ELEMENT_TAG);
@@ -418,6 +424,28 @@ public class FilterParams extends AbstractParamSet implements ParamSet {
         "listFalseNegatives"
     );
 
+
+    // Align
+    this.alignFilterStartStop = new SpawnControlParameter(
+        "Isotope Filter",
+        "Specify isotope-specific rules. For instance, you can remove all events " +
+            "that are not within the specified range for a given isotope. " +
+            "The alignment is maintained.",
+        0,
+        new BundleSupplier.AlignFilterStartStopBundleSupplier(),
+        true,
+        "alignFilterStartStop");
+
+    this.alignFilterID = new StringParameter(
+        "Filter ID",
+        "Assign a unique ID to the filter rule to identify it in the UI",
+        "FLTR_1",
+        TextFormatterOption.ASSURE_EXTD_NUMERAL_OR_LETTER,
+        false,
+        false,
+        "alignFilterID"
+    );
+
     organize();
   }
 
@@ -456,6 +484,9 @@ public class FilterParams extends AbstractParamSet implements ParamSet {
     this.listMatches = gatingParams.listMatches.copyWithoutChildren();
     this.listFalsePositives = gatingParams.listFalsePositives.copyWithoutChildren();
     this.listFalseNegatives = gatingParams.listFalseNegatives.copyWithoutChildren();
+
+    this.alignFilterStartStop = gatingParams.alignFilterStartStop.copyWithoutChildren();
+    this.alignFilterID = gatingParams.alignFilterID.copyWithoutChildren();
     organize();
   }
 
@@ -510,7 +541,8 @@ public class FilterParams extends AbstractParamSet implements ParamSet {
     roiCategory.addConditionalChild(RoiCategory.IQR, mathConversion, sigFactor, roiExceptionsSigFactor);
     roiCategory.addConditionalChild(RoiCategory.MAD, mathConversion, sigFactor, roiExceptionsSigFactor);
     roiCategory.addConditionalChild(RoiCategory.OTSU, mathConversion, binWidthEstimator, otsuRegion);
-    roiCategory.addConditionalChild(RoiCategory.CHANGE_POINT, mathConversion, binWidthEstimator, otsuRegion, smoothWidth);
+    roiCategory.addConditionalChild(RoiCategory.CHANGE_POINT, mathConversion, binWidthEstimator, otsuRegion
+        , smoothWidth);
     binWidthEstimator.addConditionalChild(BinWidthEstimator.CUSTOM, customBinWidth);
 
     roiExceptionsStartStop.addUnconditionalChild(roiExceptionExclusive);
@@ -522,6 +554,15 @@ public class FilterParams extends AbstractParamSet implements ParamSet {
         listFalseNegatives);
     listFalseNegatives.addConditionalChild(true, suppressNegativeValues);
     suppressNegativeValues.addConditionalChild(true, removeNegativeValues);
+
+
+    filterOption.addConditionalChild(FilterOptions.ALIGNED_FILTER,
+        alignFilterID,
+        alignFilterStartStop,
+        eventParameter,
+        unitConversion,
+        mathConversion,
+        setAsMainBranch);
   }
 
 
@@ -573,6 +614,9 @@ public class FilterParams extends AbstractParamSet implements ParamSet {
           case "listMatches" -> listMatches;
           case "listFalsePositives" -> listFalsePositives;
           case "listFalseNegatives" -> listFalseNegatives;
+          ///
+          case "alignFilterStartStop" -> alignFilterStartStop;
+          case "alignFilterID"->alignFilterID;
 
           default -> null;
         };
@@ -741,6 +785,29 @@ public class FilterParams extends AbstractParamSet implements ParamSet {
     return listFalsePositives;
   }
 
+
+  //
+  public List<AlignFilterStartStopBundle> getAlignFilterStartStopBundles() {
+    List<AlignFilterStartStopBundle> elementBundles = new ArrayList<>();
+
+    if (alignFilterStartStop instanceof SpawnControlParameter) {
+      SpawnControlParameter spawnParam = (SpawnControlParameter) alignFilterStartStop;
+
+      List<ParamBundle> bundles = spawnParam.getActiveBundlesForProcessing();
+
+      for (ParamBundle bundle : bundles) {
+        if (bundle instanceof AlignFilterStartStopBundle) {
+          elementBundles.add((AlignFilterStartStopBundle) bundle);
+        }
+      }
+    }
+    return elementBundles;
+  }
+
+  public Parameter<String> getAlignFilterID() {
+    return alignFilterID;
+  }
+
   @Serial
   private void readObject(java.io.ObjectInputStream in) throws IOException, ClassNotFoundException {
 
@@ -844,6 +911,14 @@ public class FilterParams extends AbstractParamSet implements ParamSet {
       this.listFalseNegatives = defaults.listFalseNegatives;
     }
 
+    //
+    if (alignFilterStartStop == null) {
+      this.alignFilterStartStop = defaults.alignFilterStartStop;
+    }
+
+    if (alignFilterID == null) {
+      this.alignFilterID = defaults.alignFilterID;
+    }
   }
 
 }

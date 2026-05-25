@@ -30,7 +30,6 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.Serial;
 import java.io.Serializable;
-import java.lang.ref.SoftReference;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -280,6 +279,15 @@ public class MergedSample implements Sample, Serializable {
   }
 
   @Override
+  public List<Isotope> getRecordedTofRange() {
+    return samples.stream()
+        .map(Sample::getRecordedTofRange)
+        .flatMap(Collection::stream)
+        .distinct()
+        .toList();
+  }
+
+  @Override
   public List<Trace> getTraces() {
     LOGGER.warn("You should not call this method for merged samples! "
         + ExceptionUtils.getStackTrace(new Throwable()));
@@ -319,12 +327,12 @@ public class MergedSample implements Sample, Serializable {
 
   @Override
   @Nullable
-  public HacCrWrapper getHacWrapper(PopulationID popID) {
+  public HacInstructionWrapper getHacWrapper(PopulationID popID) {
     return null; // TODO manage how we can assign the merged Spectral Array back tom its samples...
   }
 
   @Override
-  public void putHacWrapper(PopulationID popID, HacCrWrapper wrapper) {
+  public void putHacWrapper(PopulationID popID, HacInstructionWrapper wrapper) {
     // nada --> TODO manage how we can assign the merged Spectral Array back tom its samples...
   }
 
@@ -848,7 +856,7 @@ public class MergedSample implements Sample, Serializable {
           .mapToDouble(t -> {
             double dtSec = t.getTISeries().getDT();
             double ctsPerDT = t.getTISeries().getMeanIntensity();
-            double cpsi = ctsPerDT/dtSec;
+            double cpsi = ctsPerDT / dtSec;
             return cpsi;
           })
           .average()
@@ -882,7 +890,7 @@ public class MergedSample implements Sample, Serializable {
           .mapToDouble(t -> {
             double dtSec = t.getTISeries().getDT();
             double ctsPerDT = t.getTISeries().getMedianIntensity();
-            double cpsi = ctsPerDT/dtSec;
+            double cpsi = ctsPerDT / dtSec;
             return cpsi;
           })
           .average()

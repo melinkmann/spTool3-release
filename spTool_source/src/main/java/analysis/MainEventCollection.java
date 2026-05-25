@@ -187,20 +187,19 @@ public class MainEventCollection implements EventCollection, Serializable {
   }
 
   // Above method optimized with claude sonnet 4.6
-  public static List<Integer> getBGIndicesBitSet(int totalDP, List<Integer> npIndices, int subSampleSize) {
+  public static List<Integer> getBGIndicesBitSet(int totalDP, List<Integer> npIndices, int skip) {
     BitSet npBitSet = new BitSet(totalDP);
     for (int index : npIndices) {
       npBitSet.set(index);
     }
 
     int bgCount = totalDP - npBitSet.cardinality();
-    int capacity = Math.min(subSampleSize, bgCount);
-    List<Integer> bgIndices = new ArrayList<>(capacity);
+    List<Integer> bgIndices = new ArrayList<>(bgCount / Math.max(1, skip));
 
-    for (int i = npBitSet.nextClearBit(0);
-         i >= 0 && i < totalDP && bgIndices.size() < capacity;
-         i = npBitSet.nextClearBit(i + 1)) {
+    int i = npBitSet.nextClearBit(0);
+    while (i >= 0 && i < totalDP) {
       bgIndices.add(i);
+      i = npBitSet.nextClearBit(i + skip);
     }
     return bgIndices;
   }

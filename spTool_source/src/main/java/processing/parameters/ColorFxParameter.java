@@ -18,46 +18,79 @@
 package processing.parameters;
 
 
+import core.SpTool3Main;
 import gui.util.GlobalFields;
+
+import java.net.URL;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
+
+import gui.util.UiUtil;
 import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
+import javafx.scene.control.Button;
 import javafx.scene.control.ColorPicker;
 import javafx.scene.control.Control;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
+import javafx.scene.layout.HBox;
 import javafx.scene.paint.Color;
+import javafx.scene.shape.Rectangle;
+import math.transform.UiTransform;
+import sandbox.montecarlo.Isotope;
 import visualizer.styles.Colors;
+import visualizer.styles.CustomColorPicker;
 
 public class ColorFxParameter extends AbstractFxParameter<String> implements
     FxParameter<String> {
 
-  private final ColorPicker colorPicker;
+  Button pickerButton;
 
   public ColorFxParameter(ColorParameter plain) {
     super(plain);
 
-    // Make Box.
-    colorPicker = new ColorPicker();
-    colorPicker.setPrefSize(GlobalFields.FX_ITEM_WIDTH, GlobalFields.FX_ITEM_HEIGHT);
-    colorPicker.getCustomColors().clear();
-    colorPicker.getCustomColors().addAll(Colors.getDefaultColors().stream()
-    .map(Colors::getFX).collect(Collectors.toList()));
+    Colors currentColor = plain.getColor();
+    Rectangle colorRect = new Rectangle(27, 18);
+    colorRect.setFill(currentColor.getFX());
 
-    // try to parse
-    colorPicker.setValue(Colors.rgbFromXmlToColor(super.plainParameter.getValue()));
+    URL resource = UiUtil.class.getResource("/img/pickColor.png");
+
+    if (resource != null) {
+      // Image image = new Image(resource.toString());
+      // ImageView imageView = new ImageView(image);
+      // imageView.setFitHeight(18);
+      // imageView.setFitWidth(27);
+      // imageView.setSmooth(true);
+      // pickerButton = new Button("Open color picker", new HBox(imageView, colorRect));
+      pickerButton = new Button("Open color picker",colorRect);
+    } else {
+      pickerButton = new Button("Color");
+    }
+    pickerButton.setPrefWidth(90);
+    pickerButton.setMinWidth(10);
+    UiUtil.tooltip(pickerButton, "Open color picker.");
+
+
+    pickerButton.setOnAction(e -> {
+      Colors oldColor = plain.getColor();
+      CustomColorPicker custom = new CustomColorPicker(
+          oldColor.getFX(),
+          Colors.getDefaultColors(),
+          new Consumer<Color>() {
+            @Override
+            public void accept(Color color) {
+              if (color != null) {
+                ColorFxParameter.super.plainParameter.setValue(Colors.colorToRgbForXML(color));
+                colorRect.setFill(color);
+              }
+            }
+          });
+      custom.show();
+    });
+
 
     // Tooltip
-    super.addToolTip(colorPicker);
-
-    // Change Listener.
-    colorPicker.valueProperty().addListener(new ChangeListener<Color>() {
-      @Override
-      public void changed(ObservableValue<? extends Color> observable, Color oldValue,
-          Color newValue) {
-        if (newValue != null && newValue != oldValue) {
-          ColorFxParameter.super.plainParameter.setValue(Colors.colorToRgbForXML(newValue));
-        }
-      }
-    });
+    super.addToolTip(pickerButton);
   }
 
 
@@ -76,16 +109,13 @@ public class ColorFxParameter extends AbstractFxParameter<String> implements
    * reasonable):
    */
   private void loadFromPlainWithFormat() {
-    String rgb = Colors.colorToRgbForXML(colorPicker.getValue());
-    if (plainParameter.getValue() != rgb) {
-      colorPicker.setValue(Colors.rgbFromXmlToColor(super.plainParameter.getValue()));
-    }
+    // nada
   }
 
 
   @Override
   public Control getValueNode() {
-    return colorPicker;
+    return pickerButton;
   }
 
 
@@ -93,7 +123,7 @@ public class ColorFxParameter extends AbstractFxParameter<String> implements
   public void setUneditable() {
     super.setUneditable();
     // Remove options to show only one item, i.e., prevent change.
-    colorPicker.setDisable(true);
+    pickerButton.setDisable(true);
   }
 
 }

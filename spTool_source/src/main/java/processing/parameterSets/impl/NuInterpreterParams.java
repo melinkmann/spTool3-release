@@ -54,6 +54,7 @@ public class NuInterpreterParams extends AbstractParamSet implements Serializabl
 
   private final Parameter<TofIsotopeOption> isotopeSelectionStrategy;
   private final Parameter<String> selectedIsotopes;
+  private transient List<Isotope> recordedTofRange;
 
   private final Parameter<MeasureOfLocation> preScreenMeasureOfLocation;
   private final Parameter<IsotopeConflictReaderOption> preScreenConflictResolution;
@@ -69,6 +70,8 @@ public class NuInterpreterParams extends AbstractParamSet implements Serializabl
 
   public NuInterpreterParams(String label) {
     super(label, XML_ELEMENT_TAG);
+
+    this.recordedTofRange = new ArrayList<>();
 
     this.isotopeSelectionStrategy = new ComboEnumParameter<>("Isotope selection",
         """
@@ -111,7 +114,7 @@ public class NuInterpreterParams extends AbstractParamSet implements Serializabl
             When nominal masses of isotopes overlap:
             Either load the default option defined in the configuration
             or load all potential candidates""",
-        IsotopeConflictReaderOption.ALL,
+        IsotopeConflictReaderOption.USE_DEFAULT,
         IsotopeConflictReaderOption.values(),
         IsotopeConflictReaderOption.class,
         false,
@@ -229,9 +232,17 @@ public class NuInterpreterParams extends AbstractParamSet implements Serializabl
           public void proceed(Window window) {
             List<Isotope> prevSel = isotopeFromString(selectedIsotopes.getValue());
 
+            List<Isotope> availableIsotopes;
+            if (recordedTofRange.isEmpty()) {
+              // we dont know --> show all isotopes available
+              availableIsotopes = dataModelNew.mz.Element.getAllIsotopes();
+            } else {
+              availableIsotopes = new ArrayList<>(recordedTofRange);
+            }
+
             IsotopePtoeDialog dlg = IsotopePtoeDialog.forIsotopeSelection(
                 window,
-                dataModelNew.mz.Element.getAllIsotopes(),   // all isotopes available
+                availableIsotopes,
                 prevSel);                  // null or empty = open blank
 
             List<MZValue> resultingMZ = dlg.showAndWait();
@@ -293,6 +304,10 @@ public class NuInterpreterParams extends AbstractParamSet implements Serializabl
     XmlUtil.writeToXml(this, file);
   }
 
+  /// ///////////////////////////////////////////////////////////////
+  public void setRecordedTofRange(List<Isotope> recordedTofRange) {
+    this.recordedTofRange = new ArrayList<>(recordedTofRange);
+  }
 
   /// ///////////////////////////////////////////////////////////////
 

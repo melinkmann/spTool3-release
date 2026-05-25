@@ -306,7 +306,8 @@ public class CsvInterpreterParams extends AbstractParamSet implements Serializab
 
     this.lpcImportParameter = new ComboEnumParameter<>(
         "Quantity",
-        "What data shall be imported from the single particle data file?",
+        "What data shall be imported as 'height' from the single particle data file? Area will always be " +
+            "loaded as area. This is just an additional parameter to load",
         LpcDimension.CIRCLE_EQUIVALENT_DIAMETER,
         LpcDimension.values(),
         LpcDimension.class,
@@ -472,7 +473,7 @@ public class CsvInterpreterParams extends AbstractParamSet implements Serializab
 
           case "hasXData" -> hasXData;
 
-          case "lpcImportParameter" ->lpcImportParameter;
+          case "lpcImportParameter" -> lpcImportParameter;
 
           default -> null;
         };

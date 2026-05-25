@@ -20,7 +20,6 @@ package tasks.single;
 import analysis.*;
 import analysis.Baseline.ThrFormalism;
 import analysis.Baseline.ThrMeasureOfSignificance;
-import core.SpTool3Main;
 import dataModelNew.Sample;
 import dataModelNew.SampleImpl;
 import dataModelNew.TISeries;
@@ -58,19 +57,19 @@ public class SearchTask extends AbstractWorkingTask implements WorkingTask {
   private final PopulationBranch branch;
   private final NormalSearchParams params;
   private final AtomicReference<Sample> sampleRef;
+  private final List<Isotope> selIsotopes;
 
   public SearchTask(String taskName, PopulationBranch branch, NormalSearchParams params,
-                    AtomicReference<Sample> sampleRef) {
+                    AtomicReference<Sample> sampleRef, List<Isotope> selIsotope) {
     super(taskName);
     this.branch = branch;
     this.params = (NormalSearchParams) params.getCopyWithPreviousDateFileAndID();
     this.sampleRef = sampleRef;
+    this.selIsotopes = new ArrayList<>(selIsotope);
   }
 
   @Override
   public TaskResult call() {
-
-    List<Isotope> selIsotope = SpTool3Main.getRunTime().getMainWindowCtl().getSelIsotopes();
 
     // Define the Result (here, only dummy that is overwritten later)
     TaskResult taskResult = new EmptyTaskResult();
@@ -112,6 +111,11 @@ public class SearchTask extends AbstractWorkingTask implements WorkingTask {
 
             SmoothType smoothType = params.getSmoothType().getValue();
             double smoothWidth = params.getSmoothGaussianWidth().getValue();
+
+            // pVal
+            IsotopeSelection isotopeSelection = params.getIsotopeSelection().getValue();
+            List<Isotope> excludedIsotopes = params.listExcludedIsotopes();
+            List<Isotope> includedIsotopes = params.listIncludedIsotopes();
 
             NetCorrectionOption netSignalChoice = params.getNetCorrectionOption().getValue();
             MeasureOfLocation netSignalLocation = params.getNetTimeWindowLocation().getValue();
@@ -192,7 +196,7 @@ public class SearchTask extends AbstractWorkingTask implements WorkingTask {
                       stopInstr,
                       heightInstr,
                       popParSummary);
-                  trace.addOverridePopulation(populationID, population,false);
+                  trace.addOverridePopulation(populationID, population, false);
 
                   // ##############################################################
                   // Net signal: do this right after the search
@@ -383,9 +387,22 @@ public class SearchTask extends AbstractWorkingTask implements WorkingTask {
               // for constructing a large enough p value array
               int rawDataMaxSize = 0;
 
-              // check if we only want the selected isotopes?
-              if (params.getOnlyUseSelectedIsotopesForPValue().getValue()) {
-                interestingTraces.removeIf(t -> !selIsotope.contains(t.getMzValue().getIsotope()));
+              // enable exclusion of certain isotopes
+              switch (isotopeSelection) {
+                case ALL_LOADED -> {
+                }
+                case SELECTED -> {
+                  traces.removeIf(t -> !selIsotopes.contains(t.getMzValue().getIsotope()));
+                }
+                case POSITIVE_LIST_SELECTION -> {
+                  traces.removeIf(t -> !includedIsotopes.contains(t.getMzValue().getIsotope()));
+                }
+                case NEGATIVE_LIST_EXCLUSION -> {
+                  traces.removeIf(t -> excludedIsotopes.contains(t.getMzValue().getIsotope()));
+                }
+                default -> {
+                  // keep as is, we should not reach this branch
+                }
               }
 
               for (Trace trace : interestingTraces) {

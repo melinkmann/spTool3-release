@@ -89,215 +89,221 @@ public class GatingTask extends AbstractWorkingTask implements WorkingTask {
 
               PopulationID popID = branch.getID(trace);
               if (popID != null) {
+                if (!AnalysisUtils.isAligned(popID)) {
 
-                if (getIsStopped().get()) {
-                  break;
-                }
+                  if (getIsStopped().get()) {
+                    break;
+                  }
 
-                Baseline bln = trace.getBaseline();
+                  Baseline bln = trace.getBaseline();
 
-                if (bln.hasBaseline()) {
-                  GatingOption gatingOption = params.getGatingOption().getValue();
+                  if (bln.hasBaseline()) {
+                    GatingOption gatingOption = params.getGatingOption().getValue();
 
-                  ThresholdSupplierInstructions instr = getSupplier(params);
-                  ThresholdSupplier supplier = instr.get(bln.getBackgroundDistribution());
+                    ThresholdSupplierInstructions instr = getSupplier(params);
+                    ThresholdSupplier supplier = instr.get(bln.getBackgroundDistribution());
 
-                  boolean forceNewBGDefinition = params.getForceNewBGDefinition().getValue();
+                    boolean forceNewBGDefinition = params.getForceNewBGDefinition().getValue();
 
-                  TISeries tiSeries = trace.getTISeries();
-                  double[] time = tiSeries.getTime();
-                  double[] intensity = tiSeries.getIntensity();
+                    TISeries tiSeries = trace.getTISeries();
+                    double[] time = tiSeries.getTime();
+                    double[] intensity = tiSeries.getIntensity();
 
-                  StatCollection bgDist = new StatCollectionRAM(bln.getBackgroundDistribution());
-                  boolean hasSlices = bgDist.size() > 1;
+                    StatCollection bgDist = new StatCollectionRAM(bln.getBackgroundDistribution());
+                    boolean hasSlices = bgDist.size() > 1;
 
-                  List<Event> chosenEvents = new ArrayList<>();
-                  Population oldPop = trace.getPopulation(popID);
+                    List<Event> chosenEvents = new ArrayList<>();
+                    Population oldPop = trace.getPopulation(popID);
 
-                  // some buffers to recycle in pValue computation
-                  HashMap<Integer, ChiSquaredDistribution> chSquareDistributionMap = new HashMap<>();
-                  HashMap<MultiKey, Double> pStorage = new HashMap<>();
+                    // some buffers to recycle in pValue computation
+                    HashMap<Integer, ChiSquaredDistribution> chSquareDistributionMap = new HashMap<>();
+                    HashMap<MultiKey, Double> pStorage = new HashMap<>();
 
-                  if (oldPop != null) {
-                    for (Event event : oldPop.getEvents().getNpEvents()) {
+                    if (oldPop != null) {
+                      for (Event event : oldPop.getEvents().getNpEvents()) {
 
-                      if (getIsStopped().get()) {
-                        break;
-                      }
-
-                      double target = supplier.interpolateUnprotected(event.getPeak(), time.length);
-                      switch (gatingOption) {
-
-                        case HEIGHT -> {
-                          double h = event.get(EventParameter.HEIGHT, time, intensity);
-                          if (h > target) {
-                            chosenEvents.add(event);
-                          }
+                        if (getIsStopped().get()) {
+                          break;
                         }
 
-                        case AREA -> {
-                          double a = event.get(EventParameter.AREA, time, intensity);
-                          if (a > target) {
-                            chosenEvents.add(event);
-                          }
-                        }
+                        double target = supplier.interpolateUnprotected(event.getPeak(), time.length);
+                        switch (gatingOption) {
 
-                        case NET_AREA -> {
-                          double a = event.get(EventParameter.NET_AREA, time, intensity);
-                          if (a > target) {
-                            chosenEvents.add(event);
-                          }
-                        }
-
-                        case MEAN_SIGNAL -> {
-                          double a = event.getProfile().getMeanIntensity();
-                          if (a > target) {
-                            chosenEvents.add(event);
-                          }
-                        }
-
-                        case PEAK_DOMINANCE -> {
-                          double area = event.get(EventParameter.NET_AREA, time, intensity);
-                          double height = event.get(EventParameter.NET_HEIGHT, time, intensity);
-                          double pct = target / 100d;
-                          if (height < area * pct) {
-                            chosenEvents.add(event);
-                          }
-                        }
-
-                        case MORE_POINTS_THAN -> {
-                          double p = event.get(EventParameter.NO_OF_POINTS, time, intensity);
-                          if (p > target) {
-                            chosenEvents.add(event);
-                          }
-                        }
-
-                        case FEWER_POINTS_THAN -> {
-                          double p = event.get(EventParameter.NO_OF_POINTS, time, intensity);
-                          if (p < target) {
-                            chosenEvents.add(event);
-                          }
-                        }
-
-                        case ACCUMULATED_P -> {
-                          double chiSquareStat = 0;
-                          double lowestP = 1;
-
-                          int[] evtIdcs = event.getIndices();
-                          // Chi-square distribution with 2k degrees of freedom
-                          ChiSquaredDistribution chiSquared;
-                          if (chSquareDistributionMap.containsKey(evtIdcs.length)) {
-                            chiSquared = chSquareDistributionMap.get(evtIdcs.length);
-                          } else {
-                            chiSquared = new ChiSquaredDistribution(2 * evtIdcs.length);
-                            chSquareDistributionMap.put(evtIdcs.length, chiSquared);
+                          case HEIGHT -> {
+                            double h = event.get(EventParameter.HEIGHT, time, intensity);
+                            if (h > target) {
+                              chosenEvents.add(event);
+                            }
                           }
 
-                          for (int evtIdc : evtIdcs) {
-                            StatDataSet distribution = bgDist.interpolate(evtIdc, tiSeries.size());
-                            int distKey = distribution.getDistrID();
+                          case AREA -> {
+                            double a = event.get(EventParameter.AREA, time, intensity);
+                            if (a > target) {
+                              chosenEvents.add(event);
+                            }
+                          }
 
-                            double value = intensity[evtIdc];
+                          case NET_AREA -> {
+                            double a = event.get(EventParameter.NET_AREA, time, intensity);
+                            if (a > target) {
+                              chosenEvents.add(event);
+                            }
+                          }
 
-                            MultiKey key;
-                            // heavy rounding for slices; keep intensity as precise as possible for good p
-                            double roundedIntensity = Math.round(value * 1000d) / 1000d;
+                          case MEAN_SIGNAL -> {
+                            double a = event.getProfile().getMeanIntensity();
+                            if (a > target) {
+                              chosenEvents.add(event);
+                            }
+                          }
 
-                            if (!hasSlices) {
-                              key = new Key1(roundedIntensity);
+                          case PEAK_DOMINANCE -> {
+                            double area = event.get(EventParameter.NET_AREA, time, intensity);
+                            double height = event.get(EventParameter.NET_HEIGHT, time, intensity);
+                            double pct = target / 100d;
+                            if (height < area * pct) {
+                              chosenEvents.add(event);
+                            }
+                          }
+
+                          case MORE_POINTS_THAN -> {
+                            double p = event.get(EventParameter.NO_OF_POINTS, time, intensity);
+                            if (p > target) {
+                              chosenEvents.add(event);
+                            }
+                          }
+
+                          case FEWER_POINTS_THAN -> {
+                            double p = event.get(EventParameter.NO_OF_POINTS, time, intensity);
+                            if (p < target) {
+                              chosenEvents.add(event);
+                            }
+                          }
+
+                          case ACCUMULATED_P -> {
+                            double chiSquareStat = 0;
+                            double lowestP = 1;
+
+                            int[] evtIdcs = event.getIndices();
+                            // Chi-square distribution with 2k degrees of freedom
+                            ChiSquaredDistribution chiSquared;
+                            if (chSquareDistributionMap.containsKey(evtIdcs.length)) {
+                              chiSquared = chSquareDistributionMap.get(evtIdcs.length);
                             } else {
-                              double roundedMean = Math.round(distribution.getLocation() * 100d) / 100d;
-                              // applying continuity correction b/c else y=0-->p=0.4 (and all becomes
-                              // significant)
-                              double roundedSpread;
-                              if (ResettableStatDataSet.Limit.isPoisson(distKey)) {
-                                roundedSpread = 0; // not needed in Poisson
+                              chiSquared = new ChiSquaredDistribution(2 * evtIdcs.length);
+                              chSquareDistributionMap.put(evtIdcs.length, chiSquared);
+                            }
+
+                            for (int evtIdc : evtIdcs) {
+                              StatDataSet distribution = bgDist.interpolate(evtIdc, tiSeries.size());
+                              int distKey = distribution.getDistrID();
+
+                              double value = intensity[evtIdc];
+
+                              MultiKey key;
+                              // heavy rounding for slices; keep intensity as precise as possible for good p
+                              double roundedIntensity = Math.round(value * 1000d) / 1000d;
+
+                              if (!hasSlices) {
+                                key = new Key1(roundedIntensity);
                               } else {
-                                roundedSpread = Math.round(distribution.getSpread() * 100d) / 100d;
+                                double roundedMean = Math.round(distribution.getLocation() * 100d) / 100d;
+                                // applying continuity correction b/c else y=0-->p=0.4 (and all becomes
+                                // significant)
+                                double roundedSpread;
+                                if (ResettableStatDataSet.Limit.isPoisson(distKey)) {
+                                  roundedSpread = 0; // not needed in Poisson
+                                } else {
+                                  roundedSpread = Math.round(distribution.getSpread() * 100d) / 100d;
+                                }
+                                key = new Key4(distKey, roundedMean, roundedSpread, roundedIntensity);
                               }
-                              key = new Key4(distKey, roundedMean, roundedSpread, roundedIntensity);
+
+                              double p;
+
+                              if (pStorage.containsKey(key)) {
+                                p = pStorage.get(key);
+                              } else {
+                                p = distribution.calcPValue(roundedIntensity);
+                                // prevent failure here by clamping p.
+                                // p = Math.max(Math.nextUp(0d), p);
+                                p = Math.max(MIN_P_VALUE, p);
+                                p = Math.min(p, 1);
+                                pStorage.put(key, p);
+                              }
+                              //System.out.println(" ");
+                              //System.out.println("Intensity: " + roundedIntensity);
+                              //System.out.println("p: " + p);
+                              //System.out.println("distribution.getLocation(): " + distribution
+                              // .getLocation());
+
+                              chiSquareStat += -2.0 * Math.log(p);
+                              lowestP = Math.min(lowestP, p);
                             }
-
-                            double p;
-
-                            if (pStorage.containsKey(key)) {
-                              p = pStorage.get(key);
+                            double combinedPValue;
+                            if (evtIdcs.length > 1) {
+                              combinedPValue = 1.0 - chiSquared.cumulativeProbability(chiSquareStat);
                             } else {
-                              p = distribution.calcPValue(roundedIntensity);
-                              // prevent failure here by clamping p.
-                              // p = Math.max(Math.nextUp(0d), p);
-                              p = Math.max(MIN_P_VALUE, p);
-                              p = Math.min(p, 1);
-                              pStorage.put(key, p);
+                              combinedPValue = lowestP;
                             }
-                            //System.out.println(" ");
-                            //System.out.println("Intensity: " + roundedIntensity);
-                            //System.out.println("p: " + p);
-                            //System.out.println("distribution.getLocation(): " + distribution.getLocation());
 
-                            chiSquareStat += -2.0 * Math.log(p);
-                            lowestP = Math.min(lowestP, p);
-                          }
-                          double combinedPValue;
-                          if (evtIdcs.length > 1) {
-                            combinedPValue = 1.0 - chiSquared.cumulativeProbability(chiSquareStat);
-                          } else {
-                            combinedPValue = lowestP;
-                          }
-
-                          //
-                          // double area = event.get(EventParameter.NET_AREA);
+                            //
+                            // double area = event.get(EventParameter.NET_AREA);
 //                          System.out.println(
 //                              "mz: " +  event.getCollection().getTrace().getMzValue().getName()+
 //                              "\tcombinedPValue: " + combinedPValue +
 //                              "\tarea: " + area +
 //                              "\tpoints: " + event.getNoOfPoints());
-                          if (combinedPValue < target) {
-                            chosenEvents.add(event);
+                            if (combinedPValue < target) {
+                              chosenEvents.add(event);
+                            }
+                            // System.out.println("Finished event... " + oldPop.getEvents().getNpEvents()
+                            // .indexOf(event)
+                            // + " / " + oldPop.getEvents().getNpEvents().size() + ". nDP= "+event
+                            // .getNoOfPoints());
                           }
-                          // System.out.println("Finished event... " + oldPop.getEvents().getNpEvents()
-                          // .indexOf(event)
-                          // + " / " + oldPop.getEvents().getNpEvents().size() + ". nDP= "+event
-                          // .getNoOfPoints());
                         }
                       }
-                    }
 
-                    // (1) Remove existing population from the Trace to avoid pile up of Populations)
-                    trace.removePopulation(popID);
-                    // (2) Update the ID with the latest step
-                    PopulationID idCopy = new PopulationID(popID);
-                    idCopy.append(new GateSubtype(params.getGatingOption().getValue()));
-                    // (3) Add the new Population to the trace
+                      // (1) Remove existing population from the Trace to avoid pile up of Populations)
+                      trace.removePopulation(popID);
+                      // (2) Update the ID with the latest step
+                      PopulationID idCopy = new PopulationID(popID);
+                      idCopy.append(new GateSubtype(params.getGatingOption().getValue()));
+                      // (3) Add the new Population to the trace
 
-                    if (!forceNewBGDefinition) {
-                      trace.addOverridePopulation(idCopy,
-                          new NpPopulation(
-                              idCopy,
-                              oldPop,
-                              new SubEventCollection(trace, chosenEvents, oldPop),
-                              idCopy.toString(),
-                              instr),
-                          false);
-                    } else {
-                      // we want the new population to also define the BG
-                      trace.addOverridePopulation(idCopy,
-                          new NpPopulation(
-                              idCopy,
-                              oldPop,
-                              new MainEventCollection(trace, chosenEvents),
-                              idCopy.toString(),
-                              instr),
-                          false);
+                      if (!forceNewBGDefinition) {
+                        trace.addOverridePopulation(idCopy,
+                            new NpPopulation(
+                                idCopy,
+                                oldPop,
+                                new SubEventCollection(trace, chosenEvents, oldPop),
+                                idCopy.toString(),
+                                instr),
+                            false);
+                      } else {
+                        // we want the new population to also define the BG
+                        trace.addOverridePopulation(idCopy,
+                            new NpPopulation(
+                                idCopy,
+                                oldPop,
+                                new MainEventCollection(trace, chosenEvents),
+                                idCopy.toString(),
+                                instr),
+                            false);
+                      }
+                      // (4) Updating the branch:
+                      // Make this new head of branch! Else, OG ID in HashMap is altered, affecting bucketing
+                      // in buggy way
+                      branch.overrideID(trace, idCopy);
                     }
-                    // (4) Updating the branch:
-                    // Make this new head of branch! Else, OG ID in HashMap is altered, affecting bucketing
-                    // in buggy way
-                    branch.overrideID(trace, idCopy);
                   }
-                }
 
-                setProgress(counter / traces.size());
+                  setProgress(counter / traces.size());
+                } else {
+                  LOGGER.warn("You are trying to apply a gate filter to an aligned population." +
+                      " This is not possible. Use an aligned filter instead!");
+                }
               }
             }
           }

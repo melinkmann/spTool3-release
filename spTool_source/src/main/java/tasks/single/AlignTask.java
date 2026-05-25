@@ -31,8 +31,10 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import processing.options.AlignAlgorithm;
 import processing.options.EventParameter;
+import processing.options.IsotopeSelection;
 import processing.options.NetCorrectionOption;
 import processing.parameterSets.impl.AlignerParams;
+import sandbox.montecarlo.Isotope;
 import tasks.TaskResult;
 import tasks.WorkingTask;
 import tasks.results.EmptyTaskResult;
@@ -50,13 +52,15 @@ public class AlignTask extends AbstractWorkingTask implements WorkingTask {
   private final PopulationBranch branch;
   private final AlignerParams params;
   private final AtomicReference<Sample> sampleRef;
+  private final List<Isotope> selectedIsotopes;
 
   public AlignTask(String taskName, PopulationBranch branch, AlignerParams params,
-                   AtomicReference<Sample> sampleRef) {
+                   AtomicReference<Sample> sampleRef, List<Isotope> selectedIsotopes) {
     super(taskName);
     this.branch = branch;
     this.params = (AlignerParams) params.getCopyWithPreviousDateFileAndID();
     this.sampleRef = sampleRef;
+    this.selectedIsotopes=new ArrayList<>(selectedIsotopes);
   }
 
   @Override
@@ -78,6 +82,9 @@ public class AlignTask extends AbstractWorkingTask implements WorkingTask {
 
           NetCorrectionOption netSignalChoice = params.getNetCorrectionOption().getValue();
           AlignAlgorithm alignAlgorithm = params.getAlignAlgorithm().getValue();
+          IsotopeSelection isotopeSelection = params.getIsotopeSelection().getValue();
+          List<Isotope> excludedIsotopes = params.listExcludedIsotopes();
+          List<Isotope> includedIsotopes = params.listIncludedIsotopes();
           MeasureOfLocation netSignalLocation = params.getNetTimeWindowLocation().getValue();
           boolean suppressNegativeNetValues = params.getSuppressNegativeValues().getValue();
           double netSignalTime = params.getNetTimeWindow().getValue();
@@ -86,6 +93,25 @@ public class AlignTask extends AbstractWorkingTask implements WorkingTask {
           if (sample instanceof SampleImpl) {
 
             List<Trace> traces = sample.getTraces();
+
+            // enable exclusion of certain isotopes
+            switch (isotopeSelection) {
+              case ALL_LOADED -> {
+              }
+              case SELECTED -> {
+                traces.removeIf(t -> !selectedIsotopes.contains(t.getMzValue().getIsotope()));
+              }
+              case POSITIVE_LIST_SELECTION -> {
+                traces.removeIf(t -> !includedIsotopes.contains(t.getMzValue().getIsotope()));
+              }
+              case NEGATIVE_LIST_EXCLUSION -> {
+                traces.removeIf(t -> excludedIsotopes.contains(t.getMzValue().getIsotope()));
+              }
+              default -> {
+                // keep as is, we should not reach this branch
+              }
+            }
+
             List<MZValue> contributingMZs = new ArrayList<>();
 
             // Extract event collections of current leading population

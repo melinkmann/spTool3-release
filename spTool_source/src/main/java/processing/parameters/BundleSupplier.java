@@ -21,10 +21,7 @@ import java.io.Serial;
 import java.io.Serializable;
 
 import processing.parameterSets.ParamBundle;
-import processing.parameterSets.bundle.ElementBundle;
-import processing.parameterSets.bundle.RoiSigFactorBundle;
-import processing.parameterSets.bundle.RoiStartStopBundle;
-import processing.parameterSets.bundle.SiaBundle;
+import processing.parameterSets.bundle.*;
 
 public interface BundleSupplier extends Serializable {
 
@@ -105,6 +102,25 @@ public interface BundleSupplier extends Serializable {
     @Override
     public String getBundleID() {
       return ParamBundle.BUNDLE_ID_ROI_SIG_FACTOR;
+    }
+  }
+
+  public static class AlignFilterStartStopBundleSupplier implements BundleSupplier {
+
+    @Serial
+    private static final long serialVersionUID = 1_000_000L;
+
+    public AlignFilterStartStopBundleSupplier() {
+    }
+
+    @Override
+    public ParamBundle createNewBundle(SpawnControlParameter parentParameter) {
+      return new AlignFilterStartStopBundle(parentParameter);
+    }
+
+    @Override
+    public String getBundleID() {
+      return ParamBundle.BUNDLE_ID_ALIGN_FILTER_START_STOP;
     }
   }
 }

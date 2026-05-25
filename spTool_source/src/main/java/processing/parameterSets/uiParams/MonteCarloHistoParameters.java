@@ -90,6 +90,7 @@ public class MonteCarloHistoParameters extends AbstractParamSet implements Param
   private final Parameter<Integer> numberOfBackgroundEvents;
 
   private final Parameter<MathMod> mathModification;
+  private final Parameter<Boolean> logWithoutZeros;
 
   private final Parameter<EventParameter> eventParameter;
 
@@ -217,6 +218,15 @@ public class MonteCarloHistoParameters extends AbstractParamSet implements Param
         MathMod.class,
         false,
         "mathModification"
+    );
+
+    this.logWithoutZeros = new BooleanParameter(
+        "Trim",
+        "Force values > 0",
+        "Exclude values smaller than or equal to zero when log10 transformation is applied",
+        false,
+        true,
+        "logWithoutZeros"
     );
 
     eventParameter = new ComboEnumParameter<>(
@@ -363,6 +373,7 @@ public class MonteCarloHistoParameters extends AbstractParamSet implements Param
     this.customKernelBandwidth = histParams.customKernelBandwidth.copyWithoutChildren();
     this.estimatedBinWidth = histParams.estimatedBinWidth.copyWithoutChildren();
     this.mathModification = histParams.mathModification.copyWithoutChildren();
+    this.logWithoutZeros = histParams.logWithoutZeros.copyWithoutChildren();
     this.eventParameter = histParams.eventParameter.copyWithoutChildren();
     this.eventType = histParams.eventType.copyWithoutChildren();
     this.backgroundHighlightOption = histParams.backgroundHighlightOption.copyWithoutChildren();
@@ -430,6 +441,7 @@ public class MonteCarloHistoParameters extends AbstractParamSet implements Param
     );
 
     eventType.addConditionalChild(EventType.BG_NP, jitterBackground, backgroundHighlightOption);
+    mathModification.addConditionalChild(MathMod.LOG10, logWithoutZeros);
 
     showHistogram.addConditionalChild(true, binWidthEstimator, histogramNormalization);
     showKernelDensity.addConditionalChild(true, customKernelBandwidth);
@@ -490,6 +502,7 @@ public class MonteCarloHistoParameters extends AbstractParamSet implements Param
           case "eventType" -> eventType;
           case "backgroundHighlightOption" -> backgroundHighlightOption;
           case "mathModification" -> mathModification;
+          case "logWithoutZeros" -> logWithoutZeros;
           case "eventParameter" -> eventParameter;
           case "reduceBackground" -> jitterBackground;
           case "numberOfBackgroundEvents" -> numberOfBackgroundEvents;
@@ -579,6 +592,10 @@ public class MonteCarloHistoParameters extends AbstractParamSet implements Param
     return mathModification.getValue();
   }
 
+  public boolean isComputeNonzero() {
+    return logWithoutZeros.getValue() && mathModification.getValue().equals(MathMod.LOG10);
+  }
+
   public EventParameter getEventParameter() {
     return eventParameter.getValue();
   }
@@ -644,96 +661,5 @@ public class MonteCarloHistoParameters extends AbstractParamSet implements Param
 }
 
 
-/*
-COPY HISTOGRAM DATA
 
-if (histoChart != null) {
-            XYPlot plot = histoChart.getXYPlot();
-            if (plot != null) {
-
-              // create empty storage array
-              double[][] arr = new double[1][1];
-              arr[0][0] = 0.0;
-              // List for "sample names" i.e. labels
-              List<String> labels = new ArrayList<>();
-              int labelCount = plot.getLegendItems().getItemCount();
-
-              // define dimensions (all > 0 to avoid null pointers)
-              int datSetCount = plot
-                  .getDatasetCount(); // if histograms are overlays: 1 dataset each
-              int maxBarCount = 0; // items = bars per histogram
-              for (int plotSet = 0; plotSet < datSetCount; plotSet++) {
-                XYDataset dataset = plot.getDataset(plotSet);
-
-                if (dataset instanceof HistogramDataset) {
-                  HistogramDataset histogramDataset = (HistogramDataset) dataset;
-                  // as of now, histograms have only one series and the overlay is done by adding datasets to the XYPlot.
-                  int seriesCount = histogramDataset.getSeriesCount();
-                  if (seriesCount > 0) {
-                    int itmCount = histogramDataset.getItemCount(0); // items = bars per histogram
-                    maxBarCount = Math.max(maxBarCount, itmCount);
-                  }
-                }
-              }
-
-              // override empty storage array
-              arr = new double[maxBarCount][datSetCount * 2];
-
-              // fill the array
-              // plot set --> different histograms stored as datasets in the plot
-              HistogramType histoFrequencyType = HistogramType.FREQUENCY; // assumed default
-              int additionalCounter = 0;
-              for (int datSetIdx = 0; datSetIdx < datSetCount; datSetIdx++) {
-                XYDataset dataset = plot.getDataset(datSetIdx);
-                if (datSetIdx < labelCount) { // just crash safety
-                  labels.add(plot.getLegendItems().get(datSetIdx).getLabel());
-                }
-
-                if (dataset instanceof HistogramDataset) {
-                  HistogramDataset histogramDataset = (HistogramDataset) dataset;
-                  histoFrequencyType = histogramDataset
-                      .getType(); // assume all are the same, 1 is enough
-
-                  // fill array --> series count of histogram = 1 (should be the case for all)
-                  int seriesCount = histogramDataset.getSeriesCount();
-                  // counting the bins: item=bar=bin
-                  int barCount = 0;
-                  if (seriesCount > 0) { // just crash safety
-                    barCount = histogramDataset.getItemCount(0);
-                  }
-
-                  for (int barIdx = 0; barIdx < barCount; barIdx++) {
-                    arr[barIdx][datSetIdx + additionalCounter] = (double) histogramDataset
-                        .getX(0, barIdx);
-                    arr[barIdx][datSetIdx + additionalCounter + 1] = (double) histogramDataset
-                        .getY(0, barIdx);
-                  }
-                  /// just checking
-                  additionalCounter++;
-                }
-
-                // add labels
-                String[][] stringArr = ClipboardUtil.createArray(arr, NF.D1C15);
-                String[][] labelledArr = new String[stringArr.length + 2][
-                    stringArr[stringArr.length - 1].length + 1];
-
-                // add labels to new array
-                for (int i = 0; i < labels.size(); i++) {
-                  if (i * 2 < labelledArr[0].length) {
-                    labelledArr[0][(i * 2)] = "Name in Histogram= ";
-                    labelledArr[1][(i * 2)] = "x=center of bar";
-                    labelledArr[0][(i * 2) + 1] = labels.get(i);
-                    labelledArr[1][(i * 2) + 1] = histoFrequencyType.toString();
-                  }
-                }
-                // add the data
-                for (int n = 2; n < labelledArr.length; n++) {
-                  labelledArr[n] = stringArr[n - 2];
-                }
-
-                ClipboardUtil.copy(labelledArr);
-              }
-            }
-          }
- */
 

@@ -17,7 +17,6 @@
 
 package processing.parameterSets.uiParams;
 
-import core.SpTool3Main;
 import dataModelNew.mz.MZValue;
 import gui.util.TextFormatterOption;
 import io.XmlUtil;
@@ -27,6 +26,8 @@ import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import processing.options.DistanceOptions;
+import processing.options.IsotopeSelection;
+import processing.options.ZScoreTarget;
 import processing.parameterSets.*;
 import processing.parameterSets.impl.NuInterpreterParams;
 import processing.parameters.*;
@@ -34,6 +35,7 @@ import sandbox.montecarlo.Isotope;
 import util.Functional;
 import util.NF;
 
+import java.io.IOException;
 import java.io.Serial;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -55,11 +57,13 @@ public class HACViewerParameters extends AbstractParamSet implements ParamSet {
   private final Parameter<Double> minFractionPct;
   private final Parameter<Integer> minClusterSizePie;
 
-  private final Parameter<Boolean> excludeElements;
-  private final Parameter<String> excludedElements;
+  private Parameter<IsotopeSelection> isotopeSelection;
+  private Parameter<String> excludedIsotopes;
+  private Parameter<String> includedIsotopes;
+  private Parameter<Boolean> flattenIsobarsToDefaults;
 
   private final Parameter<Boolean> useLog2;
-  private final Parameter<Boolean> useZScore;
+  private Parameter<ZScoreTarget> zScoreType;
   private final Parameter<Double> intensityThreshold;
 
   private final Parameter<DistanceOptions> thresholdOption;
@@ -76,17 +80,18 @@ public class HACViewerParameters extends AbstractParamSet implements ParamSet {
   public HACViewerParameters() {
     super("HAC viewer parameters", XML_ELEMENT_TAG);
 
-    useZScore = new BooleanParameter(
-        "Data",
-        "z-score normalization",
+    this.zScoreType = new ComboEnumParameter<>(
+        "z-score",
         """
             The intensity data will be normalized by computing the z-score
-            before executing the HAC computation
-            """,
-        true,
-        true,
-        "useZScore"
-    );
+            before executing the HAC computation.
+            You may normalize per particle (compute mean and SD of element signal per particle)
+            or per isotope (normalize each isotope with its mean and SD across all particles)""",
+        ZScoreTarget.PARTICLES,
+        ZScoreTarget.values(),
+        ZScoreTarget.class,
+        false,
+        "zScoreType");
 
     useLog2 = new BooleanParameter(
         "Data",
@@ -156,26 +161,62 @@ public class HACViewerParameters extends AbstractParamSet implements ParamSet {
         "minClusterSizePie"
     );
 
-    excludeElements = new BooleanParameter(
-        "Isotopes",
-        "Set exclusion list",
+    this.isotopeSelection = new ComboEnumParameter<>(
+        "Rules",
         """
-            Any isotope that is selected here will not be considered for the HAC
+            You may decide which isotopes are considered for the align operation:
+            a) use all isotopes in the raw data file
+            b) use all loaded isotopes (table on the right-hand side of the screen),
+            c) use the selected isotopes (in table on the right-hand side of the screen),
+            d) 'Set list': create a selection in the submethod that is not affected by
+            selecting different isotopes in table on the right-hand side of the screen,
+            e) 'Exclude': create a 'blacklist' of isotopes that shall not be included
+             (besides these, all loaded isotopes will be used)""",
+        IsotopeSelection.ALL_LOADED,
+        IsotopeSelection.values(),
+        IsotopeSelection.class,
+        false,
+        "isotopeSelection");
+
+    excludedIsotopes = new FeedbackStringParameter(
+        "Excluded",
+        """
             """,
+        "ISOTOPE[m=19,e=F];ISOTOPE[m=20,e=Ne];ISOTOPE[m=21,e=Ne];ISOTOPE[m=22,e=Ne];ISOTOPE[m=78,e=Kr];" +
+            "ISOTOPE[m=80,e=Kr];ISOTOPE[m=82,e=Kr];ISOTOPE[m=83,e=Kr];ISOTOPE[m=84,e=Kr];ISOTOPE[m=86," +
+            "e=Kr];ISOTOPE[m=124,e=Xe];ISOTOPE[m=126,e=Xe];ISOTOPE[m=128,e=Xe];ISOTOPE[m=129,e=Xe];" +
+            "ISOTOPE[m=130,e=Xe];ISOTOPE[m=131,e=Xe];ISOTOPE[m=132,e=Xe];ISOTOPE[m=134,e=Xe];ISOTOPE[m=136," +
+            "e=Xe];ISOTOPE[m=209,e=Po];ISOTOPE[m=210,e=At];ISOTOPE[m=222,e=Rn];ISOTOPE[m=223,e=Fr];" +
+            "ISOTOPE[m=263,e=Rf];ISOTOPE[m=262,e=Db];ISOTOPE[m=266,e=Sg];ISOTOPE[m=264,e=Bh];ISOTOPE[m=269," +
+            "e=Hs];ISOTOPE[m=268,e=Mt];ISOTOPE[m=281,e=Ds];ISOTOPE[m=280,e=Rg];ISOTOPE[m=285,e=Cn];" +
+            "ISOTOPE[m=284,e=Nh];ISOTOPE[m=289,e=Fl];ISOTOPE[m=288,e=Mc];ISOTOPE[m=293,e=Lv];ISOTOPE[m=294," +
+            "e=Ts];ISOTOPE[m=294,e=Og];ISOTOPE[m=147,e=Pm];ISOTOPE[m=247,e=Cm];ISOTOPE[m=247,e=Bk];" +
+            "ISOTOPE[m=251,e=Cf];ISOTOPE[m=252,e=Es];ISOTOPE[m=257,e=Fm];ISOTOPE[m=258,e=Md];ISOTOPE[m=259," +
+            "e=No];ISOTOPE[m=262,e=Lr];ISOTOPE[m=98,e=Tc]",
+        TextFormatterOption.ALL_PASS,
         false,
-        false,
-        "excludeElements"
+        "excludedIsotopes"
     );
 
-    excludedElements = new FeedbackStringParameter(
-        "",
+    includedIsotopes = new FeedbackStringParameter(
+        "Selection list",
         """
-            Use the m/z button on the right to select the excluded isotopes
             """,
         "",
         TextFormatterOption.ALL_PASS,
         false,
-        "excludedElements"
+        "includedIsotopes"
+    );
+
+    this.flattenIsobarsToDefaults = new BooleanParameter("Isobars",
+        "Only use default",
+        """
+            When two isotopes share the same m/z,
+            only the 'default' isotope will be shown.
+            Defaults are set in the configuration""",
+        true,
+        false,
+        "flattenIsobarsToDefaults"
     );
 
 
@@ -223,7 +264,7 @@ public class HACViewerParameters extends AbstractParamSet implements ParamSet {
         "cosineScore"
     );
 
-    useLog2ForCosine= new BooleanParameter(
+    useLog2ForCosine = new BooleanParameter(
         "Cosine",
         "log2 transformation",
         """
@@ -245,10 +286,12 @@ public class HACViewerParameters extends AbstractParamSet implements ParamSet {
 
     minFractionPct = iclPeakViewer.minFractionPct.copyWithoutChildren();
     minClusterSizePie = iclPeakViewer.minClusterSizePie.copyWithoutChildren();
-    excludeElements = iclPeakViewer.excludeElements.copyWithoutChildren();
-    excludedElements = iclPeakViewer.excludedElements.copyWithoutChildren();
+    isotopeSelection = iclPeakViewer.isotopeSelection.copyWithoutChildren();
+    excludedIsotopes = iclPeakViewer.excludedIsotopes.copyWithoutChildren();
+    includedIsotopes = iclPeakViewer.includedIsotopes.copyWithoutChildren();
+    flattenIsobarsToDefaults = iclPeakViewer.flattenIsobarsToDefaults.copyWithoutChildren();
     useLog2 = iclPeakViewer.useLog2.copyWithoutChildren();
-    useZScore = iclPeakViewer.useZScore.copyWithoutChildren();
+    zScoreType = iclPeakViewer.zScoreType.copyWithoutChildren();
     thresholdOption = iclPeakViewer.thresholdOption.copyWithoutChildren();
     distanceThreshold = iclPeakViewer.distanceThreshold.copyWithoutChildren();
     this.useLogScaleDendrogram = iclPeakViewer.useLogScaleDendrogram.copyWithoutChildren();
@@ -285,9 +328,10 @@ public class HACViewerParameters extends AbstractParamSet implements ParamSet {
     super.setParentParameters(
         new NoFieldTextParameter("Prepare data", ""),
         intensityThreshold,
-        excludeElements,
+        isotopeSelection,
+        // flattenIsobarsToDefaults, // this should occur at tof import...
         useLog2,
-        useZScore,
+        zScoreType,
         thresholdOption,
         applyCosineFlattening,
         new NoFieldTextParameter("Dendrogram & HAC", ""),
@@ -298,9 +342,8 @@ public class HACViewerParameters extends AbstractParamSet implements ParamSet {
         minClusterSizePie
     );
 
-    excludeElements.addConditionalChild(true, excludedElements);
-
-    excludedElements.setDecoration(new ParamSetterButtonDecoration<>("Select elements", "/img/tableTrace.png",
+    isotopeSelection.addConditionalChild(IsotopeSelection.NEGATIVE_LIST_EXCLUSION, excludedIsotopes);
+    excludedIsotopes.setDecoration(new ParamSetterButtonDecoration<>("Select isotopes", "/img/tableTrace.png",
         new Functional() {
 
           @Override
@@ -310,12 +353,13 @@ public class HACViewerParameters extends AbstractParamSet implements ParamSet {
 
           @Override
           public void proceed(Window window) {
-            List<Isotope> prevSel = NuInterpreterParams.isotopeFromString(excludedElements.getValue());
+            List<Isotope> prevSel = NuInterpreterParams.isotopeFromString(excludedIsotopes.getValue());
 
             IsotopePtoeDialog dlg = IsotopePtoeDialog.forIsotopeSelection(
                 window,
-                dataModelNew.mz.Element.getAllIsotopes(),
-                prevSel);
+                dataModelNew.mz.Element.getAllIsotopes(),   // all isotopes available
+                // SpTool3Main.getRunTime().getMainWindowCtl().getAllIsotopes(),
+                prevSel);                  // null or empty = open blank
 
             List<MZValue> resultingMZ = dlg.showAndWait();
             if (resultingMZ != null) {
@@ -323,14 +367,44 @@ public class HACViewerParameters extends AbstractParamSet implements ParamSet {
               for (MZValue mzValue : resultingMZ) {
                 resultingIsotopes.add(mzValue.getIsotope());
               }
-              excludedElements.setValue(NuInterpreterParams.isotopesToString(resultingIsotopes));
+              excludedIsotopes.setValue(NuInterpreterParams.isotopesToString(resultingIsotopes));
+            }
+          }
+        }));
+
+    isotopeSelection.addConditionalChild(IsotopeSelection.POSITIVE_LIST_SELECTION, includedIsotopes);
+    includedIsotopes.setDecoration(new ParamSetterButtonDecoration<>("Select isotopes", "/img/tableTrace.png",
+        new Functional() {
+
+          @Override
+          public void proceed() {
+            proceed(null);
+          }
+
+          @Override
+          public void proceed(Window window) {
+            List<Isotope> prevSel = NuInterpreterParams.isotopeFromString(includedIsotopes.getValue());
+
+            IsotopePtoeDialog dlg = IsotopePtoeDialog.forIsotopeSelection(
+                window,
+                dataModelNew.mz.Element.getAllIsotopes(),   // all isotopes available
+                // SpTool3Main.getRunTime().getMainWindowCtl().getAllIsotopes(),
+                prevSel);                  // null or empty = open blank
+
+            List<MZValue> resultingMZ = dlg.showAndWait();
+            if (resultingMZ != null) {
+              List<Isotope> resultingIsotopes = new ArrayList<>();
+              for (MZValue mzValue : resultingMZ) {
+                resultingIsotopes.add(mzValue.getIsotope());
+              }
+              includedIsotopes.setValue(NuInterpreterParams.isotopesToString(resultingIsotopes));
             }
           }
         }));
 
     thresholdOption.addConditionalChild(DistanceOptions.CUSTOM, distanceThreshold);
 
-    applyCosineFlattening.addConditionalChild(true, useLog2ForCosine,cosineScore);
+    applyCosineFlattening.addConditionalChild(true, useLog2ForCosine, cosineScore);
   }
 
 
@@ -352,10 +426,14 @@ public class HACViewerParameters extends AbstractParamSet implements ParamSet {
           case "intensityThreshold" -> intensityThreshold;
           case "minFractionPct" -> minFractionPct;
           case "minClusterSizePie" -> minClusterSizePie;
-          case "excludeElements" -> excludeElements;
-          case "excludedElements" -> excludedElements;
+
+          case "isotopeSelection" -> isotopeSelection;
+          case "excludedIsotopes" -> excludedIsotopes;
+          case "includedIsotopes" -> includedIsotopes;
+          case "flattenIsobarsToDefaults" -> flattenIsobarsToDefaults;
+
           case "useLog2" -> useLog2;
-          case "useZScore" -> useZScore;
+          case "zScoreType" -> zScoreType;
           case "thresholdOption" -> thresholdOption;
           case "distanceThreshold" -> distanceThreshold;
           case "useLogScaleDendrogram" -> useLogScaleDendrogram;
@@ -401,28 +479,32 @@ public class HACViewerParameters extends AbstractParamSet implements ParamSet {
     return minClusterSizePie;
   }
 
-  public Parameter<Boolean> getExcludeElements() {
-    return excludeElements;
-  }
-
-  public Parameter<String> getExcludedElements() {
-    return excludedElements;
-  }
-
   public Parameter<Double> getIntensityThreshold() {
     return intensityThreshold;
   }
 
-  public List<Isotope> listExcludedElements() {
-    return NuInterpreterParams.isotopeFromString(excludedElements.getValue());
+  public Parameter<IsotopeSelection> getIsotopeSelection() {
+    return isotopeSelection;
+  }
+
+  public List<Isotope> listExcludedIsotopes() {
+    return NuInterpreterParams.isotopeFromString(excludedIsotopes.getValue());
+  }
+
+  public List<Isotope> listIncludedIsotopes() {
+    return NuInterpreterParams.isotopeFromString(includedIsotopes.getValue());
+  }
+
+  public Parameter<Boolean> getFlattenIsobarsToDefaults() {
+    return flattenIsobarsToDefaults;
   }
 
   public Parameter<Boolean> getUseLog2() {
     return useLog2;
   }
 
-  public Parameter<Boolean> getUseZScore() {
-    return useZScore;
+  public Parameter<ZScoreTarget> getzScoreType() {
+    return zScoreType;
   }
 
   public Parameter<DistanceOptions> getOverrideThreshold() {
@@ -451,5 +533,34 @@ public class HACViewerParameters extends AbstractParamSet implements ParamSet {
 
   public Parameter<Boolean> getUseLog2ForCosine() {
     return useLog2ForCosine;
+  }
+
+  @Serial
+  private void readObject(java.io.ObjectInputStream in) throws IOException, ClassNotFoundException {
+
+    in.defaultReadObject();
+
+    // default supplier
+    final HACViewerParameters defaults = new HACViewerParameters();
+
+    if (isotopeSelection == null) {
+      isotopeSelection = defaults.isotopeSelection;
+    }
+
+    if (includedIsotopes == null) {
+      includedIsotopes = defaults.includedIsotopes;
+    }
+
+    if (excludedIsotopes == null) {
+      excludedIsotopes = defaults.excludedIsotopes;
+    }
+
+    if (flattenIsobarsToDefaults == null) {
+      flattenIsobarsToDefaults = defaults.flattenIsobarsToDefaults;
+    }
+
+    if (zScoreType == null) {
+      zScoreType = defaults.zScoreType;
+    }
   }
 }

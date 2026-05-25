@@ -33,20 +33,21 @@ public class IncompleteParticleMatrix implements Serializable {
   private final List<Double> durations;
   private final List<Double> points;
 
-  public IncompleteParticleMatrix(int size) {
-    peakTimes = new ArrayList<>(size);
-    areas = new ArrayList<>(size);
-    heights = new ArrayList<>(size);
-    durations = new ArrayList<>(size);
-    points = new ArrayList<>(size);
-  }
-
+  // Dummy
   public IncompleteParticleMatrix() {
     peakTimes = new ArrayList<>();
     areas = new ArrayList<>();
     heights = new ArrayList<>();
     durations = new ArrayList<>();
     points = new ArrayList<>();
+  }
+
+  public IncompleteParticleMatrix(int size) {
+    peakTimes = new ArrayList<>(size);
+    areas = new ArrayList<>(size);
+    heights = new ArrayList<>(size);
+    durations = new ArrayList<>(size);
+    points = new ArrayList<>(size);
   }
 
   // Deep copy

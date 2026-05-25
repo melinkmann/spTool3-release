@@ -48,6 +48,9 @@ public class IsotopeRemoverParams extends AbstractParamSet implements ParamSet {
   private final Parameter<Integer> lowerIsotopeAbsoluteCutoff;
   private final Parameter<Double> upperIsotopeRateCutoff;
 
+  private  Parameter<Boolean> removeLessIntenseIsotopesThan;
+  private  Parameter<Double> netAreaThreshold;
+
   public IsotopeRemoverParams() {
     super("Remove isotopes parameters", XML_ELEMENT_TAG);
 
@@ -87,13 +90,32 @@ public class IsotopeRemoverParams extends AbstractParamSet implements ParamSet {
 
     this.upperIsotopeRateCutoff = new DoubleParameter(
         "Event rate",
-        "Isotope must have at least this event rate [NP/s] to be kept",
+        "Isotope must have less than this event rate [NP/s] to be kept",
         100d,
         NF.D1C2,
         TextFormatterOption.ASSURE_POSITIVE_DOUBLE,
         false,
         "upperIsotopeRateCutoff"
     );
+
+    this.removeLessIntenseIsotopesThan = new BooleanParameter("Remove",
+        "Isotopes with net peak area larger below",
+        "Remove isotopes from the sample entirely if no peak has more cts (area) then specified",
+        false,
+        false,
+        "removeLessIntenseIsotopesThan"
+    );
+
+    this.netAreaThreshold = new DoubleParameter(
+        "Net area",
+        "Isotope must have at least on event with this peak area [cts] to be kept",
+        10d,
+        NF.D1C2,
+        TextFormatterOption.ASSURE_POSITIVE_DOUBLE,
+        false,
+        "netAreaThreshold"
+    );
+
 
     //
 
@@ -109,6 +131,8 @@ public class IsotopeRemoverParams extends AbstractParamSet implements ParamSet {
     removeMoreIsotopesThan = params.removeMoreIsotopesThan.copyWithoutChildren();
     lowerIsotopeAbsoluteCutoff = params.lowerIsotopeAbsoluteCutoff.copyWithoutChildren();
     upperIsotopeRateCutoff = params.upperIsotopeRateCutoff.copyWithoutChildren();
+    this.removeLessIntenseIsotopesThan = params.removeLessIntenseIsotopesThan.copyWithoutChildren();
+    this.netAreaThreshold = params.netAreaThreshold.copyWithoutChildren();
 
     organize();
   }
@@ -139,10 +163,11 @@ public class IsotopeRemoverParams extends AbstractParamSet implements ParamSet {
         enableBoolean
     );
 
-    enableBoolean.addConditionalChild(true, removeFewerIsotopesThan, removeMoreIsotopesThan);
+    enableBoolean.addConditionalChild(true, removeFewerIsotopesThan, removeMoreIsotopesThan,
+        removeLessIntenseIsotopesThan);
     removeFewerIsotopesThan.addConditionalChild(true, lowerIsotopeAbsoluteCutoff);
     removeMoreIsotopesThan.addConditionalChild(true, upperIsotopeRateCutoff);
-
+    removeLessIntenseIsotopesThan.addConditionalChild(true, netAreaThreshold);
   }
 
 
@@ -167,6 +192,8 @@ public class IsotopeRemoverParams extends AbstractParamSet implements ParamSet {
           case "removeMoreIsotopesThan" -> removeMoreIsotopesThan;
           case "fewerIsotopesNumber" -> lowerIsotopeAbsoluteCutoff;
           case "moreIsotopesRate" -> upperIsotopeRateCutoff;
+          case "removeLessIntenseIsotopesThan" -> removeLessIntenseIsotopesThan;
+          case "netAreaThreshold" -> netAreaThreshold;
 
           default -> null;
         };
@@ -211,6 +238,14 @@ public class IsotopeRemoverParams extends AbstractParamSet implements ParamSet {
     return upperIsotopeRateCutoff;
   }
 
+  public Parameter<Boolean> getRemoveLessIntenseIsotopesThan() {
+    return removeLessIntenseIsotopesThan;
+  }
+
+  public Parameter<Double> getNetAreaThreshold() {
+    return netAreaThreshold;
+  }
+
   //------------------------------------------------------------------------------------------
 
 
@@ -221,6 +256,14 @@ public class IsotopeRemoverParams extends AbstractParamSet implements ParamSet {
 
     // default supplier
     final IsotopeRemoverParams defaults = new IsotopeRemoverParams();
+
+    if( removeLessIntenseIsotopesThan == null){
+      defaults.removeLessIntenseIsotopesThan = removeLessIntenseIsotopesThan;
+    }
+
+    if( netAreaThreshold == null){
+      defaults.netAreaThreshold = netAreaThreshold;
+    }
 
 
   }

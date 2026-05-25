@@ -144,10 +144,10 @@ public class TraceImpl implements Trace, Serializable {
     // Keep old references to the HDD TISeries to avoid creating new buffers in toHDD()!
     TISeries tiSeriesHDD = null;
     TISeries tiSeriesCopyHDD = null;
-    if (tiSeries instanceof TISeriesHDD) {
+    if (tiSeries instanceof TISeriesHDD || tiSeries instanceof DTISeriesHDD) {
       tiSeriesHDD = tiSeries;
     }
-    if (tiSeriesCopy instanceof TISeriesHDD) {
+    if (tiSeriesCopy instanceof TISeriesHDD || tiSeries instanceof DTISeriesHDD) {
       tiSeriesCopyHDD = tiSeriesCopy;
     }
 
@@ -158,14 +158,21 @@ public class TraceImpl implements Trace, Serializable {
       if (tiSeries instanceof TISeriesHDD) {
         this.tiSeries = new TISeriesRAM(tiSeries);
         this.tiSeriesCopy = this.tiSeries;
+      } else if (tiSeries instanceof DTISeriesHDD) {
+        this.tiSeries = new DTISeriesRAM((DTISeriesHDD) tiSeries);
+        this.tiSeriesCopy = this.tiSeries;
       }
       // ELSE: We have two different series, regions has been cut!
     } else {
       if (tiSeries instanceof TISeriesHDD) {
         this.tiSeries = new TISeriesRAM(tiSeries);
+      } else if (tiSeries instanceof DTISeriesHDD) {
+        this.tiSeries = new DTISeriesRAM((DTISeriesHDD) tiSeries);
       }
       if (tiSeriesCopy instanceof TISeriesHDD) {
         this.tiSeriesCopy = new TISeriesRAM(tiSeriesCopy);
+      } else if (tiSeriesCopy instanceof DTISeriesHDD) {
+        this.tiSeriesCopy = new DTISeriesRAM((DTISeriesHDD) tiSeriesCopy);
       }
     }
 
@@ -216,14 +223,22 @@ public class TraceImpl implements Trace, Serializable {
         TISeries hddSeries = new TISeriesHDD(tiSeries);
         this.tiSeries = hddSeries;
         this.tiSeriesCopy = hddSeries;
+      } else if (tiSeries instanceof DTISeriesRAM) {
+        TISeries hddSeries = new DTISeriesHDD((DTISeriesRAM) tiSeries);
+        this.tiSeries = hddSeries;
+        this.tiSeriesCopy = hddSeries;
       }
       // ELSE: We have two different series, regions has been cut!
     } else {
       if (tiSeries instanceof TISeriesRAM) {
         this.tiSeries = new TISeriesHDD(tiSeries);
+      } else if (tiSeries instanceof DTISeriesRAM) {
+        this.tiSeries = new DTISeriesHDD((DTISeriesRAM) tiSeries);
       }
       if (tiSeriesCopy instanceof TISeriesRAM) {
         this.tiSeriesCopy = new TISeriesHDD(tiSeriesCopy);
+      } else if (tiSeriesCopy instanceof DTISeriesRAM) {
+        this.tiSeriesCopy = new DTISeriesHDD((DTISeriesRAM) tiSeriesCopy);
       }
     }
 
@@ -342,6 +357,8 @@ public class TraceImpl implements Trace, Serializable {
     // spectra only look for equal ID. ID may be equal but processing details (baseline, ...) may change
     if (!preserveSpectra) {
       parentSample.clearSpectralData();
+    }else{
+      LOGGER.info("Received new population ID but kept spectra!");
     }
   }
 
@@ -362,7 +379,7 @@ public class TraceImpl implements Trace, Serializable {
     // retain the "External population"
     HashMap<PopulationID, Population> externals = new LinkedHashMap<>();
     for (PopulationID popID : populations.keySet()) {
-      if (popID.getType().equals(PopulationType.EXTERNAL)){
+      if (popID.getType().equals(PopulationType.EXTERNAL)) {
         externals.put(popID, populations.get(popID));
       }
     }

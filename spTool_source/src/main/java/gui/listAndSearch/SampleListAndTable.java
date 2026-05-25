@@ -768,9 +768,11 @@ public class SampleListAndTable {
   }
 
   private void addIsotopeRemover() {
-    MenuItem menu = UiUtil.getImageMenuItem("Remove isotopes", "/img/delete.png");
+    MenuItem menu = UiUtil.getImageMenuItem("Delete isotopes", "/img/delete.png");
     menu.setOnAction(e -> {
-      NotificationFactory.openYesCancel("Delete isotope(s)? This is irreversible.", () -> {
+      NotificationFactory.openYesCancel("""
+          Delete isotope(s)?
+          This is irreversible.""", () -> {
 
         List<Isotope> selIsotopes = getSelIsotopes();
         List<Sample> selSamples = getAllSamples();

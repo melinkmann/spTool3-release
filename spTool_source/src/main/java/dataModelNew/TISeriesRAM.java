@@ -144,30 +144,6 @@ public class TISeriesRAM implements Serializable, TISeries {
     return intensity;
   }
 
-  @Override
-  public double[] getTime(List<Integer> indices) {
-    double[] result = new double[indices.size()];
-    // no need to load to RAM
-    if (indices.size() <= time.length) {
-      for (int i = 0; i < indices.size(); i++) {
-        result[i] = time[indices.get(i)];
-      }
-    }
-    return result;
-  }
-
-  @Override
-  public double[] getIntensity(List<Integer> indices) {
-    double[] result = new double[indices.size()];
-    // no need to load to RAM
-    if (indices.size() <= intensity.length) {
-      for (int i = 0; i < indices.size(); i++) {
-        result[i] = intensity[indices.get(i)];
-      }
-    }
-    return result;
-  }
-
   public int size() {
     return Math.min(time.length, intensity.length);
   }

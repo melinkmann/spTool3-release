@@ -70,6 +70,7 @@ public class SpectralArray implements Serializable {
   }
 
 
+  // unsued?
   public SpectralArray(@Nullable Isotope isotope, double mz, double[] intensities,
                        Map<String, double[]> extraFeatures) {
     this.isotope = isotope;

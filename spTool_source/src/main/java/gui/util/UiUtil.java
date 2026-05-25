@@ -91,9 +91,11 @@ import javafx.util.Duration;
 import javafx.util.converter.IntegerStringConverter;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.jetbrains.annotations.Nullable;
 import org.jfree.chart.title.TextTitle;
 import org.jfree.chart.ui.HorizontalAlignment;
 import org.jfree.chart.ui.RectangleEdge;
+import processing.options.IsotopeSelection;
 import processing.parameterSets.AvailableParameterSets;
 import sandbox.montecarlo.Isotope;
 import sandbox.montecarlo.Statistics;
@@ -1120,8 +1122,19 @@ public abstract class UiUtil {
       Element[] elements = conflicts.get(key);
       builder.append(key).append("\t\t\t\t\t");
       for (Element element : elements) {
+        Isotope isotope = getIsotope(key, element);
+
         builder.append(element.getSymbol())
             .append("\t");
+
+        // Say how much it may contribute
+        if (isotope != null) {
+          builder.append("(").append(SnF.doubleToString(100 * isotope.getAbundance(), NF.D1C1))
+              .append("%)").append("\t");
+        } else {
+          builder.append("(").append("    ")
+              .append(")").append("\t");
+        }
       }
       builder.append("\n");
     }
@@ -1133,6 +1146,18 @@ public abstract class UiUtil {
 
     //final Popup popup = PopupFactory.showOnPopup(textArea);
     final Stage stage = PopupFactory.showOnWindow(textArea);
+  }
+
+  @Nullable
+  private static Isotope getIsotope(int isotopeNumber, Element element) {
+    Isotope iso = null;
+    for (Isotope isotope : element.getIsotopes()) {
+      if (isotope.getIsotopicNumber() == isotopeNumber) {
+        iso = isotope;
+        break;
+      }
+    }
+    return iso;
   }
 
   public static void showIsotopePopup() {

@@ -17,6 +17,7 @@
 
 package processing.parameterSets.impl;
 
+import dataModelNew.mz.MZValue;
 import gui.util.TextFormatterOption;
 import io.XmlUtil;
 
@@ -24,7 +25,11 @@ import java.io.IOException;
 import java.io.Serial;
 import java.io.Serializable;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 
+import io.nu.IsotopePtoeDialog;
+import javafx.stage.Window;
 import math.stat.MeasureOfLocation;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
@@ -34,6 +39,8 @@ import processing.parameterSets.AbstractParamSet;
 import processing.parameterSets.AvailableParameterSets;
 import processing.parameterSets.ParamSet;
 import processing.parameters.*;
+import sandbox.montecarlo.Isotope;
+import util.Functional;
 import util.NF;
 
 public class NormalSearchParams extends AbstractParamSet implements ParamSet {
@@ -65,7 +72,9 @@ public class NormalSearchParams extends AbstractParamSet implements ParamSet {
   private ThresholdBundle pValueThreshold;
   private Parameter<Boolean> enableSingleComponentPValueThreshold;
   private ThresholdBundle singleComponentPValueThreshold;
-  private Parameter<Boolean> onlyUseSelectedIsotopesForPValue;
+  private Parameter<IsotopeSelection> isotopeSelection;
+  private Parameter<String> excludedIsotopes;
+  private Parameter<String> includedIsotopes;
   private Parameter<CombinedPStatistics> pStatistics;
 
   private final Parameter<NetCorrectionOption> netCorrectionOption;
@@ -330,13 +339,54 @@ public class NormalSearchParams extends AbstractParamSet implements ParamSet {
     singleComponentPValueThreshold.getAlpha().setValue(0.0005);
     singleComponentPValueThreshold.getFactor().setValue(3.29);
 
-    this.onlyUseSelectedIsotopesForPValue = new BooleanParameter("Isotopes",
-        "Only use selected",
+    this.isotopeSelection = new ComboEnumParameter<>(
+        "Rules",
         """
-            For p-value computation, all unselected isotopes will be ignored""",
+            For this search, all loaded isotopes can be considered.
+            The pre-screen algorithm is intended to filter out isotopes that are noise-only.
+            However, it is possible to guide this via this option:
+            You may decide which isotopes are considered for the pValue computation.
+            a) use all loaded isotopes (table on the right-hand side of the screen),
+            b) use the selected isotopes (in table on the right-hand side of the screen),
+            c) 'Set list': create a selection in the submethod that is not affected by
+            selecting different isotopes in table on the right-hand side of the screen,
+            d) 'Exclude': create a 'blacklist' of isotopes that shall not be included
+             (besides these, all loaded isotopes will be used)""",
+        IsotopeSelection.ALL_LOADED,
+        IsotopeSelection.getUI(),
+        IsotopeSelection.class,
         false,
+        "isotopeSelection");
+
+    excludedIsotopes = new FeedbackStringParameter(
+        "Excluded",
+        """
+            """,
+        "ISOTOPE[m=19,e=F];ISOTOPE[m=20,e=Ne];ISOTOPE[m=21,e=Ne];ISOTOPE[m=22,e=Ne];ISOTOPE[m=78,e=Kr];" +
+            "ISOTOPE[m=80,e=Kr];ISOTOPE[m=82,e=Kr];ISOTOPE[m=83,e=Kr];ISOTOPE[m=84,e=Kr];ISOTOPE[m=86," +
+            "e=Kr];ISOTOPE[m=124,e=Xe];ISOTOPE[m=126,e=Xe];ISOTOPE[m=128,e=Xe];ISOTOPE[m=129,e=Xe];" +
+            "ISOTOPE[m=130,e=Xe];ISOTOPE[m=131,e=Xe];ISOTOPE[m=132,e=Xe];ISOTOPE[m=134,e=Xe];ISOTOPE[m=136," +
+            "e=Xe];ISOTOPE[m=209,e=Po];ISOTOPE[m=210,e=At];ISOTOPE[m=222,e=Rn];ISOTOPE[m=223,e=Fr];" +
+            "ISOTOPE[m=263,e=Rf];ISOTOPE[m=262,e=Db];ISOTOPE[m=266,e=Sg];ISOTOPE[m=264,e=Bh];ISOTOPE[m=269," +
+            "e=Hs];ISOTOPE[m=268,e=Mt];ISOTOPE[m=281,e=Ds];ISOTOPE[m=280,e=Rg];ISOTOPE[m=285,e=Cn];" +
+            "ISOTOPE[m=284,e=Nh];ISOTOPE[m=289,e=Fl];ISOTOPE[m=288,e=Mc];ISOTOPE[m=293,e=Lv];ISOTOPE[m=294," +
+            "e=Ts];ISOTOPE[m=294,e=Og];ISOTOPE[m=147,e=Pm];ISOTOPE[m=247,e=Cm];ISOTOPE[m=247,e=Bk];" +
+            "ISOTOPE[m=251,e=Cf];ISOTOPE[m=252,e=Es];ISOTOPE[m=257,e=Fm];ISOTOPE[m=258,e=Md];ISOTOPE[m=259," +
+            "e=No];ISOTOPE[m=262,e=Lr];ISOTOPE[m=98,e=Tc]",
+        TextFormatterOption.ALL_PASS,
         false,
-        "onlyUseSelectedIsotopesForPValue");
+        "excludedIsotopes"
+    );
+
+    includedIsotopes = new FeedbackStringParameter(
+        "Selection list",
+        """
+            """,
+        "",
+        TextFormatterOption.ALL_PASS,
+        false,
+        "includedIsotopes"
+    );
 
     this.pStatistics = new ComboEnumParameter<>(
         "Statistics",
@@ -445,7 +495,9 @@ public class NormalSearchParams extends AbstractParamSet implements ParamSet {
     this.prescreenMinEvents = params.prescreenMinEvents.copyWithoutChildren();
     this.pValueThreshold = params.pValueThreshold.getCopy();
     this.pValueStartStop = params.pValueStartStop.getCopy();
-    this.onlyUseSelectedIsotopesForPValue = params.onlyUseSelectedIsotopesForPValue.copyWithoutChildren();
+    this.isotopeSelection = params.isotopeSelection.copyWithoutChildren();
+    this.excludedIsotopes = params.excludedIsotopes.copyWithoutChildren();
+    this.includedIsotopes = params.includedIsotopes.copyWithoutChildren();
     this.enableSingleComponentPValueThreshold =
         params.enableSingleComponentPValueThreshold.copyWithoutChildren();
     this.singleComponentPValueThreshold = params.singleComponentPValueThreshold.getCopy();
@@ -519,7 +571,7 @@ public class NormalSearchParams extends AbstractParamSet implements ParamSet {
     searchAlgorithm.addConditionalChild(
         SearchAlgorithm.P_VALUE_ACCUMULATION,
         pStatistics,
-        onlyUseSelectedIsotopesForPValue,
+        isotopeSelection,
         prescreenStartStopCriterium.getThresholdOption(),
         prescreenHeightCriterium.getThresholdOption(),
         prescreenMinEvents,
@@ -530,6 +582,69 @@ public class NormalSearchParams extends AbstractParamSet implements ParamSet {
 
     enableSingleComponentPValueThreshold.addConditionalChild(true,
         singleComponentPValueThreshold.getThresholdOption());
+
+    isotopeSelection.addConditionalChild(IsotopeSelection.NEGATIVE_LIST_EXCLUSION, excludedIsotopes);
+    excludedIsotopes.setDecoration(new ParamSetterButtonDecoration<>("Select isotopes", "/img/tableTrace.png",
+        new Functional() {
+
+          @Override
+          public void proceed() {
+            proceed(null);
+          }
+
+          @Override
+          public void proceed(Window window) {
+            List<Isotope> prevSel = NuInterpreterParams.isotopeFromString(excludedIsotopes.getValue());
+
+            IsotopePtoeDialog dlg = IsotopePtoeDialog.forIsotopeSelection(
+                window,
+                dataModelNew.mz.Element.getAllIsotopes(),   // all isotopes available
+                // SpTool3Main.getRunTime().getMainWindowCtl().getAllIsotopes(),
+                prevSel);                  // null or empty = open blank
+
+            List<MZValue> resultingMZ = dlg.showAndWait();
+            if (resultingMZ != null) {
+              List<Isotope> resultingIsotopes = new ArrayList<>();
+              for (MZValue mzValue : resultingMZ) {
+                resultingIsotopes.add(mzValue.getIsotope());
+              }
+              excludedIsotopes.setValue(NuInterpreterParams.isotopesToString(resultingIsotopes));
+            }
+          }
+        }));
+
+    isotopeSelection.addConditionalChild(IsotopeSelection.POSITIVE_LIST_SELECTION, includedIsotopes);
+    includedIsotopes.setDecoration(new ParamSetterButtonDecoration<>("Select isotopes", "/img/tableTrace.png",
+        new Functional() {
+
+          @Override
+          public void proceed() {
+            proceed(null);
+          }
+
+          @Override
+          public void proceed(Window window) {
+            List<Isotope> prevSel = NuInterpreterParams.isotopeFromString(includedIsotopes.getValue());
+
+            IsotopePtoeDialog dlg = IsotopePtoeDialog.forIsotopeSelection(
+                window,
+                dataModelNew.mz.Element.getAllIsotopes(),   // all isotopes available
+                // SpTool3Main.getRunTime().getMainWindowCtl().getAllIsotopes(),
+                prevSel);                  // null or empty = open blank
+
+            List<MZValue> resultingMZ = dlg.showAndWait();
+            if (resultingMZ != null) {
+              List<Isotope> resultingIsotopes = new ArrayList<>();
+              for (MZValue mzValue : resultingMZ) {
+                resultingIsotopes.add(mzValue.getIsotope());
+              }
+              includedIsotopes.setValue(NuInterpreterParams.isotopesToString(resultingIsotopes));
+            }
+          }
+        }));
+
+
+    //
 
     netCorrectionOption.addConditionalChild(NetCorrectionOption.INDEX_APPROXIMATION, netTimeWindow,
         netTimeWindowLocation);
@@ -604,8 +719,10 @@ public class NormalSearchParams extends AbstractParamSet implements ParamSet {
           case "pValueStartStop" -> pValueStartStop.getThresholdOption();
           case "pValueStartStop" + ThresholdBundle.XML_ID_ALPHA -> pValueStartStop.getAlpha();
           case "pValueStartStop" + ThresholdBundle.XML_ID_FACTOR -> pValueStartStop.getFactor();
-          case "onlyUseSelectedIsotopesForPValue" -> onlyUseSelectedIsotopesForPValue;
 
+          case "isotopeSelection" -> isotopeSelection;
+          case "excludedIsotopes" -> excludedIsotopes;
+          case "includedIsotopes" -> includedIsotopes;
           case "enableSingleComponentPValueThreshold" -> enableSingleComponentPValueThreshold;
           case "singleComponentPValueThreshold" -> singleComponentPValueThreshold.getThresholdOption();
           case "singleComponentPValueThreshold" + ThresholdBundle.XML_ID_ALPHA ->
@@ -711,8 +828,17 @@ public class NormalSearchParams extends AbstractParamSet implements ParamSet {
     return singleComponentPValueThreshold;
   }
 
-  public Parameter<Boolean> getOnlyUseSelectedIsotopesForPValue() {
-    return onlyUseSelectedIsotopesForPValue;
+
+  public Parameter<IsotopeSelection> getIsotopeSelection() {
+    return isotopeSelection;
+  }
+
+  public List<Isotope> listExcludedIsotopes() {
+    return NuInterpreterParams.isotopeFromString(excludedIsotopes.getValue());
+  }
+
+  public List<Isotope> listIncludedIsotopes() {
+    return NuInterpreterParams.isotopeFromString(includedIsotopes.getValue());
   }
 
   public Parameter<NetCorrectionOption> getNetCorrectionOption() {
@@ -800,8 +926,16 @@ public class NormalSearchParams extends AbstractParamSet implements ParamSet {
       this.suppressNegativeValues = defaults.suppressNegativeValues;
     }
 
-    if (onlyUseSelectedIsotopesForPValue == null) {
-      this.onlyUseSelectedIsotopesForPValue = defaults.onlyUseSelectedIsotopesForPValue;
+    if (isotopeSelection == null) {
+      this.isotopeSelection = defaults.isotopeSelection;
+    }
+
+    if (excludedIsotopes == null) {
+      this.excludedIsotopes = defaults.excludedIsotopes;
+    }
+
+    if (includedIsotopes == null) {
+      this.includedIsotopes = defaults.includedIsotopes;
     }
 
     if (netTimeWindowLocation == null) {

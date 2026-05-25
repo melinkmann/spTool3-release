@@ -321,18 +321,50 @@ public class CustomColorPicker {
     return sliderWrapper;
   }
 
+//  public void show() {
+//    // Get current mouse position using java.awt.MouseInfo
+//    Point mouseLocation = MouseInfo.getPointerInfo().getLocation();
+//    double mouseX = mouseLocation.getX();
+//    double mouseY = mouseLocation.getY();
+//
+//    if (!popup.isShowing()) {
+//      // Show popup near the mouse location -> // Adjust offset as needed
+//      popup.show(SpTool3Main.getMainStage(), mouseX, mouseY - 500);
+//    } else {
+//      popup.setX(mouseX);
+//      popup.setY(mouseY - 500);
+//    }
+//  }
+
   public void show() {
-    // Get current mouse position using java.awt.MouseInfo
     Point mouseLocation = MouseInfo.getPointerInfo().getLocation();
     double mouseX = mouseLocation.getX();
     double mouseY = mouseLocation.getY();
 
+    // Get the screen bounds where the mouse currently is
+    javafx.geometry.Rectangle2D screenBounds = javafx.stage.Screen.getScreensForRectangle(
+            mouseX, mouseY, 1, 1)
+        .stream()
+        .findFirst()
+        .orElse(javafx.stage.Screen.getPrimary())
+        .getVisualBounds();
+
+    double popupWidth  = 350;
+    double popupHeight = 300;
+
+    // Prefer showing above the mouse, fall back to below if not enough room
+    double x = mouseX;
+    double y = mouseY - popupHeight - 10;
+
+    // Clamp to the screen the mouse is actually on
+    x = Math.max(screenBounds.getMinX(), Math.min(x, screenBounds.getMaxX() - popupWidth));
+    y = Math.max(screenBounds.getMinY(), Math.min(y, screenBounds.getMaxY() - popupHeight));
+
     if (!popup.isShowing()) {
-      // Show popup near the mouse location -> // Adjust offset as needed
-      popup.show(SpTool3Main.getMainStage(), mouseX, mouseY - 500);
+      popup.show(SpTool3Main.getMainStage(), x, y);
     } else {
-      popup.setX(mouseX);
-      popup.setY(mouseY - 500);
+      popup.setX(x);
+      popup.setY(y);
     }
   }
 

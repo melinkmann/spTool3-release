@@ -233,6 +233,49 @@ public abstract class AnalysisUtils {
     return isotopesUnique;
   }
 
+  /// /////////////////////////////////////////////////////////////////////////////////////////////
+  /// ////////////////////////////// Check if Aligned /////////////////////////////////////////////
+  /// /////////////////////////////////////////////////////////////////////////////////////////////
+
+  /**
+   * Check if we are dealing with aligned population by align or pValue
+   */
+  public static boolean isAlignedOrPVal(PopulationID id) {
+    return isAligned(id) || isPVal(id);
+  }
+
+  public static boolean isAnyAlignedOrPVal(List<PopulationID> ids) {
+    return ids.stream().anyMatch(id -> isAligned(id) || isPVal(id));
+  }
+
+  public static boolean isAllAlignedOrPVal(List<PopulationID> ids) {
+    return ids.stream().allMatch(id -> isAligned(id) || isPVal(id));
+  }
+
+  public static boolean isAligned(PopulationID id) {
+
+    boolean isAligned = id.getSteps().stream()
+        .anyMatch(popStep -> popStep instanceof PopulationStep.AlignSubtype);
+
+    return isAligned;
+  }
+
+  public static boolean isPVal(PopulationID id) {
+    boolean isPValSearch = false;
+    for (PopulationStep popStep : id.getSteps()) {
+      if (popStep instanceof PopulationStep.SearchSubtype) {
+        if (((PopulationStep.SearchSubtype) popStep).getSearchAlgorithm()
+            .equals(SearchAlgorithm.P_VALUE_ACCUMULATION)) {
+          isPValSearch = true;
+          // one is enough
+          break;
+        }
+      }
+    }
+
+    return isPValSearch;
+  }
+
   ////////////////////////////////////////////////////////////////////////////////////////////////
   ///////////////////////////////// Data getters /////////////////////////////////////////////////
   ////////////////////////////////////////////////////////////////////////////////////////////////

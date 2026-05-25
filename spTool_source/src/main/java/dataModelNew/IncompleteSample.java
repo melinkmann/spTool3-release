@@ -32,7 +32,6 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.Serial;
 import java.io.Serializable;
-import java.lang.ref.SoftReference;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -40,7 +39,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 
 import math.units.Unit;
-import math.units.enums.IntensityUnit;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.jetbrains.annotations.Nullable;
@@ -255,6 +253,12 @@ public class IncompleteSample implements Sample, Serializable {
     return Collections.unmodifiableList(new ArrayList<>(traces.keySet()));
   }
 
+
+  @Override
+  public List<Isotope> getRecordedTofRange() {
+    return new ArrayList<>();
+  }
+
   @Override
   public List<ParticlePopulationMatrix> getMatrices() {
     return new ArrayList<>();
@@ -267,12 +271,12 @@ public class IncompleteSample implements Sample, Serializable {
 
   @Override
   @Nullable
-  public HacCrWrapper getHacWrapper(PopulationID popID) {
+  public HacInstructionWrapper getHacWrapper(PopulationID popID) {
     return null;
   }
 
   @Override
-  public void putHacWrapper(PopulationID popID, HacCrWrapper wrapper) {
+  public void putHacWrapper(PopulationID popID, HacInstructionWrapper wrapper) {
     // nada
   }
 

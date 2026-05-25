@@ -25,11 +25,14 @@ import dataModelNew.Trace;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import processing.options.EventParameter;
+import processing.options.EventType;
 import processing.parameterSets.impl.IsotopeRemoverParams;
 import tasks.TaskResult;
 import tasks.WorkingTask;
 import tasks.results.EmptyTaskResult;
 import tasks.results.FunctionalTaskResult;
+import util.ArrUtils;
 import util.NF;
 import util.SnF;
 
@@ -61,7 +64,6 @@ public class IsotopeRemoverTask extends AbstractWorkingTask implements WorkingTa
     TaskResult taskResult = new FunctionalTaskResult(() -> {
       // We changed traces
       if (hasChanged.get()) {
-        SpTool3Main.getRunTime().getMainWindowCtl().updateSampleSets(); // this should refresh isotope view
         LOGGER.debug("Isotopes have been filtered and some were removed.");
       } else {
         LOGGER.debug("Did not remove any isotopes.");
@@ -101,16 +103,27 @@ public class IsotopeRemoverTask extends AbstractWorkingTask implements WorkingTa
                     int nEvt = trace.getNoOfEvents(popID);
                     double duration = trace.getTISeries().getDuration();
                     double rate = nEvt / duration;
+                    double minNetArea = ArrUtils.getMin(trace.get(popID, EventType.NP, EventParameter.NET_AREA));
+
                     int lowerCutoff = params.getLowerIsotopeAbsoluteCutoff().getValue();
                     double upperCutoff = params.getUpperIsotopeRateCutoff().getValue();
+                    double lowerAreaCutoff = params.getNetAreaThreshold().getValue();
                     if (rate > upperCutoff && params.getRemoveMoreIsotopesThan().getValue()) {
-                      badTraces.put(trace,
-                          trace.getMzValue().getName() + ">" + SnF.doubleToString(upperCutoff, NF.D1C1));
+                      badTraces.merge(trace,
+                          trace.getMzValue().getName() + ">" + SnF.doubleToString(upperCutoff, NF.D1C1),
+                          (existing, newVal) -> existing + "&" + newVal);
                       hasChanged.set(true);
                     }
-                    if (nEvt < lowerCutoff && params.getRemoveFewerIsotopesThan().getValue() ) {
-                      badTraces.put(trace,
-                          trace.getMzValue().getName() + "<" + lowerCutoff);
+                    if (nEvt < lowerCutoff && params.getRemoveFewerIsotopesThan().getValue()) {
+                      badTraces.merge(trace,
+                          trace.getMzValue().getName() + "<" + lowerCutoff,
+                          (existing, newVal) -> existing + "&" + newVal);
+                      hasChanged.set(true);
+                    }
+                    if (minNetArea < lowerAreaCutoff && params.getRemoveLessIntenseIsotopesThan().getValue()) {
+                      badTraces.merge(trace,
+                          trace.getMzValue().getName() + "<" + minNetArea + "cts",
+                          (existing, newVal) -> existing + "&" + newVal);
                       hasChanged.set(true);
                     }
                   } else {

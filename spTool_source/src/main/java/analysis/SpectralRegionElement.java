@@ -29,7 +29,10 @@ public class SpectralRegionElement {
 
     int elementCount = elements.size();
     // Each SpectralArray holds one intensity value per region (particle)
-    int regionsCount = elementCount == 0 ? 0 : spectralArrays.get(0).getIntensity().length;
+    int regionsCount = 0;
+    if (!spectralArrays.isEmpty() && elementCount > 0){
+      regionsCount = spectralArrays.get(0).getIntensity().length;
+    }
 
     names = new ArrayList<>(elementCount);
     intensities = new ArrayList<>(elementCount);
@@ -37,18 +40,18 @@ public class SpectralRegionElement {
     for (int i = 0; i < elementCount; i++) {
 
       Element element = elements.get(i);
-      List<SpectralArray> subArrs = map.get(element);
+      List<SpectralArray> spectralArraysOfElement = map.get(element);
       names.add(element.getSymbol());
 
       // Sum intensities across all isotopes belonging to this element
       double[] data = new double[regionsCount];
-      if (subArrs != null) {
-        for (SpectralArray subArr : subArrs) {
-          data = ArrUtils.add(data, subArr.getIntensity());
+      if (spectralArraysOfElement != null) {
+        for (SpectralArray spectralArrayOfElement : spectralArraysOfElement) {
+          data = ArrUtils.add(data, spectralArrayOfElement.getIntensity());
         }
       }
 
-      // Store as one double[] per element, indexed by particle — layout: [element][particle]
+      // Store as one double[] per element, listed by particle
       intensities.add(data);
     }
   }

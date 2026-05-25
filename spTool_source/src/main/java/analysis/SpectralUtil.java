@@ -17,27 +17,20 @@
 
 package analysis;
 
-import dataModelNew.Sample;
-import dataModelNew.SampleFile;
-import dataModelNew.TISeries;
-import dataModelNew.Trace;
-import io.nu.NuReader;
-import io.nu.NuReaderResult;
-import javafx.util.Pair;
+import core.SpTool3Main;
+import dataModelNew.*;
+import gui.dialog.notification.NotificationFactory;
+import io.nu.NuReader_new;
+import io.nu.ParsedNuData;
+import javafx.application.Platform;
 import math.stat.MeasureOfLocation;
-import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
-import processing.options.SearchAlgorithm;
 import sandbox.montecarlo.Isotope;
 import util.Util;
 
-import javax.annotation.Nullable;
-import java.io.IOException;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
+import java.util.*;
 
 public abstract class SpectralUtil {
 
@@ -51,22 +44,9 @@ public abstract class SpectralUtil {
     } else {
 
       // check if we can compute spectra
-      boolean isAligned = popID.getSteps().stream()
-          .anyMatch(step -> step instanceof PopulationStep.AlignSubtype);
+      boolean isAligned = AnalysisUtils.isAlignedOrPVal(popID);
 
-      boolean isPValSearch = false;
-      for (PopulationStep step : popID.getSteps()) {
-        if (step instanceof PopulationStep.SearchSubtype) {
-          isPValSearch = ((PopulationStep.SearchSubtype) step).getSearchAlgorithm()
-              .equals(SearchAlgorithm.P_VALUE_ACCUMULATION);
-          if (isPValSearch) {
-            // one step is enough
-            break;
-          }
-        }
-      }
-
-      if (isAligned || isPValSearch) {
+      if (isAligned) {
         for (Sample sample : mainSample.getAllSamples()) {
 
           List<Isotope> isotopes = sample.listIsotopes();
@@ -84,7 +64,14 @@ public abstract class SpectralUtil {
                 List<Integer> indices = npEvent.getIndicesList();
                 npIndices.addAll(indices);
               }
-              List<Integer> bgIndices = MainEventCollection.getBGIndicesBitSet(totalDP, npIndices, (int) 1E5);
+
+              int skip;
+              if (totalDP > 1E6) {
+                skip = 10;
+              } else {
+                skip = 5;
+              }
+              List<Integer> bgIndices = MainEventCollection.getBGIndicesBitSet(totalDP, npIndices, skip);
 
               // Case A: we can reload the whole data set
               SampleFile sampleFile = sample.getSampleFile();
@@ -94,6 +81,13 @@ public abstract class SpectralUtil {
               if (Util.isNuPath(sampleDir)) {
                 result = getSpectralDataFromNUFile(sample, isotopes, sampleDir, bgIndices, npEvents);
               } else {
+                if (sampleFile.getInstrumentID().equals(InstrumentID.NU_VITESSE)) {
+                  Platform.runLater(() -> NotificationFactory.openInfo("""
+                      Cannot find the corresponding NU Vitesse data on you drive!
+                      Please update the path of your samples!
+                      The spectrum will be computed based on the imported isotopes only
+                      and will thus be incomplete!"""));
+                }
                 result = getSpectralData(sample, isotopes, bgIndices, npEvents);
               }
               // store result to sample
@@ -106,6 +100,7 @@ public abstract class SpectralUtil {
       }
     }
   }
+
 
   public static List<SpectralArray> getSpectralData(Sample subSample,
                                                     List<Isotope> isotopes,
@@ -176,7 +171,7 @@ public abstract class SpectralUtil {
           if (peakIdx > 0) {
             grossHeight = intensity[peakIdx];
           }
-          heightToBGArr[i] = grossHeight/bg;
+          heightToBGArr[i] = grossHeight / bg;
           ///
           nPoints[i] = intensity.length;
 
@@ -201,98 +196,76 @@ public abstract class SpectralUtil {
     Path nuDir = Util.getCheckedNuPathDir(sampleDir);
 
     // Check which MZ are there in NU folder
-    try {
-      NuReaderResult scan = NuReader.readAvailableMZ(nuDir);
-      LOGGER.trace("Read available mz values from NU data.");
-      NuReaderResult nuData = NuReader.readSelectedChannels(nuDir, scan.mzValues);
-      LOGGER.trace("Read time and intensity from NU data.");
+    ParsedNuData nuData = NuReader_new.getFromCacheOrParse(nuDir, null, null, null);
+    if (nuData != null && nuData.isValid()) {
 
-      // maintains order of isotopes
-      List<Double> validMZValues = new ArrayList<>();
-      HashMap<Double, Double> meanBGData = new HashMap<>();
+      // iterator not to load all into RAM at the same time
+      Iterator<ParsedNuData.ParsedNuDataArray> it = nuData.getIsotopeArrayIterator();
 
-      // first find mean BG
-      for (Double mzDoubleVal : scan.mzValues) {
-        TISeries ser = nuData.channelData.get(mzDoubleVal);
-        if (ser == null) {
-          continue;   // channel was not loaded (should not happen, but guard anyway)
-        }
-        List<Double> bgData = new ArrayList<>(bgIndices.size());
-        for (Integer bgIndex : bgIndices) {
-          if (ser.size() > bgIndex) {
-            bgData.add(ser.getIntensity()[bgIndex]);
+      // store the event indices (else we create the same array all the time)
+      HashMap<Event, int[]> eventIndexBuffer = new HashMap<>();
+
+      while (it.hasNext()) {
+        ParsedNuData.ParsedNuDataArray parsedData = it.next();
+        if (parsedData != null && parsedData.intensity().length > 0) {
+          double[] intensityArr = parsedData.intensity();
+
+          // Find Mean BG
+          int serSize = intensityArr.length;
+          double sum = 0;
+          int count = 0;
+          for (int bgIndex : bgIndices) {
+            if (serSize > bgIndex) {
+              sum += intensityArr[bgIndex];
+              count++;
+            }
           }
+          double meanBgPerDt = (count > 0) ? sum / count : 0.0;
+
+          // loop over NP
+          double[] specArr = new double[npEvents.size()];
+          double[] symmetryArr = new double[npEvents.size()];
+          double[] heightToBGArr = new double[npEvents.size()];
+          double[] nPoints = new double[npEvents.size()];
+
+          HashMap<String, double[]> extraFeatures = new HashMap<>();
+          extraFeatures.put("Symmetry", symmetryArr);
+          extraFeatures.put("heightToBackground", heightToBGArr);
+          extraFeatures.put("numberOfPoints", nPoints);
+
+          for (int i = 0; i < specArr.length; i++) {
+            Event npEvent = npEvents.get(i);
+            int[] indices = eventIndexBuffer.computeIfAbsent(npEvent, Event::getIndices);
+
+            double[] intensity = new double[indices.length];
+
+            double totalNpSum = 0;
+            for (int j = 0; j < indices.length; j++) {
+              int index = indices[j];
+              // subtract mean bg per DT for each data point
+              double intensityValue = intensityArr[index];
+              totalNpSum += intensityValue - meanBgPerDt;
+              intensity[j] = intensityValue;
+            }
+            specArr[i] = totalNpSum;
+            ///
+            int peakIdx = getPeakIdx(intensity);
+            symmetryArr[i] = strictlyPositiveAsymmetryFactor(intensity, peakIdx);
+            ///
+            double bg = Math.max(1, npEvent.getBgPerNP());
+            // avoid division by <1 (which inflates ratio to larger value than net height)
+            double grossHeight = 0;
+            if (peakIdx > 0) {
+              grossHeight = intensity[peakIdx];
+            }
+            heightToBGArr[i] = grossHeight / bg;
+            ///
+            nPoints[i] = intensity.length;
+          }
+          SpectralArray spec = new SpectralArray(parsedData.requestedMZ(), specArr, extraFeatures);
+          result.add(spec);
         }
-        double meanBG = MeasureOfLocation.MEAN.calc(bgData);
-        meanBGData.put(mzDoubleVal, meanBG);
-        validMZValues.add(mzDoubleVal);
       }
-
-      LOGGER.trace("Finished parsing NU background data.");
-
-      /*
-       TODO: We should offer an option to exclude certain isotopes here!
-        In case we know that there are isobaric interferences,
-        e.g., Ca/Ti or in the REE region,
-        I assume, the best way to go ahead is
-        a) ignore all isobars
-        b) define "preferred isotopes"
-        One idea could be to have two versions of this function (or a boolean):
-        a) show all MZ for spectrum regardless interferences (we want to see them)
-        b) restricted list of MZ for cluster analysis (we could even filter downstream tbh)
-       */
-
-      // Then assign NP data
-      for (Double mz : validMZValues) {
-        double[] specArr = new double[npEvents.size()];
-        double[] symmetryArr = new double[npEvents.size()];
-        double[] heightToBGArr = new double[npEvents.size()];
-        double[] nPoints = new double[npEvents.size()];
-
-        HashMap<String, double[]> extraFeatures = new HashMap<>();
-        extraFeatures.put("Symmetry", symmetryArr);
-        extraFeatures.put("heightToBackground", heightToBGArr);
-        extraFeatures.put("numberOfPoints", nPoints);
-
-        for (int i = 0; i < specArr.length; i++) {
-          Event npEvent = npEvents.get(i);
-          int[] indices = npEvent.getIndices();
-          double[] intensity = new double[indices.length];
-
-          TISeries ser = nuData.channelData.get(mz);
-          double meanBgPerDt = meanBGData.get(mz);
-          double totalNpSum = 0;
-          for (int j = 0; j < indices.length; j++) {
-            int index = indices[j];
-            // subtract mean bg per DT for each data point
-            double intensityValue = ser.getIntensity()[index];
-            totalNpSum += intensityValue - meanBgPerDt;
-            intensity[j] = intensityValue;
-          }
-          specArr[i] = totalNpSum;
-          ///
-          int peakIdx = getPeakIdx(intensity);
-          symmetryArr[i] = strictlyPositiveAsymmetryFactor(intensity, peakIdx);
-          ///
-          double bg = Math.max(1, npEvent.getBgPerNP());
-          // avoid division by <1 (which inflates ratio to larger value than net height)
-          double grossHeight = 0;
-          if (peakIdx > 0) {
-            grossHeight = intensity[peakIdx];
-          }
-          heightToBGArr[i] = grossHeight/bg;
-          ///
-          nPoints[i] = intensity.length;
-        }
-        SpectralArray spec = new SpectralArray(mz, specArr, extraFeatures);
-        result.add(spec);
-      }
-
-    } catch (IOException ex) {
-      LOGGER.error("Error reading nu data." +
-          " Message: " + ExceptionUtils.getMessage(ex)
-          + " Stack trace: " + ExceptionUtils.getStackTrace(ex));
-      result = getSpectralData(subSample, isotopes, bgIndices, npEvents);
     }
     return result;
   }
@@ -314,29 +287,14 @@ public abstract class SpectralUtil {
     return idx;
   }
 
-  public static double strictlyPositiveAsymmetryFactor(double[] values) {
-    return strictlyPositiveAsymmetryFactor(values, null);
-  }
 
-  public static double strictlyPositiveAsymmetryFactor(double[] values, @Nullable Integer peakIdx) {
-
+  public static double strictlyPositiveAsymmetryFactor(double[] values, Integer peakIdx) {
     double result = 1;
 
-    if (values != null && values.length > 2) {
-
-      int peakIndex;
-      if (peakIdx == null) {
-        peakIndex = getPeakIdx(values);
-      } else {
-        peakIndex = peakIdx;
-      }
-
-      if (peakIndex > 0) {
-        double a = peakIndex;                          // distance from start to apex
-        double b = (values.length - 1) - peakIndex;   // distance from apex to end
-        result = 2d * b / (a + b);
-      }
-
+    if (values != null && values.length > 2 && peakIdx > 0) {
+      double a = peakIdx;                          // distance from start to apex
+      double b = (values.length - 1) - peakIdx;   // distance from apex to end
+      result = 2d * b / (a + b);
     }
 
     return result;

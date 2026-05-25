@@ -65,7 +65,7 @@ public class SpTool3Main extends Application {
   public static final Boolean SHOW_PVALUE_EXPORT = true;
   public static final Boolean SHOW_PRECISION_RECALL_EXPORT = true;
 
-  public static final String VERSION_ID = "3.1.3";
+  public static final String VERSION_ID = "3.1.4";
 
   public static final String AUTHOR_STATEMENT =
       """     
@@ -119,7 +119,6 @@ public class SpTool3Main extends Application {
       LOGGER.fatal("Uncaught exception in thread {}", thread.getName(), throwable);
     });
 
-
     launch(args);
   } // main end
 
@@ -169,9 +168,9 @@ public class SpTool3Main extends Application {
             + "\n"
             + "\n"
             + SpTool3Main.AUTHOR_STATEMENT,
-        Functional.empty(), // Event is not consumed, i.e. stage closes
+        Functional.empty(), // Event is not consumed, i.e., stage closes
         () -> {
-          event.consume();
+          event.consume(); // Event is consumed, i.e., stage does not close
           // e.g. Clear unsaved changes AND then write to store the defaults.
         });
   }

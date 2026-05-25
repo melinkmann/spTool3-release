@@ -153,5 +153,5 @@ public enum MathMod {
   public abstract String getUiString();
 
   // Smallest positive double to use as a finite substitute for log10(0)
-  private static final double LOG_ZERO = Math.log10(Math.nextUp(0.0));
+  public static final double LOG_ZERO = Math.log10(Math.nextUp(0.0));
 }

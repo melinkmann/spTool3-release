@@ -90,6 +90,7 @@ public class TaskManager {
   private Text ramStatusLbl = new Text("0000/0000 MB");
   // Storage status
   private final AtomicInteger storageFileCounter = new AtomicInteger(0);
+  private final AtomicDouble tempFileSize = new AtomicDouble(0);
   private Text storageStatusLbl = new Text("0 GB");
 
   // Needed to cover the waiting list in the progress.
@@ -340,7 +341,8 @@ public class TaskManager {
 
     Platform.runLater(() -> {
       ramStatusLbl.setText(ram);
-      storageStatusLbl.setText(storageFileCounter.get() + " GB");
+      double storage = tempFileSize.get() + storageFileCounter.get();
+      storageStatusLbl.setText(SnF.doubleToString(storage, NF.D1C1) + " GB");
     });
   }
 
@@ -433,6 +435,10 @@ public class TaskManager {
 
   public synchronized void notifyNewStorageFile() {
     storageFileCounter.incrementAndGet();
+  }
+
+  public synchronized void notifyNewTempFile(double gb) {
+    tempFileSize.getAndAdd(gb);
   }
 
   // ________________________________________________________

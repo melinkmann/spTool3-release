@@ -18,10 +18,13 @@
 package tasks.single;
 
 import analysis.ResettableStatDataSet;
+import com.google.common.util.concurrent.AtomicDouble;
 import core.SpTool3Main;
 import dataModelNew.*;
+import dataModelNew.mz.IsotopeMZ;
 import dataModelNew.mz.MZValue;
 import dataModelNew.mz.SQmz;
+import dataModelNew.mz.TOFmz;
 import gui.dialog.notification.NotificationFactory;
 import io.nu.*;
 import javafx.application.Platform;
@@ -32,20 +35,22 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import processing.options.IsotopeConflictReaderOption;
 import processing.options.TofIsotopeOption;
+import processing.parameterSets.impl.ConfParams;
 import processing.parameterSets.impl.NuInterpreterParams;
 import sandbox.montecarlo.Isotope;
 import tasks.TaskResult;
 import tasks.WorkingTask;
 import tasks.results.FunctionalTaskResult;
+import util.Functional;
 
 import javax.annotation.Nullable;
 import java.io.IOException;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.FutureTask;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 public class NuImportTask extends AbstractWorkingTask implements WorkingTask {
 
@@ -85,85 +90,100 @@ public class NuImportTask extends AbstractWorkingTask implements WorkingTask {
 
     List<Sample> result = new ArrayList<>();
 
+    // these keep track of progress in the functions of the NU parser
+    AtomicDouble progressValue = new AtomicDouble();
+    Functional progressTicker = new Functional() {
+      @Override
+      public void proceed() {
+        setProgress(progressValue.get());
+      }
+    };
+
     // Catch any Exception that may occur in the background that would not go through the stack.
+    setProgress(0);
+    // START ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ##
+    LOGGER.info("Nu import starts for " + directory
+        + " in thread " + Thread.currentThread().getId());
+
+    ParsedNuData nuData = null;
     try {
-      setProgress(0);
-      // START ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ##
-      LOGGER.info("Nu import starts for " + directory
-          + " in thread " + Thread.currentThread().getId());
 
-      NuReaderResult full = null;
-      try {
+      TofIsotopeOption tofOption = params.getIsotopeSelectionStrategy().getValue();
+      double alpha = params.getPreScreenAlpha().getValue();
+      MeasureOfLocation location = params.getPreScreenMeasureOfLocation().getValue();
+      double siaShape = params.getPreScreenSiaShape().getValue();
+      int nThr = params.getPreScreenDataPoints().getValue();
+      IsotopeConflictReaderOption conflictOption = params.getPreScreenConflictResolution().getValue();
 
-        TofIsotopeOption tofOption = params.getIsotopeSelectionStrategy().getValue();
-        double alpha = params.getPreScreenAlpha().getValue();
-        MeasureOfLocation location = params.getPreScreenMeasureOfLocation().getValue();
-        double siaShape = params.getPreScreenSiaShape().getValue();
-        int nThr = params.getPreScreenDataPoints().getValue();
-        IsotopeConflictReaderOption conflictOption = params.getPreScreenConflictResolution().getValue();
+      setProgress(0.1);
 
-        // Check which MZ are there in NU folder
-        NuReaderResult scan = NuReader.readAvailableMZ(directory);
+      // Track which isotopes are available, however, we do not interpret them yet so that the user can
+      // decide to import 48Ca or 48Ti.
+      List<Double> availableMZ = NuReader_new.listAvailableMZFromCacheOrParse(directory);
+      List<Isotope> recordedToFRange = Isotope.getFromNominalMass(availableMZ);
 
-        setProgress(0.1);
+      // Now decide the actual import:
+      switch (tofOption) {
+        /// USE THE SELECTION BY THE USER
+        case DEFAULTS -> {
+          if (getIsStopped().get()) {
+            break;
+          }
+          // Bridge: restore previously saved isotope preferences to pre-select
+          // matching channels in the dialog. Pass empty list if no prefs stored yet.
+          List<Isotope> userSelMZ = params.listDefaultIsotopes();
+          HashMap<Double, Isotope> isotopeMap = new HashMap<>();
+          List<Double> prevSelMZ = new ArrayList<>();
+          for (Isotope isotope : userSelMZ) {
+            prevSelMZ.add(isotope.getTheoreticalMass());
+            isotopeMap.put(isotope.getTheoreticalMass(), isotope);
+          }
 
-        switch (tofOption) {
-          /// USE THE SELECTION BY THE USER
-          case DEFAULTS -> {
+          if (!userSelMZ.isEmpty()) {
+            nuData = NuReader_new.getFromCacheOrParse(directory, progressTicker, progressValue,
+                getIsStopped());
+
             if (getIsStopped().get()) {
               break;
             }
-            // Bridge: restore previously saved isotope preferences to pre-select
-            // matching channels in the dialog. Pass empty list if no prefs stored yet.
-            List<Isotope> prevSel = params.listDefaultIsotopes();
 
-            List<MZValue> resultingMZ = new ArrayList<>();
-            // Isotop equality by int value of nominal mass
-            List<Double> availableDoubleMZ = scan.mzValues;
-            // We MUST use the actual MZ as double to match what is presented inside NU data.
-            for (Double mz : availableDoubleMZ) {
-              int nominal = (int) Math.round(mz);
-              for (Isotope isotope : prevSel) {
-                if (isotope.getIsotopicNumber() == nominal) {
-                  resultingMZ.add(new SQmz(mz, isotope));
-                }
-              }
-            }
+            if (nuData != null && nuData.isValid()) {
+              Sample sample = new SampleImpl(directory.getFileName().toString(),
+                  new SampleFile(directory, InstrumentID.NU_VITESSE),recordedToFRange);
+              List<Trace> traces = new ArrayList<>();
 
-            if (!resultingMZ.isEmpty()) {
+              List<ParsedNuData.ParsedNuDataResult> data = nuData.getIsotopeData(prevSelMZ);
 
-              // Load the selected channels using recorded mz values (not theoretical)
-              // so that channelData map keys match mzVal.getMZ() exactly below.
-              List<Double> recordedMzList = new ArrayList<>();
-              for (MZValue mzValue : resultingMZ) {
-                recordedMzList.add(mzValue.getMZ());
-              }
-              setProgress(0.3);
-              full = NuReader.readSelectedChannels(directory, recordedMzList);
+              for (ParsedNuData.ParsedNuDataResult parsedData : data) {
 
-              if (getIsStopped().get()) {
-                break;
-              }
-
-              Sample sample = new SampleImpl(directory.getFileName().toString(), new SampleFile(directory));
-              for (MZValue mzVal : resultingMZ) {
-                TISeries ser = full.channelData.get(mzVal.getMZ());
-                List<int[]> blanks = full.blankedTimeRanges.get(mzVal.getMZ());
+                TISeries ser = parsedData.tiSeries();
+                List<int[]> blanks = parsedData.blanker();
 
                 if (ser == null) {
                   continue;   // channel was not loaded (should not happen, but guard anyway)
                 }
 
-                double sia = ShapeEstimator2.computeShape(ser.getIntensity(), blanks);
+                double sia = ShapeEstimator.computeShape(ser.getIntensity(), blanks);
                 if (!Double.isFinite(sia)) {
                   sia = 0;
                 }
 
+                Isotope isotope = isotopeMap.get(parsedData.requestedMZ());
+                if (isotope != null) {
+                  traces.add(new TraceImpl(sample, new IsotopeMZ(isotope), ser, sia));
+                } else {
+                  LOGGER.error("Unexpected mismatch of isotope and m/z.");
+                }
+              }
 
-                sample.addTrace(new TraceImpl(sample, mzVal, ser, sia));
+              // insert traces in sorted order (backed by linked HashMap in Sample)
+              traces.sort(Comparator.comparingDouble(t -> t.getMzValue().getMZ()));
+              for (Trace trace : traces) {
+                sample.addTrace(trace);
               }
 
               if (!sample.getTraces().isEmpty()) {
+                // Handle case where we reload isotopes into an existing sample
                 if (existingSample == null) {
                   // make sure to switch the traces to HDD
                   sample.getTraces().forEach(Trace::toHDD);
@@ -172,7 +192,7 @@ public class NuImportTask extends AbstractWorkingTask implements WorkingTask {
                   if (!sample.getMethod().getSets().contains(params)) {
                     sample.getMethod().getSets().add(params);
                   }
-                  // Should be guaranteed but check anyway
+                  // instanceof SampleImpl should be guaranteed but check anyway
                 } else if (existingSample instanceof SampleImpl) {
                   HashSet<Trace> existingTraces = new HashSet<>(existingSample.getTraces());
                   HashSet<Trace> newTraces = new HashSet<>(sample.getTraces());
@@ -192,21 +212,26 @@ public class NuImportTask extends AbstractWorkingTask implements WorkingTask {
                     }
                   }
                 }
-
-              } else {
-                Platform.runLater(() -> {
-                  NotificationFactory.openInfo("The sample did not contain any of the requested isotopes. " +
-                      "The sample was not loaded.");
-                });
               }
+            } else {
+              Platform.runLater(() -> {
+                NotificationFactory.openInfo("The sample did not contain any of the requested isotopes." +
+                    " " +
+                    "The sample was not loaded.");
+              });
             }
-
           }
-          /// OPEN THE DIALOG
-          case DIALOG -> {
-            if (getIsStopped().get()) {
-              break;
-            }
+
+        }
+
+        /// OPEN THE DIALOG
+        case DIALOG -> {
+          if (getIsStopped().get()) {
+            break;
+          }
+
+          // This is based on which MZ are there in NU folder
+          if (availableMZ != null && !availableMZ.isEmpty()) {
 
             // <<< ChatGPT to get the dialog essentially from another thread
             // NEVER block FX thread
@@ -229,7 +254,7 @@ public class NuImportTask extends AbstractWorkingTask implements WorkingTask {
 
               IsotopePtoeDialog dlg = new IsotopePtoeDialog(
                   parentStage,
-                  scan.mzValues,
+                  availableMZ,
                   prevSel
               );
 
@@ -246,13 +271,13 @@ public class NuImportTask extends AbstractWorkingTask implements WorkingTask {
             } catch (InterruptedException | ExecutionException e) {
               LOGGER.error("Prompting for isotope selection failed. Try another isotope selection option " +
                   "form the import.");
-              resultingMZ = new ArrayList<>();
               break;
             }
 
             if (resultingMZ != null && !resultingMZ.isEmpty()) {
 
-              // Persist the user's isotope choices for next time
+              // Persist the user's isotope choices for next time (this is not for the
+              // "csv reader" but for the dialog popup window)
               List<Isotope> selectedIsotopes = new ArrayList<>();
               for (MZValue mzValue : resultingMZ) {
                 selectedIsotopes.add(mzValue.getIsotope());
@@ -263,60 +288,84 @@ public class NuImportTask extends AbstractWorkingTask implements WorkingTask {
               // Load the selected channels using recorded mz values (not theoretical)
               // so that channelData map keys match mzVal.getMZ() exactly below.
               List<Double> recordedMzList = new ArrayList<>();
+              HashMap<Double, MZValue> mzMap = new HashMap<>();
               for (MZValue mzValue : resultingMZ) {
                 recordedMzList.add(mzValue.getMZ());
+                mzMap.put(mzValue.getMZ(), mzValue);
               }
 
               setProgress(0.3);
-              full = NuReader.readSelectedChannels(directory, recordedMzList);
+              nuData = NuReader_new.getFromCacheOrParse(directory, progressTicker, progressValue,
+                  getIsStopped());
 
               if (getIsStopped().get()) {
                 break;
               }
-              Sample s = new SampleImpl(directory.getFileName().toString(), new SampleFile(directory));
-              for (MZValue mzVal : resultingMZ) {
-                TISeries ser = full.channelData.get(mzVal.getMZ());
-                List<int[]> blanks = full.blankedTimeRanges.get(mzVal.getMZ());
 
-                if (ser == null) {
-                  continue;   // channel was not loaded (should not happen, but guard anyway)
-                }
+              if (nuData != null && nuData.isValid()) {
 
-                double sia = ShapeEstimator2.computeShape(ser.getIntensity(), blanks);
-                if (!Double.isFinite(sia)) {
-                  sia = 0;
-                }
+                Sample sample = new SampleImpl(directory.getFileName().toString(),
+                    new SampleFile(directory, InstrumentID.NU_VITESSE),recordedToFRange);
+                List<Trace> traces = new ArrayList<>();
 
-                s.addTrace(new TraceImpl(s, mzVal, ser, sia));
-              }
+                List<ParsedNuData.ParsedNuDataResult> data = nuData.getIsotopeData(recordedMzList);
 
-              if (!s.getTraces().isEmpty()) {
+                for (ParsedNuData.ParsedNuDataResult parsedData : data) {
 
-                if (existingSample == null) {
-                  // make sure to switch the traces to HDD
-                  s.getTraces().forEach(Trace::toHDD);
-                  SpTool3Main.getRunTime().getSampleReg().addNewSampleToWaitingList(s);
-                  // make sure the method is stored in the sample (esp. for isotope selection)
-                  if (!s.getMethod().getSets().contains(params)) {
-                    s.getMethod().getSets().add(params);
+                  TISeries ser = parsedData.tiSeries();
+                  List<int[]> blanks = parsedData.blanker();
+
+                  if (ser == null) {
+                    continue;   // channel was not loaded (should not happen, but guard anyway)
                   }
-                  // Should be guaranteed but check anyway
-                } else if (existingSample instanceof SampleImpl) {
-                  HashSet<Trace> existingTraces = new HashSet<>(existingSample.getTraces());
-                  HashSet<Trace> newTraces = new HashSet<>(s.getTraces());
 
-                  // existing sample: remove old traces
-                  for (Trace existingTrace : existingSample.getTraces()) {
-                    if (!newTraces.contains(existingTrace)) {
-                      existingSample.removeTraces(List.of(existingTrace));
+                  double sia = ShapeEstimator.computeShape(ser.getIntensity(), blanks);
+                  if (!Double.isFinite(sia)) {
+                    sia = 0;
+                  }
+
+                  MZValue mzValue = mzMap.get(parsedData.requestedMZ());
+                  if (mzValue != null) {
+                    traces.add(new TraceImpl(sample, mzValue, ser, sia));
+                  } else {
+                    LOGGER.error("Unexpected mismatch of m/z values.");
+                  }
+                }
+
+                // insert traces in sorted order (backed by linked HashMap in Sample)
+                traces.sort(Comparator.comparingDouble(t -> t.getMzValue().getMZ()));
+                for (Trace trace : traces) {
+                  sample.addTrace(trace);
+                }
+
+                if (!sample.getTraces().isEmpty()) {
+
+                  if (existingSample == null) {
+                    // make sure to switch the traces to HDD
+                    sample.getTraces().forEach(Trace::toHDD);
+                    SpTool3Main.getRunTime().getSampleReg().addNewSampleToWaitingList(sample);
+                    // make sure the method is stored in the sample (esp. for isotope selection)
+                    if (!sample.getMethod().getSets().contains(params)) {
+                      sample.getMethod().getSets().add(params);
                     }
-                  }
+                    // Should be guaranteed but check anyway
+                  } else if (existingSample instanceof SampleImpl) {
+                    HashSet<Trace> existingTraces = new HashSet<>(existingSample.getTraces());
+                    HashSet<Trace> newTraces = new HashSet<>(sample.getTraces());
 
-                  for (Trace newTrace : s.getTraces()) {
-                    if (!existingTraces.contains(newTrace)) {
-                      Trace newTraceHDD = newTrace.copy(existingSample);
-                      newTraceHDD.toHDD();
-                      existingSample.addTrace(newTraceHDD);
+                    // existing sample: remove old traces
+                    for (Trace existingTrace : existingSample.getTraces()) {
+                      if (!newTraces.contains(existingTrace)) {
+                        existingSample.removeTraces(List.of(existingTrace));
+                      }
+                    }
+
+                    for (Trace newTrace : sample.getTraces()) {
+                      if (!existingTraces.contains(newTrace)) {
+                        Trace newTraceHDD = newTrace.copy(existingSample);
+                        newTraceHDD.toHDD();
+                        existingSample.addTrace(newTraceHDD);
+                      }
                     }
                   }
                 }
@@ -329,27 +378,40 @@ public class NuImportTask extends AbstractWorkingTask implements WorkingTask {
               }
             }
           }
+        }
 
-          ///  READ ALL AND APPLY THRESHOLD
-          case THRESHOLD -> {
-            if (getIsStopped().get()) {
-              break;
-            }
 
-            List<Isotope> validIsotopes = new ArrayList<>();
-            // Just read all mz double values and filter later
-            setProgress(0.2);
-            full = NuReader.readSelectedChannels(directory, scan.mzValues);
-            setProgress(0.8);
+        ///  READ ALL AND APPLY THRESHOLD
+        case THRESHOLD -> {
+          if (getIsStopped().get()) {
+            break;
+          }
 
-            if (getIsStopped().get()) {
-              break;
-            }
-            Sample sample = new SampleImpl(directory.getFileName().toString(), new SampleFile(directory));
+          List<Isotope> validIsotopes = new ArrayList<>();
+          // Just read all mz double values and filter later
+          nuData = NuReader_new.getFromCacheOrParse(directory, progressTicker, progressValue,
+              getIsStopped());
 
-            for (Double mzDoubleVal : scan.mzValues) {
-              TISeries ser = full.channelData.get(mzDoubleVal);
-              List<int[]> blanks = full.blankedTimeRanges.get(mzDoubleVal);
+          if (getIsStopped().get()) {
+            break;
+          }
+
+          if (nuData != null && nuData.isValid()) {
+            Sample sample = new SampleImpl(directory.getFileName().toString(),
+                new SampleFile(directory, InstrumentID.NU_VITESSE),recordedToFRange);
+
+            List<ParsedNuData.ParsedNuDataResult> data = nuData.getIsotopeDataRAM();
+
+            List<ParsedNuData.ParsedNuDataResult> sortedData = new ArrayList<>(data);
+            sortedData.sort(Comparator.comparingDouble(ParsedNuData.ParsedNuDataResult::requestedMZ));
+
+            for (int i = 0; i < sortedData.size(); i++) {
+              progressValue.set(0.8 + 0.19 * ((double) i) / sortedData.size());
+
+              ParsedNuData.ParsedNuDataResult parsedData = sortedData.get(i);
+
+              TISeries ser = parsedData.tiSeries();
+              List<int[]> blanks = parsedData.blanker();
 
               if (ser == null) {
                 continue;   // channel was not loaded (should not happen, but guard anyway)
@@ -380,28 +442,51 @@ public class NuImportTask extends AbstractWorkingTask implements WorkingTask {
               }
 
               if (includeTrace) {
+                int roundedNominalIsotopicNumber = (int) Math.round(parsedData.requestedMZ());
 
-                int nominalMass = (int) Math.round(mzDoubleVal);
+                //______________ We resolve conflicts with configuration ______________________
                 if (conflictOption.equals(IsotopeConflictReaderOption.USE_DEFAULT)) {
-                  Isotope iso = SpTool3Main.getRunTime().getConfParams().resolveConflictOrGet(nominalMass);
-                  sample.addTrace(new TraceImpl(sample, new SQmz(mzDoubleVal, iso), ser));
-                  validIsotopes.add(iso);
+                  Isotope guessIsotope = SpTool3Main.getRunTime()
+                      .getConfParams().resolveConflictOrGet(roundedNominalIsotopicNumber);
+
+                  double sia = ShapeEstimator.computeShape(ser.getIntensity(), blanks);
+                  if (!Double.isFinite(sia)) {
+                    sia = 0;
+                  }
+
+                  // transfer to HDD
+                  if (ser instanceof DTISeriesRAM) {
+                    ser = new DTISeriesHDD((DTISeriesRAM) ser);
+                  }
+
+                  sample.addTrace(new TraceImpl(sample, new SQmz(parsedData.requestedMZ(),
+                      guessIsotope), ser, sia));
+                  validIsotopes.add(guessIsotope);
+
+                  //______________ we add all and e.g. 48 is both Ti and Ca ______________________
                 } else {
                   // add each
-                  List<Isotope> matches = Isotope.getFromNominalMass(nominalMass);
+                  List<Isotope> matches = Isotope.getFromNominalMass(roundedNominalIsotopicNumber);
                   for (Isotope isotopeMatch : matches) {
 
-                    double sia = ShapeEstimator2.computeShape(ser.getIntensity(), blanks);
+                    double sia = ShapeEstimator.computeShape(ser.getIntensity(), blanks);
                     if (!Double.isFinite(sia)) {
                       sia = 0;
                     }
 
-                    sample.addTrace(new TraceImpl(sample, new SQmz(mzDoubleVal, isotopeMatch), ser, sia));
+                    // transfer to HDD
+                    if (ser instanceof DTISeriesRAM) {
+                      ser = new DTISeriesHDD((DTISeriesRAM) ser);
+                    }
+
+                    sample.addTrace(new TraceImpl(sample, new SQmz(parsedData.requestedMZ(),
+                        isotopeMatch), ser, sia));
                     validIsotopes.add(isotopeMatch);
                   }
                 }
               }
             }
+
 
             if (!sample.getTraces().isEmpty()) {
               if (existingSample == null) {
@@ -433,20 +518,23 @@ public class NuImportTask extends AbstractWorkingTask implements WorkingTask {
                 }
               }
 
-              // This runs in parallel thread -> the results should only be stored in the local copy/that copy
-              // that goes into the sample impl. Else, we don't know which thread sets which value and
+              // This runs in parallel thread -> the results should only be stored in the local copy
+              // or the copy that goes into the sample impl.
+              // Else, we don't know which thread sets which value and
               // the outcome is entirely unpredictable/random!
+              // Thus, we set the PARAMS to the sample (a bit hacky, but works)
               params.requestSavingIsotopes(validIsotopes);
+
             } else {
               Platform.runLater(() -> {
-                NotificationFactory.openInfo("No isotopes provided enough particle events using thresholds " +
+                NotificationFactory.openInfo("No isotopes provided enough particle events using " +
+                    "thresholds " +
                     "defined in the nu import submethod. The sample was not loaded!");
               });
             }
           }
+
         }
-      } catch (IOException ex) {
-        throw new RuntimeException(ex);
       }
 
       LOGGER.info("Finished reading nu data from " + directory + ".");
@@ -460,7 +548,7 @@ public class NuImportTask extends AbstractWorkingTask implements WorkingTask {
       LOGGER.error(ExceptionUtils.getStackTrace(e));
     }
     return new FunctionalTaskResult(() -> {
-      // I believe this is done abve in each step (// todo check - seems to work like this so leave commented)
+      // I believe this is done abve in each step // (todo check - seems to work like this so leave commented)
       // List<Sample> samples = new ArrayList<>(result);
       // SpTool3Main.getRunTime().getSampleReg().addNewSampleToWaitingList(samples);
       if (existingSample != null) {

@@ -314,7 +314,7 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
         "Enable multithreading",
         """
             This may speed up saving projects depending on your system
-            CPS and RAM""",
+            CPU and RAM""",
         false,
         false,
         "allowMultithreadingCompression");
@@ -570,7 +570,7 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
     }
 
     HashMap<Integer, dataModelNew.mz.Element[]> potentialConflictIsotopes =
-        dataModelNew.mz.Element.getAllConflictingIsotopicNumbers();
+        dataModelNew.mz.Element.getAllConflictingIsotopicNumbersSorted();
     List<String> potentialConflictMasses = potentialConflictIsotopes.keySet()
         .stream()
         .map(i -> Integer.toString(i))
@@ -586,6 +586,10 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
                In the Nu import submethod you may specify to either load all conflicting isotopes
                or to resolve by using the conflict resolution specified here in the configuration.
                As an example, you can use this parameter to state that m/z 48 shall be loaded as 48Ti.
+            
+            2) For spectral data, e.g., for HAC analysis, the TOF data need to be translated to isotopes.
+               At import, spTool reads the configuration and stores that decision in the loaded data.
+               In the HAC, for instance, mass 40 will then only appear as Ca and not Ar.
             
             2) When importing data, e.g., from .csv files, spTool tries to assign an isotope to the data.
                If only an isotopic number is given or the element cannot be identified due to formatting issues,
@@ -714,7 +718,7 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
             Lower tolerated limit of the SIA shape factor for baseline computation.
             If exceeded, an average of all isotopes is used
             or if that is ill, too, the user specified parameter""",
-        0.2d,
+        0.35d,
         NF.D1C3,
         TextFormatterOption.ASSURE_NONZERO_POSITIVE_DOUBLE,
         false,
@@ -725,7 +729,7 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
             Lower tolerated limit of the SIA shape factor for baseline computation.
             If exceeded, an average of all isotopes is used
             or if that is ill, too, the user specified parameter""",
-        1d,
+        0.85d,
         NF.D1C3,
         TextFormatterOption.ASSURE_NONZERO_POSITIVE_DOUBLE,
         false,
@@ -1287,6 +1291,7 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
       }
     }
 
+    LOGGER.trace("Compression with parallel threads: {} threads.", threads);
     return threads;
   }
 
@@ -1463,6 +1468,8 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
       for (Isotope isotope : prefElement.getIsotopes()) {
         if (isotope.getIsotopicNumber() == isotopicNumber) {
           suggestion = isotope;
+          LOGGER.trace("Resolved conflict: Used user-defined default isotope from configuration: "
+              + suggestion.getName() + " for mz " + isotopicNumber);
           break;
         }
       }
@@ -1476,7 +1483,8 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
           }
         }
       }
-      LOGGER.trace("Used most abundant isotope " + suggestion.getName() + " for mz " + isotopicNumber);
+      // LOGGER.trace("No conflict to resolved: Used most abundant isotope " + suggestion.getName() + " for
+      // mz " + isotopicNumber);
       //} else {
       //  // there was no entry in the conflict map with that key --> isotope does not conflict
       //  for (Isotope candidate : dataModelNew.mz.Element.getAllIsotopes()) {

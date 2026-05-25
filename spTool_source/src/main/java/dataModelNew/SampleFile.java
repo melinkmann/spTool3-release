@@ -17,6 +17,15 @@
 
 package dataModelNew;
 
+import math.units.ConvertibleUnit;
+import math.units.enums.SensitivityUnit;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import util.Util;
+
+import javax.annotation.Nonnull;
+import java.io.IOException;
+import java.io.ObjectInputStream;
 import java.io.Serial;
 import java.io.Serializable;
 import java.net.URI;
@@ -29,9 +38,13 @@ public class SampleFile implements Serializable {
   @Serial
   private static final long serialVersionUID = 1_000_000L;
 
-  private final URI filePath;
+  private static final Logger LOGGER = LogManager.getLogger(SampleFile.class);
+
+  private URI filePath;
   private final String fileName;
   private final String nameWithinFile;
+
+  private InstrumentID instrumentID = InstrumentID.UNKNOWN;
 
   public SampleFile(Path filePath, String nameWithinFile) {
     this.filePath = filePath.toUri();
@@ -39,11 +52,11 @@ public class SampleFile implements Serializable {
     this.nameWithinFile = nameWithinFile;
   }
 
-  public SampleFile(Path filePath) {
+  public SampleFile(Path filePath, InstrumentID instrumentID) {
     this.filePath = filePath.toUri();
     this.fileName = filePath.getFileName().toString();
     this.nameWithinFile = filePath.getFileName().toString();
-
+    this.instrumentID = instrumentID;
   }
 
   public SampleFile(String nameWithinFile) {
@@ -63,6 +76,10 @@ public class SampleFile implements Serializable {
     this.filePath = URI.create(sampleFile.filePath.toString());
     this.fileName = new String(sampleFile.fileName);
     this.nameWithinFile = new String(sampleFile.nameWithinFile);
+  }
+
+  public boolean hasFile() {
+    return !filePath.toString().equals("N/A");
   }
 
   public String getFileName() {
@@ -129,8 +146,29 @@ public class SampleFile implements Serializable {
     return pathStr;
   }
 
+  public URI getUriFile() {
+    return filePath;
+  }
 
-  public boolean hasFile() {
-    return !filePath.toString().equals("N/A");
+  public void setUriFile(URI filePath) {
+    this.filePath = filePath;
+    LOGGER.info("Updated sample path: {}", filePath);
+  }
+
+  public void setInstrumentID(InstrumentID instrumentID) {
+    this.instrumentID = instrumentID;
+  }
+
+  public InstrumentID getInstrumentID() {
+    return instrumentID;
+  }
+
+  @Serial
+  private void readObject(@Nonnull java.io.ObjectInputStream in)
+      throws IOException, ClassNotFoundException {
+    in.defaultReadObject();
+    if (this.instrumentID == null) {
+      this.instrumentID = InstrumentID.UNKNOWN;
+    }
   }
 }

@@ -22,13 +22,7 @@ import analysis.NpPopulation;
 import analysis.Population;
 import analysis.PopulationID;
 import com.opencsv.CSVReader;
-import dataModelNew.IncompleteParticleMatrix;
-import dataModelNew.IncompleteSample;
-import dataModelNew.Sample;
-import dataModelNew.SampleFile;
-import dataModelNew.TISeriesRAM;
-import dataModelNew.Trace;
-import dataModelNew.TraceImpl;
+import dataModelNew.*;
 import dataModelNew.mz.MZValue;
 import dataModelNew.mz.SQmz;
 import io.FileInterpreterUtils;
@@ -37,6 +31,7 @@ import io.PathUtil;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 import javafx.util.Pair;
 import math.units.Unit;
@@ -54,7 +49,7 @@ public class CsvInterpreterLPC implements CsvInterpreter {
 
   private static final Logger LOGGER = LogManager.getLogger(CsvInterpreterLPC.class);
 
-  // Column indices in the single_particle_info CSV format:
+  // RAFA: Column indices in the single_particle_info CSV format:
   //   0  particle id
   //   1  largest feret diameters [µm]
   //   2  smallest feret diameters [µm]
@@ -69,12 +64,29 @@ public class CsvInterpreterLPC implements CsvInterpreter {
   //  11  frame id
   //  12  centroid position row [pix]
   //  13  centroid position column [pix]
-  private static final int COL_DETECTION_TIME = 10;
-  private static final int COL_CIRCLE_EQ_DIAMETER = 5;
-  private static final int COL_ASPECT_RATIO = 9;
-  private static final int COL_FERRET_MIN = 1;
-  private static final int COL_FERRET_MAX = 2;
-  private static final int MIN_REQUIRED_COLUMNS = 11; // need at least up to index 10
+
+
+  /*
+  TOM:
+
+  0   id
+  1   frame
+  2   frame_count
+  3   area
+  4   aspect
+  5   circular_equivalent_diameter
+  6   circularity
+  7   convexity
+  8   intensity
+  9   maximum_width
+  10  minimum_width
+  11  perimeter
+  12  radius
+  13  sharpness
+  14  x
+  15  y
+   */
+
 
   private final CsvInterpreterParams params;
 
@@ -141,7 +153,7 @@ public class CsvInterpreterLPC implements CsvInterpreter {
     Isotope isotope = params.getIsotopeParameter().getValue().unwrap();
     mzValue = new SQmz(isotope);
 
-    IncompleteParticleMatrix matrix = new IncompleteParticleMatrix(csv.size());
+    LPCParticleMatrix matrix = new LPCParticleMatrix();
     String sampleName = PathUtil.removeExtension(file.getFileName().toString());
     SampleFile sampleFile = new SampleFile(file, sampleName);
     try {
@@ -149,29 +161,114 @@ public class CsvInterpreterLPC implements CsvInterpreter {
       // sample.getMethod().addSet(params); // should be called in the csvImportTask
 
       int firstLine = params.getFirstLine().getValue();
-      int targetCol = params.getLpcImportParameter().getValue().getCol();
-      if (targetCol > MIN_REQUIRED_COLUMNS) {
-        targetCol = COL_CIRCLE_EQ_DIAMETER;
-      }
 
-      for (int i = firstLine; i < csv.size(); i++) {
-        Pair<Boolean, double[]> checkedLine = SnF.strToDoubleArrChecked(csv.get(i));
-        if (checkedLine.getKey()) {
-          double[] values = checkedLine.getValue();
-          if (values.length >= MIN_REQUIRED_COLUMNS) {
-            // values[0] → detection time [sec.]
-            // values[1] → circle-equivalent diameters [µm]
-            // values[2..4] → zero (no area, height, duration equivalent)
-            matrix.add(
-                values[COL_DETECTION_TIME],   // values[0]: time
-                values[targetCol], // values[1]: diameter
-                0, // values[COL_CIRCLE_EQ_DIAMETER],                            // values[2]: zeroed
-                0, // values[COL_CIRCLE_EQ_DIAMETER],                            // values[3]: zeroed
-                0 // values[COL_CIRCLE_EQ_DIAMETER]                             // values[4]: zeroed
-            );
+      // Check format
+      boolean isRafa = false;
+      boolean isTom = false;
+
+      if (!csv.isEmpty()) {
+        String[] line = csv.get(0);
+        if (line.length > 0) {
+          if (Objects.equals(line[0], "id")) {
+            isTom = true;
+            LOGGER.info("Found data format: Tom.");
+          } else if (Objects.equals(line[0], "particle id")) {
+            isRafa = true;
+            LOGGER.info("Found data format: Rafa.");
           }
         }
       }
+
+      int targetColIdx = params.getLpcImportParameter().getValue().getCol(isRafa, isTom);
+      if (targetColIdx < 0) {
+        targetColIdx = Integer.MAX_VALUE; // gets rectified below
+      }
+
+      if (isRafa) {
+
+        if (targetColIdx > 14) {
+          targetColIdx = 5;
+        }
+
+        for (int i = firstLine; i < csv.size(); i++) {
+          Pair<Boolean, double[]> checkedLine = SnF.strToDoubleArrChecked(csv.get(i));
+          if (checkedLine.getKey()) {
+            double[] values = checkedLine.getValue();
+            if (values.length >= 14) {
+
+              matrix.add("TARGET", values[targetColIdx]);
+
+              matrix.add("particle_id", values[0]);
+
+              matrix.add("largest_feret_diameter", values[1]);
+              matrix.add("smallest_feret_diameter", values[2]);
+
+              matrix.add("largest_legendre_diameter", values[3]);
+              matrix.add("smallest_legendre_diameter", values[4]);
+
+              matrix.add("circle_equivalent_diameter", values[5]);
+
+              matrix.add("circularity", values[6]);
+              matrix.add("convexity", values[7]);
+              matrix.add("solidity", values[8]);
+
+              matrix.add("aspect_ratio", values[9]);
+
+              matrix.add("detection_time", values[10]);
+
+              matrix.add("frame_id", values[11]);
+
+              matrix.add("centroid_row", values[12]);
+              matrix.add("centroid_col", values[13]);
+            }
+          }
+        }
+      } else if (isTom) {
+
+        if (targetColIdx > 16) {
+          targetColIdx = 5;
+        }
+
+        for (int i = firstLine; i < csv.size(); i++) {
+          Pair<Boolean, double[]> checkedLine = SnF.strToDoubleArrChecked(csv.get(i));
+          if (checkedLine.getKey()) {
+            double[] values = checkedLine.getValue();
+            if (values.length >= 16) {
+
+              matrix.add("TARGET", values[targetColIdx]);
+
+              matrix.add("id", values[0]);
+
+              matrix.add("frame", values[1]);
+              matrix.add("frame_count", values[2]);
+
+              matrix.add("area", values[3]);
+
+              matrix.add("aspect", values[4]);
+
+              matrix.add("circular_equivalent_diameter", values[5]);
+
+              matrix.add("circularity", values[6]);
+              matrix.add("convexity", values[7]);
+
+              matrix.add("intensity", values[8]);
+
+              matrix.add("maximum_width", values[9]);
+              matrix.add("minimum_width", values[10]);
+
+              matrix.add("perimeter", values[11]);
+
+              matrix.add("radius", values[12]);
+
+              matrix.add("sharpness", values[13]);
+
+              matrix.add("x", values[14]);
+              matrix.add("y", values[15]);
+            }
+          }
+        }
+      }
+
 
       Trace trace = new TraceImpl(sample, mzValue, new TISeriesRAM());
 

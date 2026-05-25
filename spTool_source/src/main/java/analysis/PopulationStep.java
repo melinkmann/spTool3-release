@@ -20,11 +20,13 @@ package analysis;
 import java.io.Serial;
 import java.io.Serializable;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Objects;
 
 import dataModelNew.Sample;
 import processing.options.GatingOption;
 import processing.options.SearchAlgorithm;
+import sandbox.montecarlo.Isotope;
 
 public interface PopulationStep extends Serializable {
 
@@ -136,9 +138,9 @@ public interface PopulationStep extends Serializable {
     public boolean isEquivalent(PopulationStep other) {
       boolean isEquiv = false;
       if (other instanceof ManualRoiSubtype) {
-        isEquiv = Objects.equals(paramSetLabel, ((ManualRoiSubtype) other).paramSetLabel);
-        isEquiv = Objects.equals(start, ((ManualRoiSubtype) other).start);
-        isEquiv = Objects.equals(end, ((ManualRoiSubtype) other).end);
+        isEquiv = isEquiv && Objects.equals(paramSetLabel, ((ManualRoiSubtype) other).paramSetLabel);
+        isEquiv = isEquiv && Objects.equals(start, ((ManualRoiSubtype) other).start);
+        isEquiv = isEquiv && Objects.equals(end, ((ManualRoiSubtype) other).end);
       }
       return isEquiv;
     }
@@ -177,6 +179,42 @@ public interface PopulationStep extends Serializable {
 
     public String getDescription() {
       return description;
+    }
+  }
+
+  final class ManualAlignFilterSubtype implements PopulationStep, Serializable {
+
+    @Serial
+    private static final long serialVersionUID = 1_000_000L;
+
+    private final String paramSetLabel;
+    private final List<Isotope> isotopes;
+
+    public ManualAlignFilterSubtype(String paramSetLabel,List<Isotope> isotopes) {
+      this.paramSetLabel = paramSetLabel;
+      this.isotopes = isotopes;
+    }
+
+    @Override
+    public int customHash() {
+      return Objects.hash(paramSetLabel,isotopes);
+    }
+
+    @Override
+    public String translate() {
+      return "Filter(" + paramSetLabel + ")";
+    }
+
+
+    @Override
+    public boolean isEquivalent(PopulationStep other) {
+      boolean isEquiv = false;
+      if (other instanceof ManualAlignFilterSubtype) {
+        isEquiv = Objects.equals(paramSetLabel, ((ManualAlignFilterSubtype) other).paramSetLabel);
+        //list equals actually checks entries :)
+        isEquiv = isEquiv && isotopes.equals(((ManualAlignFilterSubtype) other).isotopes);
+      }
+      return isEquiv;
     }
   }
 

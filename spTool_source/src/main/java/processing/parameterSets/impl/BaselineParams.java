@@ -174,7 +174,7 @@ public class BaselineParams extends AbstractParamSet implements ParamSet {
              assuming lognormal distribution.
              The shape parameter refers to the lognormal distribution
              and not the empirical standard deviation of the SIA data""",
-        true,
+        false,
         false,
         "preferEmpiricalSIA"
     );

@@ -32,10 +32,6 @@ public interface TISeries extends XYSeries, Serializable {
 
   double[] getIntensity();
 
-  double[] getTime(List<Integer> indices);
-
-  double[] getIntensity(List<Integer> indices);
-
   int size();
 
   double getFirstTimeStamp();

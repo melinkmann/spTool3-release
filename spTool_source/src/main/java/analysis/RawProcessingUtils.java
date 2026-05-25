@@ -18,14 +18,7 @@
 package analysis;
 
 import core.SpTool3Main;
-import dataModelNew.Sample;
-import dataModelNew.SampleFile;
-import dataModelNew.SampleImpl;
-import dataModelNew.TISeries;
-import dataModelNew.TISeriesHDD;
-import dataModelNew.TISeriesRAM;
-import dataModelNew.Trace;
-import dataModelNew.TraceImpl;
+import dataModelNew.*;
 import io.SampleSet;
 
 import java.util.ArrayList;
@@ -177,7 +170,6 @@ public class RawProcessingUtils {
   /// ///////////////////////////////////////////////////////////////////////////////////////////////////
 
   public static void groupDT(List<Sample> samples, List<Isotope> selIsotopes,
-                             DTGroupParams dtGroupParams,
                              double newDT,
                              boolean exportSteps) {
 
@@ -220,7 +212,8 @@ public class RawProcessingUtils {
               sample.getQuant(),
               sample.getColor(),
               sample.getSampleDefaultIsotopes(),
-              sample.getRemovedIsotopeInfo());
+              sample.getRemovedIsotopeInfo(),
+              sample.getRecordedTofRange());
           for (Trace ogTrace : groupCollection.keySet()) {
             List<TISeries> tiSeriesList = groupCollection.get(ogTrace);
             if (i < tiSeriesList.size()) {
@@ -309,25 +302,43 @@ public class RawProcessingUtils {
     TISeries series = new TISeriesRAM();
 
     if (originalSeries.size() > 0 && inclusiveStart >= 0 && inclusiveStart < inclusiveStop) {
-      double[] time = originalSeries.getTime();
 
-      if (inclusiveStart < time[time.length - 1]) {
-        List<Double> x = new ArrayList<>();
-        List<Double> y = new ArrayList<>();
+      if (originalSeries instanceof TISeriesRAM || originalSeries instanceof TISeriesHDD) {
 
-        double[] intensity = originalSeries.getIntensity();
-        for (int i = 0; i < time.length; i++) {
-          if (inclusiveStart <= time[i] && time[i] <= inclusiveStop) {
-            x.add(time[i]);
-            y.add(intensity[i]);
+        double[] time = originalSeries.getTime();
+
+        if (inclusiveStart < time[time.length - 1]) {
+          List<Double> x = new ArrayList<>();
+          List<Double> y = new ArrayList<>();
+
+          double[] intensity = originalSeries.getIntensity();
+          for (int i = 0; i < time.length; i++) {
+            if (inclusiveStart <= time[i] && time[i] <= inclusiveStop) {
+              x.add(time[i]);
+              y.add(intensity[i]);
+            }
           }
+
+          series = new TISeriesHDD(x, y);
+        } else {
+          LOGGER.error("Cannot cut time to limits when start > end of original time data.");
         }
-
-        series = new TISeriesHDD(x, y);
       } else {
-        LOGGER.error("Cannot cut time to limits when start > end of original time data.");
+        // INSTANCE OF DTISeries
+        double dt = originalSeries.getDT();
+        int firstIndex = Math.max(0, (int) Math.round(inclusiveStart / dt) - 1);
+        int lastIndex = Math.min(originalSeries.size() - 1, (int) Math.round(inclusiveStop / dt) - 1);
+        List<int[]> selectedIndices = new ArrayList<>();
+        selectedIndices.add(new int[]{firstIndex, lastIndex});
+        if (originalSeries instanceof DTISeriesRAM) {
+          ((DTISeriesRAM) originalSeries).setSelectedIndices(selectedIndices);
+        } else if (originalSeries instanceof DTISeriesHDD) {
+          ((DTISeriesHDD) originalSeries).setSelectedIndices(selectedIndices);
+        }else {
+          LOGGER.error("Unexpected type of TISeries Cannot handle it.");
+        }
+        series = originalSeries;
       }
-
 
     } else {
       series = originalSeries;

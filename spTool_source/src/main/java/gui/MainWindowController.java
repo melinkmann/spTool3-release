@@ -98,6 +98,7 @@ import tasks.BatchTask;
 import tasks.Task;
 import tasks.WorkingTask;
 import tasks.batch.SimpleLinearBatch;
+import tasks.results.EmptyTaskResult;
 import tasks.single.CsvImportTask;
 import tasks.single.NuImportTask;
 import util.Util;
@@ -310,6 +311,17 @@ public class MainWindowController {
           + " of the plots and the user interface to the defaults?", parameterManager::reset);
     });
 
+    MenuItem checkSampleFiles = new MenuItem("Check sample files");
+    checkSampleFiles.setOnAction(e -> {
+      List<Sample> allSamples = SpTool3Main.getRunTime().getSampleReg().getAllSets().stream()
+          .map(SampleSet::getSamples)
+          .flatMap(Collection::stream)
+          .distinct()
+          .toList();
+      Util.updateSamplePath(allSamples);
+    });
+
+
     MenuItem saveProject = new MenuItem("Save project as");
     saveProject.setOnAction(e -> {
       NotificationFactory.openYesNo("Do you want to save the project?",
@@ -322,7 +334,8 @@ public class MainWindowController {
           Serializer::loadSampleRegister);
     });
 
-    fileMenu.getItems().addAll(saveProject, loadProject, saveUiParameters, resetUiParameters);
+    fileMenu.getItems().addAll(saveProject, loadProject, saveUiParameters, resetUiParameters,
+        checkSampleFiles);
 
     // "Show Dialog"
     exportMenuItem.setOnAction(e -> {
@@ -370,7 +383,7 @@ public class MainWindowController {
           importDefaults, factory);
 
       Optional<List<Path>> result = filesDialog.showAndWait();
-      result.ifPresent(r->startImportNewFiles(result.get(), SpTool3Main.getMainStage()));
+      result.ifPresent(r -> startImportNewFiles(result.get(), SpTool3Main.getMainStage()));
     });
 
     MenuItem browseMenu = new MenuItem("Browse folder");
@@ -400,7 +413,7 @@ public class MainWindowController {
             importDefaults, factory);
 
         Optional<List<Path>> result = filesDialog.showAndWait();
-        result.ifPresent(r->startImportNewFiles(result.get(), SpTool3Main.getMainStage()));
+        result.ifPresent(r -> startImportNewFiles(result.get(), SpTool3Main.getMainStage()));
       }
     });
 
@@ -423,7 +436,7 @@ public class MainWindowController {
               importDefaults, factory);
 
           Optional<List<Path>> result = filesDialog.showAndWait();
-          result.ifPresent(r->startImportNewFiles(result.get(), SpTool3Main.getMainStage()));
+          result.ifPresent(r -> startImportNewFiles(result.get(), SpTool3Main.getMainStage()));
         }
       }
     });
@@ -441,7 +454,8 @@ public class MainWindowController {
         List<FxFileSet> sets = result.get();
         if (!sets.isEmpty()) {
           FileSet set = sets.get(0).getPlainFileSet();
-          this.startImportNewFiles(set.getFiles().stream().map(Path::of).collect(Collectors.toList()),SpTool3Main.getMainStage());
+          this.startImportNewFiles(set.getFiles().stream().map(Path::of).collect(Collectors.toList()),
+              SpTool3Main.getMainStage());
         }
       }
     });
@@ -610,7 +624,7 @@ public class MainWindowController {
                 }
 
                 Util.windowsSortFile(recursivePaths);
-                this.startImportNewFiles(recursivePaths,SpTool3Main.getMainStage());
+                this.startImportNewFiles(recursivePaths, SpTool3Main.getMainStage());
                 // store the previous files
                 SpTool3Main.getRunTime().getImportDefaults().addPreviousFileSet(new FileSet(recursivePaths));
                 SpTool3Main.getRunTime().storeImportDefaults();
@@ -938,7 +952,7 @@ public class MainWindowController {
 
     if (!importTasks.isEmpty()) {
       BatchTask linear = new SimpleLinearBatch<>("Raw data import", importTasks, false,
-          () -> SpTool3Main.getRunTime().getSampleReg().createSetAndFlushWaitingList("Import"));
+          EmptyTaskResult::new);
       SpTool3Main.getRunTime().getTaskManager().queueToHousekeepingPool(linear);
     } else {
       LOGGER.info("Import did not receive proper files or parameters to start. Are the files still " +
@@ -1022,6 +1036,11 @@ public class MainWindowController {
 
   public List<Isotope> getSelIsotopes() {
     List<Isotope> sel = new ArrayList<>(isotopeTableView.getSelectionModel().getSelectedItems());
+    return sel;
+  }
+
+  public List<Isotope> getAllIsotopes() {
+    List<Isotope> sel = new ArrayList<>(isotopeTableView.getItems());
     return sel;
   }
 

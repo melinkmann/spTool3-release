@@ -95,7 +95,6 @@ import org.jfree.chart.plot.ValueMarker;
 import org.jfree.chart.plot.XYPlot;
 import org.jfree.chart.title.TextTitle;
 import org.jfree.data.Range;
-import org.jfree.data.xy.XYDataItem;
 import processing.options.*;
 import processing.parameterSets.FxParamSet;
 import processing.parameterSets.FxParamSetImpl;
@@ -1610,448 +1609,448 @@ public abstract class Viewers {
 
       MathMod mathModYAxis = plainSet.getLogYAXis().getValue() ? MathMod.LOG10 : MathMod.NONE;
 
-      if (samples != null && !samples.isEmpty() && !selIsotopes.isEmpty() && !selPops.isEmpty()) {
-
+      if (samples != null && !samples.isEmpty() && !selPops.isEmpty()) {
 
         // so far we only show one sample.
         Sample sample = samples.get(0);
         PopulationID firstID = selPops.get(0);
 
-        // Check if we are dealing with aligned population and multiple selected isotopes
-        boolean isAligned = firstID.getSteps().stream()
-            .anyMatch(popStep -> popStep instanceof PopulationStep.AlignSubtype);
+        // remove non-aligned isotopes or those with no events. Else, equal length check fails.
+        // this is meant for cases where not all available isotopes are aligned and hence
+        // some selected isotopes may yield zero events
+        selIsotopes.removeIf(iso -> sample.getNPEvents(iso, firstID).isEmpty());
 
-        boolean isPValSearch = false;
-        for (PopulationStep popStep : firstID.getSteps()) {
-          if (popStep instanceof PopulationStep.SearchSubtype) {
-            if (((PopulationStep.SearchSubtype) popStep).getSearchAlgorithm()
-                .equals(SearchAlgorithm.P_VALUE_ACCUMULATION)) {
-              isPValSearch = true;
-            }
-          }
-        }
-        boolean multiIsotopeMode = (isAligned || isPValSearch) && selIsotopes.size() > 1;
+        // make sure that this is not empty are the removal step!
+        if (!selIsotopes.isEmpty()) {
 
-        if (multiIsotopeMode) {
+          // Check if we are dealing with aligned population and multiple selected isotopes
+          boolean multiIsotopeMode = AnalysisUtils.isAlignedOrPVal(firstID) && selIsotopes.size() > 1;
 
-          // Length checks
-          boolean equalLength = selIsotopes.stream()
-              .map(iso -> sample.getNPEvents(iso, firstID))
-              .map(List::size)
-              .distinct()
-              .count() == 1;
+          if (multiIsotopeMode) {
 
-          if (equalLength) {
-            List<Event> firstEventList = sample.getNPEvents(selIsotopes.get(0), firstID);
-            int length = firstEventList.size();
-            if (length > 0) {
+            // Length checks
+            boolean equalLength = selIsotopes.stream()
+                .map(iso -> sample.getNPEvents(iso, firstID))
+                .map(List::size)
+                .distinct()
+                .count() == 1;
 
-              // Get the total signal per region of the requested parameter
-              double[] regionBasedEventParameter = new double[length];
-              for (Isotope iso : selIsotopes) {
-                List<Event> events = sample.getNPEvents(iso, firstID);
-                for (int i = 0; i < events.size(); i++) {
-                  Event event = events.get(i);
-                  regionBasedEventParameter[i] += event.get(plainSet.getEventParameter().getValue());
-                }
-              }
+            if (equalLength) {
+              List<Event> firstEventList = sample.getNPEvents(selIsotopes.get(0), firstID);
+              int length = firstEventList.size();
+              if (length > 0) {
 
-              // consider changing this in case it performs too slowly
-              HashMap<Isotope, List<Event>> eventMap = new HashMap<>();
-
-              // iterate over all regions by assuming the first region as a model (length checked above)
-              if (plainSet.getSortBoolean().getValue()) {
+                // Get the total signal per region of the requested parameter
+                double[] regionBasedEventParameter = new double[length];
                 for (Isotope iso : selIsotopes) {
                   List<Event> events = sample.getNPEvents(iso, firstID);
-                  events = IntStream.range(0, length)
-                      .boxed()
-                      .sorted(Comparator.comparingDouble(i -> regionBasedEventParameter[i]))
-                      .map(events::get)
-                      .toList();
-                  eventMap.put(iso, events);
+                  for (int i = 0; i < events.size(); i++) {
+                    Event event = events.get(i);
+                    regionBasedEventParameter[i] += event.get(plainSet.getEventParameter().getValue());
+                  }
                 }
-              } else {
+
+                // consider changing this in case it performs too slowly
+                HashMap<Isotope, List<Event>> eventMap = new HashMap<>();
+
+                // iterate over all regions by assuming the first region as a model (length checked above)
+                if (plainSet.getSortBoolean().getValue()) {
+                  for (Isotope iso : selIsotopes) {
+                    List<Event> events = sample.getNPEvents(iso, firstID);
+                    events = IntStream.range(0, length)
+                        .boxed()
+                        .sorted(Comparator.comparingDouble(i -> regionBasedEventParameter[i]))
+                        .map(events::get)
+                        .toList();
+                    eventMap.put(iso, events);
+                  }
+                } else {
+                  for (Isotope iso : selIsotopes) {
+                    eventMap.put(iso, sample.getNPEvents(iso, firstID));
+                  }
+                }
+
+                /// Now start building the plots
+                // for some reason we should +1 (I think b/c we show 1 DP overlapping with event)
+                int previewWidth = plainSet.getNumberOfBGEvents().getValue() + 1;
+
+                // Create a GridPane and put the viewers on that grid
+                GridPane gridPane = new GridPane();
+                gridPane.setHgap(5);
+                gridPane.setVgap(5);
+                // Fill the GridPane (3 rows x 5 columns)
+                int numCols = 4;
+                int counter = 0;
+
+                HashMap<Isotope, List<TISeries>> eventSeries = new HashMap<>();
+                HashMap<Isotope, List<Integer>> globalEvtIndex = new HashMap<>();
+                HashMap<Isotope, List<Colors>> eventColor = new HashMap<>();
+                HashMap<Isotope, List<TISeries>> previewSeries = new HashMap<>();
+                HashMap<Isotope, List<TISeries>> postviewSeries = new HashMap<>();
+
+                // Build the data sets
                 for (Isotope iso : selIsotopes) {
-                  eventMap.put(iso, sample.getNPEvents(iso, firstID));
-                }
-              }
+                  List<Event> events = eventMap.get(iso);
+                  if (iteratorController.hasValue()) {
+                    iteratorController.setFinalIdx(events.size() - 1);
+                    for (int i = iteratorController.getCurrentIdx();
+                         i <= iteratorController.getCurrentEndIdx(); i++) {
 
-              /// Now start building the plots
-              // for some reason we should +1 (I think b/c we show 1 DP overlapping with event)
-              int previewWidth = plainSet.getNumberOfBGEvents().getValue() + 1;
+                      if (events.size() > i) {
+                        Event event = events.get(i);
 
-              // Create a GridPane and put the viewers on that grid
-              GridPane gridPane = new GridPane();
-              gridPane.setHgap(5);
-              gridPane.setVgap(5);
-              // Fill the GridPane (3 rows x 5 columns)
-              int numCols = 4;
-              int counter = 0;
+                        if (plainSet.getLogYAXis().getValue()) {
+                          eventSeries.computeIfAbsent(iso, k -> new ArrayList<>()).add(event.getLogProfile());
+                        } else {
+                          eventSeries.computeIfAbsent(iso, k -> new ArrayList<>()).add(event.getProfile());
+                        }
 
-              HashMap<Isotope, List<TISeries>> eventSeries = new HashMap<>();
-              HashMap<Isotope, List<Integer>> globalEvtIndex = new HashMap<>();
-              HashMap<Isotope, List<Colors>> eventColor = new HashMap<>();
-              HashMap<Isotope, List<TISeries>> previewSeries = new HashMap<>();
-              HashMap<Isotope, List<TISeries>> postviewSeries = new HashMap<>();
+                        globalEvtIndex.computeIfAbsent(iso, k -> new ArrayList<>()).add(i);
+                        eventColor.computeIfAbsent(iso, k -> new ArrayList<>()).add(AnalysisUtils.getColor(
+                            sample,
+                            iso,
+                            1,
+                            selIsotopes.size()));
 
-              // Build the data sets
-              for (Isotope iso : selIsotopes) {
-                List<Event> events = eventMap.get(iso);
-                if (iteratorController.hasValue()) {
-                  iteratorController.setFinalIdx(events.size() - 1);
-                  for (int i = iteratorController.getCurrentIdx();
-                       i <= iteratorController.getCurrentEndIdx(); i++) {
-
-                    if (events.size() > i) {
-                      Event event = events.get(i);
-
-                      if (plainSet.getLogYAXis().getValue()) {
-                        eventSeries.computeIfAbsent(iso, k -> new ArrayList<>()).add(event.getLogProfile());
-                      } else {
-                        eventSeries.computeIfAbsent(iso, k -> new ArrayList<>()).add(event.getProfile());
-                      }
-
-                      globalEvtIndex.computeIfAbsent(iso, k -> new ArrayList<>()).add(i);
-                      eventColor.computeIfAbsent(iso, k -> new ArrayList<>()).add(AnalysisUtils.getColor(
-                          sample,
-                          iso,
-                          1,
-                          selIsotopes.size()));
-
-                      if (plainSet.getLogYAXis().getValue()) {
-                        previewSeries.computeIfAbsent(iso, k -> new ArrayList<>()).add(event.getLogPreviousDP(previewWidth));
-                        postviewSeries.computeIfAbsent(iso, k -> new ArrayList<>()).add(event.getLogFollowingDP(previewWidth));
-                      } else {
-                        previewSeries.computeIfAbsent(iso, k -> new ArrayList<>()).add(event.getPreviousDP(previewWidth));
-                        postviewSeries.computeIfAbsent(iso, k -> new ArrayList<>()).add(event.getFollowingDP(previewWidth));
+                        if (plainSet.getLogYAXis().getValue()) {
+                          previewSeries.computeIfAbsent(iso, k -> new ArrayList<>()).add(event.getLogPreviousDP(previewWidth));
+                          postviewSeries.computeIfAbsent(iso, k -> new ArrayList<>()).add(event.getLogFollowingDP(previewWidth));
+                        } else {
+                          previewSeries.computeIfAbsent(iso, k -> new ArrayList<>()).add(event.getPreviousDP(previewWidth));
+                          postviewSeries.computeIfAbsent(iso, k -> new ArrayList<>()).add(event.getFollowingDP(previewWidth));
+                        }
                       }
                     }
                   }
                 }
-              }
 
-              // Build the charts
-              List<JFreeChart> charts = new ArrayList<>();
+                // Build the charts
+                List<JFreeChart> charts = new ArrayList<>();
 
-              int numEvents = eventSeries.get(selIsotopes.get(0)).size();
+                int numEvents = 0;
+                List<TISeries> serList = eventSeries.get(selIsotopes.get(0));
+                if (serList != null) {
+                  numEvents = serList.size();
+                }
 
-              for (int i = 0; i < numEvents; i++) {
+                for (int i = 0; i < numEvents; i++) {
 
-                List<ChartComponent> chartComponents = new ArrayList<>();
-                List<ChartComponent> legendComponents = new ArrayList<>();
+                  List<ChartComponent> chartComponents = new ArrayList<>();
+                  List<ChartComponent> legendComponents = new ArrayList<>();
 
-                for (Isotope iso : selIsotopes) {
-                  List<TISeries> isoEventSeries = eventSeries.get(iso);
+                  for (Isotope iso : selIsotopes) {
+                    List<TISeries> isoEventSeries = eventSeries.get(iso);
 
-                  if (isoEventSeries != null && i < isoEventSeries.size()) {
+                    if (isoEventSeries != null && i < isoEventSeries.size()) {
 
-                    TISeries eventData = eventSeries.get(iso).get(i);
-                    Colors color = eventColor.get(iso).get(i);
-                    TISeries prevData = previewSeries.get(iso).get(i);
-                    TISeries postData = postviewSeries.get(iso).get(i);
-                    int evtIndex = globalEvtIndex.get(iso).get(i);
+                      TISeries eventData = eventSeries.get(iso).get(i);
+                      Colors color = eventColor.get(iso).get(i);
+                      TISeries prevData = previewSeries.get(iso).get(i);
+                      TISeries postData = postviewSeries.get(iso).get(i);
+                      int evtIndex = globalEvtIndex.get(iso).get(i);
 
-                    ChartComponent comp;
+                      ChartComponent comp;
 
-                    if (eventData.size() < 1E3) {
+                      if (eventData.size() < 1E3) {
+                        comp = new ChartComponent(
+                            new ChartData("Evt # " + (evtIndex + 1) + " - " + iso.getName(),
+                                eventData,
+                                "Time", TimeUnit.SECOND, MathMod.NONE,
+                                "Intensity", IntensityUnit.CTS, mathModYAxis),
+                            new ChartStyle(color, 1,
+                                LineWidthDefaults.MEDIUM_THICK,
+                                LineDashDefaults.STRAIGHT, 0f,
+                                MarkerSizeDefaults.SMALL,
+                                MarkerStyle.CROSS,
+                                false,
+                                RendererOption.LINE_AND_SHAPE,
+                                LineGraphStyle.LINE_AND_MARKER)
+                        );
+                      } else {
+                        comp = new ChartComponent(
+                            new ChartData("Evt # " + (evtIndex + 1) + " - " + iso.getName(),
+                                eventData,
+                                "Time", TimeUnit.SECOND, MathMod.NONE,
+                                "Intensity", IntensityUnit.CTS, mathModYAxis),
+                            new ChartStyle(color, 1,
+                                LineWidthDefaults.MEDIUM_THICK,
+                                LineDashDefaults.STRAIGHT, 0f,
+                                MarkerSizeDefaults.SMALL,
+                                MarkerStyle.CROSS,
+                                false,
+                                RendererOption.SAMPLING_LINE_AND_SHAPE,
+                                LineGraphStyle.LINE_AND_MARKER)
+                        );
+                      }
+
+                      chartComponents.add(comp);
+                      legendComponents.add(comp);
+
                       comp = new ChartComponent(
-                          new ChartData("Evt # " + (evtIndex + 1) + " - " + iso.getName(),
-                              eventData,
+                          new ChartData("BG",
+                              prevData,
                               "Time", TimeUnit.SECOND, MathMod.NONE,
                               "Intensity", IntensityUnit.CTS, mathModYAxis),
                           new ChartStyle(color, 1,
-                              LineWidthDefaults.MEDIUM_THICK,
+                              LineWidthDefaults.MEDIUM,
                               LineDashDefaults.STRAIGHT, 0f,
                               MarkerSizeDefaults.SMALL,
-                              MarkerStyle.CROSS,
+                              MarkerStyle.CIRCLE,
                               false,
                               RendererOption.LINE_AND_SHAPE,
-                              LineGraphStyle.LINE_AND_MARKER)
+                              LineGraphStyle.LINE)
                       );
-                    } else {
-                      comp = new ChartComponent(
-                          new ChartData("Evt # " + (evtIndex + 1) + " - " + iso.getName(),
-                              eventData,
+                      chartComponents.add(comp);
+                      // legendComponents.add(comp); // for multiple isotopes, this just spams...
+
+                      chartComponents.add(new ChartComponent(
+                          new ChartData("BG",
+                              postData,
                               "Time", TimeUnit.SECOND, MathMod.NONE,
                               "Intensity", IntensityUnit.CTS, mathModYAxis),
                           new ChartStyle(color, 1,
-                              LineWidthDefaults.MEDIUM_THICK,
+                              LineWidthDefaults.MEDIUM,
                               LineDashDefaults.STRAIGHT, 0f,
                               MarkerSizeDefaults.SMALL,
-                              MarkerStyle.CROSS,
+                              MarkerStyle.CIRCLE,
                               false,
-                              RendererOption.SAMPLING_LINE_AND_SHAPE,
-                              LineGraphStyle.LINE_AND_MARKER)
-                      );
+                              RendererOption.LINE_AND_SHAPE,
+                              LineGraphStyle.LINE)
+                      ));
                     }
+                  }
 
-                    chartComponents.add(comp);
-                    legendComponents.add(comp);
+                  JFreeChart chart = SpChartFactory.createLineChart(chartComponents);
+                  charts.add(chart);
 
-                    comp = new ChartComponent(
-                        new ChartData("BG",
-                            prevData,
-                            "Time", TimeUnit.SECOND, MathMod.NONE,
-                            "Intensity", IntensityUnit.CTS, mathModYAxis),
-                        new ChartStyle(color, 1,
-                            LineWidthDefaults.MEDIUM,
-                            LineDashDefaults.STRAIGHT, 0f,
-                            MarkerSizeDefaults.SMALL,
-                            MarkerStyle.CIRCLE,
-                            false,
-                            RendererOption.LINE_AND_SHAPE,
-                            LineGraphStyle.LINE)
-                    );
-                    chartComponents.add(comp);
-                    // legendComponents.add(comp); // for multiple isotopes, this just spams...
 
-                    chartComponents.add(new ChartComponent(
-                        new ChartData("BG",
-                            postData,
-                            "Time", TimeUnit.SECOND, MathMod.NONE,
-                            "Intensity", IntensityUnit.CTS, mathModYAxis),
-                        new ChartStyle(color, 1,
-                            LineWidthDefaults.MEDIUM,
-                            LineDashDefaults.STRAIGHT, 0f,
-                            MarkerSizeDefaults.SMALL,
-                            MarkerStyle.CIRCLE,
-                            false,
-                            RendererOption.LINE_AND_SHAPE,
-                            LineGraphStyle.LINE)
-                    ));
+                  ChartContainer chartContainer = SpChartFactory.bundleChartLegend(
+                      chart,
+                      legendComponents,
+                      800, 500);
+                  Node viewNode = chartContainer.combinedPane;
+
+                  int row = counter / numCols;
+                  int col = counter % numCols;
+                  counter++;
+
+                  GridPane.setHgrow(viewNode, Priority.ALWAYS);
+                  GridPane.setVgrow(viewNode, Priority.ALWAYS);
+
+                  gridPane.add(viewNode, col, row);
+
+                  if (plainSet.getUseCommonYAxis().getValue()) {
+                    AtomicReference<Double> maxY = new AtomicReference<>((double) 0);
+                    eventSeries.values().stream()
+                        .flatMap(List::stream)
+                        .forEach(s -> maxY.set(Math.max(maxY.get(), ArrUtils.getMax(s.getIntensity()))));
+                    if (maxY.get() > 0) {
+                      charts.forEach(c -> c.getXYPlot().getRangeAxis().setRange(new Range(0, maxY.get())));
+                    }
                   }
                 }
 
-                JFreeChart chart = SpChartFactory.createLineChart(chartComponents);
-                charts.add(chart);
+                SpTool3Main.getRunTime().getGuiParameterManager().getEventTabPane()
+                    .setCenter(UiUtil.putOnAnchorWithoutInsets(gridPane));
+              }
+            }
+          } else {
 
+            // just one isotope
+            Isotope isotope = selIsotopes.get(0);
+            List<Event> events = sample.getNPEvents(isotope, firstID);
 
-                ChartContainer chartContainer = SpChartFactory.bundleChartLegend(
-                    chart,
-                    legendComponents,
-                    800, 500);
-                Node viewNode = chartContainer.combinedPane;
+            if (plainSet.getSortBoolean().getValue()) {
+              events.sort((o1, o2) -> {
+                double val1 = o1.get(plainSet.getEventParameter().getValue());
+                double val2 = o2.get(plainSet.getEventParameter().getValue());
+                return Double.compare(val1, val2);
+              });
+            }
 
-                int row = counter / numCols;
-                int col = counter % numCols;
-                counter++;
+            // for some reason we should +1 (I think b/c we show 1 DP overlapping with event)
+            int previewWidth = plainSet.getNumberOfBGEvents().getValue() + 1;
+            List<TISeries> eventSeries = new ArrayList<>();
+            List<Integer> globalEvtIndex = new ArrayList<>();
+            List<Colors> eventColor = new ArrayList<>();
+            List<TISeries> previewSeries = new ArrayList<>();
+            List<TISeries> postviewSeries = new ArrayList<>();
+            List<String> eventAreaLabels = new ArrayList<>();
 
-                GridPane.setHgrow(viewNode, Priority.ALWAYS);
-                GridPane.setVgrow(viewNode, Priority.ALWAYS);
+            // Create a GridPane and put the viewers on that grid
+            GridPane gridPane = new GridPane();
+            gridPane.setHgap(5);
+            gridPane.setVgap(5);
+            // Fill the GridPane (3 rows x 5 columns)
+            int numCols = 4;
+            int counter = 0;
 
-                gridPane.add(viewNode, col, row);
+            if (iteratorController.hasValue()) {
+              iteratorController.setFinalIdx(events.size() - 1);
+              for (int i = iteratorController.getCurrentIdx();
+                   i <= iteratorController.getCurrentEndIdx(); i++) {
 
-                if (plainSet.getUseCommonYAxis().getValue()) {
-                  AtomicReference<Double> maxY = new AtomicReference<>((double) 0);
-                  eventSeries.values().stream()
-                      .flatMap(List::stream)
-                      .forEach(s -> maxY.set(Math.max(maxY.get(), ArrUtils.getMax(s.getIntensity()))));
-                  if (maxY.get() > 0) {
-                    charts.forEach(c -> c.getXYPlot().getRangeAxis().setRange(new Range(0, maxY.get())));
+                if (events.size() > i) {
+                  Event event = events.get(i);
+
+                  if (plainSet.getLogYAXis().getValue()) {
+                    eventSeries.add(event.getLogProfile());
+                  } else {
+                    eventSeries.add(event.getProfile());
                   }
+                  globalEvtIndex.add(i);
+                  eventColor.add(AnalysisUtils.getColor(
+                      sample,
+                      isotope,
+                      1,
+                      selIsotopes.size()));
+
+                  if (plainSet.getLogYAXis().getValue()) {
+                    previewSeries.add(event.getLogPreviousDP(previewWidth));
+                    postviewSeries.add(event.getLogFollowingDP(previewWidth));
+                  } else {
+                    previewSeries.add(event.getPreviousDP(previewWidth));
+                    postviewSeries.add(event.getFollowingDP(previewWidth));
+                  }
+
+                  eventAreaLabels.add(event.getLabel());
                 }
               }
-
-              SpTool3Main.getRunTime().getGuiParameterManager().getEventTabPane()
-                  .setCenter(UiUtil.putOnAnchorWithoutInsets(gridPane));
             }
-          }
-        } else {
 
-          // just one isotope
-          Isotope isotope = selIsotopes.get(0);
-          List<Event> events = sample.getNPEvents(isotope, firstID);
+            List<JFreeChart> charts = new ArrayList<>();
 
-          if (plainSet.getSortBoolean().getValue()) {
-            events.sort((o1, o2) -> {
-              double val1 = o1.get(plainSet.getEventParameter().getValue());
-              double val2 = o2.get(plainSet.getEventParameter().getValue());
-              return Double.compare(val1, val2);
-            });
-          }
+            for (int i = 0; i < eventSeries.size(); i++) {
 
-          // for some reason we should +1 (I think b/c we show 1 DP overlapping with event)
-          int previewWidth = plainSet.getNumberOfBGEvents().getValue() + 1;
-          List<TISeries> eventSeries = new ArrayList<>();
-          List<Integer> globalEvtIndex = new ArrayList<>();
-          List<Colors> eventColor = new ArrayList<>();
-          List<TISeries> previewSeries = new ArrayList<>();
-          List<TISeries> postviewSeries = new ArrayList<>();
-          List<String> eventAreaLabels = new ArrayList<>();
+              // Create fresh for every single plot or else events accumulate in each view
+              List<ChartComponent> chartComponents = new ArrayList<>();
+              List<ChartComponent> legendComponents = new ArrayList<>();
 
-          // Create a GridPane and put the viewers on that grid
-          GridPane gridPane = new GridPane();
-          gridPane.setHgap(5);
-          gridPane.setVgap(5);
-          // Fill the GridPane (3 rows x 5 columns)
-          int numCols = 4;
-          int counter = 0;
+              TISeries eventData = eventSeries.get(i);
+              Colors color = eventColor.get(i);
+              TISeries prevData = previewSeries.get(i);
+              TISeries postData = postviewSeries.get(i);
+              String areaLabel = eventAreaLabels.get(i);
 
-          if (iteratorController.hasValue()) {
-            iteratorController.setFinalIdx(events.size() - 1);
-            for (int i = iteratorController.getCurrentIdx();
-                 i <= iteratorController.getCurrentEndIdx(); i++) {
+              ChartComponent comp;
 
-              if (events.size() > i) {
-                Event event = events.get(i);
-
-                if (plainSet.getLogYAXis().getValue()) {
-                  eventSeries.add(event.getLogProfile());
-                } else {
-                  eventSeries.add(event.getProfile());
-                }
-                globalEvtIndex.add(i);
-                eventColor.add(AnalysisUtils.getColor(
-                    sample,
-                    isotope,
-                    1,
-                    selIsotopes.size()));
-
-                if (plainSet.getLogYAXis().getValue()) {
-                  previewSeries.add(event.getLogPreviousDP(previewWidth));
-                  postviewSeries.add(event.getLogFollowingDP(previewWidth));
-                } else {
-                  previewSeries.add(event.getPreviousDP(previewWidth));
-                  postviewSeries.add(event.getFollowingDP(previewWidth));
-                }
-
-                eventAreaLabels.add(event.getLabel());
+              // Avoid freezing when too large
+              if (eventData.size() < 1E3) {
+                comp = new ChartComponent(
+                    new ChartData("Evt # " + (globalEvtIndex.get(i) + 1) + " - " + isotope.getName(),
+                        eventData,
+                        "Time", TimeUnit.SECOND, MathMod.NONE,
+                        "Intensity", IntensityUnit.CTS, mathModYAxis),
+                    new ChartStyle(color, 1,
+                        LineWidthDefaults.MEDIUM_THICK,
+                        LineDashDefaults.STRAIGHT, 0f,
+                        MarkerSizeDefaults.SMALL,
+                        MarkerStyle.CROSS,
+                        false,
+                        RendererOption.LINE_AND_SHAPE,
+                        LineGraphStyle.LINE_AND_MARKER)
+                );
+              } else {
+                comp = new ChartComponent(
+                    new ChartData("Evt # " + (globalEvtIndex.get(i) + 1) + " - " + isotope.getName(),
+                        eventData,
+                        "Time", TimeUnit.SECOND, MathMod.NONE,
+                        "Intensity", IntensityUnit.CTS, mathModYAxis),
+                    new ChartStyle(color, 1,
+                        LineWidthDefaults.MEDIUM_THICK,
+                        LineDashDefaults.STRAIGHT, 0f,
+                        MarkerSizeDefaults.SMALL,
+                        MarkerStyle.CROSS,
+                        false,
+                        RendererOption.SAMPLING_LINE_AND_SHAPE,
+                        LineGraphStyle.LINE_AND_MARKER)
+                );
               }
-            }
-          }
 
-          List<JFreeChart> charts = new ArrayList<>();
+              chartComponents.add(comp);
+              legendComponents.add(comp);
 
-          for (int i = 0; i < eventSeries.size(); i++) {
-
-            // Create fresh for every single plot or else events accumulate in each view
-            List<ChartComponent> chartComponents = new ArrayList<>();
-            List<ChartComponent> legendComponents = new ArrayList<>();
-
-            TISeries eventData = eventSeries.get(i);
-            Colors color = eventColor.get(i);
-            TISeries prevData = previewSeries.get(i);
-            TISeries postData = postviewSeries.get(i);
-            String areaLabel = eventAreaLabels.get(i);
-
-            ChartComponent comp;
-
-            // Avoid freezing when too large
-            if (eventData.size() < 1E3) {
               comp = new ChartComponent(
-                  new ChartData("Evt # " + (globalEvtIndex.get(i) + 1) + " - " + isotope.getName(),
-                      eventData,
+                  new ChartData("BG",
+                      prevData,
                       "Time", TimeUnit.SECOND, MathMod.NONE,
                       "Intensity", IntensityUnit.CTS, mathModYAxis),
-                  new ChartStyle(color, 1,
-                      LineWidthDefaults.MEDIUM_THICK,
+                  new ChartStyle(OkabeItoColors.BLACK_DARK, 1,
+                      LineWidthDefaults.MEDIUM,
                       LineDashDefaults.STRAIGHT, 0f,
                       MarkerSizeDefaults.SMALL,
-                      MarkerStyle.CROSS,
+                      MarkerStyle.CIRCLE,
                       false,
                       RendererOption.LINE_AND_SHAPE,
-                      LineGraphStyle.LINE_AND_MARKER)
+                      LineGraphStyle.LINE)
               );
-            } else {
-              comp = new ChartComponent(
-                  new ChartData("Evt # " + (globalEvtIndex.get(i) + 1) + " - " + isotope.getName(),
-                      eventData,
+              chartComponents.add(comp);
+              legendComponents.add(comp);
+
+              chartComponents.add(new ChartComponent(
+                  new ChartData("BG",
+                      postData,
                       "Time", TimeUnit.SECOND, MathMod.NONE,
                       "Intensity", IntensityUnit.CTS, mathModYAxis),
-                  new ChartStyle(color, 1,
-                      LineWidthDefaults.MEDIUM_THICK,
+                  new ChartStyle(OkabeItoColors.BLACK_DARK, 1,
+                      LineWidthDefaults.MEDIUM,
                       LineDashDefaults.STRAIGHT, 0f,
                       MarkerSizeDefaults.SMALL,
-                      MarkerStyle.CROSS,
+                      MarkerStyle.CIRCLE,
                       false,
-                      RendererOption.SAMPLING_LINE_AND_SHAPE,
-                      LineGraphStyle.LINE_AND_MARKER)
-              );
-            }
+                      RendererOption.LINE_AND_SHAPE,
+                      LineGraphStyle.LINE)
+              ));
 
-            chartComponents.add(comp);
-            legendComponents.add(comp);
+              JFreeChart chart = SpChartFactory.createLineChart(chartComponents);
+              charts.add(chart);
 
-            comp = new ChartComponent(
-                new ChartData("BG",
-                    prevData,
-                    "Time", TimeUnit.SECOND, MathMod.NONE,
-                    "Intensity", IntensityUnit.CTS, mathModYAxis),
-                new ChartStyle(OkabeItoColors.BLACK_DARK, 1,
-                    LineWidthDefaults.MEDIUM,
-                    LineDashDefaults.STRAIGHT, 0f,
-                    MarkerSizeDefaults.SMALL,
-                    MarkerStyle.CIRCLE,
-                    false,
-                    RendererOption.LINE_AND_SHAPE,
-                    LineGraphStyle.LINE)
-            );
-            chartComponents.add(comp);
-            legendComponents.add(comp);
+              if (plainSet.getAnnotatePeakParameters().getValue()) {
+                XYPlot plot = chart.getXYPlot();
+                //
+                double x = 0.2 * plot.getDomainAxis().getRange().getLowerBound()
+                    + 0.8 * plot.getDomainAxis().getRange().getUpperBound();
+                double y = 0.85 * plot.getRangeAxis().getRange().getUpperBound();
+                String annotTxt = "Σ " + areaLabel;
+                XYTextAnnotation annotation = new XYTextAnnotation(annotTxt, x, y);
+                annotation.setFont(FontStyles.getPlain());
+                //
+                plot.addAnnotation(annotation);
+              }
 
-            chartComponents.add(new ChartComponent(
-                new ChartData("BG",
-                    postData,
-                    "Time", TimeUnit.SECOND, MathMod.NONE,
-                    "Intensity", IntensityUnit.CTS, mathModYAxis),
-                new ChartStyle(OkabeItoColors.BLACK_DARK, 1,
-                    LineWidthDefaults.MEDIUM,
-                    LineDashDefaults.STRAIGHT, 0f,
-                    MarkerSizeDefaults.SMALL,
-                    MarkerStyle.CIRCLE,
-                    false,
-                    RendererOption.LINE_AND_SHAPE,
-                    LineGraphStyle.LINE)
-            ));
+              ChartContainer chartContainer = SpChartFactory.bundleChartLegend(
+                  chart,
+                  legendComponents,
+                  800, 500);
+              Node viewNode = chartContainer.combinedPane;
 
-            JFreeChart chart = SpChartFactory.createLineChart(chartComponents);
-            charts.add(chart);
+              int row = counter / numCols;
+              int col = counter % numCols;
+              counter++;
 
-            if (plainSet.getAnnotatePeakParameters().getValue()) {
-              XYPlot plot = chart.getXYPlot();
-              //
-              double x = 0.2 * plot.getDomainAxis().getRange().getLowerBound()
-                  + 0.8 * plot.getDomainAxis().getRange().getUpperBound();
-              double y = 0.85 * plot.getRangeAxis().getRange().getUpperBound();
-              String annotTxt = "Σ " + areaLabel;
-              XYTextAnnotation annotation = new XYTextAnnotation(annotTxt, x, y);
-              annotation.setFont(FontStyles.getPlain());
-              //
-              plot.addAnnotation(annotation);
-            }
+              //viewNode.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE); // Let viewer expand
 
-            ChartContainer chartContainer = SpChartFactory.bundleChartLegend(
-                chart,
-                legendComponents,
-                800, 500);
-            Node viewNode = chartContainer.combinedPane;
+              // Ensure the viewer grows to fill its cell
+              GridPane.setHgrow(viewNode, Priority.ALWAYS);
+              GridPane.setVgrow(viewNode, Priority.ALWAYS);
 
-            int row = counter / numCols;
-            int col = counter % numCols;
-            counter++;
+              // Add to grid
+              gridPane.add(viewNode, col, row);
 
-            //viewNode.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE); // Let viewer expand
-
-            // Ensure the viewer grows to fill its cell
-            GridPane.setHgrow(viewNode, Priority.ALWAYS);
-            GridPane.setVgrow(viewNode, Priority.ALWAYS);
-
-            // Add to grid
-            gridPane.add(viewNode, col, row);
-
-            if (plainSet.getUseCommonYAxis().getValue()) {
-              AtomicReference<Double> maxY = new AtomicReference<>((double) 0);
-              eventSeries.forEach(s ->
-                  maxY.set(Math.max(maxY.get(), ArrUtils.getMax((s.getIntensity())))));
-              if (maxY.get() > 0) {
-                charts.forEach(c -> c.getXYPlot().getRangeAxis().setRange(new Range(0, maxY.get())));
+              if (plainSet.getUseCommonYAxis().getValue()) {
+                AtomicReference<Double> maxY = new AtomicReference<>((double) 0);
+                eventSeries.forEach(s ->
+                    maxY.set(Math.max(maxY.get(), ArrUtils.getMax((s.getIntensity())))));
+                if (maxY.get() > 0) {
+                  charts.forEach(c -> c.getXYPlot().getRangeAxis().setRange(new Range(0, maxY.get())));
+                }
               }
             }
-          }
 
-          // Keep as much in the same pulse/runlater on the UI thread
-          SpTool3Main.getRunTime().getGuiParameterManager().getEventTabPane()
-              .setCenter(UiUtil.putOnAnchorWithoutInsets(gridPane));
+            // Keep as much in the same pulse/runlater on the UI thread
+            SpTool3Main.getRunTime().getGuiParameterManager().getEventTabPane()
+                .setCenter(UiUtil.putOnAnchorWithoutInsets(gridPane));
+          }
         }
       }
     } // refresh
@@ -3158,40 +3157,24 @@ public abstract class Viewers {
             });
       });
 
+      // TODO: Clean this up!
+      // TODO 2: consider moving parts of the chart creation out of the parallel task (c.f. raw plot)
       addPopulation.setOnAction(e -> {
+        /*
+        ##############################################################################
+        ################## Scatter all Isotopes ##############################
+        ##############################################################################
+        */
+
         if (!plainSet.getScatterIsotopes().getValue()) {
 
-          /*
-          ##############################################################################
-           */
           // check if aligned version is present
           boolean isAligned = false;
-          boolean isPValSearch = false;
           if (selIsotopes.size() == 1) {
-            for (PopulationID id : selPop) {
-              isAligned = id.getSteps().stream()
-                  .anyMatch(popStep -> popStep instanceof PopulationStep.AlignSubtype);
-
-              if (isAligned) {
-                break;
-              }
-
-              isPValSearch = false;
-              for (PopulationStep popStep : id.getSteps()) {
-                if (popStep instanceof PopulationStep.SearchSubtype) {
-                  isPValSearch =
-                      ((PopulationStep.SearchSubtype) popStep).getSearchAlgorithm()
-                          .equals(SearchAlgorithm.P_VALUE_ACCUMULATION);
-                  if (isPValSearch) {
-                    // one step is enough
-                    break;
-                  }
-                }
-              }
-            }
+            isAligned = AnalysisUtils.isAnyAlignedOrPVal(selPop);
           }
 
-          if (isAligned || isPValSearch) {
+          if (isAligned) {
             for (Sample sample : samples) {
 
               for (PopulationID populationID : selPop) {
@@ -3229,6 +3212,14 @@ public abstract class Viewers {
                       double[] yData = sample.getData(isotope, populationID,
                           EventType.NP, plainSet.getEventParameterY().getValue(), unit);
 
+                      List<Integer> validIndices = new ArrayList<>();
+                      if (plainSet.isComputeNonzero()) {
+                        Pair<double[], double[]> nz = ArrUtils.strictlyGreaterThan(xData, yData,
+                            validIndices, 0);
+                        xData = nz.getKey();
+                        yData = nz.getValue();
+                      }
+
                       xData = plainSet.getMathModificationX().getValue().calc(xData);
                       yData = plainSet.getMathModificationY().getValue().calc(yData);
 
@@ -3251,6 +3242,11 @@ public abstract class Viewers {
                           }
                         }
                       }
+
+                      // if we remove events according to nonzero criterion, we have to remove them here too
+                      if (plainSet.isComputeNonzero()) {
+                        regionsInPolygon.removeIf(idx -> !validIndices.contains(idx));
+                      }
                     }
 
                     // now construct population for all isotopes
@@ -3258,12 +3254,13 @@ public abstract class Viewers {
                     for (Isotope allIso : allIsotopes) {
 
                       // create population
-
                       if (!regionsInPolygon.isEmpty()) {
 
                         Trace trace = sample.getTrace(allIso);
                         if (trace != null) {
                           Population pop = trace.getPopulation(populationID);
+                          // If pop==null, we know that the isotope never had this population (e.g. b/c
+                          // exclusion rule)
                           if (pop != null) {
                             EventCollection collection = pop.getEvents();
                             List<Event> events = collection.getNpEvents();
@@ -3300,6 +3297,8 @@ public abstract class Viewers {
 
           /*
           ##############################################################################
+          ############## Scatter all isotopes but is not aligned nor p-value ###########
+          ##############################################################################
            */
           } else {
 
@@ -3313,15 +3312,35 @@ public abstract class Viewers {
                   double[] yData = sample.getData(isotope, populationID,
                       EventType.NP, plainSet.getEventParameterY().getValue(), unit);
 
+                  List<Integer> validIndices = new ArrayList<>();
+                  if (plainSet.isComputeNonzero()) {
+                    Pair<double[], double[]> nz = ArrUtils.strictlyGreaterThan(xData, yData, validIndices, 0);
+                    xData = nz.getKey();
+                    yData = nz.getValue();
+                  }
+
                   xData = plainSet.getMathModificationX().getValue().calc(xData);
                   yData = plainSet.getMathModificationY().getValue().calc(yData);
 
                   Trace trace = sample.getTrace(isotope);
                   if (trace != null) {
                     Population pop = trace.getPopulation(populationID);
+                    // If pop==null, we know that the isotope never had this population (e.g. b/c
+                    // exclusion rule)
                     if (pop != null) {
                       EventCollection collection = pop.getEvents();
                       List<Event> events = collection.getNpEvents();
+                      List<Event> validEvents = new ArrayList<>();
+
+                      // if we remove events according to nonzero criterion, we have to remove them here too
+                      if (plainSet.isComputeNonzero()) {
+                        for (Integer validIndex : validIndices) {
+                          if (validIndex < events.size()) {
+                            validEvents.add(events.get(validIndex));
+                          }
+                        }
+                        events = validEvents;
+                      }
 
                       // create component
                       if (xData.length > 0 && yData.length > 0 && !events.isEmpty()
@@ -3392,6 +3411,12 @@ public abstract class Viewers {
             }
           }
           SpTool3Main.getRunTime().getMainWindowCtl().updatePopulations();
+
+          /*
+          ##############################################################################
+          ############## Scatter 2 isotopes only #######################################
+          ##############################################################################
+           */
         } else {
           for (Sample sample : samples) {
 
@@ -3404,22 +3429,9 @@ public abstract class Viewers {
                 PopulationID populationID = selPop.get(i);
 
                 // check if aligned
-                boolean isAligned = populationID.getSteps().stream()
-                    .anyMatch(popStep -> popStep instanceof PopulationStep.AlignSubtype);
+                boolean isAlignedOrP = AnalysisUtils.isAlignedOrPVal(populationID);
 
-                boolean isPValSearch = false;
-                for (PopulationStep popStep : populationID.getSteps()) {
-                  if (popStep instanceof PopulationStep.SearchSubtype) {
-                    isPValSearch = ((PopulationStep.SearchSubtype) popStep)
-                        .getSearchAlgorithm().equals(SearchAlgorithm.P_VALUE_ACCUMULATION);
-                    if (isPValSearch) {
-                      // one step is enough
-                      break;
-                    }
-                  }
-                }
-
-                if ((isAligned || isPValSearch)) {
+                if (isAlignedOrP) {
 
                   double[] xData = sample.getData(isotopeX, populationID,
                       EventType.NP, plainSet.getEventParameterX().getValue(), unit);
@@ -3427,12 +3439,18 @@ public abstract class Viewers {
                   double[] yData = sample.getData(isotopeY, populationID,
                       EventType.NP, plainSet.getEventParameterY().getValue(), unit);
 
-                  xData = plainSet.getMathModificationX().getValue().calc(xData);
+                  List<Integer> validIndices = new ArrayList<>();
+                  if (plainSet.isComputeNonzero()) {
+                    Pair<double[], double[]> nz = ArrUtils.strictlyGreaterThan(xData, yData, validIndices, 0);
+                    xData = nz.getKey();
+                    yData = nz.getValue();
+                  }
 
+                  xData = plainSet.getMathModificationX().getValue().calc(xData);
                   yData = plainSet.getMathModificationY().getValue().calc(yData);
 
                   // iterate over all isotopes and add events that are within the region
-                  // (we have to assume that indices on event (i.e., region) in one isotpe matches all
+                  // (we have to assume that indices on event (i.e., region) in one isotope matches all
                   // others)
                   List<Isotope> allIsotopes = sample.listIsotopes();
 
@@ -3441,9 +3459,22 @@ public abstract class Viewers {
                     Trace trace = sample.getTrace(isotope);
                     if (trace != null) {
                       Population pop = trace.getPopulation(populationID);
+                      // If pop==null, we know that the isotope never had this population (e.g. b/c
+                      // exclusion rule)
                       if (pop != null) {
                         EventCollection collection = pop.getEvents();
                         List<Event> events = collection.getNpEvents();
+                        List<Event> validEvents = new ArrayList<>();
+
+                        // if we remove events according to nonzero criterion, we have to remove them here too
+                        if (plainSet.isComputeNonzero()) {
+                          for (Integer validIndex : validIndices) {
+                            if (validIndex < events.size()) {
+                              validEvents.add(events.get(validIndex));
+                            }
+                          }
+                          events = validEvents;
+                        }
 
                         // create component
                         if (!events.isEmpty() && xData.length > 0 && yData.length > 0
@@ -3515,7 +3546,7 @@ public abstract class Viewers {
           SpTool3Main.getRunTime().getMainWindowCtl().updatePopulations();
         }
 
-        // Finally clear the previous polyons
+        // Finally clear the previous polygons
         // delete the points
         for (Pair<PolygonOverlay, AtomicBoolean> polygon : polygons) {
           polygon.getValue().set(false); // silence all listeners
@@ -3610,6 +3641,14 @@ public abstract class Viewers {
                       double[] yData = sample.getData(isotope, populationID,
                           EventType.NP, plainSet.getEventParameterY().getValue(), unit);
 
+                      List<Integer> validIndices = new ArrayList<>();
+                      if (plainSet.isComputeNonzero()) {
+                        Pair<double[], double[]> nz = ArrUtils.strictlyGreaterThan(xData, yData,
+                            validIndices, 0);
+                        xData = nz.getKey();
+                        yData = nz.getValue();
+                      }
+
                       xData = plainSet.getMathModificationX().getValue().calc(xData);
                       yData = plainSet.getMathModificationY().getValue().calc(yData);
 
@@ -3690,6 +3729,14 @@ public abstract class Viewers {
                       double[] yData = sample.getData(isotopeY, populationID,
                           EventType.NP, plainSet.getEventParameterY().getValue(), unit);
 
+                      List<Integer> validIndices = new ArrayList<>();
+                      if (plainSet.isComputeNonzero()) {
+                        Pair<double[], double[]> nz = ArrUtils.strictlyGreaterThan(xData, yData,
+                            validIndices, 0);
+                        xData = nz.getKey();
+                        yData = nz.getValue();
+                      }
+
                       xData = plainSet.getMathModificationX().getValue().calc(xData);
                       yData = plainSet.getMathModificationY().getValue().calc(yData);
 
@@ -3697,22 +3744,9 @@ public abstract class Viewers {
                       yLabel = isotopeY.getName() + " " + yLabel;
 
                       // check if aligned
-                      boolean isAligned = populationID.getSteps().stream()
-                          .anyMatch(popStep -> popStep instanceof PopulationStep.AlignSubtype);
+                      boolean isAlignedOrP = analysis.AnalysisUtils.isAlignedOrPVal(populationID);
 
-                      boolean isPValSearch = false;
-                      for (PopulationStep popStep : populationID.getSteps()) {
-                        if (popStep instanceof PopulationStep.SearchSubtype) {
-                          isPValSearch = ((PopulationStep.SearchSubtype) popStep).getSearchAlgorithm()
-                              .equals(SearchAlgorithm.P_VALUE_ACCUMULATION);
-                          if (isPValSearch) {
-                            // one step is enough
-                            break;
-                          }
-                        }
-                      }
-
-                      if ((isAligned || isPValSearch) && xData.length > 0 && yData.length > 0) {
+                      if (isAlignedOrP && xData.length > 0 && yData.length > 0) {
                         chartComponents.add(new ChartComponent(
                             new ChartData(AnalysisUtils.getLabelForPlots(sample,
                                 null,
@@ -4366,14 +4400,19 @@ public abstract class Viewers {
 
         List<Sample> selSamples = SpTool3Main.getRunTime().getMainWindowCtl().getSelSamples();
         List<PopulationID> selPops = SpTool3Main.getRunTime().getMainWindowCtl().getSelPops();
+        List<Isotope> loadedIsotopes = SpTool3Main.getRunTime().getMainWindowCtl().getAllIsotopes();
+        List<Isotope> selIsotopes = SpTool3Main.getRunTime().getMainWindowCtl().getSelIsotopes();
 
         double minFractionPct = plainSet.getMinFractionPct().getValue();
         int minClusterSizePie = plainSet.getMinClusterSizePie().getValue();
-        boolean excludeElements = plainSet.getExcludeElements().getValue();
-        List<Isotope> excludedList = plainSet.listExcludedElements();
+        IsotopeSelection isotopeSelection = plainSet.getIsotopeSelection().getValue();
+        List<Isotope> excludedList = plainSet.listExcludedIsotopes();
+        List<Isotope> includedList = plainSet.listIncludedIsotopes();
+        boolean removeIsobaricConflicts = plainSet.getFlattenIsobarsToDefaults().getValue();
+
         double intensityThreshold = plainSet.getIntensityThreshold().getValue();
         boolean useLog2 = plainSet.getUseLog2().getValue();
-        boolean useZScore = plainSet.getUseZScore().getValue();
+        ZScoreTarget zScoreTarget = plainSet.getzScoreType().getValue();
         DistanceOptions distanceOption = plainSet.getOverrideThreshold().getValue();
         double distanceThreshold = plainSet.getDistanceThreshold().getValue();
         boolean useLogScaleDendrogram = plainSet.getUseLogScaleDendrogram().getValue();
@@ -4416,7 +4455,7 @@ public abstract class Viewers {
                 final List<SpectralArray> spectralRegionsDataCopy = new ArrayList<>(spectralRegionsData);
 
                 if (spectralRegionsData.isEmpty()) {
-                  // try to compute the spectra
+                  // try to compute the spectra from drive b/c the cache inside of the samlpe was empty
                   LOGGER.trace("No spectral data. Loading data from available sources.");
                   SpectralUtil.computeSpectra(sample, popID);
                   // try load again
@@ -4424,50 +4463,85 @@ public abstract class Viewers {
                 }
 
                 // check for blacklisted elements
-                if (excludeElements) {
-                  spectralRegionsData.removeIf(sarr -> excludedList.contains(sarr.getIsotope()));
+                // enable exclusion of certain isotopes
+                switch (isotopeSelection) {
+                  case ALL_SAMPLE -> {
+                  }
+                  case ALL_LOADED -> {
+                    spectralRegionsData.removeIf(spectArr -> !loadedIsotopes.contains(spectArr.getIsotope()));
+                  }
+                  case SELECTED -> {
+                    spectralRegionsData.removeIf(spectArr -> !selIsotopes.contains(spectArr.getIsotope()));
+                  }
+                  case POSITIVE_LIST_SELECTION -> {
+                    spectralRegionsData.removeIf(spectArr -> !includedList.contains(spectArr.getIsotope()));
+                  }
+                  case NEGATIVE_LIST_EXCLUSION -> {
+                    spectralRegionsData.removeIf(spectArr -> excludedList.contains(spectArr.getIsotope()));
+                  }
+                  default -> {
+                    // keep as is, we should not reach this branch
+                  }
                 }
+
+                /*
+                 * Filter spectra: Ignore spectra where no m/z exceeds the threshold.
+                 * Filter here at top level (and not inside preprocess) to keep labels for slices correct
+                 */
+                spectralRegionsData.removeIf(spectArr -> {
+                  int aboveThrCounter = 0;
+                  for (double v : spectArr.getIntensity()) {
+                    if (v > intensityThreshold) {
+                      aboveThrCounter = aboveThrCounter + 1;
+                    }
+                    if (aboveThrCounter > 1) {
+                      return false; // keep
+                    }
+                  }
+                  return true; // drop
+                });
+
+                List<Isotope> validIsotopes = spectralRegionsData.stream()
+                    .map(SpectralArray::getIsotope)
+                    .toList();
 
                 // transpose to regions and elements:
                 SpectralRegionElement sre = new SpectralRegionElement(spectralRegionsData);
 
                 // are there data?
                 if (!sre.getIntensities().isEmpty()) {
-                  // Claude Sonnet implementation of SMILES HAC:
-
                   List<double[]> data = sre.getIntensities();
 
-                  // 2. Preprocess [my own implementation!]
-                  List<double[]> processed = HAC.preprocess(
-                      data,
-                      intensityThreshold,
-                      useLog2,
-                      useZScore
-                  );
-
                   // Fit (expensive): reuse cached FittedHAC if preprocessing inputs are unchanged
-                  HacCrWrapper wrapper = sample.getHacWrapper(popID);
+                  HacInstructionWrapper wrapper = sample.getHacWrapper(popID);
                   HAC.FittedHAC fitted;
 
                   // check if valid wrapper
                   if (wrapper != null && wrapper.isEqualInstructions(
-                      intensityThreshold,
                       useLog2,
-                      useZScore,
-                      excludeElements,
-                      excludedList)) {
+                      zScoreTarget,
+                      validIsotopes)) {
                     fitted = wrapper.getFit();
                   } else {
-                    fitted = HAC.fit(processed);
-                    sample.putHacWrapper(popID, new HacCrWrapper(
-                        fitted,
-                        intensityThreshold,
+
+                    // 2. Preprocess [my own implementation!] -> here we apply the intensity threshold
+                    List<double[]> processed = HAC.preprocess(
+                        data,
                         useLog2,
-                        useZScore,
-                        excludeElements,
-                        excludedList));
+                        zScoreTarget
+                    );
+
+                    // Here we execute the HAC fit!
+                    fitted = HAC.fit(processed);
+
+                    sample.putHacWrapper(popID, new HacInstructionWrapper(
+                        fitted,
+                        useLog2,
+                        zScoreTarget,
+                        validIsotopes));
                   }
 
+                  // **Claude Sonnet implementation of SMILES HAC**
                   // Cut (cheap): derive threshold from the uncut tree, then cut once at the chosen
                   // threshold
                   HAC.ClusterResult crForThreshold = fitted.cut(0.0);
@@ -4481,6 +4555,10 @@ public abstract class Viewers {
                     threshold = crForThreshold.getSuggestedCurvatureThreshold();
                   }
 
+                  /* crWard: pure Ward cut, kept unchanged for dendrogram + knee plot.
+                   cr      : working result; may be reassigned by cosine post-processing below.
+                            Only labels, k, sizes and names are replaced; mergeTree and mergeHeights stay.
+                    */
                   HAC.ClusterResult crWard = fitted.cut(threshold);
                   HAC.ClusterResult cr = crWard;
 
@@ -4492,9 +4570,8 @@ public abstract class Viewers {
                     if (useLog2ForCosine) {
                       dataForCosine = HAC.preprocess(
                           data,
-                          intensityThreshold,
                           useLog2,
-                          false   // never z-score before cosine
+                          ZScoreTarget.NONE   // never z-score before cosine
                       );
                     } else {
                       dataForCosine = data;
@@ -4671,12 +4748,6 @@ public abstract class Viewers {
                      TODO:
                       1) Put this into a utility class
                       2) in general: while at it, clean up this chaos in viewer to compute outside
-                      3) when sorting into populations: also filter/prepare the SpectralArray to
-                         avoid recomputation.
-                      ##  Probably the best approach would be to include the general clustering
-                      (trafo, blacklist, ...) as a submethod. The viewer should only support
-                      changing the threshold to identify it;
-                      Then, we could handle creation of population similar to creating filter/roi pop
                      */
 
                     List<List<Integer>> allRegionIndices = finalCr.indicesByCluster();
@@ -4696,9 +4767,7 @@ public abstract class Viewers {
 
                     // check which isotopes to show as population
                     List<Isotope> isotopes = new ArrayList<>(sample.listIsotopes());
-                    if (excludeElements) {
-                      isotopes.removeIf(excludedList::contains);
-                    }
+                    isotopes.removeIf(iso -> !validIsotopes.contains(iso));
 
                     List<MZValue> mzValues = isotopes.stream()
                         .map(IsotopeMZ::new)
@@ -4820,71 +4889,99 @@ public abstract class Viewers {
                   clustersToClipboardBtn.setOnAction(ev -> {
                     ExportWriter writer = new ClipboardWriter();
 
-                    int nIsotopes = data.size();
+                    // data is already element-major — no isotope collapse needed here.
+                    // elementNames aligns 1:1 with data (both from SpectralRegionElement).
+                    int nElements = elementNames.length;
                     int nParticles = data.get(0).length;
 
-                    LinkedHashMap<String, Integer> elementIndex = new LinkedHashMap<>();
-                    for (String name : elementNames)
-                      if (!elementIndex.containsKey(name))
-                        elementIndex.put(name, elementIndex.size());
-
-                    int nElements = elementIndex.size();
-                    String[] elementList = elementIndex.keySet().toArray(new String[0]);
-
+                    // meanRaw[cluster][element] — accumulated sum, divided by counts below
                     double[][] meanRaw = new double[finalCr.k()][nElements];
                     int[] counts = new int[finalCr.k()];
 
-                    for (int p = 0; p < nParticles; p++)
-                      counts[finalCr.labels()[p]]++;
+                    for (int p = 0; p < nParticles; p++) {
+                      int clusterIndex = finalCr.labels()[p];
+                      counts[clusterIndex] = counts[clusterIndex] + 1;
+                    }
 
-                    for (int iso = 0; iso < nIsotopes; iso++) {
-                      double[] channel = data.get(iso);
-                      int eIdx = elementIndex.get(elementNames[iso]);
+                    for (int e = 0; e < nElements; e++) {
+                      double[] channel = data.get(e);
                       for (int p = 0; p < nParticles; p++) {
-                        int c = finalCr.labels()[p];
-                        meanRaw[c][eIdx] += channel[p];
+                        int clusterIndex = finalCr.labels()[p];
+                        meanRaw[clusterIndex][e] = meanRaw[clusterIndex][e] + channel[p];
                       }
                     }
 
+                    // Divide to get means, then clamp negatives.
+                    // Small negatives are noise from background subtraction — clamp silently.
+                    // Large negatives (> 5% of the cluster's max element mean) suggest
+                    // background overshot badly — log a warning.
                     for (int c = 0; c < finalCr.k(); c++) {
-                      if (counts[c] == 0) continue;
+                      if (counts[c] == 0) {
+                        continue;
+                      }
+
                       for (int e = 0; e < nElements; e++) {
-                        meanRaw[c][e] /= counts[c];
-                        // statistically, negative would be correct; but for particles, it does not make
-                        // much sense to allow this. Clamping is probably better. Ideally,
-                        // we should clamp to 3sigma or sth in the sense of the original Currie
-                        // publication
-                        meanRaw[c][e] = Math.max(0.0, meanRaw[c][e]);
+                        meanRaw[c][e] = meanRaw[c][e] / counts[c];
+                      }
+
+                      double maxMean = 0.0;
+                      for (int e = 0; e < nElements; e++) {
+                        if (meanRaw[c][e] > maxMean) {
+                          maxMean = meanRaw[c][e];
+                        }
+                      }
+
+                      for (int e = 0; e < nElements; e++) {
+                        if (meanRaw[c][e] < 0.0) {
+                          boolean isLargeNegative = Math.abs(meanRaw[c][e]) > 0.25 * maxMean;
+                          if (isLargeNegative) {
+                            LOGGER.warn(
+                                "Clipboard export — cluster {} '{}': element '{}' has a strongly "
+                                    + "negative mean ({}) — background subtraction may have overshot. "
+                                    + "Clamping to 0.",
+                                c, finalCr.clusterNames()[c], elementNames[e], meanRaw[c][e]);
+                          }
+                          meanRaw[c][e] = 0.0;
+                        }
                       }
                     }
 
+                    // Build columns: first column is element names, then one column per cluster
                     List<List<String>> columns = new ArrayList<>();
 
                     List<String> elementCol = new ArrayList<>();
                     elementCol.add("Element");
-                    Collections.addAll(elementCol, elementList);
+                    for (int e = 0; e < nElements; e++) {
+                      elementCol.add(elementNames[e]);
+                    }
                     columns.add(elementCol);
 
                     for (int c = 0; c < finalCr.k(); c++) {
-                      if (finalCr.sizes()[c] < minClusterSizePie) continue;
+                      if (finalCr.sizes()[c] < minClusterSizePie) {
+                        continue;
+                      }
 
                       double total = 0.0;
-                      for (int e = 0; e < nElements; e++)
-                        total += meanRaw[c][e];
+                      for (int e = 0; e < nElements; e++) {
+                        total = total + meanRaw[c][e];
+                      }
 
                       List<String> col = new ArrayList<>();
-                      col.add(finalCr.clusterNames()[c] + " (n=" + finalCr.sizes()[c] + ")");
+                      col.add(finalCr.clusterNames()[c] + " (n="
+                          + finalCr.sizes()[c]
+                          + " µ=" + SnF.doubleToString(total, NF.D1C1) + ")");
                       for (int e = 0; e < nElements; e++) {
                         double pct = (total > 0.0) ? meanRaw[c][e] / total * 100.0 : 0.0;
-                        col.add(String.format("%.1f%%", pct));
+                        col.add(SnF.doubleToString(pct, NF.D1C2));
                       }
                       columns.add(col);
                     }
 
                     TabBlockColl coll = new TabBlockColl(writer, false);
                     TabBlock block = new TabBlock();
-                    for (List<String> column : columns)
+                    for (List<String> column : columns) {
                       block.addCol(new TabCol(column));
+                    }
                     coll.add(block);
                     coll.export();
                   });
@@ -5069,6 +5166,11 @@ public abstract class Viewers {
                             2);
                       }
 
+                      // check if compute nonzero before applying math operations
+                      if (plainSet.isComputeNonzero()) {
+                        data = ArrUtils.strictlyGreaterThan(data, 0);
+                      }
+
                       // check math operations
                       data = plainSet.getMathMod().calc(data);
 
@@ -5094,6 +5196,12 @@ public abstract class Viewers {
                     // Default way to retrieve data.
                     double[] data = sample.getData(isotope, populationID, eventType,
                         plainSet.getEventParameter(), qUnit);
+
+                    // check if compute nonzero before applying math operations
+                    if (plainSet.isComputeNonzero()) {
+                      data = ArrUtils.strictlyGreaterThan(data, 0);
+                    }
+
                     // check math operations
                     data = plainSet.getMathMod().calc(data);
 

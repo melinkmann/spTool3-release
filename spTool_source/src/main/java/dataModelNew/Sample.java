@@ -78,6 +78,8 @@ public interface Sample extends Serializable {
    */
   List<Isotope> listIsotopes();
 
+  List<Isotope> getRecordedTofRange();
+
   public default List<Element> listElements() {
     return listIsotopes().stream()
         .map(Isotope::getElement)
@@ -112,9 +114,9 @@ public interface Sample extends Serializable {
   List<SpectralArray> getSpectralData(PopulationID popID);
 
   @org.jetbrains.annotations.Nullable
-  HacCrWrapper getHacWrapper(PopulationID popID);
+  HacInstructionWrapper getHacWrapper(PopulationID popID);
 
-  void putHacWrapper(PopulationID popID, HacCrWrapper wrapper);
+  void putHacWrapper(PopulationID popID, HacInstructionWrapper wrapper);
 
   public void addSpectralData(PopulationID populationID, List<SpectralArray> spectralData);
 

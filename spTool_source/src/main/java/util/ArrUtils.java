@@ -928,6 +928,38 @@ public abstract class ArrUtils {
     return doubleListToArr(nzList);
   }
 
+  public static Pair<double[], double[]> strictlyGreaterThan(double[] arr1, double[] arr2, double smallest) {
+    int minLen = Math.min(arr1.length, arr2.length);
+
+    List<Double> list1 = new ArrayList<>(minLen);
+    List<Double> list2 = new ArrayList<>(minLen);
+
+    for (int i = 0; i < minLen; i++) {
+      if (arr1[i] > smallest && arr2[i] > smallest) {
+        list1.add(arr1[i]);
+        list2.add(arr2[i]);
+      }
+    }
+    return new Pair<>(doubleListToArr(list1), doubleListToArr(list2));
+  }
+
+  public static Pair<double[], double[]> strictlyGreaterThan(double[] arr1, double[] arr2,
+                                                             List<Integer> validIndices, double smallest) {
+    int minLen = Math.min(arr1.length, arr2.length);
+
+    List<Double> list1 = new ArrayList<>(minLen);
+    List<Double> list2 = new ArrayList<>(minLen);
+
+    for (int i = 0; i < minLen; i++) {
+      if (arr1[i] > smallest && arr2[i] > smallest) {
+        list1.add(arr1[i]);
+        list2.add(arr2[i]);
+        validIndices.add(i);
+      }
+    }
+    return new Pair<>(doubleListToArr(list1), doubleListToArr(list2));
+  }
+
   public static double[] filterInclusively(double[] array, double min, double max) {
     List<Double> nzList = new ArrayList<>();
     for (double d : array) {

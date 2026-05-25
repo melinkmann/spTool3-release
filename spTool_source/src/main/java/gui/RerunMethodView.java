@@ -63,6 +63,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import processing.parameterSets.*;
 import processing.parameterSets.action.Actions;
+import processing.parameterSets.impl.NuInterpreterParams;
 import processing.parameters.FxParameter;
 import util.ClipboardUtils;
 
@@ -104,6 +105,16 @@ public class RerunMethodView implements ParameterView {
 
     this.copyOfMethod = m.getCopyWithoutFile();
     this.fxCopyOfMethod = copyOfMethod.getObservableInstance();
+
+    // set available isotopes in the submethod
+    for (ParamSet set : copyOfMethod.getSets()) {
+      if (set instanceof NuInterpreterParams) {
+        Sample sample = fxSample.getPlainSample();
+        if (sample != null) {
+          ((NuInterpreterParams) set).setRecordedTofRange(sample.getRecordedTofRange());
+        }
+      }
+    }
 
     this.fxSample = fxSample;
 
@@ -259,7 +270,7 @@ public class RerunMethodView implements ParameterView {
     createButton.setOnAction(e -> create());
 
     /// ///////////////////////////////////////////
-    Button importAgain = UiUtil.getImageButton("Import again", "/img/loadFromDrive.png",
+    Button importAgain = UiUtil.getImageButton("Import copy", "/img/loadFromDrive.png",
         "Import that file of the sample again.");
     importAgain.setPrefWidth(120);
 
@@ -347,7 +358,7 @@ public class RerunMethodView implements ParameterView {
         }
 
         List<Boolean> successes = SpTool3Main.getRunTime().getMainWindowCtl().startImportLoadAgain(paths,
-            methods,parent);
+            methods, parent);
 
         // Only remove if reimport is possible at all (i.e, if success was returned).
         if (!successes.isEmpty()) {
@@ -367,7 +378,7 @@ public class RerunMethodView implements ParameterView {
     });
 
     Button replaceIsotopes = UiUtil.getSquareImageButton("Update m/z", "/img/tableTrace.png",
-        "Update isotopes in the sample.");
+        "Update isotopes in the sample (keeps comments, quantification, ...).");
     replaceIsotopes.setPrefWidth(110);
 
     replaceIsotopes.setOnAction(e -> {

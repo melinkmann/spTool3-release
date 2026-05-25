@@ -136,6 +136,8 @@ public class MonteCarloScatterPlotParameters extends AbstractParamSet implements
   private final Parameter<EventParameter> eventParameterY;
   private final Parameter<MathMod> mathModificationY;
 
+  private final Parameter<Boolean> logWithoutZeros;
+
   private final Parameter<Boolean> addRegression;
   private final Parameter<Double> regressionViewRatio;
 
@@ -203,6 +205,16 @@ public class MonteCarloScatterPlotParameters extends AbstractParamSet implements
         false,
         "mathModificationY"
     );
+
+    this.logWithoutZeros = new BooleanParameter(
+        "Trim",
+        "Values > 0",
+        "Exclude values smaller than or equal to zero when log10 transformation is applied",
+        false,
+        true,
+        "logWithoutZeros"
+    );
+
 
     this.addRegression = new BooleanParameter(
         "Show",
@@ -294,6 +306,7 @@ public class MonteCarloScatterPlotParameters extends AbstractParamSet implements
     this.eventParameterX = params.eventParameterX.copyWithoutChildren();
     this.mathModificationY = params.mathModificationY.copyWithoutChildren();
     this.eventParameterY = params.eventParameterY.copyWithoutChildren();
+    this.logWithoutZeros=params.logWithoutZeros.copyWithoutChildren();
     this.addRegression = params.addRegression.copyWithoutChildren();
     this.regressionViewRatio = params.regressionViewRatio.copyWithoutChildren();
     this.colorAlpha = params.colorAlpha.copyWithoutChildren();
@@ -335,6 +348,7 @@ public class MonteCarloScatterPlotParameters extends AbstractParamSet implements
         mathModificationX,
         eventParameterY,
         mathModificationY,
+        logWithoutZeros,
         addRegression,
         colorAlpha,
         dotSize,
@@ -373,6 +387,7 @@ public class MonteCarloScatterPlotParameters extends AbstractParamSet implements
           case "mathModificationX" -> mathModificationX;
           case "eventParameterY" -> eventParameterY;
           case "mathModificationY" -> mathModificationY;
+          case "logWithoutZeros" -> logWithoutZeros;
 
           case "colorAlpha" -> colorAlpha;
           case "dotSize" -> dotSize;
@@ -436,6 +451,13 @@ public class MonteCarloScatterPlotParameters extends AbstractParamSet implements
 
   public Parameter<MathMod> getMathModificationY() {
     return mathModificationY;
+  }
+
+
+  public boolean isComputeNonzero() {
+    return logWithoutZeros.getValue()
+        && (mathModificationX.getValue().equals(MathMod.LOG10)
+        || mathModificationY.getValue().equals(MathMod.LOG10));
   }
 
   public Parameter<Boolean> getAddRegression() {

@@ -243,7 +243,11 @@ public abstract class Actions {
     BatchTask task = new SimpleParallelBatch("Parallel sample processing batch",
         sampleBatches, false,
         // runlater() is called in updatePopulations()
-        () -> SpTool3Main.getRunTime().getMainWindowCtl().updatePopulations());
+        () -> {
+          // this should refresh isotope view in case isotopes have been removed
+          SpTool3Main.getRunTime().getMainWindowCtl().updateSampleSets();
+          SpTool3Main.getRunTime().getMainWindowCtl().updatePopulations();
+        });
 
     SpTool3Main.getRunTime().getTaskManager().queueToHousekeepingPool(task);
   }
@@ -255,6 +259,7 @@ public abstract class Actions {
 
     List<Task> tasks = new ArrayList<>();
     List<ParamSet> subMethods = method.getSets();
+    List<Isotope> selIsotopes = SpTool3Main.getRunTime().getMainWindowCtl().getSelIsotopes();
 
     // Manage populations
     PopulationBranch branch = new PopulationBranch();
@@ -280,7 +285,7 @@ public abstract class Actions {
         boolean isActive = ((NormalSearchParams) set).getEnableBoolean().getValue();
         hasActiveSearchBlock = isActive;
         if (isActive) {
-          tasks.add(new SearchTask("Search", branch, (NormalSearchParams) set, sample));
+          tasks.add(new SearchTask("Search", branch, (NormalSearchParams) set, sample,selIsotopes));
         }
       }
 
@@ -293,7 +298,7 @@ public abstract class Actions {
       }
 
       if (set instanceof AlignerParams && hasActiveSearchBlock) {
-        tasks.add(new AlignTask("Align", branch, (AlignerParams) set, sample));
+        tasks.add(new AlignTask("Align", branch, (AlignerParams) set, sample, selIsotopes));
       }
 
       if (set instanceof FilterParams && hasActiveSearchBlock) {

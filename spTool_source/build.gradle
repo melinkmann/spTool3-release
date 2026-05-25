@@ -134,6 +134,8 @@ javafx {
         implementation 'commons-codec:commons-codec:1.20.0'
         // compression
         implementation 'com.github.luben:zstd-jni:1.5.5-11'
+        // fast non-boxed arraylists
+        implementation 'it.unimi.dsi:fastutil:8.5.15'
 
 
         // faster plotting library

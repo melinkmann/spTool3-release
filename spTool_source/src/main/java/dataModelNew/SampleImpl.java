@@ -32,6 +32,7 @@ import java.io.ObjectOutputStream;
 import java.io.Serial;
 import java.io.Serializable;
 import java.lang.ref.SoftReference;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -40,7 +41,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import math.HAC;
+import io.nu.NuReader_new;
 import math.stat.DriftFactor;
 import math.units.Unit;
 import math.units.enums.*;
@@ -78,12 +79,13 @@ public class SampleImpl implements Sample, Serializable {
   private final List<ParticlePopulationMatrix> matrices;
   private HashMap<PopulationID, List<SpectralArray>> spectra;
   // transient version to store HAC results for faster access
-  private transient HashMap<PopulationID, SoftReference<HacCrWrapper>> hacWrapper;
+  private transient HashMap<PopulationID, SoftReference<HacInstructionWrapper>> hacWrapper;
   private Method method;
   private Cal quant;
   private Color color;
   private List<Isotope> sampleDefaultIsotopes;
   private List<String> removedIsotopeInfo;
+  private List<Isotope> recordedTofRange;
 
   public SampleImpl() {
     this.traces = new LinkedHashMap<>();
@@ -99,6 +101,7 @@ public class SampleImpl implements Sample, Serializable {
     this.color = SpTool3Main.getRunTime().getNextSampleColor().get();
     this.sampleDefaultIsotopes = new ArrayList<>();
     this.removedIsotopeInfo = new ArrayList<>();
+    this.recordedTofRange = new ArrayList<>();
   }
 
   public SampleImpl(String nickName) {
@@ -115,8 +118,10 @@ public class SampleImpl implements Sample, Serializable {
     this.color = SpTool3Main.getRunTime().getNextSampleColor().get();
     this.sampleDefaultIsotopes = new ArrayList<>();
     this.removedIsotopeInfo = new ArrayList<>();
+    this.recordedTofRange = new ArrayList<>();
   }
 
+  // CSV
   public SampleImpl(String nickName, SampleFile sampleFile) {
     this.traces = new LinkedHashMap<>();
     this.matrices = new ArrayList<>();
@@ -131,6 +136,25 @@ public class SampleImpl implements Sample, Serializable {
     this.color = SpTool3Main.getRunTime().getNextSampleColor().get();
     this.sampleDefaultIsotopes = new ArrayList<>();
     this.removedIsotopeInfo = new ArrayList<>();
+    this.recordedTofRange = new ArrayList<>();
+  }
+
+  // NU
+  public SampleImpl(String nickName, SampleFile sampleFile, List<Isotope> recordedTofRange) {
+    this.traces = new LinkedHashMap<>();
+    this.matrices = new ArrayList<>();
+    this.spectra = new HashMap<>();
+    this.hacWrapper = new HashMap<>();
+    this.nickName = nickName;
+    this.highlighted = false;
+    this.comment = "";
+    this.sampleFile = sampleFile;
+    this.method = new ListMethod();
+    this.quant = new Calibration(nickName);
+    this.color = SpTool3Main.getRunTime().getNextSampleColor().get();
+    this.sampleDefaultIsotopes = new ArrayList<>();
+    this.removedIsotopeInfo = new ArrayList<>();
+    this.recordedTofRange = new ArrayList<>(recordedTofRange);
   }
 
   public SampleImpl(String nickName, SampleFile sampleFile, Method method) {
@@ -147,6 +171,7 @@ public class SampleImpl implements Sample, Serializable {
     this.color = SpTool3Main.getRunTime().getNextSampleColor().get();
     this.sampleDefaultIsotopes = new ArrayList<>();
     this.removedIsotopeInfo = new ArrayList<>();
+    this.recordedTofRange = new ArrayList<>();
   }
 
   // Deep copy
@@ -158,7 +183,8 @@ public class SampleImpl implements Sample, Serializable {
                     Cal quant,
                     Color color,
                     List<Isotope> sampleDefaultIsotopes,
-                    List<String> removedIsotopeInfo) {
+                    List<String> removedIsotopeInfo,
+                    List<Isotope> recordedTofRange) {
     this.nickName = nickName;
     this.matrices = new ArrayList<>();
     for (ParticlePopulationMatrix matrix : matrices) {
@@ -176,6 +202,7 @@ public class SampleImpl implements Sample, Serializable {
 
       this.spectra.put(new PopulationID(popID), copies);
     }
+    this.hacWrapper = new HashMap<>();
     this.highlighted = highlighted;
     this.comment = comment;
     this.sampleFile = new SampleFile(sampleFile);
@@ -186,6 +213,7 @@ public class SampleImpl implements Sample, Serializable {
     this.color = color;
     this.sampleDefaultIsotopes = new ArrayList<>(sampleDefaultIsotopes);
     this.removedIsotopeInfo = new ArrayList<>(removedIsotopeInfo);
+    this.recordedTofRange = new ArrayList<>(recordedTofRange);
   }
 
   public Sample copy() {
@@ -201,7 +229,8 @@ public class SampleImpl implements Sample, Serializable {
         quant,
         color,
         sampleDefaultIsotopes,
-        removedIsotopeInfo);
+        removedIsotopeInfo,
+        recordedTofRange);
     return newSample;
   }
 
@@ -219,7 +248,8 @@ public class SampleImpl implements Sample, Serializable {
         new Calibration(),
         color,
         sampleDefaultIsotopes,
-        removedIsotopeInfo);
+        removedIsotopeInfo,
+        recordedTofRange);
     return newSample;
   }
 
@@ -276,6 +306,10 @@ public class SampleImpl implements Sample, Serializable {
 
     if (hacWrapper == null) {
       this.hacWrapper = new HashMap<>();
+    }
+
+    if (recordedTofRange == null) {
+      this.recordedTofRange = new ArrayList<>();
     }
 
     // Offload to HDD immediately after reading
@@ -398,6 +432,24 @@ public class SampleImpl implements Sample, Serializable {
     return Collections.unmodifiableList(new ArrayList<>(traces.keySet()));
   }
 
+  public List<Isotope> getRecordedTofRange() {
+    if (recordedTofRange.isEmpty()) {
+      if (sampleFile.getInstrumentID().equals(InstrumentID.NU_VITESSE)) {
+        LOGGER.trace("Did not find any stored information on available isotopes in sample." +
+            " Try read from file...");
+        Path directory = sampleFile.getFilePath();
+        List<Double> availableMZ = NuReader_new.listAvailableMZFromCacheOrParse(directory);
+        if (!availableMZ.isEmpty()) {
+          LOGGER.trace("Read available isotopes in sample from file.");
+          recordedTofRange.addAll(Isotope.getFromNominalMass(availableMZ));
+        } else {
+          LOGGER.info("Unable to read isotopes from file: " + directory);
+        }
+      }
+    }
+    return recordedTofRange;
+  }
+
   /**
    * @param isotope Isotope that may or may not be present in this sample.
    * @return A UNIQUE list of the corresponding simulated particle population matrices. Several
@@ -435,9 +487,9 @@ public class SampleImpl implements Sample, Serializable {
 
   @Override
   @Nullable
-  public HacCrWrapper getHacWrapper(PopulationID popID) {
-    HacCrWrapper wrapper = null;
-    SoftReference<HacCrWrapper> wrapperRef = hacWrapper.get(popID);
+  public HacInstructionWrapper getHacWrapper(PopulationID popID) {
+    HacInstructionWrapper wrapper = null;
+    SoftReference<HacInstructionWrapper> wrapperRef = hacWrapper.get(popID);
     if (wrapperRef != null) {
       wrapper = wrapperRef.get();
     }
@@ -445,7 +497,7 @@ public class SampleImpl implements Sample, Serializable {
   }
 
   @Override
-  public void putHacWrapper(PopulationID popID, HacCrWrapper wrapper) {
+  public void putHacWrapper(PopulationID popID, HacInstructionWrapper wrapper) {
     this.hacWrapper.put(popID, new SoftReference<>(wrapper));
   }
 
@@ -502,7 +554,13 @@ public class SampleImpl implements Sample, Serializable {
 
   @Override
   public void removeIsotopes(List<Isotope> isotopes) {
+    // remove trace itself
     this.traces.keySet().removeAll(isotopes);
+    //    // remove from spectra too [feels unexpected as we do not see these in the UI]
+    //    for (PopulationID popID : spectra.keySet()) {
+    //      List<SpectralArray> spec = spectra.get(popID);
+    //      spec.removeIf(sarr -> isotopes.contains(sarr.getIsotope()));
+    //    }
   }
 
   @Override
@@ -1210,10 +1268,10 @@ public class SampleImpl implements Sample, Serializable {
   public String tabRawMeanCPS(Isotope isotope) {
     String val = EMPTY_CELL;
     Trace trace = getTrace(isotope);
-    if (trace != null){
+    if (trace != null) {
       double dtSec = trace.getTISeries().getDT();
       double ctsPerDT = trace.getTISeries().getMeanIntensity();
-      double cps = ctsPerDT/dtSec;
+      double cps = ctsPerDT / dtSec;
       val = SnF.doubleToString(cps, NF.D1C1, NF.D1C1Exp);
     }
     return val;
@@ -1230,10 +1288,10 @@ public class SampleImpl implements Sample, Serializable {
   public String tabRawMedianCPS(Isotope isotope) {
     String val = EMPTY_CELL;
     Trace trace = getTrace(isotope);
-    if (trace != null){
+    if (trace != null) {
       double dtSec = trace.getTISeries().getDT();
       double ctsPerDT = trace.getTISeries().getMedianIntensity();
-      double cps = ctsPerDT/dtSec;
+      double cps = ctsPerDT / dtSec;
       val = SnF.doubleToString(cps, NF.D1C1, NF.D1C1Exp);
     }
     return val;

@@ -22,6 +22,7 @@ import java.io.FilenameFilter;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.channels.FileLock;
+
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -75,8 +76,13 @@ public class TmpFileCleanup implements Runnable {
           if (lock != null) {
             // We locked the file, which means nobody is using it
             // anymore and it can be removed
-            LOGGER.info("Removing unused temporary file " + remainingTmpFile);
-            remainingTmpFile.delete();
+            LOGGER.trace("Removing unused temporary file " + remainingTmpFile);
+            boolean success = remainingTmpFile.delete();
+            if (success) {
+              LOGGER.trace("... successfully removed file " + remainingTmpFile + ".");
+            } else {
+              LOGGER.info("... unable to remove file " + remainingTmpFile + ".");
+            }
           }
 
         }

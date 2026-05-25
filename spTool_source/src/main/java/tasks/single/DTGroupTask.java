@@ -65,7 +65,6 @@ public class DTGroupTask extends AbstractWorkingTask implements WorkingTask {
 
       RawProcessingUtils.groupDT(selSamples,
           selIsotopes,
-          dtGroupParams,
           dtGroupParams.getTargetDwellTime().getValue() / 1000,
           dtGroupParams.getExportIntermediateSteps().getValue());
 

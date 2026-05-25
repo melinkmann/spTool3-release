@@ -17,17 +17,30 @@
 
 package util;
 
+import core.SpTool3Main;
+import dataModelNew.InstrumentID;
+import dataModelNew.Sample;
+import dataModelNew.SampleFile;
+import gui.dialog.DialogUtil;
 import gui.dialog.FxEntry;
 
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import gui.dialog.caseImpl.CsvLoader;
 import gui.dialog.caseImpl.NuLoader;
+import gui.dialog.notification.NotificationFactory;
+import gui.dialog.notification.PopupFactory;
+import javafx.stage.DirectoryChooser;
+import javafx.stage.FileChooser;
+import javafx.stage.Window;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -38,6 +51,8 @@ import processing.parameterSets.Method;
 import processing.parameterSets.ParamSet;
 import processing.parameterSets.impl.CsvInterpreterParams;
 import processing.parameterSets.impl.NuInterpreterParams;
+
+import static gui.dialog.notification.NotificationFactory.openYesNo;
 
 public abstract class Util {
 
@@ -273,20 +288,118 @@ public abstract class Util {
 
   public static boolean isNuPath(Path path) {
     // Check which type to use: Check if TOF first.
-    String fileName = path.getFileName().toString();
-    File pathAsFile = path.toFile();
+    boolean nonNull = false;
+    boolean foundTOF = false;
 
-    // check: "generate" the run.info file and check if it exists
-    File runInfoFile = new File(path.toString(), "run.info");
-    boolean hasRunInfo = runInfoFile.exists() && runInfoFile.isFile() && runInfoFile.canRead();
+    if (path != null) {
+      nonNull = true;
+      String fileName = path.getFileName().toString();
+      File pathAsFile = path.toFile();
 
-    boolean isRunInfo = fileName.equals("run.info")
-        && pathAsFile.exists() && pathAsFile.isFile() && pathAsFile.canRead();
+      // check: "generate" the run.info file and check if it exists
+      File runInfoFile = new File(path.toString(), "run.info");
+      boolean hasRunInfo = runInfoFile.exists() && runInfoFile.isFile() && runInfoFile.canRead();
 
-    boolean foundTOF = hasRunInfo || isRunInfo;
+      boolean isRunInfo = fileName.equals("run.info")
+          && pathAsFile.exists() && pathAsFile.isFile() && pathAsFile.canRead();
 
-    return foundTOF;
+      foundTOF = hasRunInfo || isRunInfo;
+    }
+
+    return nonNull && foundTOF;
   }
+
+  public static void updateSamplePath(List<Sample> samples) {
+    int levels = SpTool3Main.getRunTime().getConfParams().getDragDropFolderDepth().getValue();
+    List<Sample> issues = new ArrayList<>();
+    List<Sample> fixed = new ArrayList<>();
+    List<Sample> unFixed = new ArrayList<>();
+    for (Sample sample : samples) {
+      for (Sample subSample : sample.getAllSamples()) {
+        SampleFile sampleFile = subSample.getSampleFile();
+        if (sampleFile.getInstrumentID().equals(InstrumentID.NU_VITESSE)) {
+          // check if exists
+          boolean exists = isNuPath(sampleFile.getFilePath());
+          if (!exists) {
+            issues.add(subSample);
+          }
+        }
+      }
+    }
+
+    if (!issues.isEmpty()) {
+
+      String message = """
+          There are samples whose run.info files cannot be found on drive.
+          Have they been moved? You can set a new parent directory here
+          and spTool tries to match the expected folder name with those folders found in the directory.
+          It will list subdirectories in your input directory (depth is specified in the configuration).
+          Start recovery?
+          
+          """;
+
+      String issueNames = "Affected samples:";
+      for (Sample issue : issues) {
+        issueNames = issueNames + "\n" + issue.getSampleFile().getFilePath();
+      }
+
+      NotificationFactory.openYesNo(message + issueNames,
+          () -> {
+            DirectoryChooser directoryChooser = new DirectoryChooser();
+            directoryChooser.setTitle("Select run.info directory");
+            File dir = directoryChooser.showDialog(SpTool3Main.getMainStage());
+
+            if (dir.isDirectory()) {
+              for (Sample issue : issues) {
+
+                SampleFile issueFile = issue.getSampleFile();
+                Path missingPath = issueFile.getFilePath();
+                Path matchedPath = null;
+
+                String targetName = missingPath.getFileName().toString();
+                try (Stream<Path> stream = Files.find(dir.toPath(), levels,
+                    (path, attrs) -> attrs.isDirectory() && path.getFileName().toString().equals(targetName))) {
+                  matchedPath = stream
+                      .filter(Util::isNuPath)
+                      .findFirst()
+                      .orElse(null);
+                } catch (IOException e) {
+                  LOGGER.error(e.getMessage() + ". Stack trace: " + ExceptionUtils.getStackTrace(e));
+                }
+
+                if (matchedPath != null && isNuPath(matchedPath)) {
+                  LOGGER.info("Found match: "
+                      + "\n" + matchedPath
+                      + "\nfor missing path: " + missingPath);
+                  issue.getSampleFile().setUriFile(matchedPath.toUri());
+                  fixed.add(issue);
+                } else {
+                  LOGGER.error("NO MATCH for missing path: " + missingPath);
+                  unFixed.add(issue);
+                }
+              }
+            }
+
+            String fixedNames = "\n\nSuccess: ";
+            String unfixedNames = "\n\nFailed to fix: ";
+
+            for (Sample issue : fixed) {
+              fixedNames = fixedNames + "\n" + issue.getSampleFile().getFilePath();
+            }
+            for (Sample issue : unFixed) {
+              unfixedNames = unfixedNames + "\n" + issue.getSampleFile().getFilePath();
+            }
+
+            NotificationFactory.openInfo("Report:" + fixedNames + unfixedNames);
+          });
+
+    } else {
+      NotificationFactory.openInfo("There are no issues regarding sample files.");
+    }
+
+
+  }
+
 
   public static boolean isCsvLikeFile(Path path) {
     File pathAsFile = path.toFile();

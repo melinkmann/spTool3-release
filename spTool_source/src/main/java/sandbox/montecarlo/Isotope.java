@@ -139,6 +139,18 @@ public class Isotope implements Fillable<Isotope>, FillCollection<Isotope>, Comp
     return matches;
   }
 
+  // Returns a unique list of all isotopes with the nominal masses
+  public static List<Isotope> getFromNominalMass(List<Double> mzs) {
+    List<Isotope> matchingIsotopes = new ArrayList<>();
+    for (Double mz : mzs) {
+      int roundedNominalIsotopicNumber = (int) Math.round(mz);
+      matchingIsotopes.addAll(getFromNominalMass(roundedNominalIsotopicNumber));
+    }
+    matchingIsotopes = matchingIsotopes.stream().distinct().toList();
+    return matchingIsotopes;
+  }
+
+
   public static Isotope guessFromString(String symbol) {
     Isotope isotope = Element.UNKNOWN.getMostAbundant();
     if (symbol != null) {
