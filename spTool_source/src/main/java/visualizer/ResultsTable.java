@@ -21,6 +21,7 @@ import analysis.PopulationID;
 import core.RunTimeInstance;
 import core.SpTool3Main;
 import dataModelNew.Sample;
+import dataModelNew.mz.Channel;
 import gui.dialog.notification.NotificationFactory;
 import gui.table.TableUtils;
 import gui.util.UiUtil;
@@ -45,14 +46,12 @@ import javafx.scene.control.TableView;
 import javafx.scene.control.Tooltip;
 import javafx.scene.image.ImageView;
 import javafx.util.Duration;
-import javafx.util.Pair;
 import math.stat.MeasureOfLocation;
 import math.stat.MeasureOfSpread;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import processing.options.EventParameter;
 import processing.options.MathMod;
-import sandbox.montecarlo.Isotope;
 import util.NF;
 import util.SnF;
 import visualizer.ResultTableData.TraceCol;
@@ -318,65 +317,65 @@ public abstract class ResultsTable {
 
   public enum TablePar {
     SAMPLE_NAME {
-      public String getValue(Sample s, Isotope i, PopulationID p) {
+      public String getValue(Sample s, Channel i, PopulationID p) {
         return s.tabSampleName();
       }
     },
 
     SAMPLE_NICK_NAME {
-      public String getValue(Sample s, Isotope i, PopulationID p) {
+      public String getValue(Sample s, Channel i, PopulationID p) {
         return s.tabNickName();
       }
     },
 
     SAMPLE_FOLDER {
-      public String getValue(Sample s, Isotope i, PopulationID p) {
+      public String getValue(Sample s, Channel i, PopulationID p) {
         return s.tabSampleFolder();
       }
     },
 
     SAMPLE_FULL_PATH {
-      public String getValue(Sample s, Isotope i, PopulationID p) {
+      public String getValue(Sample s, Channel i, PopulationID p) {
         return s.tabFullPath();
       }
     },
 
     SAMPLE_COMMENT {
-      public String getValue(Sample s, Isotope i, PopulationID p) {
+      public String getValue(Sample s, Channel i, PopulationID p) {
         return s.tabComment();
       }
     },
 
     SAMPLE_HIGHLIGHT {
-      public String getValue(Sample s, Isotope i, PopulationID p) {
+      public String getValue(Sample s, Channel i, PopulationID p) {
         return s.tabHighlight();
       }
     },
 
     REMOVED_MZ {
       @Override
-      protected String getValue(Sample s, Isotope i, PopulationID p) {
-        return s.tabRemovedIsotopes();
+      protected String getValue(Sample s, Channel i, PopulationID p) {
+        return s.tabRemovedChannels();
       }
     },
 
     /// ///////////////////////////////////////////////////////////////////////////
 
     TRACE_MZ {
-      public String getValue(Sample s, Isotope i, PopulationID p) {
-        String val = check(i) ? i.getName() : EMPTY_CELL;
+      public String getValue(Sample s, Channel i, PopulationID p) {
+        String val = check(i) ? i.getShortUIString() : EMPTY_CELL;
         return val;
       }
     },
 
     DWELL_TIME {
-      public String getValue(Sample s, Isotope i, PopulationID p) {
+      public String getValue(Sample s, Channel i, PopulationID p) {
         return s.tabDwellTime(i);
       }
     },
 
     DWELL_TIME_MS {
-      public String getValue(Sample s, Isotope i, PopulationID p) {
+      public String getValue(Sample s, Channel i, PopulationID p) {
         String dtStr = s.tabDwellTime(i);
         double dtus = SnF.strToDoubleSilent(dtStr);
         if (dtus > 0) {
@@ -388,240 +387,240 @@ public abstract class ResultsTable {
     },
 
     DURATION {
-      public String getValue(Sample s, Isotope i, PopulationID p) {
+      public String getValue(Sample s, Channel i, PopulationID p) {
         return s.tabDuration(i);
       }
     },
 
     DATA_POINTS {
-      public String getValue(Sample s, Isotope i, PopulationID p) {
+      public String getValue(Sample s, Channel i, PopulationID p) {
         return s.tabPoints(i);
       }
     },
 
     TI_SERIES_LIMITS {
-      public String getValue(Sample s, Isotope i, PopulationID p) {
+      public String getValue(Sample s, Channel i, PopulationID p) {
         return s.tabTISeriesLimits(i);
       }
     },
 
     RAW_MEAN {
-      public String getValue(Sample s, Isotope i, PopulationID p) {
+      public String getValue(Sample s, Channel i, PopulationID p) {
         return s.tabRawMean(i);
       }
     },
 
     RAW_MEAN_CPS {
-      public String getValue(Sample s, Isotope i, PopulationID p) {
+      public String getValue(Sample s, Channel i, PopulationID p) {
         return s.tabRawMeanCPS(i);
       }
     },
 
     RAW_MEDIAN {
-      public String getValue(Sample s, Isotope i, PopulationID p) {
+      public String getValue(Sample s, Channel i, PopulationID p) {
         return s.tabRawMedian(i);
       }
     },
 
     RAW_MEDIAN_CPS {
-      public String getValue(Sample s, Isotope i, PopulationID p) {
+      public String getValue(Sample s, Channel i, PopulationID p) {
         return s.tabRawMedianCPS(i);
       }
     },
 
     RAW_SD {
-      public String getValue(Sample s, Isotope i, PopulationID p) {
+      public String getValue(Sample s, Channel i, PopulationID p) {
         return s.tabRawSD(i);
       }
     },
 
     RAW_MAD {
-      public String getValue(Sample s, Isotope i, PopulationID p) {
+      public String getValue(Sample s, Channel i, PopulationID p) {
         return s.tabRawMAD(i);
       }
     },
 
     SIA_SHAPE {
-      public String getValue(Sample s, Isotope i, PopulationID p) {
+      public String getValue(Sample s, Channel i, PopulationID p) {
         return s.tabSIAShape(i);
       }
     },
 
     MEAN_SIA_SHAPE {
-      public String getValue(Sample s, Isotope i, PopulationID p) {
+      public String getValue(Sample s, Channel i, PopulationID p) {
         return s.tabMeanSIAShape(i);
       }
     },
 
     AEROSOL_TE {
-      public String getValue(Sample s, Isotope i, PopulationID p) {
+      public String getValue(Sample s, Channel i, PopulationID p) {
         return SnF.doubleToString(s.getAerosolTEConvention(i), NF.D1C2);
       }
     },
 
     PNC_TE {
-      public String getValue(Sample s, Isotope i, PopulationID p) {
+      public String getValue(Sample s, Channel i, PopulationID p) {
         return SnF.doubleToString(s.getPncTEConvention(i), NF.D1C2);
       }
     },
 
     BG_EQUIV_CONC {
-      public String getValue(Sample s, Isotope i, PopulationID p) {
+      public String getValue(Sample s, Channel i, PopulationID p) {
         return s.tabEquivBGConc(i);
       }
     },
 
     POPULATION_NAME {
-      public String getValue(Sample s, Isotope i, PopulationID p) {
+      public String getValue(Sample s, Channel i, PopulationID p) {
         return s.tabPopName(i, p);
       }
     },
 
     POPULATION_ADDITIONAL {
-      public String getValue(Sample s, Isotope i, PopulationID p) {
+      public String getValue(Sample s, Channel i, PopulationID p) {
         return s.tabPopAdditional(i, p);
       }
     },
 
     LOD_CTS {
       @Override
-      protected String getValue(Sample s, Isotope i, PopulationID p) {
+      protected String getValue(Sample s, Channel i, PopulationID p) {
         return s.tabLodCts(i, p);
       }
     },
 
     LOD_AG {
       @Override
-      protected String getValue(Sample s, Isotope i, PopulationID p) {
+      protected String getValue(Sample s, Channel i, PopulationID p) {
         return s.tabLodAg(i, p);
       }
     },
 
     LOD_AMOL {
       @Override
-      protected String getValue(Sample s, Isotope i, PopulationID p) {
+      protected String getValue(Sample s, Channel i, PopulationID p) {
         return s.tabLodAmol(i, p);
       }
     },
 
     LOD_NM {
       @Override
-      protected String getValue(Sample s, Isotope i, PopulationID p) {
+      protected String getValue(Sample s, Channel i, PopulationID p) {
         return s.tabLodNm(i, p);
       }
     },
 
     NP_COUNT {
-      public String getValue(Sample s, Isotope i, PopulationID p) {
+      public String getValue(Sample s, Channel i, PopulationID p) {
         return s.tabPopNpCount(i, p);
       }
     },
 
     PNC {
-      public String getValue(Sample s, Isotope i, PopulationID p) {
+      public String getValue(Sample s, Channel i, PopulationID p) {
         return s.tabPNC(i, p);
       }
     },
 
     NP_RATE {
-      public String getValue(Sample s, Isotope i, PopulationID p) {
+      public String getValue(Sample s, Channel i, PopulationID p) {
         return s.tabPopNpRate(i, p);
       }
     },
 
     NP_MEAN {
-      public String getValue(Sample s, Isotope i, PopulationID p) {
+      public String getValue(Sample s, Channel i, PopulationID p) {
         return s.tabPopNpMean(i, p);
       }
     },
 
     NP_SD {
-      public String getValue(Sample s, Isotope i, PopulationID p) {
+      public String getValue(Sample s, Channel i, PopulationID p) {
         return s.tabNpSD(i, p);
       }
     },
 
 
     NP_MEDIAN {
-      public String getValue(Sample s, Isotope i, PopulationID p) {
+      public String getValue(Sample s, Channel i, PopulationID p) {
         return s.tabNpMedian(i, p);
       }
     },
 
     NP_MEAN_HEIGHT {
-      public String getValue(Sample s, Isotope i, PopulationID p) {
+      public String getValue(Sample s, Channel i, PopulationID p) {
         return s.tabMeanHeight(i, p);
       }
     },
 
     NP_SD_HEIGHT {
-      public String getValue(Sample s, Isotope i, PopulationID p) {
+      public String getValue(Sample s, Channel i, PopulationID p) {
         return s.tabSdHeight(i, p);
       }
     },
 
     NP_MEAN_DURATION {
-      public String getValue(Sample s, Isotope i, PopulationID p) {
+      public String getValue(Sample s, Channel i, PopulationID p) {
         return s.tabMeanDuration(i, p);
       }
     },
 
     NP_SD_DURATION {
-      public String getValue(Sample s, Isotope i, PopulationID p) {
+      public String getValue(Sample s, Channel i, PopulationID p) {
         return s.tabSdDuration(i, p);
       }
     },
 
     // QUANT
     NP_MEAN_SIZE {
-      public String getValue(Sample s, Isotope i, PopulationID p) {
+      public String getValue(Sample s, Channel i, PopulationID p) {
         return s.tabMeanSize(i, p);
       }
     },
     NP_MEDIAN_SIZE {
-      public String getValue(Sample s, Isotope i, PopulationID p) {
+      public String getValue(Sample s, Channel i, PopulationID p) {
         return s.tabMedianSize(i, p);
       }
     },
     NP_SD_SIZE {
-      public String getValue(Sample s, Isotope i, PopulationID p) {
+      public String getValue(Sample s, Channel i, PopulationID p) {
         return s.tabSizeSD(i, p);
       }
     },
     NP_MEAN_MASS {
-      public String getValue(Sample s, Isotope i, PopulationID p) {
+      public String getValue(Sample s, Channel i, PopulationID p) {
         return s.tabMeanMass(i, p);
       }
     },
     NP_MEDIAN_MASS {
-      public String getValue(Sample s, Isotope i, PopulationID p) {
+      public String getValue(Sample s, Channel i, PopulationID p) {
         return s.tabMedianMass(i, p);
       }
     },
     NP_SD_MASS {
-      public String getValue(Sample s, Isotope i, PopulationID p) {
+      public String getValue(Sample s, Channel i, PopulationID p) {
         return s.tabMassSD(i, p);
       }
     },
     NP_MEAN_MOL {
-      public String getValue(Sample s, Isotope i, PopulationID p) {
+      public String getValue(Sample s, Channel i, PopulationID p) {
         return s.tabMeanMol(i, p);
       }
     },
     NP_MEDIAN_MOL {
-      public String getValue(Sample s, Isotope i, PopulationID p) {
+      public String getValue(Sample s, Channel i, PopulationID p) {
         return s.tabMedianMol(i, p);
       }
     },
     NP_SD_MOL {
-      public String getValue(Sample s, Isotope i, PopulationID p) {
+      public String getValue(Sample s, Channel i, PopulationID p) {
         return s.tabMolSD(i, p);
       }
     },
 
 
     NP_CUSTOM_MEAN {
-      public String getValue(Sample s, Isotope i, PopulationID p) {
+      public String getValue(Sample s, Channel i, PopulationID p) {
         EventParameter par = SpTool3Main.getRunTime().getConfParams().getEventParameter().getValue();
         MathMod math = SpTool3Main.getRunTime().getConfParams().getEventMathModification().getValue();
         return s.tabPopNpCustomParamMean(i, p, par, math);
@@ -629,7 +628,7 @@ public abstract class ResultsTable {
     },
 
     NP_CUSTOM_SD {
-      public String getValue(Sample s, Isotope i, PopulationID p) {
+      public String getValue(Sample s, Channel i, PopulationID p) {
         EventParameter par = SpTool3Main.getRunTime().getConfParams().getEventParameter().getValue();
         MathMod math = SpTool3Main.getRunTime().getConfParams().getEventMathModification().getValue();
         return s.tabNpCustomParamSD(i, p, par, math);
@@ -638,7 +637,7 @@ public abstract class ResultsTable {
 
 
     NP_CUSTOM_MEDIAN {
-      public String getValue(Sample s, Isotope i, PopulationID p) {
+      public String getValue(Sample s, Channel i, PopulationID p) {
         EventParameter par = SpTool3Main.getRunTime().getConfParams().getEventParameter().getValue();
         MathMod math = SpTool3Main.getRunTime().getConfParams().getEventMathModification().getValue();
         return s.tabNpCustomParamMedian(i, p, par, math);
@@ -646,96 +645,96 @@ public abstract class ResultsTable {
     },
 
     POP_BG_MEAN {
-      public String getValue(Sample s, Isotope i, PopulationID p) {
+      public String getValue(Sample s, Channel i, PopulationID p) {
         return s.tabPopBgMean(i, p);
       }
     },
 
     POP_BG_SD {
-      public String getValue(Sample s, Isotope i, PopulationID p) {
+      public String getValue(Sample s, Channel i, PopulationID p) {
         return s.tabPopBgSD(i, p);
       }
     },
 
     POP_BG_N {
-      public String getValue(Sample s, Isotope i, PopulationID p) {
+      public String getValue(Sample s, Channel i, PopulationID p) {
         return s.tabPopBgN(i, p);
       }
     },
 
     POP_DRIFT {
-      public String getValue(Sample s, Isotope i, PopulationID p) {
+      public String getValue(Sample s, Channel i, PopulationID p) {
         return s.tabPopDrift(i, p);
       }
     },
 
     BLN_DISTR {
-      public String getValue(Sample s, Isotope i, PopulationID p) {
+      public String getValue(Sample s, Channel i, PopulationID p) {
         return s.tabBlnDistr(i, p);
       }
     },
 
     BLN_MEAN {
-      public String getValue(Sample s, Isotope i, PopulationID p) {
+      public String getValue(Sample s, Channel i, PopulationID p) {
         return s.tabBlnMean(i, p);
       }
     },
 
     BLN_SD {
-      public String getValue(Sample s, Isotope i, PopulationID p) {
+      public String getValue(Sample s, Channel i, PopulationID p) {
         return s.tabBlnSD(i, p);
       }
     },
 
     BLN_OUTLIER_Z {
-      public String getValue(Sample s, Isotope i, PopulationID p) {
+      public String getValue(Sample s, Channel i, PopulationID p) {
         return s.tabBlnOutlierZ(i, p);
       }
     },
 
     SEARCH_START_META {
-      public String getValue(Sample s, Isotope i, PopulationID p) {
+      public String getValue(Sample s, Channel i, PopulationID p) {
         return s.tabSearchStartMeta(i, p);
       }
     },
 
     SEARCH_START {
-      public String getValue(Sample s, Isotope i, PopulationID p) {
+      public String getValue(Sample s, Channel i, PopulationID p) {
         return s.tabSearchStart(i, p);
       }
     },
 
     SEARCH_STOP_META {
-      public String getValue(Sample s, Isotope i, PopulationID p) {
+      public String getValue(Sample s, Channel i, PopulationID p) {
         return s.tabSearchStopMeta(i, p);
       }
     },
 
     SEARCH_STOP {
-      public String getValue(Sample s, Isotope i, PopulationID p) {
+      public String getValue(Sample s, Channel i, PopulationID p) {
         return s.tabSearchStop(i, p);
       }
     },
 
     SEARCH_HEIGHT_META {
-      public String getValue(Sample s, Isotope i, PopulationID p) {
+      public String getValue(Sample s, Channel i, PopulationID p) {
         return s.tabSearchHeightMeta(i, p);
       }
     },
 
     SEARCH_HEIGHT {
-      public String getValue(Sample s, Isotope i, PopulationID p) {
+      public String getValue(Sample s, Channel i, PopulationID p) {
         return s.tabSearchHeight(i, p);
       }
     },
 
     GATES_META {
-      public String getValue(Sample s, Isotope i, PopulationID p) {
+      public String getValue(Sample s, Channel i, PopulationID p) {
         String val = EMPTY_CELL;
         return val;
       }
 
-      public List<String> getValues(Sample s, Isotope i, PopulationID p, int fillRows) {
+      public List<String> getValues(Sample s, Channel i, PopulationID p, int fillRows) {
         List<String> results = s.tabGatesMeta(i, p);
         if (results.size() < fillRows) {
           while (results.size() < fillRows) {
@@ -747,12 +746,12 @@ public abstract class ResultsTable {
     },
 
     GATES {
-      public String getValue(Sample s, Isotope i, PopulationID p) {
+      public String getValue(Sample s, Channel i, PopulationID p) {
         String val = EMPTY_CELL;
         return val;
       }
 
-      public List<String> getValues(Sample s, Isotope i, PopulationID p, int fillRows) {
+      public List<String> getValues(Sample s, Channel i, PopulationID p, int fillRows) {
         List<String> results = s.tabGates(i, p);
         if (results.size() < fillRows) {
           while (results.size() < fillRows) {
@@ -939,9 +938,9 @@ public abstract class ResultsTable {
       return rowLabel(this);
     }
 
-    protected abstract String getValue(Sample s, Isotope i, PopulationID p);
+    protected abstract String getValue(Sample s, Channel i, PopulationID p);
 
-    public List<String> getValues(Sample s, Isotope t, PopulationID p, int fillRows) {
+    public List<String> getValues(Sample s, Channel t, PopulationID p, int fillRows) {
       List<String> vals = new ArrayList<>();
       vals.add(getValue(s, t, p));
       return vals;
@@ -951,7 +950,7 @@ public abstract class ResultsTable {
       return sample != null;
     }
 
-    private static boolean check(Isotope isotope) {
+    private static boolean check(Channel isotope) {
       return isotope != null;
     }
 
@@ -982,7 +981,7 @@ public abstract class ResultsTable {
         case SAMPLE_HIGHLIGHT -> "Marked";
         case REMOVED_MZ -> "Removed m/z";
 
-        case TRACE_MZ -> "Isotope m/z";
+        case TRACE_MZ -> "Channel m/z";
 
         case DWELL_TIME -> "Dwell time [µs]";
         case DWELL_TIME_MS -> "Dwell time [ms]";

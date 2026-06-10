@@ -20,7 +20,7 @@ package gui.dialog.caseImpl;
 import analysis.PopulationID;
 import core.SpTool3Main;
 import dataModelNew.Sample;
-import dataModelNew.Trace;
+import dataModelNew.mz.Channel;
 import gui.dialog.FxStageButton;
 import gui.util.UiUtil;
 import java.util.ArrayList;
@@ -97,24 +97,24 @@ public class SignificanceTester extends ExecuteSubmethod {
   public void update() {
 
     List<Sample> samples = SpTool3Main.getRunTime().getMainWindowCtl().getSelSamples();
-    List<Isotope> selIsotopes = SpTool3Main.getRunTime().getMainWindowCtl().getSelIsotopes();
+    List<Channel> selChannels = SpTool3Main.getRunTime().getMainWindowCtl().getSelChannels();
     List<PopulationID> selPops = SpTool3Main.getRunTime().getMainWindowCtl().getSelPops();
 
-    if (samples != null && samples.size() > 0 && selIsotopes != null && !selIsotopes.isEmpty()
+    if (samples != null && samples.size() > 0 && selChannels != null && !selChannels.isEmpty()
         && selPops != null && selPops.size() > 0) {
       // so far we can only show one sample in the MC raw view.
       if (super.getCurrentMethod() instanceof SignificanceTestParams) {
         SignificanceTestParams parSet = ((SignificanceTestParams) super.getCurrentMethod());
 
         // only compare isotope with isotope (without quantification, makes not much sense for most cases)
-        Isotope mainIsotope = selIsotopes.get(0);
+        Channel mainChannel = selChannels.get(0);
 
         // Note Only allow 2 data sets (x and y) to be tested
         List<double[]> xyList = new ArrayList<>();
         List<String> labels = new ArrayList<>();
 
         // So far, only allow comparison across one isotope
-        Isotope selIsotope = selIsotopes.get(0);
+        Channel selChannel = selChannels.get(0);
 
         // Either: compare across samples or Populations
         if (samples.size() > 1) {
@@ -125,21 +125,21 @@ public class SignificanceTester extends ExecuteSubmethod {
 
           labels.add("Nick name: '" + sample1.getNickName() +
               "' Sample name: '" + sample1.getSampleFile().getNameWithinFile() +
-              "' @ '" + mainIsotope.getFullUIName()
+              "' @ '" + mainChannel.getUIString()
               + "' of '" + selPop.toString()
               + "'");
 
           labels.add("Nick name: '" + sample2.getNickName() +
               "' Sample name: '" + sample1.getSampleFile().getNameWithinFile() +
-              "' @ '" + mainIsotope.getFullUIName()
+              "' @ '" + mainChannel.getUIString()
               + "' of '" + selPop.toString()
               + "'");
 
           xyList.add(sample1.getData(
-              selIsotope, selPop, EventType.NP, parSet.getEventParameter().getValue()));
+              selChannel, selPop, EventType.NP, parSet.getEventParameter().getValue()));
 
           xyList.add(sample2.getData(
-              selIsotope, selPop, EventType.NP, parSet.getEventParameter().getValue()));
+              selChannel, selPop, EventType.NP, parSet.getEventParameter().getValue()));
 
           xyList.removeIf(d -> d.length < 1);
 
@@ -151,21 +151,21 @@ public class SignificanceTester extends ExecuteSubmethod {
 
           labels.add("Nick name: '" + sample.getNickName() +
               "' Sample name: '" + sample.getSampleFile().getNameWithinFile() +
-              "' @ '" + mainIsotope.getFullUIName()
+              "' @ '" + mainChannel.getUIString()
               + "' of '" + selPop1.toString()
               + "'");
 
           labels.add("Nick name: '" + sample.getNickName() +
               "' Sample name: '" + sample.getSampleFile().getNameWithinFile() +
-              " @ '" + mainIsotope.getFullUIName()
+              " @ '" + mainChannel.getUIString()
               + "' of '" + selPop2.toString()
               + "'");
 
           xyList.add(sample.getData(
-              selIsotope, selPop1, EventType.NP, parSet.getEventParameter().getValue()));
+              selChannel, selPop1, EventType.NP, parSet.getEventParameter().getValue()));
 
           xyList.add(sample.getData(
-              selIsotope, selPop2, EventType.NP, parSet.getEventParameter().getValue()));
+              selChannel, selPop2, EventType.NP, parSet.getEventParameter().getValue()));
 
           xyList.removeIf(d -> d.length < 1);
         }

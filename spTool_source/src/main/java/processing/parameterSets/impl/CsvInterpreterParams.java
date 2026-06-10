@@ -87,6 +87,10 @@ public class CsvInterpreterParams extends AbstractParamSet implements Serializab
   // for the custom case
   private Parameter<LpcDimension> lpcImportParameter;
 
+  // for mzmine case
+  private Parameter<Integer> digitsPrecision;
+  private Parameter<EICNormalisation> eicNormalisation;
+
   public CsvInterpreterParams() {
     this("Csv import parameters");
   }
@@ -188,7 +192,7 @@ public class CsvInterpreterParams extends AbstractParamSet implements Serializab
 
     this.firstLine = new IntegerParameter(
         "Header line",
-        "Specify the first line (as 1,2,3,...) to read the header (e.g., mz or intensity) and then data.",
+        "Specify the first line (as 1,2,3,...) to read the header (e.g., MS or intensity) and then data.",
         1,
         TextFormatterOption.ASSURE_POSITIVE_INTEGER,
         false,
@@ -211,7 +215,7 @@ public class CsvInterpreterParams extends AbstractParamSet implements Serializab
             or using several gas modes as a replacement for Agilent single particle plugin, 
             raw data contain a continuous time series that has gaps when gas modes are switched.
             E.g., there are time stamps 0 - 60 s, then a gap, and following time stamps 70 - 120 s.
-            For processing, we want to split the sections and only keep those where a given mz has 
+            For processing, we want to split the sections and only keep those where a given MS has 
             data. SpTool recognizes the gap using this parameter. Make sure that it is at least
             larger than the dwell time
             """,
@@ -226,21 +230,21 @@ public class CsvInterpreterParams extends AbstractParamSet implements Serializab
         "Quadrupole",
         "Is ionic data",
         """
-            When several mz are acquired using quadrupole MS within the same sample,
-            usually with DT = 100 ms, only one time stamp is exported with 'total DT'.
-            The 'total DT is' number of mz ('n') n · DT where DT is the actual DT used for the mz.
+            When several MS are acquired using quadrupole MS within the same sample,
+            usually with DT = 100 msId, only one time stamp is exported with 'total DT'.
+            The 'total DT is' number of MS ('n') n · DT where DT is the actual DT used for the MS.
             
-            This assumes and requires that the same DT was chosen in the acquisition software for all mz!
+            This assumes and requires that the same DT was chosen in the acquisition software for all MS!
             
-            For analysis, we need to calculate the DT per mz, i.e., compute 'total DT' / n 
+            For analysis, we need to calculate the DT per MS, i.e., compute 'total DT' / n 
             to get accurate results.
             
             However, we do not want to correct, when e.g., Agilent data were exported
             in sp mode using different gas modes or the sp plugin. For these cases,
-            we also find multiple mz in the raw data but we do not want to correct the 'total DT'
+            we also find multiple MS in the raw data but we do not want to correct the 'total DT'
             as data was acquired in sp mode. In sp mode, the instrument does not acquire data
-            for all mz but only one mz at a time. In the export file, however, Agilent writes data 
-            for all mz. Those that were not recorded get zeros.
+            for all MS but only one MS at a time. In the export file, however, Agilent writes data 
+            for all MS. Those that were not recorded get zeros.
             
             The problem here is that we (and thus SpTool)
             cannot reliably tell these cases apart unless the user specifies it""",
@@ -315,6 +319,31 @@ public class CsvInterpreterParams extends AbstractParamSet implements Serializab
         "lpcImportParameter"
     );
 
+    this.digitsPrecision = new IntegerParameter(
+        "MZ digits",
+        """
+            Define how many digits after the comme will be shown""",
+        3,
+        TextFormatterOption.ASSURE_POSITIVE_INTEGER,
+        true,
+        "digitsPrecision"
+    );
+
+    eicNormalisation = new ComboEnumParameter<>(
+        "Normalize",
+        """
+            Normalizes intensities by either
+            a) subtracting "the smallest non-zero value -1" (if smallest non-zero number is 10, subtract 9)
+            b) dividing by the smallest non-zero value
+            c) do nothing via option 'None'
+            """,
+        EICNormalisation.SUBTRACT,
+        EICNormalisation.values(),
+        EICNormalisation.class,
+        true,
+        "eicNormalisation"
+    );
+
     organize();
   }
 
@@ -343,7 +372,8 @@ public class CsvInterpreterParams extends AbstractParamSet implements Serializab
     this.overRangeRecognition = csvInterpreterParams.overRangeRecognition.copyWithoutChildren();
     this.customOverRangeValue = csvInterpreterParams.customOverRangeValue.copyWithoutChildren();
     this.lpcImportParameter = csvInterpreterParams.lpcImportParameter.copyWithoutChildren();
-
+    this.digitsPrecision = csvInterpreterParams.digitsPrecision.copyWithoutChildren();
+    this.eicNormalisation = csvInterpreterParams.eicNormalisation.copyWithoutChildren();
     organize();
   }
 
@@ -410,6 +440,11 @@ public class CsvInterpreterParams extends AbstractParamSet implements Serializab
         timeStampFormat,
         mzSource);
 
+    interpreter.addConditionalChild(CsvInterpreters.MZMINE_TRA,
+        digitsPrecision,
+        eicNormalisation
+    );
+
     interpreter.addConditionalChild(CsvInterpreters.THERMO_TOPDOWN,
         signalConversionOption,
         isIonicQmsData,
@@ -475,6 +510,9 @@ public class CsvInterpreterParams extends AbstractParamSet implements Serializab
 
           case "lpcImportParameter" -> lpcImportParameter;
 
+          case "digitsPrecision" -> digitsPrecision;
+          case "eicNormalisation" -> eicNormalisation;
+
           default -> null;
         };
 
@@ -516,6 +554,7 @@ public class CsvInterpreterParams extends AbstractParamSet implements Serializab
       case CUSTOM_PEAKS -> new CsvInterpreterCustomPeaks(this);
       case LPC -> new CsvInterpreterLPC(this);
       case CUSTOM_TRA -> new CsvInterpreterCustomTimeResolved(this);
+      case MZMINE_TRA -> new CsvInterpreterMZMine(this);
       case AGILENT -> new CsvInterpreterAgilent(this);
       case THERMO_XY -> new CsvInterpreterThermoXY(this);
       case THERMO_TOPDOWN -> new CsvInterpreterThermoTopDown(this);
@@ -589,6 +628,14 @@ public class CsvInterpreterParams extends AbstractParamSet implements Serializab
     return lpcImportParameter;
   }
 
+  public Parameter<Integer> getDigitsPrecision() {
+    return digitsPrecision;
+  }
+
+  public Parameter<EICNormalisation> getEicNormalisation() {
+    return eicNormalisation;
+  }
+
   public double getORValue() {
     double or = switch (overRangeRecognition.getValue()) {
       case NONE -> 0.0;
@@ -611,6 +658,15 @@ public class CsvInterpreterParams extends AbstractParamSet implements Serializab
     if (lpcImportParameter == null) {
       this.lpcImportParameter = defaults.lpcImportParameter;
     }
+
+    if (digitsPrecision == null) {
+      this.digitsPrecision = defaults.digitsPrecision;
+    }
+
+    if (eicNormalisation == null) {
+      this.eicNormalisation = defaults.eicNormalisation;
+    }
+
   }
 
 

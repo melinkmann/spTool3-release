@@ -28,6 +28,7 @@ import java.util.stream.Collectors;
 import gui.util.UiUtil;
 import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
+import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.ColorPicker;
 import javafx.scene.control.Control;
@@ -36,6 +37,7 @@ import javafx.scene.image.ImageView;
 import javafx.scene.layout.HBox;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
+import javafx.stage.Stage;
 import math.transform.UiTransform;
 import sandbox.montecarlo.Isotope;
 import visualizer.styles.Colors;
@@ -73,6 +75,11 @@ public class ColorFxParameter extends AbstractFxParameter<String> implements
 
     pickerButton.setOnAction(e -> {
       Colors oldColor = plain.getColor();
+      Scene scene = pickerButton.getScene();
+      Stage parent = null;
+      if (scene != null) {
+        parent = (Stage) scene.getWindow();
+      }
       CustomColorPicker custom = new CustomColorPicker(
           oldColor.getFX(),
           Colors.getDefaultColors(),
@@ -84,7 +91,8 @@ public class ColorFxParameter extends AbstractFxParameter<String> implements
                 colorRect.setFill(color);
               }
             }
-          });
+          },
+          parent);
       custom.show();
     });
 

@@ -19,9 +19,11 @@ package analysis;
 
 import core.SpTool3Main;
 import dataModelNew.Trace;
+
 import java.io.Serializable;
 import java.util.List;
 
+import dataModelNew.mz.Channel;
 import dataModelNew.mz.MZValue;
 import sandbox.montecarlo.Isotope;
 import visualizer.styles.Colors;
@@ -49,9 +51,9 @@ public interface Population extends Serializable {
 
   EventCollection getEvents();
 
-  List<MZValue> getContributingMZs();
+  List<Channel> getContributingChannels();
 
-  void setContributingMZs(List<MZValue> mZs);
+  void setContributingChannels(List<Channel> mZs);
 
   // for the subEventCollection
   EventCollection getBgDefiningCollection();
@@ -68,19 +70,14 @@ public interface Population extends Serializable {
 
   PlottableEventMarkers getPeakMarkers();
 
-  List<PlottableSubPopulation>  getPopulationMarkers();
+  List<PlottableSubPopulation> getPopulationMarkers();
 
   MarkerStyle getEventMarkerStyle();
 
   default Colors getEventMarkerColor() {
     Colors color;
     Trace trace = getEvents().getTrace();
-    if (trace.getMzValue().hasIsotope()) {
-      Isotope isotope = trace.getMzValue().getIsotope();
-      color = SpTool3Main.getRunTime().getConfParams().getColor(isotope);
-    } else {
-      color = new SpColor(trace.getSample().getColor());
-    }
+    color = SpTool3Main.getRunTime().getConfParams().getColor(trace.getSample(), trace.getChannel());
     return color;
   }
 

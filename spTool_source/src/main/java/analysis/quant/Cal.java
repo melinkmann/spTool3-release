@@ -17,6 +17,8 @@
 
 package analysis.quant;
 
+import dataModelNew.mz.CalChannel;
+import dataModelNew.mz.Channel;
 import processing.options.CalibrationStrategy;
 import processing.parameterSets.impl.ExperimentalConditions;
 import sandbox.montecarlo.Isotope;
@@ -37,7 +39,7 @@ public interface Cal {
 
   void setResponses(SpCalibrationSet responses);
 
-  List<Isotope> listIsotopes();
+  List<CalChannel> listChannels();
 
 
 }

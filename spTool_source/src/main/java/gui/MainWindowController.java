@@ -20,7 +20,9 @@ package gui;
 import analysis.PopulationID;
 import core.SpTool3Main;
 import dataModelNew.Sample;
+import dataModelNew.fxImpl.FxChannel;
 import dataModelNew.fxImpl.FxSample;
+import dataModelNew.mz.Channel;
 import gui.dialog.FxEntry;
 import gui.dialog.FxEntryFactory;
 import gui.dialog.FxEntryFactory.ParamSetWithDateEntryFactory;
@@ -48,7 +50,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
@@ -134,7 +135,7 @@ public class MainWindowController {
   public BorderPane mainViewerPane;
   public SplitPane sampleChooserSplitPane;
   public TableView<FxSample> sampleTableView;
-  public TableView<Isotope> isotopeTableView;
+  public TableView<FxChannel> channelTableView;
   public ListView<FxEntry<SampleSet>> sampleSetListView;
   public ListView<PopulationID> populationView;
   public BorderPane sampleSetBorderPane;
@@ -245,7 +246,7 @@ public class MainWindowController {
     this.combinedSampleListAndSearchView = new SampleListAndTable(
         sampleSetListView,
         sampleTableView,
-        isotopeTableView,
+        channelTableView,
         populationView,
         SelectionMode.SINGLE,
         true);
@@ -1034,14 +1035,18 @@ public class MainWindowController {
     return sel;
   }
 
-  public List<Isotope> getSelIsotopes() {
-    List<Isotope> sel = new ArrayList<>(isotopeTableView.getSelectionModel().getSelectedItems());
+  public List<Channel> getSelChannels() {
+    List<Channel> sel = new ArrayList<>(channelTableView.getSelectionModel().getSelectedItems().stream()
+        .map(FxChannel::getChannel)
+        .toList());
     return sel;
   }
 
-  public List<Isotope> getAllIsotopes() {
-    List<Isotope> sel = new ArrayList<>(isotopeTableView.getItems());
-    return sel;
+  public List<Channel> getAllChannels() {
+    List<Channel> all = new ArrayList<>(channelTableView.getItems().stream()
+        .map(FxChannel::getChannel)
+        .toList());
+    return all;
   }
 
   public List<PopulationID> getSelPops() {
@@ -1069,24 +1074,24 @@ public class MainWindowController {
 
           Platform.runLater(() -> {
             try {
-              int itemCount = isotopeTableView.getItems().size();
+              int itemCount = channelTableView.getItems().size();
               if (itemCount == 0) return;
 
               // Randomly choose single or multi selection
               boolean multiSelect = random.nextBoolean();
-              isotopeTableView.getSelectionModel().clearSelection();
+              channelTableView.getSelectionModel().clearSelection();
 
               if (multiSelect) {
                 // Select 1 to min(5, itemCount) random isotopes
                 int count = 1 + random.nextInt(Math.min(5, itemCount));
                 for (int i = 0; i < count; i++) {
                   int idx = random.nextInt(itemCount);
-                  isotopeTableView.getSelectionModel().select(idx);
+                  channelTableView.getSelectionModel().select(idx);
                 }
               } else {
                 // Single selection
                 int idx = random.nextInt(itemCount);
-                isotopeTableView.getSelectionModel().select(idx);
+                channelTableView.getSelectionModel().select(idx);
               }
             } catch (Exception ex) {
               LOGGER.warn("Stress test selection failed: " + ex.getMessage());

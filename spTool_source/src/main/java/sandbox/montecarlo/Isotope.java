@@ -32,6 +32,7 @@ import java.util.Objects;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import util.SnF;
 
 // Class representing an Isotope
@@ -71,7 +72,7 @@ public class Isotope implements Fillable<Isotope>, FillCollection<Isotope>, Comp
     return abundance;
   }
 
-  public String getName() {
+  public String getNumberAndElement() {
     return isotopicNumber + element.getSymbol();
   }
 
@@ -81,15 +82,16 @@ public class Isotope implements Fillable<Isotope>, FillCollection<Isotope>, Comp
         + getIsotopicNumber() + getElement().getSymbol() + ")";
   }
 
-  // "Iron: 56Fe" --> If you change this, also change the reversion function!!!
+  // "Iron: 56Fe" --> If you change this, also change the reversion function for the Matcher
   public String getFullUIName() {
     return getElement().getLongName() + ": "
         + getIsotopicNumber() + getElement().getSymbol();
   }
 
-  // parses "Iron: 56Fe"
+  // parses "Iron: 56Fe" --> If you change this, also change the forward function for the Matcher
+  @Nullable
   public static Isotope getFromFullUIName(String symbol) {
-    Isotope isotope = Element.UNKNOWN.getMostAbundant();
+    Isotope isotope = null;
     if (symbol != null) {
 
       //split(":\\s*") splits on colon : followed by any amount of whitespace.
@@ -124,10 +126,6 @@ public class Isotope implements Fillable<Isotope>, FillCollection<Isotope>, Comp
     return isotope;
   }
 
-  // TODO: at some point we may want to allow identification by precision comparison!
-  //  @Nullable
-  //  public static Isotope getFromDouble(double exactMass) {
-  //  }
 
   public static List<Isotope> getFromNominalMass(int nominal) {
     List<Isotope> matches = new ArrayList<>();
@@ -233,7 +231,8 @@ public class Isotope implements Fillable<Isotope>, FillCollection<Isotope>, Comp
 
   @Override
   public int hashCode() {
-    return Objects.hash(element, isotopicNumber, exactMass, abundance);
+    return Objects.hash(element, isotopicNumber,
+        exactMass, abundance);
   }
 
 //

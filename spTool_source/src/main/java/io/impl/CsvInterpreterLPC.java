@@ -23,6 +23,8 @@ import analysis.Population;
 import analysis.PopulationID;
 import com.opencsv.CSVReader;
 import dataModelNew.*;
+import dataModelNew.mz.Channel;
+import dataModelNew.mz.IsotopeChannel;
 import dataModelNew.mz.MZValue;
 import dataModelNew.mz.SQmz;
 import io.FileInterpreterUtils;
@@ -149,9 +151,10 @@ public class CsvInterpreterLPC implements CsvInterpreter {
     }
 
     // The format is not supposed to provide m/z.
-    MZValue mzValue;
+    Channel mzValue;
     Isotope isotope = params.getIsotopeParameter().getValue().unwrap();
-    mzValue = new SQmz(isotope);
+    // Isotope channel is correct since the user assigned this isotope via parameter!
+    mzValue = new IsotopeChannel(isotope);
 
     LPCParticleMatrix matrix = new LPCParticleMatrix();
     String sampleName = PathUtil.removeExtension(file.getFileName().toString());

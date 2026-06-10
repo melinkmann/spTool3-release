@@ -22,6 +22,7 @@ import analysis.MCEventCollection;
 import analysis.MCPopulation;
 import analysis.Population;
 import analysis.PopulationID;
+import dataModelNew.mz.Channel;
 import dataModelNew.mz.MZValue;
 
 import java.io.Serial;
@@ -53,8 +54,8 @@ public class TraceMC extends TraceImpl implements Trace, Serializable {
     this.macroDTSeconds = 0;
   }
 
-  public TraceMC(Sample sample, MZValue mzValue, TISeries tiSeries, double macroDTSeconds, double siaShape) {
-    super(sample, mzValue, tiSeries,siaShape);
+  public TraceMC(Sample sample, Channel channel, TISeries tiSeries, double macroDTSeconds, double siaShape) {
+    super(sample, channel, tiSeries,siaShape);
     this.macroDTSeconds = macroDTSeconds;
     // always add simulation as population
     PopulationID id = new PopulationID(PopulationType.SIMULATION);
@@ -64,7 +65,7 @@ public class TraceMC extends TraceImpl implements Trace, Serializable {
 
   // Deep copy: note that the populations are cloned in the super class, we may pass direct pointers
   public TraceMC(Sample parentSample,
-                 MZValue mzValue,
+                 Channel channel,
                  TISeries tiSeries,
                  TISeries tiSeriesCopy,
                  double siaShape,
@@ -75,7 +76,7 @@ public class TraceMC extends TraceImpl implements Trace, Serializable {
                  Baseline baseline,
                  HashMap<PopulationID, Population> populations) {
 
-    super(parentSample, mzValue, tiSeries,
+    super(parentSample, channel, tiSeries,
         tiSeriesCopy, siaShape, rawDataFlags, baseline,
         populations);
     this.macroDTSeconds = macroDTSeconds;
@@ -87,7 +88,7 @@ public class TraceMC extends TraceImpl implements Trace, Serializable {
   public Trace copy(Sample newSample) {
     return new TraceMC(
         newSample,
-        super.mzValue.copy(),
+        super.channel.copy(),
         super.tiSeries.copy(),
         super.tiSeriesCopy.copy(),
         super.siaShape,

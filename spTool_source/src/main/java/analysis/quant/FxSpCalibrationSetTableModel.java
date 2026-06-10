@@ -17,6 +17,8 @@
 
 package analysis.quant;
 
+import dataModelNew.mz.CalChannel;
+import dataModelNew.mz.Channel;
 import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
 import javafx.collections.FXCollections;
@@ -36,8 +38,6 @@ import util.NF;
 import util.SnF;
 
 import javax.annotation.Nullable;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.function.Function;
 
 /**
@@ -57,13 +57,13 @@ public class FxSpCalibrationSetTableModel {
   public void fill(SpCalibrationSet spCalSet) {
     rows.clear();
 
-    for (Isotope iso : spCalSet.listIsotopes()) {
-      ResponseTableRow row = new ResponseTableRow(iso, spCalSet);
+    for (CalChannel calCh : spCalSet.listChannels()) {
+      ResponseTableRow row = new ResponseTableRow(calCh, spCalSet);
 
-      FxQuantity ionicFxQ = new FxQuantity(spCalSet.getOrCreateIonicResponse(iso));
-      FxQuantity npFxQ = new FxQuantity(spCalSet.getOrCreateNpResponse(iso));
-      FxQuantity aerosolTEFxQ = new FxQuantity(spCalSet.getOrCreateAerosolTE(iso));
-      FxQuantity pnTEFxQ = new FxQuantity(spCalSet.getOrCreateParticleNumberTE(iso));
+      FxQuantity ionicFxQ = new FxQuantity(spCalSet.getOrCreateIonicResponse(calCh));
+      FxQuantity npFxQ = new FxQuantity(spCalSet.getOrCreateNpResponse(calCh));
+      FxQuantity aerosolTEFxQ = new FxQuantity(spCalSet.getOrCreateAerosolTE(calCh));
+      FxQuantity pnTEFxQ = new FxQuantity(spCalSet.getOrCreateParticleNumberTE(calCh));
 
       row.setIonicResponse(ionicFxQ);
       row.setNpResponse(npFxQ);

@@ -18,7 +18,10 @@
 package gui;
 
 import core.SpTool3Main;
+import dataModelNew.mz.Channel;
+import dataModelNew.mz.ChannelCategory;
 import dataModelNew.mz.Element;
+import dataModelNew.mz.IsotopeChannel;
 import javafx.util.Pair;
 import math.HAC;
 import math.HAC.ClusterResult;
@@ -287,9 +290,14 @@ public class HACCharts {
     return result;
   }
 
-  public static Map<String, Colors> getPieChartColors(List<Element> elements) {
+  public static Map<String, Colors> getPieChartColors(List<ChannelCategory> categories) {
     Map<String, Colors> colorMap = new LinkedHashMap<>();
     Random random = new Random();
+
+    List<Element> elements = categories.stream()
+        .filter(c-> c instanceof Element )
+        .map(c-> (Element)c)
+        .toList();
 
     for (Element element : elements) {
       // Copy and sort descending by abundance to get the most abundant isotope first

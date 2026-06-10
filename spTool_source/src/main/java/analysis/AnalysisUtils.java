@@ -25,12 +25,9 @@ import dataModelNew.TISeries;
 import dataModelNew.TISeriesRAM;
 import dataModelNew.Trace;
 import dataModelNew.TraceMC;
-import dataModelNew.mz.MZValue;
+import dataModelNew.mz.*;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
+import java.util.*;
 import javax.annotation.Nullable;
 
 import org.apache.logging.log4j.LogManager;
@@ -55,13 +52,17 @@ public abstract class AnalysisUtils {
   /// /////////////////////////////////// LABELS //////////////////////////////////////////////////
   /// /////////////////////////////////////////////////////////////////////////////////////////////
   public static String getShortCodeNameForPlots(Sample sample, List<Sample> samples,
-                                                @Nullable Isotope isotope, PopulationID popID,
+                                                @Nullable Channel channel, PopulationID popID,
                                                 List<PopulationID> popIDs) {
 
     String shortHand = "S" + SnF.intToString(samples.indexOf(sample) + 1, NF.D1C0) +
         "\nP" + SnF.intToString(popIDs.indexOf(popID) + 1, NF.D1C0);
-    if (isotope != null) {
-      shortHand = shortHand + "\n" + isotope.getIsotopicNumber();
+
+    // computed usually has no MZ
+    if (channel instanceof ComputedChannel) {
+      shortHand = shortHand + "\n" + channel.getShortUIString();
+    } else if (channel != null) {
+      shortHand = shortHand + "\n" + channel.getMZStr();
     }
 
     return shortHand;
@@ -72,12 +73,12 @@ public abstract class AnalysisUtils {
    * Returns a name that contains nick name - as well as isotope and population description of
    * available.
    */
-  public static String getLabelForPlots(Sample sample, @Nullable MZValue mz,
+  public static String getLabelForPlots(Sample sample, @Nullable Channel channel,
                                         @Nullable PopulationID populationID, @Nullable EventType eventType) {
     String name = "";
 
     name += getLabelString(eventType, sample);
-    name += getLabelString(mz, sample);
+    name += getLabelString(channel, sample);
     name += getLabelString(sample);
     name += getLabelString(populationID);
 
@@ -105,16 +106,16 @@ public abstract class AnalysisUtils {
   /**
    * Extracts mz value or isotope label adding space.
    */
-  private static String getLabelString(@Nullable MZValue mz, Sample sample) {
+  private static String getLabelString(@Nullable Channel channel, Sample sample) {
     String part = "";
     if (sample instanceof IncompleteSample) {
-      part = " " + ((IncompleteSample) sample).getMZ();
-    } else if (mz != null) {
-      Isotope isotope = mz.getIsotope();
+      part = " " + ((IncompleteSample) sample).getChannel();
+    } else if (channel != null) {
+      Isotope isotope = channel.getIsotope();
       if (isotope != null) {
         part = " " + isotope.getFullUIName();
       } else {
-        part = " " + mz.getElementTransition();
+        part = " " + channel.getUIString();
       }
     }
     return part;
@@ -154,7 +155,7 @@ public abstract class AnalysisUtils {
    * @param isotopeCount number of selected isotopes.
    * @return the color for the given plot.
    */
-  public static Colors getColor(Sample sample, Isotope isotope, int sampleCount, int isotopeCount) {
+  public static Colors getColor(Sample sample, Channel channel, int sampleCount, int isotopeCount) {
     // Start with sample color as the base
     Colors color = new SpColor(sample.getColor());
 
@@ -162,13 +163,13 @@ public abstract class AnalysisUtils {
     if (sampleCount == 1 && isotopeCount == 1) {
       color = new SpColor(sample.getColor());
     } else if (sampleCount == 1 && isotopeCount > 1) {
-      color = SpTool3Main.getRunTime().getConfParams().getColor(sample, isotope);
+      color = SpTool3Main.getRunTime().getConfParams().getColor(sample, channel);
     } else if (sampleCount > 1 && isotopeCount == 1) {
       // Just one trace --> we should assert that we use the sample color to compare samples
       color = new SpColor(sample.getColor());
     } else if (sampleCount > 1 && isotopeCount > 1) {
       // multiple traces and samples -> merge
-      Colors traceColor = SpTool3Main.getRunTime().getConfParams().getColor(sample, isotope);
+      Colors traceColor = SpTool3Main.getRunTime().getConfParams().getColor(sample, channel);
       Colors sampleColor = new SpColor(sample.getColor());
       color = Colors.averageColorLAB(sampleColor, traceColor, 0.8);
     }
@@ -193,18 +194,109 @@ public abstract class AnalysisUtils {
 //    return color;
 //  }
 
+  /// /////////////////////////////////////////////////////////////////////////////////////////////
+  /// ////////////////////////////////// Small helper methods //////////////////////////////
+  /// /////////////////////////////////////////////////////////////////////////////////////////////
+  public static List<Isotope> getIsotopes(List<Channel> channels) {
+    return channels.stream()
+        .map(Channel::getIsotope)
+        .filter(Objects::nonNull)
+        .distinct()
+        .toList();
+  }
+
+  // This list will have multiple entries for each Element, e.g., Ag -> 109 107, Sum
+  public static List<CalChannel> getCalChannel(List<Channel> channels) {
+    List<CalChannel> ec = new ArrayList<>();
+    for (Channel channel : channels) {
+      // Easiest: we get a category that is element
+      ChannelCategory cat = channel.getCategory();
+      if (cat instanceof Element) {
+        ec.add(new CalChannel((Element) cat, channel));
+      } else {
+        // check if at least there is an isotope that we can parse
+        Isotope isotope = channel.getIsotope();
+        if (isotope != null) {
+          ec.add(new CalChannel(isotope.getElement(), channel));
+        }
+      }
+    }
+    return ec;
+  }
+
+  @Nullable
+  public static CalChannel getCalChannel(Channel channel) {
+    // Easiest: we get a category that is element
+    ChannelCategory cat = channel.getCategory();
+    if (cat instanceof Element) {
+      return new CalChannel((Element) cat, channel);
+    } else {
+      // check if at least there is an isotope that we can parse
+      Isotope isotope = channel.getIsotope();
+      if (isotope != null) {
+        return new CalChannel(isotope.getElement(), channel);
+      } else {
+        return null;
+      }
+    }
+  }
+
+
+  public static boolean containsIsotope(List<Channel> channels, Isotope isotope) {
+    return channels.stream()
+        .map(Channel::getIsotope)
+        .filter(Objects::nonNull)
+        .anyMatch(i -> i.equals(isotope));
+  }
+
+  public static boolean notContainsIsotope(List<Channel> channels, Isotope isotope) {
+    return channels.stream()
+        .map(Channel::getIsotope)
+        .filter(Objects::nonNull)
+        .noneMatch(i -> i.equals(isotope));
+  }
+
+  public static HashMap<Isotope, Channel> getMatchMap(List<Channel> channels) {
+    HashMap<Isotope, Channel> matchMap = new LinkedHashMap<>();
+    for (Channel channel : channels) {
+      Isotope isotope = channel.getIsotope();
+      if (isotope != null) {
+        matchMap.put(isotope, channel);
+      }
+    }
+    return matchMap;
+  }
+
+  @Nullable
+  public static Channel getChannel(List<Channel> channels, Isotope isotope) {
+    Channel match = null;
+    for (Channel channel : channels) {
+      if (Objects.equals(channel.getIsotope(), isotope)) {
+        match = channel;
+        break;
+      }
+    }
+    return match;
+  }
+
+  public static List<Channel> createChannels(List<Isotope> isotopes) {
+    return isotopes.stream()
+        .map(IsotopeChannel::new)
+        .map(iCh -> ((Channel) iCh))
+        .toList();
+  }
+
   ////////////////////////////////////////////////////////////////////////////////////////////////
   ///////////////////////////////////// Applying to List of Samples //////////////////////////////
   ////////////////////////////////////////////////////////////////////////////////////////////////
-
   /**
    * @return a complete and unique list of all Populations (by ID) that are present in the samples
    * in the Traces corresponding to the isotopes.
    */
-  public static List<PopulationID> listPopulations(List<Sample> samples, List<Isotope> isotopes) {
+  public static List<PopulationID> listPopulations(List<Sample> samples, List<Channel> channels) {
     List<PopulationID> pops = new ArrayList<>();
     for (Sample sample : samples) {
-      List<PopulationID> subSamplePops = sample.listPopulations(isotopes);
+      List<PopulationID> subSamplePops = sample.listPopulations(channels);
       for (PopulationID pop : subSamplePops) {
         if (!pops.contains(pop)) {
           pops.add(pop);
@@ -220,17 +312,17 @@ public abstract class AnalysisUtils {
    * duplicates exist.
    */
 
-  public static List<Isotope> listIsotopes(List<Sample> samples) {
-    List<Isotope> isotopesUnique = new ArrayList<>();
+  public static List<Channel> listIsotopes(List<Sample> samples) {
+    List<Channel> channelsUnique = new ArrayList<>();
     for (Sample sample : samples) {
-      List<Isotope> isotopes = sample.listIsotopes();
-      for (Isotope isotope : isotopes) {
-        if (!isotopesUnique.contains(isotope)) {
-          isotopesUnique.add(isotope);
+      List<Channel> channels = sample.listChannels();
+      for (Channel channel : channels) {
+        if (!channelsUnique.contains(channel)) {
+          channelsUnique.add(channel);
         }
       }
     }
-    return isotopesUnique;
+    return channelsUnique;
   }
 
   /// /////////////////////////////////////////////////////////////////////////////////////////////
@@ -289,70 +381,77 @@ public abstract class AnalysisUtils {
 
     HashMap<EventParameter, double[]> dataMap = new HashMap<>();
 
-    // Check that there is no mismatch between Trace and Matrix.
-    List<ParticlePopulationMatrix> allMatrices = sample.getMatrices(isotope);
-    if (allMatrices.contains(populationMatrix)) {
+    // We cannot just convert isotope to IsotopeChannel since maybe the identity of the channel has changed
+    // from isotope channel to MZChannel during some conversion of trace.
+    // TODO: check if keeping class type consistently would be better in general!!
+    Channel channel = AnalysisUtils.getChannel(sample.listChannels(), isotope);
+    if (channel != null) {
 
-      // Get the respective trace and check if OK
-      Trace trace = sample.getTrace(isotope);
-      if (trace instanceof TraceMC) {
-        TraceMC traceMC = ((TraceMC) trace);
+      // Check that there is no mismatch between Trace and Matrix.
+      List<ParticlePopulationMatrix> allMatrices = sample.getMatrices(channel);
+      if (allMatrices.contains(populationMatrix)) {
 
-        // Get a RAM instance from the drive
-        ParticlePopulationMatrixRAM ramMatrix = populationMatrix.getNewRamInstance();
+        // Get the respective trace and check if OK
+        Trace trace = sample.getTrace(channel);
+        if (trace instanceof TraceMC) {
+          TraceMC traceMC = ((TraceMC) trace);
 
-        double[] area = new double[ramMatrix.getNumberOfEvents()];
-        double[] netArea = new double[ramMatrix.getNumberOfEvents()];
-        double[] height = new double[ramMatrix.getNumberOfEvents()];
-        double[] netHeight = new double[ramMatrix.getNumberOfEvents()];
-        double[] duration = new double[ramMatrix.getNumberOfEvents()];
-        double[] noOfPoints = new double[ramMatrix.getNumberOfEvents()];
-        double[] bgPerNP = new double[ramMatrix.getNumberOfEvents()];
-        double[] startIndices = new double[ramMatrix.getNumberOfEvents()];
-        double[] endIndices = new double[ramMatrix.getNumberOfEvents()];
-        double[] centerIndices = new double[ramMatrix.getNumberOfEvents()];
-        double[] asymmetry = new double[ramMatrix.getNumberOfEvents()];
+          // Get a RAM instance from the drive
+          ParticlePopulationMatrixRAM ramMatrix = populationMatrix.getNewRamInstance();
 
-        for (int i = 0; i < ramMatrix.getNumberOfEvents(); i++) {
-          double[] integResult = ramMatrix.integrateForHeightWidthAndPoints(
-              i,
-              // if rounding issues in TISeries, make sure they match (dont use getMacroDT())
-              traceMC.getTISeries().getDT(),
-              // we have to use the original time series in case time roi was cut
-              traceMC.getOriginalTISeries().getLastTimeStamp(),
-              traceMC.getOriginalTISeries().size(),
-              traceMC);
+          double[] area = new double[ramMatrix.getNumberOfEvents()];
+          double[] netArea = new double[ramMatrix.getNumberOfEvents()];
+          double[] height = new double[ramMatrix.getNumberOfEvents()];
+          double[] netHeight = new double[ramMatrix.getNumberOfEvents()];
+          double[] duration = new double[ramMatrix.getNumberOfEvents()];
+          double[] noOfPoints = new double[ramMatrix.getNumberOfEvents()];
+          double[] bgPerNP = new double[ramMatrix.getNumberOfEvents()];
+          double[] startIndices = new double[ramMatrix.getNumberOfEvents()];
+          double[] endIndices = new double[ramMatrix.getNumberOfEvents()];
+          double[] centerIndices = new double[ramMatrix.getNumberOfEvents()];
+          double[] asymmetry = new double[ramMatrix.getNumberOfEvents()];
 
-          area[i] = integResult[0];
-          netArea[i] = integResult[1];
-          height[i] = integResult[2];
-          netHeight[i] = integResult[3];
-          duration[i] = integResult[4];
-          noOfPoints[i] = integResult[5];
-          bgPerNP[i] = integResult[6];
-          startIndices[i] = integResult[7];
-          endIndices[i] = integResult[8];
-          centerIndices[i] = integResult[9];
-          asymmetry[i] = integResult[10];
+          for (int i = 0; i < ramMatrix.getNumberOfEvents(); i++) {
+            double[] integResult = ramMatrix.integrateForHeightWidthAndPoints(
+                i,
+                // if rounding issues in TISeries, make sure they match (dont use getMacroDT())
+                traceMC.getTISeries().getDT(),
+                // we have to use the original time series in case time roi was cut
+                traceMC.getOriginalTISeries().getLastTimeStamp(),
+                traceMC.getOriginalTISeries().size(),
+                traceMC);
+
+            area[i] = integResult[0];
+            netArea[i] = integResult[1];
+            height[i] = integResult[2];
+            netHeight[i] = integResult[3];
+            duration[i] = integResult[4];
+            noOfPoints[i] = integResult[5];
+            bgPerNP[i] = integResult[6];
+            startIndices[i] = integResult[7];
+            endIndices[i] = integResult[8];
+            centerIndices[i] = integResult[9];
+            asymmetry[i] = integResult[10];
+          }
+
+          // Here we have to make sure that we do not use the cut TISeries as the simulation is relative to
+          // full time series
+          double[] time = traceMC.getOriginalTISeries().getTime();
+
+          dataMap.put(EventParameter.AREA, area);
+          dataMap.put(EventParameter.NET_AREA, netArea);
+          dataMap.put(EventParameter.HEIGHT, height);
+          dataMap.put(EventParameter.NET_HEIGHT, netHeight);
+          dataMap.put(EventParameter.DURATION, duration);
+          dataMap.put(EventParameter.NO_OF_POINTS, noOfPoints);
+          dataMap.put(EventParameter.NO_OF_EVENTS, ArrUtils.fillArray(1, area.length));
+          dataMap.put(EventParameter.BACKGROUND_PER_NP, bgPerNP);
+          dataMap.put(EventParameter.START_INDEX, startIndices);
+          dataMap.put(EventParameter.END_INDEX, endIndices);
+          dataMap.put(EventParameter.CENTER_TIME,
+              Arrays.stream(centerIndices).map(i -> time[(int) i]).toArray());
+          dataMap.put(EventParameter.ASYMMETRY_FACTOR, asymmetry);
         }
-
-        // Here we have to make sure that we do not use the cut TISeries as the simulation is relative to
-        // full time series
-        double[] time = traceMC.getOriginalTISeries().getTime();
-
-        dataMap.put(EventParameter.AREA, area);
-        dataMap.put(EventParameter.NET_AREA, netArea);
-        dataMap.put(EventParameter.HEIGHT, height);
-        dataMap.put(EventParameter.NET_HEIGHT, netHeight);
-        dataMap.put(EventParameter.DURATION, duration);
-        dataMap.put(EventParameter.NO_OF_POINTS, noOfPoints);
-        dataMap.put(EventParameter.NO_OF_EVENTS, ArrUtils.fillArray(1, area.length));
-        dataMap.put(EventParameter.BACKGROUND_PER_NP, bgPerNP);
-        dataMap.put(EventParameter.START_INDEX, startIndices);
-        dataMap.put(EventParameter.END_INDEX, endIndices);
-        dataMap.put(EventParameter.CENTER_TIME,
-            Arrays.stream(centerIndices).map(i -> time[(int) i]).toArray());
-        dataMap.put(EventParameter.ASYMMETRY_FACTOR, asymmetry);
       }
     }
     return dataMap;
@@ -662,7 +761,7 @@ public abstract class AnalysisUtils {
 
       traceLoop:
       for (Trace trace : selTraces) {
-        if (trace.hasType(popID) && trace.getPopulation(popID) != null && trace.getMzValue().hasIsotope()) {
+        if (trace.hasType(popID) && trace.getPopulation(popID) != null) {
           Population pop = trace.getPopulation(popID);
           List<PlottableSubPopulation> popMarkers = pop.getPopulationMarkers();
           for (PlottableSubPopulation popMarker : popMarkers) {

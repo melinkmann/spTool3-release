@@ -48,6 +48,15 @@ public class AlignFilterStartStopBundle implements ParamBundle {
   public AlignFilterStartStopBundle(SpawnControlParameter parent) {
     this.parentSpawnPar = parent;
 
+    // TODO: Note: We could create a Fillable for Elements and Isotopes to allow filtering for sums.
+    // However, you could achieve very similar output by just saying "most abundant isotope has to be >1".
+    // In cases where >1 for most abundant is not good enough (e.g., element with many isotopes),
+    // we get on the order of 10 isotopes * 1 = 10 cts per particle. So here, summing won't save the day
+    // either.
+    // TODO: Note: Similarly, it does not make much sense to include summed isotopes as spectral regions
+    // for clustering. Summing always has the danger of including isobaric isotopes and oxides, ...,
+    // and you cannot meaningfully show sums in a PTOTE plot or in a pie chart (where we add isotopes anyway
+    // at the moment).
     this.isotopeHeaderParameter = new AutoFillParam<>("Isotope",
         "Isotope for custom rules",
         Element.Au.getIsotopes().get(0),
@@ -115,7 +124,8 @@ public class AlignFilterStartStopBundle implements ParamBundle {
     Previously, the class that spawns this bundle parsed the xml file down to the "bundle node".
 
      <parameterBundle bundleID="elementBundle">
-         <parameter defaultValue="Au (Gold)" label="Element" value="Mg (Magnesium)" xmlID="elementHeaderParameter"/>
+         <parameter defaultValue="Au (Gold)" label="Element" value="Mg (Magnesium)"
+         xmlID="elementHeaderParameter"/>
          <parameter defaultValue="0.25" label="Mass fraction" value="0.25" xmlID="massFraction"/>
          <parameter defaultValue="15.0" label="Particle event rate" value="15.0" xmlID="eventRate"/>
      </parameterBundle>

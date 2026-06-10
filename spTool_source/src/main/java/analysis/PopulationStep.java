@@ -24,9 +24,9 @@ import java.util.List;
 import java.util.Objects;
 
 import dataModelNew.Sample;
+import dataModelNew.mz.Channel;
 import processing.options.GatingOption;
 import processing.options.SearchAlgorithm;
-import sandbox.montecarlo.Isotope;
 
 public interface PopulationStep extends Serializable {
 
@@ -188,16 +188,16 @@ public interface PopulationStep extends Serializable {
     private static final long serialVersionUID = 1_000_000L;
 
     private final String paramSetLabel;
-    private final List<Isotope> isotopes;
+    private final List<Channel> channels;
 
-    public ManualAlignFilterSubtype(String paramSetLabel,List<Isotope> isotopes) {
+    public ManualAlignFilterSubtype(String paramSetLabel,List<Channel> channels) {
       this.paramSetLabel = paramSetLabel;
-      this.isotopes = isotopes;
+      this.channels = channels;
     }
 
     @Override
     public int customHash() {
-      return Objects.hash(paramSetLabel,isotopes);
+      return Objects.hash(paramSetLabel, channels);
     }
 
     @Override
@@ -212,7 +212,7 @@ public interface PopulationStep extends Serializable {
       if (other instanceof ManualAlignFilterSubtype) {
         isEquiv = Objects.equals(paramSetLabel, ((ManualAlignFilterSubtype) other).paramSetLabel);
         //list equals actually checks entries :)
-        isEquiv = isEquiv && isotopes.equals(((ManualAlignFilterSubtype) other).isotopes);
+        isEquiv = isEquiv && channels.equals(((ManualAlignFilterSubtype) other).channels);
       }
       return isEquiv;
     }

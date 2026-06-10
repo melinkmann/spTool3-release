@@ -21,10 +21,12 @@ import core.SpTool3Main;
 import gui.StageFactory;
 import gui.util.TextFieldUtils;
 import gui.util.UiUtil;
+
 import java.awt.MouseInfo;
 import java.awt.Point;
 import java.util.List;
 import java.util.function.Consumer;
+
 import javafx.beans.binding.Bindings;
 import javafx.beans.property.IntegerProperty;
 import javafx.beans.property.SimpleIntegerProperty;
@@ -53,16 +55,22 @@ import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
 import javafx.stage.Popup;
+import javafx.stage.Window;
 import javafx.util.Callback;
 import javafx.util.StringConverter;
 import util.NF;
 import util.SnF;
+
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 
 public class CustomColorPicker {
 
   private final Rectangle rect = new Rectangle(350, 300);
 
   private final BorderPane mainPane;
+  @Nonnull
+  private final Window owner;
 
   private final Popup popup;
   private final Slider sliderRed;
@@ -79,7 +87,8 @@ public class CustomColorPicker {
 
   private Color current;
 
-  public CustomColorPicker(Color current, List<Colors> defaults, Consumer<Color> consumer) {
+  public CustomColorPicker(Color current, List<Colors> defaults, Consumer<Color> consumer,
+                           @Nullable Window owner) {
     this.current = current;
     red = new SimpleIntegerProperty((int) Math.round(255 * current.getRed()));
     green = new SimpleIntegerProperty((int) Math.round(255 * current.getGreen()));
@@ -88,6 +97,8 @@ public class CustomColorPicker {
     this.popup = new Popup();
     this.mainPane = new BorderPane();
     mainPane.setPadding(new Insets(2));
+
+    this.owner = owner != null ? owner : SpTool3Main.getMainStage();
 
     // Make the popup not close when clicking outside
     popup.setAutoHide(false);
@@ -124,7 +135,7 @@ public class CustomColorPicker {
     colorList.getSelectionModel().selectedItemProperty().addListener(new ChangeListener<Colors>() {
       @Override
       public void changed(ObservableValue<? extends Colors> observableValue, Colors colors,
-          Colors t1) {
+                          Colors t1) {
         if (t1 != null) {
           red.setValue(t1.get().getRed());
           green.setValue(t1.get().getGreen());
@@ -137,8 +148,8 @@ public class CustomColorPicker {
     colorList.setPrefHeight(500);
 
     this.sliderRed = new Slider(0, 255, (int) Math.round(255 * current.getRed()));
-    this.sliderGreen = new Slider(0, 255, (int) Math.round(255 * current.getRed()));
-    this.sliderBlue = new Slider(0, 255, (int) Math.round(255 * current.getRed()));
+    this.sliderGreen = new Slider(0, 255, (int) Math.round(255 * current.getGreen()));
+    this.sliderBlue = new Slider(0, 255, (int) Math.round(255 * current.getBlue()));
 
     this.redField = new TextField();
     this.greenField = new TextField();
@@ -294,7 +305,7 @@ public class CustomColorPicker {
     colorList.setOnMouseClicked(new EventHandler<MouseEvent>() {
       @Override
       public void handle(MouseEvent event) {
-        if (event.getClickCount()==2){
+        if (event.getClickCount() == 2) {
           selectBtn.fire();
         }
       }
@@ -349,7 +360,7 @@ public class CustomColorPicker {
         .orElse(javafx.stage.Screen.getPrimary())
         .getVisualBounds();
 
-    double popupWidth  = 350;
+    double popupWidth = 350;
     double popupHeight = 300;
 
     // Prefer showing above the mouse, fall back to below if not enough room
@@ -361,7 +372,7 @@ public class CustomColorPicker {
     y = Math.max(screenBounds.getMinY(), Math.min(y, screenBounds.getMaxY() - popupHeight));
 
     if (!popup.isShowing()) {
-      popup.show(SpTool3Main.getMainStage(), x, y);
+      popup.show(owner, x, y);
     } else {
       popup.setX(x);
       popup.setY(y);

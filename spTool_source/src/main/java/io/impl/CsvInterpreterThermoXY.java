@@ -27,6 +27,8 @@ import dataModelNew.TISeriesHDD;
 import dataModelNew.TISeriesRAM;
 import dataModelNew.Trace;
 import dataModelNew.TraceImpl;
+import dataModelNew.mz.Channel;
+import dataModelNew.mz.IsotopeChannel;
 import dataModelNew.mz.MZValue;
 import dataModelNew.mz.SQmz;
 import io.FileInterpreterUtils;
@@ -248,8 +250,8 @@ public class CsvInterpreterThermoXY implements CsvInterpreter {
     String internalSampleName = PathUtil.getFileNameWithoutExtension(file);
     int indexCounterColIdx = -1;
     int timeColIdx = -1;
-    List<MZValue> mzColAndEntries = new ArrayList<>();
-    HashMap<MZValue, Double> mzSpecificDwellTimes = new LinkedHashMap<>();
+    List<Channel> mzColAndEntries = new ArrayList<>();
+    HashMap<Channel, Double> mzSpecificDwellTimes = new LinkedHashMap<>();
 
     boolean hasHeaderLine = false; // Line that contains "Time, mz, and so forth"
     int headerLineIndex = -1; // index within the csv of that line
@@ -313,7 +315,7 @@ public class CsvInterpreterThermoXY implements CsvInterpreter {
         for (int colIdx = 0; colIdx < header.length; colIdx++) {
           String cell = header[colIdx];
           // prepare check for mz
-          Pair<Boolean, MZValue> mz = FileInterpreterUtils.parseIcapTQmz(cell);
+          Pair<Boolean, Channel> channel = FileInterpreterUtils.parseIcapTQmz(cell);
 
           /*
           Else ifs are needed because they sometimes put
@@ -326,17 +328,17 @@ public class CsvInterpreterThermoXY implements CsvInterpreter {
           } else if (cell.toLowerCase(Locale.ROOT).contains(TIME.toLowerCase(Locale.ROOT))) {
             timeColIdx = colIdx;
             // Else: we are in intensity: check if parsed correctly
-          } else if (mz.getKey()) {
-            mzColAndEntries.add(mz.getValue());
+          } else if (channel.getKey()) {
+            mzColAndEntries.add(channel.getValue());
             if (csv.size() > headerLineIndex + 1) {
               String[] subHeader = csv.get(headerLineIndex + 1);
               if (subHeader.length > colIdx) {
                 if (useUserDefinedDwellTime) {
-                  mzSpecificDwellTimes.put(mz.getValue(), userDefinedDwellTime);
+                  mzSpecificDwellTimes.put(channel.getValue(), userDefinedDwellTime);
                 } else {
                   double dt = FileInterpreterUtils.getIcapDeclaredDwellTimeValue(subHeader[colIdx]);
                   if (dt > 0) {
-                    mzSpecificDwellTimes.put(mz.getValue(), dt);
+                    mzSpecificDwellTimes.put(channel.getValue(), dt);
                   }
                 }
               }
@@ -344,7 +346,7 @@ public class CsvInterpreterThermoXY implements CsvInterpreter {
           }
         }
         LOGGER.trace("Found mz: " + mzColAndEntries.stream()
-            .map(MZValue::getElementTransition)
+            .map(Channel::getUIString)
             .collect(Collectors.joining(", "))
             + ".");
       } else {
@@ -354,7 +356,8 @@ public class CsvInterpreterThermoXY implements CsvInterpreter {
           indexCounterColIdx = 0;
         }
         timeColIdx = 0;
-        mzColAndEntries.add(new SQmz(params.getIsotopeParameter().getValue().unwrap()));
+        // Isotope channel is correct since the user assigned this isotope via parameter!
+        mzColAndEntries.add(new IsotopeChannel(params.getIsotopeParameter().getValue().unwrap()));
       }
 
       // How many MZ and how many time?
@@ -449,14 +452,14 @@ public class CsvInterpreterThermoXY implements CsvInterpreter {
           // create new time series for each intensity with the respective dwell time
           for (int i = 0; i < mzColAndEntries.size(); i++) {
             TISeries tiSeries;
-            MZValue mzI = mzColAndEntries.get(i);
+            Channel chI = mzColAndEntries.get(i);
             double dt;
             if (useUserDefinedDwellTime) {
               LOGGER.trace("Pre-processing iCAP sample with user defined dwell time.");
               dt = userDefinedDwellTime;
             } else {
               LOGGER.trace("Pre-processing iCAP sample with mz-specific dwell time from file.");
-              dt = mzSpecificDwellTimes.get(mzI);
+              dt = mzSpecificDwellTimes.get(chI);
             }
             double[] intensity = ArrUtils.doubleListToArr(intensities.get(i));
             double[] timeArr = ArrUtils.incrementArrayInclusive(dt, intensity.length);
@@ -470,7 +473,7 @@ public class CsvInterpreterThermoXY implements CsvInterpreter {
             }
             // Create sample.
             tiSeries = new TISeriesHDD(timeArr, intensity);
-            Trace trace = new TraceImpl(sample, mzI, tiSeries);
+            Trace trace = new TraceImpl(sample, chI, tiSeries);
             traces.add(trace);
           }
         } else if (mzColAndEntries.size() == intensities.size()) {
@@ -480,7 +483,7 @@ public class CsvInterpreterThermoXY implements CsvInterpreter {
           // create new time series for each intensity with the respective dwell time
           for (int i = 0; i < mzColAndEntries.size(); i++) {
             TISeries tiSeries;
-            MZValue mzI = mzColAndEntries.get(i);
+            Channel chI = mzColAndEntries.get(i);
             double[] intensity = ArrUtils.doubleListToArr(intensities.get(i));
 
             // Prepare time as array
@@ -520,7 +523,7 @@ public class CsvInterpreterThermoXY implements CsvInterpreter {
             }
             // Create sample.
             tiSeries = new TISeriesHDD(timeArr, intensity);
-            Trace trace = new TraceImpl(sample, mzI, tiSeries);
+            Trace trace = new TraceImpl(sample, chI, tiSeries);
             traces.add(trace);
           }
         }

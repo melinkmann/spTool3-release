@@ -82,6 +82,9 @@ public abstract class XmlUtil {
   public static final String BUNDLE_NODE = "parameterBundle";
   public static final String BUNDLE_DEFAULT_NODE = "parameterBundleDefaults";
   public static final String BUNDLE_ID_ATTRIBUTE = "bundleID";
+  public static final String PAR_CHANNEL_ID_ATTRIBUTE = "channelXmlID";
+  public static final String PAR_MATCH_ID_ATTRIBUTE = "matcherID";
+
 
   public static void writeToXml(Method method, Path file) {
     try {

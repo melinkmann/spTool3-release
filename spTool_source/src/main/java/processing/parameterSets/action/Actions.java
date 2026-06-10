@@ -21,6 +21,9 @@ import analysis.*;
 import core.SpTool3Main;
 import dataModelNew.*;
 import dataModelNew.fxImpl.FxSample;
+import dataModelNew.mz.Channel;
+import dataModelNew.mz.ComputedChannel;
+import dataModelNew.mz.Element;
 import dataModelNew.mz.IsotopeMZ;
 import gui.dialog.FxEntry;
 import gui.dialog.FxEntryFactory;
@@ -28,29 +31,20 @@ import gui.dialog.FxStageButton;
 import gui.dialog.ListContainer;
 import gui.dialog.caseImpl.ExecuteSubmethod;
 
-import java.io.File;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import gui.dialog.mainImpl.ViewListDialog;
-import gui.dialog.notification.NotificationFactory;
-import io.GlobalIO;
-import io.PathUtil;
 import io.export.ClipboardWriter;
-import io.export.CsvExportWriter;
 import io.export.DataExport;
 import io.export.ExportWriter;
 import io.fastExport.TabBlock;
 import io.fastExport.TabBlockColl;
-import javafx.application.Platform;
+import javafx.event.ActionEvent;
 import javafx.scene.control.Menu;
 import javafx.scene.control.MenuItem;
 import org.apache.commons.lang3.exception.ExceptionUtils;
@@ -62,7 +56,6 @@ import processing.parameterSets.AvailableParameterSets;
 import processing.parameterSets.ListMethod;
 import processing.parameterSets.Method;
 import processing.parameterSets.ParamSet;
-import processing.parameterSets.bundle.ElementBundle;
 import processing.parameterSets.impl.*;
 import sandbox.montecarlo.Isotope;
 import tasks.BatchTask;
@@ -71,12 +64,9 @@ import tasks.WorkingTask;
 import tasks.batch.SimpleLinearBatch;
 import tasks.batch.SimpleParallelBatch;
 import tasks.results.EmptyTaskResult;
-import tasks.results.FunctionalTaskResult;
 import tasks.single.*;
-import util.ArrUtils;
 import util.NF;
 import util.SnF;
-import util.Util;
 
 /*
 - save processing history (at least store the method!)
@@ -259,7 +249,7 @@ public abstract class Actions {
 
     List<Task> tasks = new ArrayList<>();
     List<ParamSet> subMethods = method.getSets();
-    List<Isotope> selIsotopes = SpTool3Main.getRunTime().getMainWindowCtl().getSelIsotopes();
+    List<Channel> selChannels = SpTool3Main.getRunTime().getMainWindowCtl().getSelChannels();
 
     // Manage populations
     PopulationBranch branch = new PopulationBranch();
@@ -285,7 +275,7 @@ public abstract class Actions {
         boolean isActive = ((NormalSearchParams) set).getEnableBoolean().getValue();
         hasActiveSearchBlock = isActive;
         if (isActive) {
-          tasks.add(new SearchTask("Search", branch, (NormalSearchParams) set, sample,selIsotopes));
+          tasks.add(new SearchTask("Search", branch, (NormalSearchParams) set, sample,selChannels));
         }
       }
 
@@ -298,7 +288,7 @@ public abstract class Actions {
       }
 
       if (set instanceof AlignerParams && hasActiveSearchBlock) {
-        tasks.add(new AlignTask("Align", branch, (AlignerParams) set, sample, selIsotopes));
+        tasks.add(new AlignTask("Align", branch, (AlignerParams) set, sample, selChannels));
       }
 
       if (set instanceof FilterParams && hasActiveSearchBlock) {
@@ -357,8 +347,8 @@ public abstract class Actions {
         List<Task> importTasks = new ArrayList<>();
 
         List<Sample> selSamples = SpTool3Main.getRunTime().getMainWindowCtl().getSelSamples();
-        List<Isotope> selIsotopes = SpTool3Main.getRunTime().getMainWindowCtl().getSelIsotopes();
-        WorkingTask task = new DTGroupTask(dtGroupParams, selSamples, selIsotopes);
+        List<Channel> selChannels = SpTool3Main.getRunTime().getMainWindowCtl().getSelChannels();
+        WorkingTask task = new DTGroupTask(dtGroupParams, selSamples, selChannels);
         importTasks.add(task);
 
         BatchTask parallel = new SimpleParallelBatch("DT grouping", importTasks, false,
@@ -399,7 +389,7 @@ public abstract class Actions {
 
         ExportWriter writer = new ClipboardWriter();
         List<Sample> selSamples = SpTool3Main.getRunTime().getMainWindowCtl().getSelSamples();
-        List<Isotope> selIsotopes = SpTool3Main.getRunTime().getMainWindowCtl().getSelIsotopes();
+        List<Channel> selChannels = SpTool3Main.getRunTime().getMainWindowCtl().getSelChannels();
 
         // only export non-merge samples
         List<SampleImpl> samples = selSamples.stream()
@@ -411,7 +401,7 @@ public abstract class Actions {
 
         TabBlockColl coll = new TabBlockColl(writer, true);
         for (SampleImpl selSample : samples) {
-          List<TabBlock> blocks = DataExport.extractIsotopeRatioData(selSample, selIsotopes,
+          List<TabBlock> blocks = DataExport.extractIsotopeRatioData(selSample, selChannels,
               isotopeParams.getInvertIsotopeRatio().getValue());
           blocks.forEach(coll::add);
         }
@@ -453,7 +443,7 @@ public abstract class Actions {
       if (isotopeParams != null) {
 
         List<Sample> selSamples = SpTool3Main.getRunTime().getMainWindowCtl().getSelSamples();
-        List<Isotope> selIsotopes = SpTool3Main.getRunTime().getMainWindowCtl().getSelIsotopes();
+        List<Channel> selChannels = SpTool3Main.getRunTime().getMainWindowCtl().getSelChannels();
 
         // extract non-merged samples
         List<SampleImpl> samples = selSamples.stream()
@@ -465,7 +455,7 @@ public abstract class Actions {
 
         for (SampleImpl sample : samples) {
 
-          List<Trace> traces = sample.getTraces(selIsotopes);
+          List<Trace> traces = sample.getTraces(selChannels);
 
           // ensure we have 2 traces at least
           if (traces.size() > 1) {
@@ -478,6 +468,21 @@ public abstract class Actions {
             // get data
             Trace upperFrac = traces.get(0);
             Trace lowerFrac = traces.get(1);
+
+            // try to get element
+            Element element = null;
+            Isotope iso1 = upperFrac.getChannel().getIsotope();
+            Isotope iso2 = lowerFrac.getChannel().getIsotope();
+            if (iso1 != null && iso2 != null) {
+              if (iso1.getElement() == iso2.getElement()) {
+                element = iso1.getElement();
+              }
+            }
+
+            // Store contributing channels
+            List<Channel> contributingChannels = new ArrayList<>();
+            contributingChannels.add(upperFrac.getChannel());
+            contributingChannels.add(lowerFrac.getChannel());
 
             TISeries upperFracTiSeries = upperFrac.getTISeries();
             TISeries lowerFracTiSeries = lowerFrac.getTISeries();
@@ -504,16 +509,20 @@ public abstract class Actions {
               }
 
               // store
-              String combinedIsotopicNumberStr =
-                  upperFrac.getMzValue().getIsotope().getIsotopicNumber()
-                      + ""
-                      + lowerFrac.getMzValue().getIsotope().getIsotopicNumber(); //
-              int combinedIsotopicNumber = Integer.parseInt(combinedIsotopicNumberStr);
+              String ratioLabel =
+                  upperFrac.getChannel().getShortUIString()
+                      + "/"
+                      + lowerFrac.getChannel().getShortUIString();
 
-              Isotope sumIso = new Isotope(upperFrac.getMzValue().getIsotope().getElement(),
-                  combinedIsotopicNumber, 0, 1);
-              TISeries sumSeries = new TISeriesHDD(ratioTimes, ratioDoubles);
-              Trace sumTrace = new TraceImpl(sample, new IsotopeMZ(sumIso), sumSeries);
+              Channel ratioChannel;
+              if (element != null) {
+                ratioChannel = new ComputedChannel(element, ratioLabel, contributingChannels);
+              } else {
+                ratioChannel = new ComputedChannel(ratioLabel, contributingChannels);
+              }
+
+              TISeries ratioSeries = new TISeriesHDD(ratioTimes, ratioDoubles);
+              Trace sumTrace = new TraceImpl(sample, ratioChannel, ratioSeries);
               sample.addTrace(sumTrace);
             }
           }
@@ -613,119 +622,7 @@ public abstract class Actions {
     MenuItem item = new MenuItem("Estimate a- and b-error");
     menu.getItems().add(item);
 
-    item.setOnAction(e -> {
-
-      List<PopulationID> selIDs = SpTool3Main.getRunTime().getMainWindowCtl().getSelPops();
-      List<Sample> selSamples = SpTool3Main.getRunTime().getMainWindowCtl().getSelSamples();
-      List<Isotope> selIsotopes = SpTool3Main.getRunTime().getMainWindowCtl().getSelIsotopes();
-
-      List<PopulationID> simIDs = selIDs.stream()
-          .filter(id -> id.getType().equals(PopulationType.SIMULATION))
-          .collect(Collectors.toList());
-
-      List<PopulationID> evalIDs = new ArrayList<>(selIDs);
-      evalIDs.removeIf(id -> id.getType().equals(PopulationType.SIMULATION));
-
-      List<String> info = new ArrayList<>();
-      if (!simIDs.isEmpty() && !evalIDs.isEmpty()) {
-
-        for (Sample selSample : selSamples) {
-
-          StringBuilder summary = new StringBuilder();
-
-          summary.append("#### New sample ####").append("\nNick name: ").append(selSample.getNickName());
-
-          for (Isotope selIsotope : selIsotopes) {
-
-            summary.append("\n\nIsotope: ").append(selIsotope.getName());
-
-            List<Event> simEvts = selSample.getNPEvents(selIsotope, simIDs.get(0));
-
-            for (PopulationID evalID : evalIDs) {
-              List<Event> evalEvts = selSample.getNPEvents(selIsotope, evalID);
-
-              List<Event> matchFromSim = new ArrayList<>();
-              List<Event> matchFromEval = new ArrayList<>();
-              List<Event> noMatchSim = new ArrayList<>();
-              List<Event> noMatchEval = new ArrayList<>();
-
-              AlphaBetaEvaluation.checkEvents(simEvts, evalEvts, matchFromSim, matchFromEval, noMatchSim,
-                  noMatchEval);
-
-              // "only in eval", i.e., false positive
-              double alpha = 100.0 * ((double) noMatchEval.size() / simEvts.size());
-              // with respect to BG: dp in events / total dp
-              int nDP = selSample.getTotalDataPoints(selIsotope);
-              // count data point of events that were not matched with simulation, i.e., falsely picked
-              // and ignore all data points within an event
-              double evtDP = noMatchEval.stream().mapToInt(Event::getNoOfPoints).sum();
-              double alphaBG = 100.0 * (evtDP / nDP);
-
-              // "only in sim", i.e., false negatives
-              double beta = 100.0 * ((double) noMatchSim.size() / simEvts.size());
-
-              // how many of the events in a series were matched at all?
-              double coverageSim = 100.0 * ((double) matchFromSim.size() / simEvts.size());
-              double coverageEval = 100.0 * ((double) matchFromEval.size() / evalEvts.size());
-
-              summary.append("\nPopulation: ").append(evalID.toString())
-                  .append("\nalpha [%] :").append(SnF.doubleToString(alpha, NF.D1C3, NF.D1C3Exp))
-                  .append("\nbeta [%] :").append(SnF.doubleToString(beta, NF.D1C3, NF.D1C3Exp))
-                  .append("\nmatch syn [%] :").append(SnF.doubleToString(coverageSim, NF.D1C3, NF.D1C3Exp))
-                  .append("\nmatch eval [%] :").append(SnF.doubleToString(coverageEval, NF.D1C3, NF.D1C3Exp))
-                  .append("\nalpha pts [%] :").append(SnF.doubleToString(alphaBG, NF.D1C3, NF.D1C3Exp))
-
-                  .append("\nnSim [-] :").append(SnF.intToString(simEvts.size(), NF.D1C0))
-                  .append("\nnEval [-] :").append(SnF.intToString(evalEvts.size(), NF.D1C0))
-                  .append("\nnMatch [-] :").append(SnF.intToString(matchFromSim.size(), NF.D1C0))
-                  .append("\nnSimNoMatch [-] :").append(SnF.intToString(noMatchSim.size(), NF.D1C0))
-                  .append("\nnEvalNoMatch [-] :").append(SnF.intToString(noMatchEval.size(), NF.D1C0))
-              ;
-
-            }
-          }
-          info.add(summary.toString());
-        }
-
-      } else {
-        for (Sample selSample : selSamples) {
-
-          StringBuilder summary = new StringBuilder("No in-silico data available!");
-
-          summary.append("#### New sample ####").append("\nNick name: ").append(selSample.getNickName());
-
-          List<Isotope> matchedIsotope = new ArrayList<>();
-          List<Isotope> unMatchedIsotope = new ArrayList<>();
-
-          for (PopulationID selID : selIDs) {
-
-            for (Isotope selIsotope : selIsotopes) {
-              List<Isotope> singletonList = new ArrayList<>();
-              singletonList.add(selIsotope);
-              List<PopulationID> subSamplePops = selSample.listPopulations(singletonList);
-
-              if (subSamplePops.contains(selID)) {
-                matchedIsotope.add(selIsotope);
-              } else {
-                unMatchedIsotope.add(selIsotope);
-              }
-            }
-
-            for (Isotope isotope : matchedIsotope) {
-              summary.append("\nPopulation: ").append(selID.toString()).append(" CONTAINS ").append(isotope.getName());
-            }
-            for (Isotope isotope : unMatchedIsotope) {
-              summary.append("\nPopulation: ").append(selID.toString()).append(" does not contain ").append(isotope.getName());
-            }
-
-          }
-          info.add(summary.toString());
-        }
-      }
-      ViewListDialog<String> view = getStringViewListDialog(info);
-      view.showAndWait();
-
-    });
+    item.setOnAction(Actions::handle);
   }
 
 
@@ -748,4 +645,117 @@ public abstract class Actions {
   }
 
 
+  private static void handle(ActionEvent e) {
+
+    List<PopulationID> selIDs = SpTool3Main.getRunTime().getMainWindowCtl().getSelPops();
+    List<Sample> selSamples = SpTool3Main.getRunTime().getMainWindowCtl().getSelSamples();
+    List<Channel> selChannels = SpTool3Main.getRunTime().getMainWindowCtl().getSelChannels();
+
+    List<PopulationID> simIDs = selIDs.stream()
+        .filter(id -> id.getType().equals(PopulationType.SIMULATION))
+        .collect(Collectors.toList());
+
+    List<PopulationID> evalIDs = new ArrayList<>(selIDs);
+    evalIDs.removeIf(id -> id.getType().equals(PopulationType.SIMULATION));
+
+    List<String> info = new ArrayList<>();
+    if (!simIDs.isEmpty() && !evalIDs.isEmpty()) {
+
+      for (Sample selSample : selSamples) {
+
+        StringBuilder summary = new StringBuilder();
+
+        summary.append("#### New sample ####").append("\nNick name: ").append(selSample.getNickName());
+
+        for (Channel channel : selChannels) {
+
+          summary.append("\n\nIsotope: ").append(channel.getShortUIString());
+
+          List<Event> simEvts = selSample.getNPEvents(channel, simIDs.get(0));
+
+          for (PopulationID evalID : evalIDs) {
+            List<Event> evalEvts = selSample.getNPEvents(channel, evalID);
+
+            List<Event> matchFromSim = new ArrayList<>();
+            List<Event> matchFromEval = new ArrayList<>();
+            List<Event> noMatchSim = new ArrayList<>();
+            List<Event> noMatchEval = new ArrayList<>();
+
+            AlphaBetaEvaluation.checkEvents(simEvts, evalEvts, matchFromSim, matchFromEval, noMatchSim,
+                noMatchEval);
+
+            // "only in eval", i.e., false positive
+            double alpha = 100.0 * ((double) noMatchEval.size() / simEvts.size());
+            // with respect to BG: dp in events / total dp
+            int nDP = selSample.getTotalDataPoints(channel);
+            // count data point of events that were not matched with simulation, i.e., falsely picked
+            // and ignore all data points within an event
+            double evtDP = noMatchEval.stream().mapToInt(Event::getNoOfPoints).sum();
+            double alphaBG = 100.0 * (evtDP / nDP);
+
+            // "only in sim", i.e., false negatives
+            double beta = 100.0 * ((double) noMatchSim.size() / simEvts.size());
+
+            // how many of the events in a series were matched at all?
+            double coverageSim = 100.0 * ((double) matchFromSim.size() / simEvts.size());
+            double coverageEval = 100.0 * ((double) matchFromEval.size() / evalEvts.size());
+
+            summary.append("\nPopulation: ").append(evalID.toString())
+                .append("\nalpha [%] :").append(SnF.doubleToString(alpha, NF.D1C3, NF.D1C3Exp))
+                .append("\nbeta [%] :").append(SnF.doubleToString(beta, NF.D1C3, NF.D1C3Exp))
+                .append("\nmatch syn [%] :").append(SnF.doubleToString(coverageSim, NF.D1C3, NF.D1C3Exp))
+                .append("\nmatch eval [%] :").append(SnF.doubleToString(coverageEval, NF.D1C3, NF.D1C3Exp))
+                .append("\nalpha pts [%] :").append(SnF.doubleToString(alphaBG, NF.D1C3, NF.D1C3Exp))
+
+                .append("\nnSim [-] :").append(SnF.intToString(simEvts.size(), NF.D1C0))
+                .append("\nnEval [-] :").append(SnF.intToString(evalEvts.size(), NF.D1C0))
+                .append("\nnMatch [-] :").append(SnF.intToString(matchFromSim.size(), NF.D1C0))
+                .append("\nnSimNoMatch [-] :").append(SnF.intToString(noMatchSim.size(), NF.D1C0))
+                .append("\nnEvalNoMatch [-] :").append(SnF.intToString(noMatchEval.size(), NF.D1C0))
+            ;
+
+          }
+        }
+        info.add(summary.toString());
+      }
+
+    } else {
+      for (Sample selSample : selSamples) {
+
+        StringBuilder summary = new StringBuilder("No in-silico data available!");
+
+        summary.append("#### New sample ####").append("\nNick name: ").append(selSample.getNickName());
+
+        List<Channel> matchedIsotope = new ArrayList<>();
+        List<Channel> unMatchedIsotope = new ArrayList<>();
+
+        for (PopulationID selID : selIDs) {
+
+          for (Channel selChannel : selChannels) {
+            List<Channel> singletonList = new ArrayList<>();
+            singletonList.add(selChannel);
+            List<PopulationID> subSamplePops = selSample.listPopulations(singletonList);
+
+            if (subSamplePops.contains(selID)) {
+              matchedIsotope.add(selChannel);
+            } else {
+              unMatchedIsotope.add(selChannel);
+            }
+          }
+
+          for (Channel channel : matchedIsotope) {
+            summary.append("\nPopulation: ").append(selID.toString()).append(" CONTAINS ").append(channel.getShortUIString());
+          }
+          for (Channel channel : unMatchedIsotope) {
+            summary.append("\nPopulation: ").append(selID.toString()).append(" does not contain ").append(channel.getShortUIString());
+          }
+
+        }
+        info.add(summary.toString());
+      }
+    }
+    ViewListDialog<String> view = getStringViewListDialog(info);
+    view.showAndWait();
+
+  }
 }

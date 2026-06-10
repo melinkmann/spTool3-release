@@ -35,7 +35,7 @@ public interface MZValue extends Serializable {
 
   default String getName() {
     if (hasIsotope()) {
-      return getIsotope().getName();
+      return getIsotope().getNumberAndElement();
     } else {
       return getElementTransition();
     }

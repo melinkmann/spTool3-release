@@ -60,7 +60,10 @@ public class HistogramFilters {
     double val = 0;
 
     // ensure uneven width
-    if (windowWidth % 2 == 0) windowWidth++;
+    if (windowWidth % 2 == 0) {
+      windowWidth++;
+      LOGGER.info("Received even input for window width. Incremented by one. New width: " + windowWidth);
+    }
 
     int seriesIndex = 0;
     int itemCount = histogramDataset.getItemCount(seriesIndex);
@@ -82,18 +85,20 @@ public class HistogramFilters {
 
       // clamp window to array length, keep it odd
       int clampedWindow = Math.min(windowWidth, barMeasure.length);
-      if (clampedWindow % 2 == 0) clampedWindow--;
-      int half = clampedWindow / 2;
+      if (clampedWindow % 2 == 0) {
+        clampedWindow--;
+      }
+      int halfWindow = clampedWindow / 2;
 
       if (barMeasure.length > clampedWindow) {
-        for (int i = half; i < barMeasure.length - half; i++) {
+        for (int i = halfWindow; i < barMeasure.length - halfWindow; i++) {
           double prev = 0, past = 0;
-          for (int j = 0; j < half; j++) {
+          for (int j = 0; j < halfWindow; j++) {
             prev += barHeights[i - j - 1];
             past += barHeights[i + j + 1];
           }
-          prev = (barHeights[i] + prev) / (double) (half + 1);
-          past = (barHeights[i] + past) / (double) (half + 1);
+          prev = (barHeights[i] + prev) / (double) (halfWindow + 1);
+          past = (barHeights[i] + past) / (double) (halfWindow + 1);
           if (past > prev) {
             val = barMeasure[i];
             break;

@@ -19,6 +19,7 @@ package analysis;
 
 import core.SpTool3Main;
 import dataModelNew.*;
+import dataModelNew.mz.Channel;
 import gui.dialog.notification.NotificationFactory;
 import io.nu.NuReader_new;
 import io.nu.ParsedNuData;
@@ -49,12 +50,12 @@ public abstract class SpectralUtil {
       if (isAligned) {
         for (Sample sample : mainSample.getAllSamples()) {
 
-          List<Isotope> isotopes = sample.listIsotopes();
+          List<Channel> channels = sample.listChannels();
 
           // Just find any isotope that matches
-          for (Isotope isotope : isotopes) {
-            Trace trace = sample.getTrace(isotope);
-            List<Event> npEvents = sample.getNPEvents(isotope, popID);
+          for (Channel channel : channels) {
+            Trace trace = sample.getTrace(channel);
+            List<Event> npEvents = sample.getNPEvents(channel, popID);
             if (!npEvents.isEmpty() && trace != null) {
 
               // for the background: identify bg indices once
@@ -79,7 +80,7 @@ public abstract class SpectralUtil {
 
               List<SpectralArray> result;
               if (Util.isNuPath(sampleDir)) {
-                result = getSpectralDataFromNUFile(sample, isotopes, sampleDir, bgIndices, npEvents);
+                result = getSpectralDataFromNUFile(sample, channels, sampleDir, bgIndices, npEvents);
               } else {
                 if (sampleFile.getInstrumentID().equals(InstrumentID.NU_VITESSE)) {
                   Platform.runLater(() -> NotificationFactory.openInfo("""
@@ -88,7 +89,7 @@ public abstract class SpectralUtil {
                       The spectrum will be computed based on the imported isotopes only
                       and will thus be incomplete!"""));
                 }
-                result = getSpectralData(sample, isotopes, bgIndices, npEvents);
+                result = getSpectralData(sample, channels, bgIndices, npEvents);
               }
               // store result to sample
               sample.addSpectralData(popID, result);
@@ -103,19 +104,19 @@ public abstract class SpectralUtil {
 
 
   public static List<SpectralArray> getSpectralData(Sample subSample,
-                                                    List<Isotope> isotopes,
+                                                    List<Channel> channels,
                                                     List<Integer> bgIndices,
                                                     List<Event> npEvents) {
 
     List<SpectralArray> result = new ArrayList<>();
 
     // maintains order of isotopes
-    List<Isotope> validIsotopes = new ArrayList<>();
-    HashMap<Isotope, Double> meanBGData = new HashMap<>();
+    List<Channel> validChannels = new ArrayList<>();
+    HashMap<Channel, Double> meanBGData = new HashMap<>();
 
     // first find mean BG
-    for (Isotope isotope : isotopes) {
-      Trace trace = subSample.getTrace(isotope);
+    for (Channel channel : channels) {
+      Trace trace = subSample.getTrace(channel);
       if (trace == null) {
         continue;   // trace is not present (should not happen, but guard anyway)
       }
@@ -127,12 +128,12 @@ public abstract class SpectralUtil {
         }
       }
       double meanBG = MeasureOfLocation.MEAN.calc(bgData);
-      meanBGData.put(isotope, meanBG);
-      validIsotopes.add(isotope);
+      meanBGData.put(channel, meanBG);
+      validChannels.add(channel);
     }
 
     // Then assign NP data
-    for (Isotope iso : validIsotopes) {
+    for (Channel channel : validChannels) {
       double[] specArr = new double[npEvents.size()];
       double[] symmetryArr = new double[npEvents.size()];
       double[] heightToBGArr = new double[npEvents.size()];
@@ -148,11 +149,11 @@ public abstract class SpectralUtil {
         int[] indices = npEvent.getIndices();
         double[] intensity = new double[indices.length];
 
-        Trace trace = subSample.getTrace(iso);
+        Trace trace = subSample.getTrace(channel);
         if (trace != null) {
           TISeries ser = trace.getTISeries();
           double totalNpSum = 0;
-          double meanBgPerDt = meanBGData.get(iso);
+          double meanBgPerDt = meanBGData.get(channel);
           for (int j = 0; j < indices.length; j++) {
             int index = indices[j];
             // subtract mean bg per DT for each data point
@@ -177,7 +178,7 @@ public abstract class SpectralUtil {
 
         }
       }
-      SpectralArray spec = new SpectralArray(iso, iso.getIsotopicNumber(), specArr, extraFeatures);
+      SpectralArray spec = new SpectralArray(channel, specArr, extraFeatures);
       result.add(spec);
     }
 
@@ -186,7 +187,7 @@ public abstract class SpectralUtil {
 
 
   public static List<SpectralArray> getSpectralDataFromNUFile(Sample subSample,
-                                                              List<Isotope> isotopes, Path sampleDir,
+                                                              List<Channel> channels, Path sampleDir,
                                                               List<Integer> bgIndices,
                                                               List<Event> npEvents) {
 

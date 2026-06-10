@@ -73,11 +73,20 @@ public enum CsvInterpreters implements Serializable, UiString {
     public String getUiString() {
       return "Time resolved data";
     }
+  },
+
+
+  MZMINE_TRA {
+    @Override
+    public String getUiString() {
+      return "MZMine time-resolved EICs";
+    }
   };
 
   public static CsvInterpreters[] getActive() {
     if (SpTool3Main.getRunTime().getConfParams().showAllParamsAsExpert()) {
-      return new CsvInterpreters[]{AGILENT, THERMO_XY, ANALYTIK_JENA, CUSTOM_TRA, CUSTOM_PEAKS, LPC};
+      return new CsvInterpreters[]{AGILENT, THERMO_XY, ANALYTIK_JENA, CUSTOM_TRA,MZMINE_TRA, CUSTOM_PEAKS,
+          LPC};
     } else {
       return new CsvInterpreters[]{AGILENT, THERMO_XY, ANALYTIK_JENA, CUSTOM_TRA};
     }

@@ -18,6 +18,7 @@
 package processing.parameterSets.impl;
 
 import core.SpTool3Main;
+import dataModelNew.mz.Channel;
 import dataModelNew.mz.MZValue;
 import gui.util.TextFormatterOption;
 import io.XmlUtil;
@@ -79,12 +80,12 @@ public class AlignerParams extends AbstractParamSet implements ParamSet {
         """
             Choose how to align:
             
-            Example: Three events with their data point indices in the respective mz A, B, and C:
+            Example: Three events with their data point indices in the respective MS A, B, and C:
             A=[1-3] B=[3-5] C=[7-9].
             
-            - 'Coverage' yields two regions [1-5] and [7-9].
-              Result of align would be that these data points are considered an event across all mz (A, B, C).
-              They are split into 2 separate regions because no event in any mz covers index 6.
+            - 'Region' yields two regions [1-5] and [7-9].
+              Result of align would be that these data points are considered an event across all MS (A, B, C).
+              They are split into 2 separate regions because no event in any MS covers index 6.
             
             - 'Contact' yields one connected region [1-9].
              Rules: For small events (≤3 indices), a single shared index is enough to trigger a merge.
@@ -267,11 +268,14 @@ public class AlignerParams extends AbstractParamSet implements ParamSet {
                 // SpTool3Main.getRunTime().getMainWindowCtl().getAllIsotopes(),
                 prevSel);                  // null or empty = open blank
 
-            List<MZValue> resultingMZ = dlg.showAndWait();
-            if (resultingMZ != null) {
+            List<Channel> resultingChannels = dlg.showAndWait();
+            if (resultingChannels != null) {
               List<Isotope> resultingIsotopes = new ArrayList<>();
-              for (MZValue mzValue : resultingMZ) {
-                resultingIsotopes.add(mzValue.getIsotope());
+              for (Channel channel : resultingChannels) {
+                Isotope isotope = channel.getIsotope();
+                if (isotope != null){
+                  resultingIsotopes.add(isotope);
+                }
               }
               excludedIsotopes.setValue(NuInterpreterParams.isotopesToString(resultingIsotopes));
             }
@@ -297,11 +301,14 @@ public class AlignerParams extends AbstractParamSet implements ParamSet {
                 // SpTool3Main.getRunTime().getMainWindowCtl().getAllIsotopes(),
                 prevSel);                  // null or empty = open blank
 
-            List<MZValue> resultingMZ = dlg.showAndWait();
-            if (resultingMZ != null) {
+            List<Channel> resultingChannels = dlg.showAndWait();
+            if (resultingChannels != null) {
               List<Isotope> resultingIsotopes = new ArrayList<>();
-              for (MZValue mzValue : resultingMZ) {
-                resultingIsotopes.add(mzValue.getIsotope());
+              for (Channel channel : resultingChannels) {
+                Isotope isotope = channel.getIsotope();
+                if (isotope != null){
+                  resultingIsotopes.add(isotope);
+                }
               }
               includedIsotopes.setValue(NuInterpreterParams.isotopesToString(resultingIsotopes));
             }

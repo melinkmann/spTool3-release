@@ -222,7 +222,7 @@ public class QuantFxParameter<T extends Enum<T> & Unit> extends AbstractFxParame
 //        new VBox(new Label("Value"),new TextField("Option B")),
 //        new VBox(new Label("Value"),new TextField("Option B"),
 //        new Separator(Orientation.HORIZONTAL)));
-    return new HBox(3, field, box);
+    return new HBox(3, field, box); // do not add decoration here!
   }
 
   @Override

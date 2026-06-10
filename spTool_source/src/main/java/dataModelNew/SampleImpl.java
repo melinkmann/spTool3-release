@@ -22,7 +22,7 @@ import analysis.quant.Calibration;
 import analysis.quant.Cal;
 import analysis.quant.Quantity;
 import core.SpTool3Main;
-import dataModelNew.mz.Element;
+import dataModelNew.mz.*;
 import io.export.ExportSimulationEventContainer;
 
 import java.awt.Color;
@@ -34,12 +34,10 @@ import java.io.Serializable;
 import java.lang.ref.SoftReference;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import io.nu.NuReader_new;
 import math.stat.DriftFactor;
@@ -48,6 +46,7 @@ import math.units.enums.*;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.checkerframework.checker.units.qual.A;
 import org.jetbrains.annotations.Nullable;
 import processing.options.*;
 import processing.parameterSets.ListMethod;
@@ -75,7 +74,7 @@ public class SampleImpl implements Sample, Serializable {
   private boolean highlighted;
   private String comment;
   private final SampleFile sampleFile;
-  private final HashMap<Isotope, Trace> traces;
+  private final HashMap<Channel, Trace> traces;
   private final List<ParticlePopulationMatrix> matrices;
   private HashMap<PopulationID, List<SpectralArray>> spectra;
   // transient version to store HAC results for faster access
@@ -83,9 +82,9 @@ public class SampleImpl implements Sample, Serializable {
   private Method method;
   private Cal quant;
   private Color color;
-  private List<Isotope> sampleDefaultIsotopes;
+  private List<Channel> sampleDefaultIsotopes;
   private List<String> removedIsotopeInfo;
-  private List<Isotope> recordedTofRange;
+  private List<Channel> recordedTofRange;
 
   public SampleImpl() {
     this.traces = new LinkedHashMap<>();
@@ -140,7 +139,7 @@ public class SampleImpl implements Sample, Serializable {
   }
 
   // NU
-  public SampleImpl(String nickName, SampleFile sampleFile, List<Isotope> recordedTofRange) {
+  public SampleImpl(String nickName, SampleFile sampleFile, List<Channel> recordedTofRange) {
     this.traces = new LinkedHashMap<>();
     this.matrices = new ArrayList<>();
     this.spectra = new HashMap<>();
@@ -176,15 +175,15 @@ public class SampleImpl implements Sample, Serializable {
 
   // Deep copy
   public SampleImpl(String nickName, boolean highlighted, String comment,
-                    SampleFile sampleFile, HashMap<Isotope, Trace> traces,
+                    SampleFile sampleFile, HashMap<Channel, Trace> traces,
                     List<ParticlePopulationMatrix> matrices,
                     HashMap<PopulationID, List<SpectralArray>> spectra,
                     Method method,
                     Cal quant,
                     Color color,
-                    List<Isotope> sampleDefaultIsotopes,
+                    List<Channel> sampleDefaultIsotopes,
                     List<String> removedIsotopeInfo,
-                    List<Isotope> recordedTofRange) {
+                    List<Channel> recordedTofRange) {
     this.nickName = nickName;
     this.matrices = new ArrayList<>();
     for (ParticlePopulationMatrix matrix : matrices) {
@@ -207,7 +206,7 @@ public class SampleImpl implements Sample, Serializable {
     this.comment = comment;
     this.sampleFile = new SampleFile(sampleFile);
     this.traces = new LinkedHashMap<>();
-    traces.values().forEach(t -> this.traces.put(t.getMzValue().getIsotope(), t.copy(this)));
+    traces.values().forEach(t -> this.traces.put(t.getChannel(), t.copy(this)));
     this.method = method.getCopyWithoutFile();
     this.quant = quant.copy();
     this.color = color;
@@ -379,7 +378,7 @@ public class SampleImpl implements Sample, Serializable {
   }
 
   @Override
-  public List<String> getRemovedIsotopeInfo() {
+  public List<String> getRemovedChannelInfo() {
     return new ArrayList<>(removedIsotopeInfo);
   }
 
@@ -399,40 +398,41 @@ public class SampleImpl implements Sample, Serializable {
   @Override
   public List<Trace> getTraces() {
     List<Trace> tcs = new ArrayList<>(this.traces.values());
-    tcs.sort(Comparator.comparingDouble(o -> o.getMzValue().getMZ()));
+    tcs.sort(Comparator.comparingDouble(o -> o.getChannel().getMZ()));
     return tcs;
   }
 
   @Nullable
   @Override
-  public Trace getTrace(Isotope isotope) {
-    if (isotope == null) {
+  public Trace getTrace(Channel channel) {
+    if (channel == null) {
       return null;
     }
-    return traces.get(isotope);
+    return traces.get(channel);
   }
 
   /**
-   * @param isotopes Isotopes that may or may not be present in this sample.
+   * @param channels Channels/Isotopes that may or may not be present in this sample.
    * @return A list of the corresponding traces. List is empty if no match is found.
    */
   @Override
-  public List<Trace> getTraces(List<Isotope> isotopes) {
+  public List<Trace> getTraces(List<Channel> channels) {
     List<Trace> result = new ArrayList<>();
-    for (Isotope isotope : isotopes) {
-      if (traces.containsKey(isotope)) {
-        result.add(traces.get(isotope));
+    for (Channel channel : channels) {
+      if (traces.containsKey(channel)) {
+        result.add(traces.get(channel));
       }
     }
     return result;
   }
 
   @Override
-  public List<Isotope> listIsotopes() {
-    return Collections.unmodifiableList(new ArrayList<>(traces.keySet()));
+  public List<Channel> listChannels() {
+    // unmodifiable
+    return List.copyOf(traces.keySet());
   }
 
-  public List<Isotope> getRecordedTofRange() {
+  public List<Channel> getRecordedTofRange() {
     if (recordedTofRange.isEmpty()) {
       if (sampleFile.getInstrumentID().equals(InstrumentID.NU_VITESSE)) {
         LOGGER.trace("Did not find any stored information on available isotopes in sample." +
@@ -440,8 +440,16 @@ public class SampleImpl implements Sample, Serializable {
         Path directory = sampleFile.getFilePath();
         List<Double> availableMZ = NuReader_new.listAvailableMZFromCacheOrParse(directory);
         if (!availableMZ.isEmpty()) {
+          for (Double empirMZ : availableMZ) {
+            MSID msID = new MSIDImpl(new MZImpl(empirMZ));
+            int roundedNominalIsotopicNumber = (int) Math.round(empirMZ);
+            List<Isotope> matches = Isotope.getFromNominalMass(roundedNominalIsotopicNumber);
+            for (Isotope match : matches) {
+              recordedTofRange.add(new MZChannel(msID, match));
+            }
+          }
           LOGGER.trace("Read available isotopes in sample from file.");
-          recordedTofRange.addAll(Isotope.getFromNominalMass(availableMZ));
+
         } else {
           LOGGER.info("Unable to read isotopes from file: " + directory);
         }
@@ -451,19 +459,22 @@ public class SampleImpl implements Sample, Serializable {
   }
 
   /**
-   * @param isotope Isotope that may or may not be present in this sample.
+   * @param channel Isotope that may or may not be present in this sample.
    * @return A UNIQUE list of the corresponding simulated particle population matrices. Several
    * traces may contain the same matrix, hence the check and guarantee to return unique instances
    * only. List is empty if no match is found or if no simulated Trace is present in this sample.
    */
   @Override
-  public List<ParticlePopulationMatrix> getMatrices(Isotope isotope) {
+  public List<ParticlePopulationMatrix> getMatrices(Channel channel) {
     List<ParticlePopulationMatrix> result = new ArrayList<>();
 
-    for (ParticlePopulationMatrix particleMatrix : this.matrices) {
-      // add if present but ensure uniqueness!
-      if (particleMatrix.hasIsotope(isotope) && !result.contains(particleMatrix)) {
-        result.add(particleMatrix);
+    Isotope isotope = channel.getIsotope();
+    if (isotope != null) {
+      for (ParticlePopulationMatrix particleMatrix : this.matrices) {
+        // add if present but ensure uniqueness!
+        if (particleMatrix.hasIsotope(isotope) && !result.contains(particleMatrix)) {
+          result.add(particleMatrix);
+        }
       }
     }
     return result;
@@ -529,9 +540,9 @@ public class SampleImpl implements Sample, Serializable {
 
 
   @Override
-  public List<PopulationID> listPopulations(List<Isotope> isotopes) {
+  public List<PopulationID> listPopulations(List<Channel> channels) {
     List<PopulationID> pops = new ArrayList<>();
-    List<Trace> traces = getTraces(isotopes);
+    List<Trace> traces = getTraces(channels);
     for (Trace trace : traces) {
       for (PopulationID popID : trace.getAllPopulationsTypes()) {
         if (!pops.contains(popID)) {
@@ -543,8 +554,8 @@ public class SampleImpl implements Sample, Serializable {
   }
 
   @Override
-  public void removePopulations(List<Isotope> isotopes, PopulationID populationID) {
-    List<Trace> traces = getTraces(isotopes);
+  public void removePopulations(List<Channel> channels, PopulationID populationID) {
+    List<Trace> traces = getTraces(channels);
     for (Trace trace : traces) {
       trace.removePopulation(populationID);
     }
@@ -553,9 +564,9 @@ public class SampleImpl implements Sample, Serializable {
   }
 
   @Override
-  public void removeIsotopes(List<Isotope> isotopes) {
+  public void removeChannels(List<Channel> channels) {
     // remove trace itself
-    this.traces.keySet().removeAll(isotopes);
+    this.traces.keySet().removeAll(channels);
     //    // remove from spectra too [feels unexpected as we do not see these in the UI]
     //    for (PopulationID popID : spectra.keySet()) {
     //      List<SpectralArray> spec = spectra.get(popID);
@@ -577,7 +588,7 @@ public class SampleImpl implements Sample, Serializable {
 
   @Override
   public void addTrace(Trace trace) {
-    traces.put(trace.getMzValue().getIsotope(), trace);
+    traces.put(trace.getChannel(), trace);
   }
 
   @Override
@@ -607,14 +618,14 @@ public class SampleImpl implements Sample, Serializable {
   }
 
   @Override
-  public List<Isotope> getSampleDefaultIsotopes() {
+  public List<Channel> getSampleDefaultChannels() {
     return new ArrayList<>(sampleDefaultIsotopes);
   }
 
   @Override
-  public void setSampleDefaultIsotopes(List<Isotope> sampleDefaultIsotopes) {
+  public void setSampleDefaultChannels(List<Channel> sampleDefaultChannels) {
     this.sampleDefaultIsotopes.clear();
-    this.sampleDefaultIsotopes.addAll(sampleDefaultIsotopes);
+    this.sampleDefaultIsotopes.addAll(sampleDefaultChannels);
   }
 
   @Override
@@ -632,17 +643,29 @@ public class SampleImpl implements Sample, Serializable {
 
   /// /////////////////////////// Calculations for UI //////////////////////////////////////
   @Override
-  public double[] getData(Isotope isotope, PopulationID populationID, EventType eventType,
+  public double[] getData(Channel channel, PopulationID populationID, EventType eventType,
                           EventParameter param, Unit unit) {
 
     double[] data = new double[0];
     // call getter (possibly null)
-    Trace trace = getTrace(isotope);
+    Trace trace = getTrace(channel);
     if (trace != null) {
       // cts (or duration, ...) data
       data = trace.get(populationID, eventType, param);
       // conversion
-      data = applyQuant(data, isotope, param, unit);
+      double[] quantData = applyQuant(data, channel, param, unit);
+
+      // quant data is empty if unable to quantify
+      if (quantData.length < data.length) {
+        if (IntensityUnit.CTS.equals(unit)) {
+          data = data; // indicates that we request cts and return these
+        } else {
+          // indicate that data is not quantified by passing empty list
+          data = new double[0];
+        }
+      } else {
+        data = quantData;
+      }
     }
     return data;
   }
@@ -651,27 +674,42 @@ public class SampleImpl implements Sample, Serializable {
    * Uses the event parameter stored in the Experiment. This getter works, e.g., for the LOD calculation in
    * the table where no event parameter input is needed. We need to pass the parameter as an argument to
    * check if quantification can be calculated or not.
+   * ### Returns empty array if cannot quantify!
    */
-  public double[] applyQuant(double[] dataInput, Isotope isotope, Unit unit) {
+  public double[] applyQuant(double[] dataInput, Channel channel, Unit unit) {
     return applyQuant(
         dataInput,
-        isotope,
+        channel,
         quant.getExperimentalConditions().getEventPar(),
         unit);
   }
 
-  public double[] applyQuant(double[] dataInput, Isotope isotope, EventParameter param, Unit unit) {
 
-    double[] result = ArrUtils.copy(dataInput);
+  /// ### Returns empty array if cannot quantify!
+  public double[] applyQuant(double[] dataInput, Channel channel, EventParameter param, Unit unit) {
+
+    double[] result = new double[0];
+
+    // isotope is null if none present
+    CalChannel calChannel = AnalysisUtils.getCalChannel(channel);
 
     // Check: request = cts || EventParameter is duration,...  || EventParameter is not what was used to
     // quantify?  --> do nothing and return cts
-    if (IntensityUnit.CTS.equals(unit) || !EventParameter.canQuantify(param)
+    if (calChannel == null
+        || IntensityUnit.CTS.equals(unit)
+        || !EventParameter.canQuantify(param)
         || !quant.getExperimentalConditions().getEventPar().equals(param)) {
-      // do nothing: return the copy of the data
+      //------ do nothing: return the copy of the data-------
+      // result = ArrUtils.copy(dataInput);
+
+      // return empty array
+      result = new double[0];
 
       // Else: check if sample instance is set as sample
     } else if (quant.getExperimentalConditions().getCalibratorRole().getValue().equals(CalibratorRole.SAMPLE)) {
+
+      // Copy o.g. array
+      result = ArrUtils.copy(dataInput);
 
       // find the response
       double ctsPerFg = 0;
@@ -680,7 +718,7 @@ public class SampleImpl implements Sample, Serializable {
       switch (quant.getCalibrationStrategy()) {
         // ########################## REFERENCE PARTICLE with known mass ###############################
         case MASS -> {
-          Quantity npResp = quant.getResponses().getOrCreateNpResponse(isotope);
+          Quantity npResp = quant.getResponses().getOrCreateNpResponse(calChannel);
 
           if (npResp != null && npResp.getValue() > 0) {
             ctsPerFg = npResp.getUnit().convert(npResp.getValue(), SensitivityUnit.CTS_PER_FEMTOGRAM);
@@ -693,10 +731,10 @@ public class SampleImpl implements Sample, Serializable {
 
         // ########################## FREQUENCY or SIZE method ###########################################
         case SIZE_METHOD, FREQUENCY_METHOD -> {
-          Quantity ionResp = quant.getResponses().getOrCreateIonicResponse(isotope);
+          Quantity ionResp = quant.getResponses().getOrCreateIonicResponse(calChannel);
 
           // check if TE was determined elsewhere
-          double tePct = getAerosolTEConvention(isotope);
+          double tePct = getAerosolTEConvention(channel);
 
           if (tePct > 0 && ionResp != null && ionResp.getValue() > 0) {
             ctsPerFg = ionResp.getUnit().convert(ionResp.getValue(), SensitivityUnit.CTS_PER_FEMTOGRAM);
@@ -712,7 +750,7 @@ public class SampleImpl implements Sample, Serializable {
 
       // ########################## FIND TARGET UNIT (above we calculated cts/fg)############################
       ExperimentalSubConditions subPar =
-          quant.getExperimentalConditions().getElementSpecificQuantParams().get(isotope.getElement());
+          quant.getExperimentalConditions().getElementSpecificQuantParams().get(calChannel.element());
 
       if (subPar != null && ctsPerFg > 0) {
 
@@ -775,12 +813,12 @@ public class SampleImpl implements Sample, Serializable {
             ctsPerTargetUnit = ctsPerFg * 1E3; // more counts per pg --> larger number
           } else if (unit.equals(MolarUnit.FEMTO_MOL)) {
             // molar mass g/mol == fg/fmol
-            double gPerMol = isotope.getElement().calcMolarMass();
+            double gPerMol = calChannel.element().calcMolarMass();
             ctsPerTargetUnit = ctsPerFg * gPerMol; // cts/fg * fg/fmol --> cts/fmol
           } else {
             // attogram
             // molar mass g/mol == fg/fmol
-            double gPerMol = isotope.getElement().calcMolarMass();
+            double gPerMol = calChannel.element().calcMolarMass();
             ctsPerTargetUnit = ctsPerFg * gPerMol / 1E3; // cts/fg * fg/fmol / 1E3 --> cts/amol
           }
 
@@ -801,12 +839,18 @@ public class SampleImpl implements Sample, Serializable {
     return result;
   }
 
-  public double[] revertQuant(double[] quantifiedInput, Isotope isotope, EventParameter param, Unit unit) {
+  public double[] revertQuant(double[] quantifiedInput, Channel channel, EventParameter param,
+                              Unit unit) {
 
-    double[] result = ArrUtils.copy(quantifiedInput);
+    // double[] result = ArrUtils.copy(quantifiedInput);
+    double[] result = new double[0];
+
+    // isotope is null if none present
+    CalChannel calChannel = AnalysisUtils.getCalChannel(channel);
 
     // Same early exit logic as applyQuant
-    if (IntensityUnit.CTS.equals(unit)
+    if (calChannel == null
+        || IntensityUnit.CTS.equals(unit)
         || !EventParameter.canQuantify(param)
         || !quant.getExperimentalConditions().getEventPar().equals(param)) {
       return result;
@@ -822,7 +866,7 @@ public class SampleImpl implements Sample, Serializable {
     switch (quant.getCalibrationStrategy()) {
 
       case MASS -> {
-        Quantity npResp = quant.getResponses().getOrCreateNpResponse(isotope);
+        Quantity npResp = quant.getResponses().getOrCreateNpResponse(calChannel);
         if (npResp != null && npResp.getValue() > 0) {
           ctsPerFg = npResp.getUnit().convert(npResp.getValue(), SensitivityUnit.CTS_PER_FEMTOGRAM);
         } else {
@@ -831,8 +875,8 @@ public class SampleImpl implements Sample, Serializable {
       }
 
       case SIZE_METHOD, FREQUENCY_METHOD -> {
-        Quantity ionResp = quant.getResponses().getOrCreateIonicResponse(isotope);
-        double tePct = getAerosolTEConvention(isotope);
+        Quantity ionResp = quant.getResponses().getOrCreateIonicResponse(calChannel);
+        double tePct = getAerosolTEConvention(channel);
 
         if (tePct > 0 && ionResp != null && ionResp.getValue() > 0) {
           double ionicCtsPerFg = ionResp.getUnit().convert(ionResp.getValue(),
@@ -846,7 +890,7 @@ public class SampleImpl implements Sample, Serializable {
 
     ExperimentalSubConditions subPar = quant.getExperimentalConditions()
         .getElementSpecificQuantParams()
-        .get(isotope.getElement());
+        .get(calChannel.element());
 
     if (subPar == null || ctsPerFg <= 0) {
       return new double[0];
@@ -910,11 +954,11 @@ public class SampleImpl implements Sample, Serializable {
         ctsPerTargetUnit = ctsPerFg * 1E3; // more cts per fg
 
       } else if (unit.equals(MolarUnit.FEMTO_MOL)) {
-        double gPerMol = isotope.getElement().calcMolarMass();
+        double gPerMol = calChannel.element().calcMolarMass();
         ctsPerTargetUnit = ctsPerFg * gPerMol; // g/mol = fg/fmol
 
       } else { // amol
-        double gPerMol = isotope.getElement().calcMolarMass();
+        double gPerMol = calChannel.element().calcMolarMass();
         ctsPerTargetUnit = ctsPerFg * gPerMol / 1E3; // fewer cts per ag --> convert to fg as g/mol=fg/fmol
       }
 
@@ -926,83 +970,92 @@ public class SampleImpl implements Sample, Serializable {
   }
 
   @Override
-  public double getAerosolTEConvention(Isotope isotope) {
+  public double getAerosolTEConvention(Channel channel) {
     double tePct = 0;
-    Quantity te = quant.getResponses().getOrCreateAerosolTE(isotope);
-    // no TE data for the isotope
-    if (te != null && te.getValue() <= 0) {
-      List<Isotope> isotopes = quant.listIsotopes();
-      for (Isotope iso : isotopes) {
-        Quantity testTE = quant.getResponses().getOrCreateAerosolTE(iso);
-        if (testTE != null && testTE.getValue() > 0) {
-          tePct = testTE.getValue();
-          break;
-        }
-      }
+    // isotope is null if none present
+    CalChannel calChannel = AnalysisUtils.getCalChannel(channel);
+    if (calChannel != null) {
 
-      // isotope has specific TE data
-    } else if (te != null) {
-      tePct = te.getValue();
+      Quantity te = quant.getResponses().getOrCreateAerosolTE(calChannel);
+      // no TE data for the isotope
+      if (te != null && te.getValue() <= 0) {
+        List<CalChannel> calChannels = quant.listChannels();
+        for (CalChannel calCh : calChannels) {
+          Quantity testTE = quant.getResponses().getOrCreateAerosolTE(calCh);
+          if (testTE != null && testTE.getValue() > 0) {
+            tePct = testTE.getValue();
+            break;
+          }
+        }
+
+        // isotope has specific TE data
+      } else if (te != null) {
+        tePct = te.getValue();
+      }
     }
     return tePct;
   }
 
   @Override
-  public double getPncTEConvention(Isotope isotope) {
+  public double getPncTEConvention(Channel channel) {
     double tePct = 0;
-    Quantity te = quant.getResponses().getOrCreateParticleNumberTE(isotope);
-    // no TE data for the isotope
-    if (te != null && te.getValue() <= 0) {
-      List<Isotope> isotopes = quant.listIsotopes();
-      for (Isotope iso : isotopes) {
-        Quantity testTE = quant.getResponses().getOrCreateParticleNumberTE(iso);
-        if (testTE != null && testTE.getValue() > 0) {
-          tePct = testTE.getValue();
-          break;
-        }
-      }
-      // isotope has specific TE data
-    } else if (te != null) {
-      tePct = te.getValue();
-    }
 
-    // final check
-    if (tePct <= 0) {
-      tePct = getAerosolTEConvention(isotope);
+    // isotope is null if none present
+    CalChannel calChannel = AnalysisUtils.getCalChannel(channel);
+    if (calChannel != null) {
+
+      Quantity te = quant.getResponses().getOrCreateParticleNumberTE(calChannel);
+      // no TE data for the isotope
+      if (te != null && te.getValue() <= 0) {
+        List<CalChannel> calChannels = quant.listChannels();
+        for (CalChannel calCh : calChannels) {
+          Quantity testTE = quant.getResponses().getOrCreateParticleNumberTE(calCh);
+          if (testTE != null && testTE.getValue() > 0) {
+            tePct = testTE.getValue();
+            break;
+          }
+        }
+        // isotope has specific TE data
+      } else if (te != null) {
+        tePct = te.getValue();
+      }
+
+      // final check
+      if (tePct <= 0) {
+        tePct = getAerosolTEConvention(channel);
+      }
     }
     return tePct;
   }
 
   @Override
-  public double getMaxThr(@Nullable Isotope isotope, PopulationID populationID, boolean netSignal) {
+  public double getMaxThr(@Nullable Channel channel, PopulationID populationID, boolean netSignal) {
     double maxThr = 0;
     // call getter (possibly null)
-    Trace trace = getTrace(isotope);
-    if (trace != null) {
-      if (trace != null && trace.getBaseline() != null && trace.getBaseline().hasBaseline()) {
-        // Search height
-        StatCollection blnStats = trace.getBaseline().getBackgroundDistribution();
-        Population population = trace.getPopulation(populationID);
-        if (population != null) {
-          ThresholdSupplier supplier = population.getHeightInstructions().get(blnStats);
-          maxThr = Math.max(maxThr, mu(supplier.getThresholdSlices()));
-          // Gate height
-          List<ThresholdSupplier> gateSuppliers = population.getGatingInstr().stream()
-              /*
-              Changed this to "any intensity". Why? In the limit, at LOD, convention is that
-              peak has just one data point, i.e., height=area, anyway.
-              In addition, for LODs, it makes no sense to set threshold but not use it.
-              Note that this justifies distinction between ROI and Gate.
-               */
-              .filter(ThresholdSupplierInstructions::isIntensity)
-              .map(gInstr -> gInstr.get(blnStats))
-              .collect(Collectors.toList());
-          for (ThresholdSupplier suppl : gateSuppliers) {
-            maxThr = Math.max(maxThr, mu(suppl.getThresholdSlices()));
-          }
-          if (netSignal) {
-            maxThr = maxThr - mu(blnStats.getLocation());
-          }
+    Trace trace = getTrace(channel);
+    if (trace != null && trace.getBaseline() != null && trace.getBaseline().hasBaseline()) {
+      // Search height
+      StatCollection blnStats = trace.getBaseline().getBackgroundDistribution();
+      Population population = trace.getPopulation(populationID);
+      if (population != null) {
+        ThresholdSupplier supplier = population.getHeightInstructions().get(blnStats);
+        maxThr = Math.max(maxThr, mu(supplier.getThresholdSlices()));
+        // Gate height
+        List<ThresholdSupplier> gateSuppliers = population.getGatingInstr().stream()
+            /*
+            Changed this to "any intensity". Why? In the limit, at LOD, convention is that
+            peak has just one data point, i.e., height=area, anyway.
+            In addition, for LODs, it makes no sense to set threshold but not use it.
+            Note that this justifies distinction between ROI and Gate.
+             */
+            .filter(ThresholdSupplierInstructions::isIntensity)
+            .map(gInstr -> gInstr.get(blnStats))
+            .toList();
+        for (ThresholdSupplier suppl : gateSuppliers) {
+          maxThr = Math.max(maxThr, mu(suppl.getThresholdSlices()));
+        }
+        if (netSignal) {
+          maxThr = maxThr - mu(blnStats.getLocation());
         }
       }
     }
@@ -1010,17 +1063,17 @@ public class SampleImpl implements Sample, Serializable {
   }
 
   @Override
-  public double getMaxThr(@Nullable Isotope isotope, PopulationID populationID, boolean netSignal,
+  public double getMaxThr(@Nullable Channel channel, PopulationID populationID, boolean netSignal,
                           Unit unit) {
-    double thr = getMaxThr(isotope, populationID, netSignal);
-    double[] qThr = applyQuant(new double[]{thr}, isotope, EventParameter.NET_AREA, unit);
+    double thr = getMaxThr(channel, populationID, netSignal);
+    double[] qThr = applyQuant(new double[]{thr}, channel, EventParameter.NET_AREA, unit);
     return qThr.length > 0 ? qThr[0] : 0;
   }
 
   @Override
-  public List<Event> getNPEvents(Isotope isotope, PopulationID popID) {
+  public List<Event> getNPEvents(Channel channel, PopulationID popID) {
     List<Event> npEvents = new ArrayList<>();
-    Trace trace = getTrace(isotope);
+    Trace trace = getTrace(channel);
     if (trace != null) {
       Population pop = trace.getPopulation(popID);
       if (pop != null) {
@@ -1031,9 +1084,9 @@ public class SampleImpl implements Sample, Serializable {
   }
 
   @Override
-  public int getTotalDataPoints(Isotope isotope) {
+  public int getTotalDataPoints(Channel channel) {
     int dp = 0;
-    Trace trace = getTrace(isotope);
+    Trace trace = getTrace(channel);
     if (trace != null) {
       dp = trace.getTISeries().size();
     }
@@ -1041,10 +1094,10 @@ public class SampleImpl implements Sample, Serializable {
   }
 
   @Override
-  public double getRawMeanCPS(Isotope isotope) {
+  public double getRawMeanCPS(Channel channel) {
     double val = 0;
-    if (traces.containsKey(isotope)) {
-      Trace trace = traces.get(isotope);
+    if (traces.containsKey(channel)) {
+      Trace trace = traces.get(channel);
       val = trace.getTISeries().getMeanIntensity();
       val = val / trace.getTISeries().getDT();
     }
@@ -1053,10 +1106,10 @@ public class SampleImpl implements Sample, Serializable {
 
 
   @Override
-  public double getRawMedianCPS(Isotope isotope) {
+  public double getRawMedianCPS(Channel channel) {
     double val = 0;
-    if (traces.containsKey(isotope)) {
-      Trace trace = traces.get(isotope);
+    if (traces.containsKey(channel)) {
+      Trace trace = traces.get(channel);
       val = trace.getTISeries().getMedianIntensity();
       val = val / trace.getTISeries().getDT();
     }
@@ -1064,11 +1117,11 @@ public class SampleImpl implements Sample, Serializable {
   }
 
   @Override
-  public double getEventRate(Isotope isotope, PopulationID populationID) {
+  public double getEventRate(Channel channel, PopulationID populationID) {
 
     double rate = 0;
     // call getter (possibly null)
-    Trace trace = getTrace(isotope);
+    Trace trace = getTrace(channel);
     if (trace != null) {
       int nNP = trace.getNoOfEvents(populationID);
       double durationSec = trace.getTISeries().getDuration();
@@ -1129,8 +1182,8 @@ public class SampleImpl implements Sample, Serializable {
           for (Isotope isotope : element.getIsotopes()) {
             container.getRandNetSignal().put(isotope, p.getIntensityMap().get(isotope));
 
-            HashMap<EventParameter, double[]> dataMap = AnalysisUtils
-                .getFromSimulation(this, isotope, matrix);
+            HashMap<EventParameter, double[]> dataMap
+                = AnalysisUtils.getFromSimulation(this, isotope, matrix);
             container.getDataMap().put(isotope, dataMap);
           }
         }
@@ -1140,12 +1193,12 @@ public class SampleImpl implements Sample, Serializable {
   }
 
   @Override
-  public double getAverageDrift(List<Isotope> isotopes, List<PopulationID> populations) {
+  public double getAverageDrift(List<Channel> channels, List<PopulationID> populations) {
     double sumDrift = 0;
     double maxDrift = 0;
     int counter = 0;
 
-    List<Trace> tracesWithIsotopes = getTraces(isotopes);
+    List<Trace> tracesWithIsotopes = getTraces(channels);
 
     for (Trace trace : tracesWithIsotopes) {
       for (PopulationID popID : populations) {
@@ -1175,11 +1228,11 @@ public class SampleImpl implements Sample, Serializable {
   }
 
   @Override
-  public double getAverageNoOfEvents(List<Isotope> isotopes, List<PopulationID> populations) {
+  public double getAverageNoOfEvents(List<Channel> channels, List<PopulationID> populations) {
     int sumEvents = 0;
     double counter = 0;
 
-    List<Trace> tracesWithIsotopes = getTraces(isotopes);
+    List<Trace> tracesWithIsotopes = getTraces(channels);
 
     for (Trace trace : tracesWithIsotopes) {
       for (PopulationID popID : populations) {
@@ -1226,28 +1279,28 @@ public class SampleImpl implements Sample, Serializable {
   }
 
   @Override
-  public String tabDwellTime(Isotope isotope) {
-    Trace t = getTrace(isotope);
+  public String tabDwellTime(Channel channel) {
+    Trace t = getTrace(channel);
     return check(t) ? str(t.getTISeries().getDT() * 1E6, NF.D1C2) : EMPTY_CELL;
   }
 
   @Override
-  public String tabDuration(Isotope isotope) {
-    Trace t = getTrace(isotope);
+  public String tabDuration(Channel channel) {
+    Trace t = getTrace(channel);
     return check(t) ? str(t.getTISeries().getDuration(), NF.D1C2) : EMPTY_CELL;
   }
 
   @Override
-  public String tabPoints(Isotope isotope) {
-    Trace t = getTrace(isotope);
+  public String tabPoints(Channel channel) {
+    Trace t = getTrace(channel);
     return check(t) ? str(t.getTISeries().size(), NF.D1C0) : EMPTY_CELL;
   }
 
   @Override
-  public String tabTISeriesLimits(Isotope isotope) {
+  public String tabTISeriesLimits(Channel channel) {
     String val = "";
-    if (check(isotope)) {
-      Trace t = getTrace(isotope);
+    if (check(channel)) {
+      Trace t = getTrace(channel);
       val = t.hasLimits() ?
           "Time: " + str(t.getTISeries().getFirstTimeStamp(), NF.D1C1)
               + "-" + str(t.getTISeries().getLastTimeStamp(), NF.D1C1) :
@@ -1258,16 +1311,16 @@ public class SampleImpl implements Sample, Serializable {
   }
 
   @Override
-  public String tabRawMean(Isotope isotope) {
-    Trace trace = getTrace(isotope);
+  public String tabRawMean(Channel channel) {
+    Trace trace = getTrace(channel);
     String val = trace != null ? str(trace.getTISeries().getMeanIntensity(), NF.D1C2) : EMPTY_CELL;
     return val;
   }
 
   @Override
-  public String tabRawMeanCPS(Isotope isotope) {
+  public String tabRawMeanCPS(Channel channel) {
     String val = EMPTY_CELL;
-    Trace trace = getTrace(isotope);
+    Trace trace = getTrace(channel);
     if (trace != null) {
       double dtSec = trace.getTISeries().getDT();
       double ctsPerDT = trace.getTISeries().getMeanIntensity();
@@ -1278,16 +1331,16 @@ public class SampleImpl implements Sample, Serializable {
   }
 
   @Override
-  public String tabRawMedian(Isotope isotope) {
-    Trace trace = getTrace(isotope);
+  public String tabRawMedian(Channel channel) {
+    Trace trace = getTrace(channel);
     String val = trace != null ? str(trace.getTISeries().getMedianIntensity(), NF.D1C2) : EMPTY_CELL;
     return val;
   }
 
   @Override
-  public String tabRawMedianCPS(Isotope isotope) {
+  public String tabRawMedianCPS(Channel channel) {
     String val = EMPTY_CELL;
-    Trace trace = getTrace(isotope);
+    Trace trace = getTrace(channel);
     if (trace != null) {
       double dtSec = trace.getTISeries().getDT();
       double ctsPerDT = trace.getTISeries().getMedianIntensity();
@@ -1298,24 +1351,24 @@ public class SampleImpl implements Sample, Serializable {
   }
 
   @Override
-  public String tabRawSD(Isotope isotope) {
-    Trace trace = getTrace(isotope);
+  public String tabRawSD(Channel channel) {
+    Trace trace = getTrace(channel);
     String val = trace != null ? str(trace.getTISeries().getSD(), NF.D1C2) : EMPTY_CELL;
     return val;
   }
 
   @Override
-  public String tabRawMAD(Isotope isotope) {
-    Trace trace = getTrace(isotope);
+  public String tabRawMAD(Channel channel) {
+    Trace trace = getTrace(channel);
     String val = trace != null ? str(trace.getTISeries().getMadSD(), NF.D1C2) : EMPTY_CELL;
     return val;
   }
 
 
   @Override
-  public String tabSIAShape(Isotope isotope) {
+  public String tabSIAShape(Channel channel) {
     String val = EMPTY_CELL;
-    Trace trace = getTrace(isotope);
+    Trace trace = getTrace(channel);
     if (trace != null) {
       double siaShape = trace.getSiaShape();
       if (siaShape > 0) {
@@ -1326,60 +1379,60 @@ public class SampleImpl implements Sample, Serializable {
   }
 
   @Override
-  public String tabMeanSIAShape(Isotope isotope) {
+  public String tabMeanSIAShape(Channel channel) {
     return str(getMeanSiaShape(), NF.D1C4);
   }
 
   @Override
-  public String tabPopName(Isotope isotope, PopulationID populationID) {
-    return check(isotope, populationID) ?
-        getTrace(isotope).getPopulation(populationID).getName() : EMPTY_CELL;
+  public String tabPopName(Channel channel, PopulationID populationID) {
+    return check(channel, populationID) ?
+        getTrace(channel).getPopulation(populationID).getName() : EMPTY_CELL;
   }
 
   @Override
-  public String tabPopAdditional(Isotope isotope, PopulationID populationID) {
-    return check(isotope, populationID) ?
-        getTrace(isotope).getPopulation(populationID).translateParams() : EMPTY_CELL;
+  public String tabPopAdditional(Channel channel, PopulationID populationID) {
+    return check(channel, populationID) ?
+        getTrace(channel).getPopulation(populationID).translateParams() : EMPTY_CELL;
   }
 
   @Override
-  public String tabLodCts(Isotope isotope, PopulationID populationID) {
-    return str(getMaxThr(isotope, populationID, true), NF.D1C2);
+  public String tabLodCts(Channel channel, PopulationID populationID) {
+    return str(getMaxThr(channel, populationID, true), NF.D1C2);
   }
 
   @Override
-  public String tabLodAg(Isotope isotope, PopulationID populationID) {
-    double[] cts = new double[]{getMaxThr(isotope, populationID, true)};
+  public String tabLodAg(Channel channel, PopulationID populationID) {
+    double[] cts = new double[]{getMaxThr(channel, populationID, true)};
 
-    double[] quant = applyQuant(cts, isotope, MassUnit.ATTO_GRAM);
+    double[] quant = applyQuant(cts, channel, MassUnit.ATTO_GRAM);
     return quant.length > 0 ? str(quant[0], NF.D1C2, NF.D1C2Exp) : EMPTY_CELL;
 
   }
 
   @Override
-  public String tabLodNm(Isotope isotope, PopulationID populationID) {
-    double[] cts = new double[]{getMaxThr(isotope, populationID, true)};
-    double[] quant = applyQuant(cts, isotope, SizeUnit.NANO_METER);
+  public String tabLodNm(Channel channel, PopulationID populationID) {
+    double[] cts = new double[]{getMaxThr(channel, populationID, true)};
+    double[] quant = applyQuant(cts, channel, SizeUnit.NANO_METER);
     return quant.length > 0 ? str(quant[0], NF.D1C2, NF.D1C2Exp) : EMPTY_CELL;
   }
 
   @Override
-  public String tabLodAmol(Isotope isotope, PopulationID populationID) {
-    double[] cts = new double[]{getMaxThr(isotope, populationID, true)};
-    double[] quant = applyQuant(cts, isotope, MolarUnit.ATTO_MOL);
+  public String tabLodAmol(Channel channel, PopulationID populationID) {
+    double[] cts = new double[]{getMaxThr(channel, populationID, true)};
+    double[] quant = applyQuant(cts, channel, MolarUnit.ATTO_MOL);
     return quant.length > 0 ? str(quant[0], NF.D1C2, NF.D1C2Exp) : EMPTY_CELL;
   }
 
   @Override
-  public String tabPopNpCount(Isotope isotope, PopulationID populationID) {
-    return check(isotope, populationID) ?
-        str(getTrace(isotope).getPopulation(populationID).getEvents().size(), NF.D1C0) : EMPTY_CELL;
+  public String tabPopNpCount(Channel channel, PopulationID populationID) {
+    return check(channel, populationID) ?
+        str(getTrace(channel).getPopulation(populationID).getEvents().size(), NF.D1C0) : EMPTY_CELL;
   }
 
   @Override
-  public String tabPNC(Isotope isotope, PopulationID populationID) {
+  public String tabPNC(Channel channel, PopulationID populationID) {
     String val = EMPTY_CELL;
-    Trace t = getTrace(isotope);
+    Trace t = getTrace(channel);
     if (t != null) {
       Population pop = t.getPopulation(populationID);
       if (pop != null) {
@@ -1387,7 +1440,7 @@ public class SampleImpl implements Sample, Serializable {
         double duration = pop.getEvents().getCheckedTISeries().getDuration();
         int nNP = t.getPopulation(populationID).getEvents().size();
 
-        double te = getPncTEConvention(isotope) / 100d;
+        double te = getPncTEConvention(channel) / 100d;
         double npPerMin = 60 * nNP / duration;
         npPerMin = npPerMin / te; // we have more NP in reality
         double mLPerMin = quant.getExperimentalConditions().getFlowRate(FlowUnit.MILLILITRE_PER_MINUTE);
@@ -1401,9 +1454,9 @@ public class SampleImpl implements Sample, Serializable {
   }
 
   @Override
-  public String tabPopNpRate(Isotope isotope, PopulationID populationID) {
+  public String tabPopNpRate(Channel channel, PopulationID populationID) {
     String val = EMPTY_CELL;
-    Trace t = getTrace(isotope);
+    Trace t = getTrace(channel);
     if (t != null) {
       Population pop = t.getPopulation(populationID);
       if (pop != null) {
@@ -1417,9 +1470,9 @@ public class SampleImpl implements Sample, Serializable {
   }
 
   @Override
-  public String tabPopNpMean(Isotope isotope, PopulationID populationID) {
+  public String tabPopNpMean(Channel channel, PopulationID populationID) {
     String val = EMPTY_CELL;
-    Trace t = getTrace(isotope);
+    Trace t = getTrace(channel);
     if (t != null && t.hasType(populationID)) {
       val = str(mu(t.get(populationID, EventType.NP, EventParameter.NET_AREA)), NF.D1C3);
     }
@@ -1427,9 +1480,9 @@ public class SampleImpl implements Sample, Serializable {
   }
 
   @Override
-  public String tabNpSD(Isotope isotope, PopulationID populationID) {
+  public String tabNpSD(Channel channel, PopulationID populationID) {
     String val = EMPTY_CELL;
-    Trace t = getTrace(isotope);
+    Trace t = getTrace(channel);
     if (t != null && t.hasType(populationID)) {
       val = str(sd(t.get(populationID, EventType.NP, EventParameter.NET_AREA)), NF.D1C3);
     }
@@ -1437,10 +1490,10 @@ public class SampleImpl implements Sample, Serializable {
   }
 
   @Override
-  public String tabPopNpCustomParamMean(Isotope isotope, PopulationID populationID, EventParameter par,
+  public String tabPopNpCustomParamMean(Channel channel, PopulationID populationID, EventParameter par,
                                         MathMod math) {
     String val = EMPTY_CELL;
-    Trace t = getTrace(isotope);
+    Trace t = getTrace(channel);
     if (t != null && t.hasType(populationID)) {
       val = str(mu(math.calc(t.get(populationID, EventType.NP, par))), NF.D1C3);
     }
@@ -1448,10 +1501,10 @@ public class SampleImpl implements Sample, Serializable {
   }
 
   @Override
-  public String tabNpCustomParamMedian(Isotope isotope, PopulationID populationID, EventParameter par,
+  public String tabNpCustomParamMedian(Channel channel, PopulationID populationID, EventParameter par,
                                        MathMod math) {
     String val = EMPTY_CELL;
-    Trace t = getTrace(isotope);
+    Trace t = getTrace(channel);
     if (t != null && t.hasType(populationID)) {
       val = str(md(math.calc(t.get(populationID, EventType.NP, par))), NF.D1C3);
     }
@@ -1459,10 +1512,10 @@ public class SampleImpl implements Sample, Serializable {
   }
 
   @Override
-  public String tabNpCustomParamSD(Isotope isotope, PopulationID populationID, EventParameter par,
+  public String tabNpCustomParamSD(Channel channel, PopulationID populationID, EventParameter par,
                                    MathMod math) {
     String val = EMPTY_CELL;
-    Trace t = getTrace(isotope);
+    Trace t = getTrace(channel);
     if (t != null && t.hasType(populationID)) {
       val = str(sd(math.calc(t.get(populationID, EventType.NP, par))), NF.D1C3);
     }
@@ -1470,9 +1523,9 @@ public class SampleImpl implements Sample, Serializable {
   }
 
   @Override
-  public String tabNpMedian(Isotope isotope, PopulationID populationID) {
+  public String tabNpMedian(Channel channel, PopulationID populationID) {
     String val = EMPTY_CELL;
-    Trace t = getTrace(isotope);
+    Trace t = getTrace(channel);
     if (t != null && t.hasType(populationID)) {
       val = str(md(t.get(populationID, EventType.NP, EventParameter.NET_AREA)), NF.D1C3);
     }
@@ -1481,9 +1534,9 @@ public class SampleImpl implements Sample, Serializable {
 
 
   @Override
-  public String tabMeanHeight(Isotope isotope, PopulationID populationID) {
+  public String tabMeanHeight(Channel channel, PopulationID populationID) {
     String val = EMPTY_CELL;
-    Trace t = getTrace(isotope);
+    Trace t = getTrace(channel);
     if (t != null && t.hasType(populationID)) {
       val = str(mu(t.get(populationID, EventType.NP, EventParameter.HEIGHT)), NF.D1C3);
     }
@@ -1491,9 +1544,9 @@ public class SampleImpl implements Sample, Serializable {
   }
 
   @Override
-  public String tabSdHeight(Isotope isotope, PopulationID populationID) {
+  public String tabSdHeight(Channel channel, PopulationID populationID) {
     String val = EMPTY_CELL;
-    Trace t = getTrace(isotope);
+    Trace t = getTrace(channel);
     if (t != null && t.hasType(populationID)) {
       val = str(sd(t.get(populationID, EventType.NP, EventParameter.HEIGHT)), NF.D1C3);
     }
@@ -1501,9 +1554,9 @@ public class SampleImpl implements Sample, Serializable {
   }
 
   @Override
-  public String tabMeanDuration(Isotope isotope, PopulationID populationID) {
+  public String tabMeanDuration(Channel channel, PopulationID populationID) {
     String val = EMPTY_CELL;
-    Trace t = getTrace(isotope);
+    Trace t = getTrace(channel);
     if (t != null && t.hasType(populationID)) {
       val = str(mu(t.get(populationID, EventType.NP, EventParameter.DURATION)), NF.D1C3);
     }
@@ -1511,9 +1564,9 @@ public class SampleImpl implements Sample, Serializable {
   }
 
   @Override
-  public String tabSdDuration(Isotope isotope, PopulationID populationID) {
+  public String tabSdDuration(Channel channel, PopulationID populationID) {
     String val = EMPTY_CELL;
-    Trace t = getTrace(isotope);
+    Trace t = getTrace(channel);
     if (t != null && t.hasType(populationID)) {
       val = str(sd(t.get(populationID, EventType.NP, EventParameter.DURATION)), NF.D1C3);
     }
@@ -1521,130 +1574,153 @@ public class SampleImpl implements Sample, Serializable {
   }
 
   @Override
-  public String tabMeanSize(Isotope isotope, PopulationID populationID) {
+  public String tabMeanSize(Channel channel, PopulationID populationID) {
     String val = EMPTY_CELL;
-    Trace t = getTrace(isotope);
+    Trace t = getTrace(channel);
     if (t != null && t.hasType(populationID)) {
-      val = str(mu(getData(isotope, populationID, EventType.NP,
-              quant.getExperimentalConditions().getEventPar(),
-              SizeUnit.NANO_METER)),
-          NF.D1C1);
+      double[] data = getData(channel, populationID, EventType.NP,
+          quant.getExperimentalConditions().getEventPar(),
+          SizeUnit.NANO_METER);
+      if (data.length > 0) {
+        val = str(mu(data), NF.D1C1);
+      }
     }
     return val;
   }
 
   @Override
-  public String tabMedianSize(Isotope isotope, PopulationID populationID) {
+  public String tabMedianSize(Channel channel, PopulationID populationID) {
     String val = EMPTY_CELL;
-    Trace t = getTrace(isotope);
+    Trace t = getTrace(channel);
     if (t != null && t.hasType(populationID)) {
-      val = str(md(getData(isotope, populationID, EventType.NP,
-              quant.getExperimentalConditions().getEventPar(),
-              SizeUnit.NANO_METER)),
-          NF.D1C1);
-    }
-    return val;
-  }
-
-
-  @Override
-  public String tabSizeSD(Isotope isotope, PopulationID populationID) {
-    String val = EMPTY_CELL;
-    Trace t = getTrace(isotope);
-    if (t != null && t.hasType(populationID)) {
-      val = str(sd(getData(isotope, populationID, EventType.NP,
-              quant.getExperimentalConditions().getEventPar(),
-              SizeUnit.NANO_METER)),
-          NF.D1C2);
+      double[] data = getData(channel, populationID, EventType.NP,
+          quant.getExperimentalConditions().getEventPar(),
+          SizeUnit.NANO_METER);
+      if (data.length > 0) {
+        val = str(md(data), NF.D1C1);
+      }
     }
     return val;
   }
 
 
   @Override
-  public String tabMeanMass(Isotope isotope, PopulationID populationID) {
+  public String tabSizeSD(Channel channel, PopulationID populationID) {
     String val = EMPTY_CELL;
-    Trace t = getTrace(isotope);
+    Trace t = getTrace(channel);
     if (t != null && t.hasType(populationID)) {
-      val = str(mu(getData(isotope, populationID, EventType.NP,
-              quant.getExperimentalConditions().getEventPar(),
-              MassUnit.FEMTO_GRAM)),
-          NF.D1C3Exp);
+      double[] data = getData(channel, populationID, EventType.NP,
+          quant.getExperimentalConditions().getEventPar(),
+          SizeUnit.NANO_METER);
+      if (data.length > 0) {
+        val = str(sd(data), NF.D1C2);
+      }
     }
     return val;
   }
 
 
   @Override
-  public String tabMedianMass(Isotope isotope, PopulationID populationID) {
+  public String tabMeanMass(Channel channel, PopulationID populationID) {
     String val = EMPTY_CELL;
-    Trace t = getTrace(isotope);
+    Trace t = getTrace(channel);
     if (t != null && t.hasType(populationID)) {
-      val = str(md(getData(isotope, populationID, EventType.NP,
-              quant.getExperimentalConditions().getEventPar(),
-              MassUnit.FEMTO_GRAM)),
-          NF.D1C3Exp);
-    }
-    return val;
-  }
+      double[] data = getData(channel, populationID, EventType.NP,
+          quant.getExperimentalConditions().getEventPar(),
+          MassUnit.FEMTO_GRAM);
 
-  @Override
-  public String tabMassSD(Isotope isotope, PopulationID populationID) {
-    String val = EMPTY_CELL;
-    Trace t = getTrace(isotope);
-    if (t != null && t.hasType(populationID)) {
-      val = str(sd(getData(isotope, populationID, EventType.NP,
-              quant.getExperimentalConditions().getEventPar(),
-              MassUnit.FEMTO_GRAM)),
-          NF.D1C3Exp);
-    }
-    return val;
-  }
-
-  @Override
-  public String tabMeanMol(Isotope isotope, PopulationID populationID) {
-    String val = EMPTY_CELL;
-    Trace t = getTrace(isotope);
-    if (t != null && t.hasType(populationID)) {
-      val = str(mu(getData(isotope, populationID, EventType.NP,
-              quant.getExperimentalConditions().getEventPar(),
-              MolarUnit.ATTO_MOL)),
-          NF.D1C3Exp);
+      if (data.length > 0) {
+        val = str(mu(data), NF.D1C3Exp);
+      }
     }
     return val;
   }
 
 
   @Override
-  public String tabMedianMol(Isotope isotope, PopulationID populationID) {
+  public String tabMedianMass(Channel channel, PopulationID populationID) {
     String val = EMPTY_CELL;
-    Trace t = getTrace(isotope);
+    Trace t = getTrace(channel);
     if (t != null && t.hasType(populationID)) {
-      val = str(md(getData(isotope, populationID, EventType.NP,
-              quant.getExperimentalConditions().getEventPar(),
-              MolarUnit.ATTO_MOL)),
-          NF.D1C3Exp);
+      double[] data = getData(channel, populationID, EventType.NP,
+          quant.getExperimentalConditions().getEventPar(),
+          MassUnit.FEMTO_GRAM);
+
+      if (data.length > 0) {
+        val = str(md(data), NF.D1C3Exp);
+      }
     }
     return val;
   }
 
   @Override
-  public String tabMolSD(Isotope isotope, PopulationID populationID) {
+  public String tabMassSD(Channel channel, PopulationID populationID) {
     String val = EMPTY_CELL;
-    Trace t = getTrace(isotope);
+    Trace t = getTrace(channel);
     if (t != null && t.hasType(populationID)) {
-      val = str(sd(getData(isotope, populationID, EventType.NP,
-              quant.getExperimentalConditions().getEventPar(),
-              MolarUnit.ATTO_MOL)),
-          NF.D1C3Exp);
+      double[] data = getData(channel, populationID, EventType.NP,
+          quant.getExperimentalConditions().getEventPar(),
+          MassUnit.FEMTO_GRAM);
+      if (data.length > 0) {
+        val = str(sd(data), NF.D1C3Exp);
+      }
     }
     return val;
   }
 
   @Override
-  public String tabPopBgMean(Isotope isotope, PopulationID populationID) {
+  public String tabMeanMol(Channel channel, PopulationID populationID) {
     String val = EMPTY_CELL;
-    Trace t = getTrace(isotope);
+    Trace t = getTrace(channel);
+    if (t != null && t.hasType(populationID)) {
+      double[] data = getData(channel, populationID, EventType.NP,
+          quant.getExperimentalConditions().getEventPar(),
+          MolarUnit.ATTO_MOL);
+
+      if (data.length > 0) {
+        val = str(mu(data), NF.D1C3Exp);
+      }
+    }
+    return val;
+  }
+
+
+  @Override
+  public String tabMedianMol(Channel channel, PopulationID populationID) {
+    String val = EMPTY_CELL;
+    Trace t = getTrace(channel);
+    if (t != null && t.hasType(populationID)) {
+      double[] data = getData(channel, populationID, EventType.NP,
+          quant.getExperimentalConditions().getEventPar(),
+          MolarUnit.ATTO_MOL);
+
+      if (data.length > 0) {
+        val = str(md(data), NF.D1C3Exp);
+      }
+    }
+    return val;
+  }
+
+  @Override
+  public String tabMolSD(Channel channel, PopulationID populationID) {
+    String val = EMPTY_CELL;
+    Trace t = getTrace(channel);
+    if (t != null && t.hasType(populationID)) {
+      double[] data = getData(channel, populationID, EventType.NP,
+          quant.getExperimentalConditions().getEventPar(),
+          MolarUnit.ATTO_MOL);
+
+      if (data.length > 0) {
+        val = str(sd(data), NF.D1C3Exp);
+      }
+    }
+    return val;
+  }
+
+  @Override
+  public String tabPopBgMean(Channel channel, PopulationID populationID) {
+    String val = EMPTY_CELL;
+    Trace t = getTrace(channel);
     if (t != null && t.hasType(populationID)) {
       val = str(mu(t.get(populationID, EventType.BG, EventParameter.AREA)), NF.D1C3);
     }
@@ -1652,9 +1728,9 @@ public class SampleImpl implements Sample, Serializable {
   }
 
   @Override
-  public String tabPopBgSD(Isotope isotope, PopulationID populationID) {
+  public String tabPopBgSD(Channel channel, PopulationID populationID) {
     String val = EMPTY_CELL;
-    Trace t = getTrace(isotope);
+    Trace t = getTrace(channel);
     if (t != null && t.hasType(populationID)) {
       val = str(sd(t.get(populationID, EventType.BG, EventParameter.AREA)), NF.D1C4);
     }
@@ -1662,9 +1738,9 @@ public class SampleImpl implements Sample, Serializable {
   }
 
   @Override
-  public String tabPopBgN(Isotope isotope, PopulationID populationID) {
+  public String tabPopBgN(Channel channel, PopulationID populationID) {
     String val = EMPTY_CELL;
-    Trace t = getTrace(isotope);
+    Trace t = getTrace(channel);
     if (t != null && t.hasType(populationID)) {
       val = str(t.get(populationID, EventType.BG, EventParameter.AREA).length, NF.D1C0);
     }
@@ -1673,9 +1749,9 @@ public class SampleImpl implements Sample, Serializable {
 
 
   @Override
-  public String tabPopDrift(Isotope isotope, PopulationID populationID) {
+  public String tabPopDrift(Channel channel, PopulationID populationID) {
     String val = EMPTY_CELL;
-    Trace t = getTrace(isotope);
+    Trace t = getTrace(channel);
     if (t != null) {
       Population pop = t.getPopulation(populationID);
       if (pop != null) {
@@ -1691,9 +1767,9 @@ public class SampleImpl implements Sample, Serializable {
   }
 
   @Override
-  public String tabBlnDistr(Isotope isotope, PopulationID populationID) {
+  public String tabBlnDistr(Channel channel, PopulationID populationID) {
     String val = EMPTY_CELL;
-    Trace t = getTrace(isotope);
+    Trace t = getTrace(channel);
     if (t != null && t.getBaseline() != null && t.getBaseline().hasBaseline()) {
       val = t.getBaseline().getSummary();
     }
@@ -1701,9 +1777,9 @@ public class SampleImpl implements Sample, Serializable {
   }
 
   @Override
-  public String tabBlnMean(Isotope isotope, PopulationID populationID) {
+  public String tabBlnMean(Channel channel, PopulationID populationID) {
     String val = EMPTY_CELL;
-    Trace t = getTrace(isotope);
+    Trace t = getTrace(channel);
     if (t != null && t.getBaseline() != null && t.getBaseline().hasBaseline()) {
       val = str(mu(t.getBaseline().getBackgroundDistribution().getLocation()), NF.D1C3);
     }
@@ -1711,9 +1787,9 @@ public class SampleImpl implements Sample, Serializable {
   }
 
   @Override
-  public String tabBlnSD(Isotope isotope, PopulationID populationID) {
+  public String tabBlnSD(Channel channel, PopulationID populationID) {
     String val = EMPTY_CELL;
-    Trace t = getTrace(isotope);
+    Trace t = getTrace(channel);
     if (t != null && t.getBaseline() != null && t.getBaseline().hasBaseline()) {
       val = str(mu(t.getBaseline().getBackgroundDistribution().getSpread()), NF.D1C4);
     }
@@ -1721,9 +1797,9 @@ public class SampleImpl implements Sample, Serializable {
   }
 
   @Override
-  public String tabBlnOutlierZ(Isotope isotope, PopulationID populationID) {
+  public String tabBlnOutlierZ(Channel channel, PopulationID populationID) {
     String val = EMPTY_CELL;
-    Trace t = getTrace(isotope);
+    Trace t = getTrace(channel);
     if (t != null && t.getBaseline() != null && t.getBaseline().hasBaseline()) {
       val = str(mu(t.getBaseline().getBackgroundDistribution().getOutlierFactor()), NF.D1C3);
     }
@@ -1731,19 +1807,20 @@ public class SampleImpl implements Sample, Serializable {
   }
 
   @Override
-  public String tabEquivBGConc(Isotope isotope) {
+  public String tabEquivBGConc(Channel channel) {
     String val = EMPTY_CELL;
-    double bgConc = calcEquivBGConc(isotope);
+    double bgConc = calcEquivBGConc(channel);
     if (bgConc > 0) {
       val = str(bgConc, NF.D1C3, NF.D1C3Exp);
     }
     return val;
   }
 
-  public double calcEquivBGConc(Isotope isotope) {
+  public double calcEquivBGConc(Channel channel) {
     double val = 0d;
-    Trace t = getTrace(isotope);
-    if (t != null) {
+    Trace t = getTrace(channel);
+    CalChannel calChannel = AnalysisUtils.getCalChannel(channel);
+    if (t != null && calChannel != null) {
       double signalCtsPerDT = t.getTISeries().getMeanIntensity();
       if (t.getBaseline() != null && t.getBaseline().hasBaseline()) {
         signalCtsPerDT = mu(t.getBaseline().getBackgroundDistribution().getLocation());
@@ -1751,7 +1828,7 @@ public class SampleImpl implements Sample, Serializable {
       double flowRateUllPerMin =
           quant.getExperimentalConditions().getFlowRate(FlowUnit.MICROLITRE_PER_MINUTE);
       double dwellTimeSec = t.getTISeries().getDT();
-      Quantity sensitivity = quant.getResponses().getOrCreateIonicResponse(isotope);
+      Quantity sensitivity = quant.getResponses().getOrCreateIonicResponse(calChannel);
       if (sensitivity.getValue() > 0) {
         double sensitivityCtsPerFg = sensitivity.getUnit().convert(sensitivity.getValue(),
             SensitivityUnit.CTS_PER_FEMTOGRAM);
@@ -1775,9 +1852,9 @@ public class SampleImpl implements Sample, Serializable {
   }
 
   @Override
-  public String tabSearchStart(Isotope isotope, PopulationID populationID) {
+  public String tabSearchStart(Channel channel, PopulationID populationID) {
     String val = EMPTY_CELL;
-    Trace t = getTrace(isotope);
+    Trace t = getTrace(channel);
     if (t != null && t.getBaseline() != null && t.getBaseline().hasBaseline()) {
       StatCollection blnStats = t.getBaseline().getBackgroundDistribution();
       Population population = t.getPopulation(populationID);
@@ -1790,9 +1867,9 @@ public class SampleImpl implements Sample, Serializable {
   }
 
   @Override
-  public String tabSearchStop(Isotope isotope, PopulationID populationID) {
+  public String tabSearchStop(Channel channel, PopulationID populationID) {
     String val = EMPTY_CELL;
-    Trace t = getTrace(isotope);
+    Trace t = getTrace(channel);
     if (t != null && t.getBaseline() != null && t.getBaseline().hasBaseline()) {
       StatCollection blnStats = t.getBaseline().getBackgroundDistribution();
       Population population = t.getPopulation(populationID);
@@ -1805,9 +1882,9 @@ public class SampleImpl implements Sample, Serializable {
   }
 
   @Override
-  public String tabSearchHeight(Isotope isotope, PopulationID populationID) {
+  public String tabSearchHeight(Channel channel, PopulationID populationID) {
     String val = EMPTY_CELL;
-    Trace t = getTrace(isotope);
+    Trace t = getTrace(channel);
     if (t != null && t.getBaseline() != null && t.getBaseline().hasBaseline()) {
       StatCollection blnStats = t.getBaseline().getBackgroundDistribution();
       Population population = t.getPopulation(populationID);
@@ -1820,9 +1897,9 @@ public class SampleImpl implements Sample, Serializable {
   }
 
   @Override
-  public List<String> tabGates(Isotope isotope, PopulationID populationID) {
+  public List<String> tabGates(Channel channel, PopulationID populationID) {
     List<String> values = new ArrayList<>();
-    Trace t = getTrace(isotope);
+    Trace t = getTrace(channel);
     if (t != null && t.getBaseline() != null && t.getBaseline().hasBaseline()) {
       StatCollection blnStats = t.getBaseline().getBackgroundDistribution();
       Population population = t.getPopulation(populationID);
@@ -1842,9 +1919,9 @@ public class SampleImpl implements Sample, Serializable {
   }
 
   @Override
-  public String tabSearchStartMeta(Isotope isotope, PopulationID populationID) {
+  public String tabSearchStartMeta(Channel channel, PopulationID populationID) {
     String val = EMPTY_CELL;
-    Trace t = getTrace(isotope);
+    Trace t = getTrace(channel);
     if (t != null && t.getBaseline() != null && t.getBaseline().hasBaseline()) {
       Population population = t.getPopulation(populationID);
       if (population != null) {
@@ -1855,9 +1932,9 @@ public class SampleImpl implements Sample, Serializable {
   }
 
   @Override
-  public String tabSearchStopMeta(Isotope isotope, PopulationID populationID) {
+  public String tabSearchStopMeta(Channel channel, PopulationID populationID) {
     String val = EMPTY_CELL;
-    Trace t = getTrace(isotope);
+    Trace t = getTrace(channel);
     if (t != null && t.getBaseline() != null && t.getBaseline().hasBaseline()) {
       Population population = t.getPopulation(populationID);
       if (population != null) {
@@ -1868,9 +1945,9 @@ public class SampleImpl implements Sample, Serializable {
   }
 
   @Override
-  public String tabSearchHeightMeta(Isotope isotope, PopulationID populationID) {
+  public String tabSearchHeightMeta(Channel channel, PopulationID populationID) {
     String val = EMPTY_CELL;
-    Trace t = getTrace(isotope);
+    Trace t = getTrace(channel);
     if (t != null && t.getBaseline() != null && t.getBaseline().hasBaseline()) {
       Population population = t.getPopulation(populationID);
       if (population != null) {
@@ -1881,9 +1958,9 @@ public class SampleImpl implements Sample, Serializable {
   }
 
   @Override
-  public List<String> tabGatesMeta(Isotope isotope, PopulationID populationID) {
+  public List<String> tabGatesMeta(Channel channel, PopulationID populationID) {
     List<String> values = new ArrayList<>();
-    Trace t = getTrace(isotope);
+    Trace t = getTrace(channel);
     if (t != null && t.getBaseline() != null && t.getBaseline().hasBaseline()) {
       Population population = t.getPopulation(populationID);
       if (population != null) {

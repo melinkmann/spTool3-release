@@ -17,9 +17,6 @@
 
 package analysis;
 
-import dataModelNew.mz.IsotopeMZ;
-import dataModelNew.mz.MZValue;
-import dataModelNew.mz.SQmz;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -107,7 +104,7 @@ public class PlottableSubPopulation {
 
   public String getMzID() {
     return coveredIsotopes.stream()
-        .map(Isotope::getName)
+        .map(Isotope::getNumberAndElement)
         .collect(Collectors.joining("_"));
   }
 

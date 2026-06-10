@@ -18,12 +18,10 @@
 package tasks.single;
 
 import analysis.*;
-import core.SpTool3Main;
 import dataModelNew.*;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.xmlcml.euclid.Int;
 import processing.options.EventParameter;
 import processing.parameterSets.impl.EventDataRangeParams;
 import tasks.TaskResult;
@@ -87,7 +85,7 @@ public class EventRangeRoiTask extends AbstractWorkingTask implements WorkingTas
                 PopParSummary summary = oldPop.getInputSummary().copy();
                 summary.add("s", SnF.doubleToString(start, NF.D1C1));
                 summary.add("e", SnF.doubleToString(stop, NF.D1C1));
-                List<Event> npEvents = selSample.getNPEvents(trace.getMzValue().getIsotope(), populationID);
+                List<Event> npEvents = selSample.getNPEvents(trace.getChannel(), populationID);
                 List<Event> inRoi = new ArrayList<>();
                 for (Event npEvent : npEvents) {
                   double value = npEvent.get(eventParameter);

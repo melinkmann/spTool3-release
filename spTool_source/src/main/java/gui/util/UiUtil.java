@@ -21,6 +21,7 @@ import analysis.PopulationID;
 import com.google.common.math.DoubleMath;
 import core.SpTool3Main;
 import dataModelNew.Sample;
+import dataModelNew.mz.Channel;
 import dataModelNew.mz.Element;
 import dataModelNew.mz.InterferenceDatabase;
 import dataModelNew.mz.InterferenceDatabase.InterferenceEntry;
@@ -95,7 +96,6 @@ import org.jetbrains.annotations.Nullable;
 import org.jfree.chart.title.TextTitle;
 import org.jfree.chart.ui.HorizontalAlignment;
 import org.jfree.chart.ui.RectangleEdge;
-import processing.options.IsotopeSelection;
 import processing.parameterSets.AvailableParameterSets;
 import sandbox.montecarlo.Isotope;
 import sandbox.montecarlo.Statistics;
@@ -368,8 +368,8 @@ public abstract class UiUtil {
 
     List<PopulationID> selPops = SpTool3Main.getRunTime().getMainWindowCtl().getSelPops();
     List<Sample> samples = SpTool3Main.getRunTime().getMainWindowCtl().getSelSamples();
-    List<Isotope> selIsotopes = SpTool3Main.getRunTime().getMainWindowCtl().getSelIsotopes();
-    boolean hasSelection = !samples.isEmpty() || !selIsotopes.isEmpty() || !selPops.isEmpty();
+    List<Channel> selChannels = SpTool3Main.getRunTime().getMainWindowCtl().getSelChannels();
+    boolean hasSelection = !samples.isEmpty() || !selChannels.isEmpty() || !selPops.isEmpty();
 
     Label loadingLabel;
     if (hasSelection) {

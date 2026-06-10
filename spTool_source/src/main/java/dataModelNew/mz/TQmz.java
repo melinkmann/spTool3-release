@@ -39,19 +39,19 @@ public class TQmz implements MZValue, Serializable {
 
   public TQmz(double q1MZ, double q3MZ, String element) {
     this.q3MZ = q3MZ;
-    MZValue mz1 = FileInterpreterUtils.safelyGetMZ1(element, q1MZ).getValue();
+//    MZValue mz1 = FileInterpreterUtils.safelyGetMZ1(element, q1MZ).getValue();
 
-    this.q1MZ = mz1.getMZ();
-    this.isotope = mz1.getIsotope();
+    this.q1MZ = 0;
+    this.isotope = Element.UNKNOWN.getIsotopes().get(0);
   }
 
 
   public TQmz(String q1ElementAndMZ, double q3MZ) {
     this.q3MZ = q3MZ;
-    MZValue mz1 = FileInterpreterUtils.safelyGetMZ1(q1ElementAndMZ).getValue();
+    // MZValue mz1 = FileInterpreterUtils.safelyGetMZ1(q1ElementAndMZ).getValue();
 
-    this.q1MZ = mz1.getMZ();
-    this.isotope = mz1.getIsotope();
+    this.q1MZ = 0;
+    this.isotope = Element.UNKNOWN.getIsotopes().get(0);
   }
 
   // Copy
@@ -92,7 +92,7 @@ public class TQmz implements MZValue, Serializable {
   @Override
   public String getElementTransition() {
     if (hasIsotope()) {
-      return getIsotope().getName() + "(" + getTransition() + ")";
+      return getIsotope().getNumberAndElement() + "(" + getTransition() + ")";
     } else {
       return getTransition();
     }
@@ -104,7 +104,7 @@ public class TQmz implements MZValue, Serializable {
       return SnF.doubleToString(q1MZ, MZ_FORMAT)
           + "-" +
           SnF.doubleToString(q3MZ, MZ_FORMAT)
-          + "-" + getIsotope().getName();
+          + "-" + getIsotope().getNumberAndElement();
     } else {
       return SnF.doubleToString(q1MZ, MZ_FORMAT)
           + "-" +

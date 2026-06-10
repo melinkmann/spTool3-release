@@ -17,11 +17,11 @@
 
 package analysis.quant;
 
-import sandbox.montecarlo.Isotope;
+import dataModelNew.mz.CalChannel;
 
 public class ResponseTableRow {
 
-  private final Isotope isotope;
+  private final CalChannel calChannel;
 
   private final SpCalibrationSet spCalibrationSet; // to refresh TE on manual edit
 
@@ -30,13 +30,13 @@ public class ResponseTableRow {
   private FxQuantity aerosolTEPct;
   private FxQuantity particleNumberTEPct;
 
-  public ResponseTableRow(Isotope isotope, SpCalibrationSet spCalibrationSet) {
-    this.isotope = isotope;
+  public ResponseTableRow(CalChannel calChannel, SpCalibrationSet spCalibrationSet) {
+    this.calChannel = calChannel;
     this.spCalibrationSet = spCalibrationSet;
   }
 
-  public Isotope getIsotope() {
-    return isotope;
+  public CalChannel getCalChannel() {
+    return calChannel;
   }
 
   public FxQuantity getIonicResponse() {

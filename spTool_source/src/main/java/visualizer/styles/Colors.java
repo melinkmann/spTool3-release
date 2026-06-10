@@ -18,6 +18,7 @@
 package visualizer.styles;
 
 import com.google.common.collect.Iterables;
+import dataModelNew.mz.Channel;
 import dataModelNew.mz.Element;
 
 import java.awt.Color;
@@ -27,7 +28,9 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 
+import dataModelNew.mz.IsotopeChannel;
 import sandbox.montecarlo.Isotope;
+import util.ArrUtils;
 import util.SnF;
 
 public interface Colors {
@@ -50,7 +53,7 @@ public interface Colors {
 
   java.awt.Color OTHER_PIE_SLICE = new java.awt.Color(0x000000); // 0x888888
 
-  static final HashMap<Isotope, Colors> DEFAULT_ISOTOPE_MAP = new HashMap<>();
+  static final HashMap<String, Colors> DEFAULT_COLOR_MAP = new HashMap<>();
 
   java.awt.Color get();
 
@@ -120,19 +123,61 @@ public interface Colors {
     return iterator;
   }
 
-  static Colors getColor(Isotope isotope) {
-    if (DEFAULT_ISOTOPE_MAP.isEmpty()) {
+  static Colors getColor(Channel channel) {
+    if (DEFAULT_COLOR_MAP.isEmpty()) {
       Iterator<Colors> iterator = getDefaultIterator().iterator();
       for (Element element : Element.values()) {
         for (Isotope iso : element.getIsotopes()) {
-          DEFAULT_ISOTOPE_MAP.put(iso, iterator.next());
+          IsotopeChannel dummyInstance = new IsotopeChannel(iso);
+          String key = dummyInstance.getColorXmlIDString();
+          DEFAULT_COLOR_MAP.put(key, iterator.next());
         }
       }
     }
-    if (isotope != null && DEFAULT_ISOTOPE_MAP.containsKey(isotope)) {
-      return DEFAULT_ISOTOPE_MAP.get(isotope);
+
+    // in the color map, keys are based on IsotopeChannels - we have to check or convert
+    String key = "";
+    if (channel instanceof IsotopeChannel) {
+      key = channel.getColorXmlIDString();
+    } else if (channel != null) {
+      Isotope iso = channel.getIsotope();
+      if (iso != null) {
+        IsotopeChannel dummyChannel = new IsotopeChannel(iso);
+        key = dummyChannel.getColorXmlIDString();
+      } else {
+        key = channel.getColorXmlIDString();
+      }
+    }
+
+    if (DEFAULT_COLOR_MAP.containsKey(key)) {
+      return DEFAULT_COLOR_MAP.get(key);
     } else {
-      return OkabeItoColors.BLACK;
+      Colors color;
+      if (channel != null) {
+        // primes the rng with the channel hash, which should produce deterministic results for same hash
+        color = ArrUtils.randomEntry(Colors.getDefaultColors(), channel.hashCode());
+      } else {
+        color = ArrUtils.randomEntry(Colors.getDefaultColors());
+      }
+      if (color == null) {
+        color = OkabeItoColors.BLACK;
+      }
+      // store randomly assigned value
+      if (channel instanceof IsotopeChannel) {
+        key = channel.getColorXmlIDString();
+        DEFAULT_COLOR_MAP.put(key, color);
+      } else if (channel != null) {
+        Isotope iso = channel.getIsotope();
+        if (iso != null) {
+          IsotopeChannel dummyChannel = new IsotopeChannel(iso);
+          key = dummyChannel.getColorXmlIDString();
+          DEFAULT_COLOR_MAP.put(key, color);
+        } else {
+          key = channel.getColorXmlIDString();
+          DEFAULT_COLOR_MAP.put(key, color);
+        }
+      }
+      return color;
     }
   }
 

@@ -18,7 +18,6 @@
 package dataModelNew.mz;
 
 import com.google.common.math.DoubleMath;
-import core.SpTool3Main;
 import io.FileInterpreterUtils;
 
 import java.io.Serial;
@@ -26,7 +25,6 @@ import java.io.Serializable;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import processing.options.IsotopeConflictReaderOption;
 import sandbox.montecarlo.Isotope;
 import util.NF;
 import util.SnF;
@@ -54,11 +52,13 @@ public class SQmz implements MZValue, Serializable {
   }
 
   public SQmz(String letterAndNumber) {
-    this(FileInterpreterUtils.safelyGetMZ1(letterAndNumber).getValue().getIsotope());
+    //this(FileInterpreterUtils.safelyGetMZ1(letterAndNumber).getValue().getIsotope());
+    this(Element.UNKNOWN.getIsotopes().get(0));
   }
 
   public SQmz(double mz, String element) {
-    this(FileInterpreterUtils.safelyGetMZ1(element, mz).getValue().getIsotope());
+    // this(FileInterpreterUtils.safelyGetMZ1(element, mz).getValue().getIsotope());
+    this(Element.UNKNOWN.getIsotopes().get(0));
   }
 
   // Copy
@@ -96,7 +96,7 @@ public class SQmz implements MZValue, Serializable {
   @Override
   public String getElementTransition() {
     if (hasIsotope()) {
-      return getIsotope().getName() + "(" + getTransition() + ")";
+      return getIsotope().getNumberAndElement() + "(" + getTransition() + ")";
     } else {
       return getTransition();
     }
@@ -105,7 +105,7 @@ public class SQmz implements MZValue, Serializable {
   @Override
   public String getTypesafeElementTransition() {
     if (hasIsotope()) {
-      return getTransition() + "-" + getIsotope().getName();
+      return getTransition() + "-" + getIsotope().getNumberAndElement();
     } else {
       return getTransition();
     }

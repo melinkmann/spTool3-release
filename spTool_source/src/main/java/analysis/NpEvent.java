@@ -119,7 +119,11 @@ public class NpEvent implements Event, Serializable {
   }
 
   public void setBgPerNP(double bgPerNP) {
-    this.bgPerNP = bgPerNP;
+    if (Double.isFinite(bgPerNP)){
+      this.bgPerNP = bgPerNP;
+    }else {
+      LOGGER.error("Background is not finite! Did not set background.");
+    }
   }
 
   public double getBgPerNP() {

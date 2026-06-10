@@ -29,6 +29,8 @@ import org.apache.logging.log4j.Logger;
 import processing.options.MathMod;
 import sandbox.montecarlo.Comparators;
 
+import javax.annotation.Nullable;
+
 public abstract class ArrUtils {
 
   private static final Logger LOGGER = LogManager.getLogger(ArrUtils.class);
@@ -260,6 +262,23 @@ public abstract class ArrUtils {
     }
 
     return result;
+  }
+
+  @Nullable
+  public static <T> T randomEntry(List<T> list) {
+    if (list != null && !list.isEmpty()) {
+      return list.get(new Random().nextInt(list.size()));
+    } else {
+      return null;
+    }
+  }
+
+
+  public static <T> T randomEntry(List<T> list, long seed) {
+    if (list != null && !list.isEmpty()) {
+      return list.get(new Random(seed).nextInt(list.size()));
+    }
+    return null;
   }
 
   /*
@@ -521,7 +540,7 @@ public abstract class ArrUtils {
     double max;
     if (array == null || array.length == 0) {
       max = 0;
-      LOGGER.debug("Maximum of empty array returned min=" + max + ".");
+      LOGGER.debug("Maximum of empty array returned max=" + max + ".");
     } else {
       max = -Double.MAX_VALUE; // NOT DOUBLE.MIN_VALUE because that is 4.9E-324
       for (double v : array) {

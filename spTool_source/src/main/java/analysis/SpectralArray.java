@@ -19,13 +19,11 @@ package analysis;
 
 import core.RunTimeInstance;
 import core.SpTool3Main;
-import dataModelNew.mz.Element;
-import javafx.util.Pair;
+import dataModelNew.mz.*;
 import math.stat.MeasureOfLocation;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 import sandbox.montecarlo.Isotope;
-import smile.neighbor.lsh.Hash;
 import util.ArrUtils;
 import util.NF;
 import util.SnF;
@@ -48,8 +46,7 @@ public class SpectralArray implements Serializable {
 
   private static final Logger LOGGER = LogManager.getLogger(SpectralArray.class);
 
-  private Isotope isotope;
-  private final double mz;
+  private Channel channel;
   private double[] intensities; // only set to non-null when writing to object.
   private transient DoubleBuffer intensityBuffer; // stores values after deserialization
   private transient SoftReference<double[]> intensityCache; // quick-access reference
@@ -59,8 +56,7 @@ public class SpectralArray implements Serializable {
 
   // Dummy
   public SpectralArray() {
-    this.isotope = Element.UNKNOWN.getIsotopes().get(0);
-    this.mz = 0;
+    this.channel = new MZChannel();
     this.intensities = new double[0];
     this.intensityBuffer = null;
     this.intensityCache = new SoftReference<>(intensities);
@@ -70,33 +66,12 @@ public class SpectralArray implements Serializable {
   }
 
 
-  // unsued?
-  public SpectralArray(@Nullable Isotope isotope, double mz, double[] intensities,
-                       Map<String, double[]> extraFeatures) {
-    this.isotope = isotope;
-    this.mz = mz;
-    this.intensities = null;
-    this.intensityBuffer = StorageUtils.storeToDoubleBuffer(RunTimeInstance.getSpectraBufferStorage(),
-        intensities);
-    this.intensityCache = new SoftReference<>(intensities);
-
-    this.additionalFeatureBuffers = new HashMap<>();
-    this.additionalFeatures = new HashMap<>();
-    if (extraFeatures != null) {
-      for (String key : extraFeatures.keySet()) {
-        double[] extraFeature = extraFeatures.get(key);
-        additionalFeatureBuffers.put(key,
-            StorageUtils.storeToDoubleBuffer(RunTimeInstance.getSpectraBufferStorage(), extraFeature));
-      }
-    }
-  }
-
   public SpectralArray(double mz, double[] intensities,
                        Map<String, double[]> extraFeatures) {
     // we must hard-code this decision when creating the object or else we depend on the settings in config
     // dynamically
-    this.isotope = SpTool3Main.getRunTime().getConfParams().resolveConflictOrGet((int) Math.round(mz));
-    this.mz = mz;
+    Isotope isotope = SpTool3Main.getRunTime().getConfParams().resolveConflictOrGet((int) Math.round(mz));
+    this.channel = new MZChannel(new MSIDImpl(new MZImpl(mz)), isotope);
     this.intensities = null;
     this.intensityBuffer = StorageUtils.storeToDoubleBuffer(RunTimeInstance.getSpectraBufferStorage(),
         intensities);
@@ -114,10 +89,9 @@ public class SpectralArray implements Serializable {
   }
 
   // for the copy constructor
-  public SpectralArray(Isotope isotope, double mz, double[] intensities,
+  public SpectralArray(Channel channel, double[] intensities,
                        HashMap<String, double[]> additionalFeatures) {
-    this.isotope = isotope;
-    this.mz = mz;
+    this.channel = channel;
     this.intensities = null;
     this.intensityBuffer = StorageUtils.storeToDoubleBuffer(RunTimeInstance.getSpectraBufferStorage(),
         intensities);
@@ -143,7 +117,7 @@ public class SpectralArray implements Serializable {
       double[] array = StorageUtils.getArray(buffer);
       additionalFeaturesCopy.put(key, array);
     }
-    return new SpectralArray(isotope, mz, ArrUtils.copy(intensityArr), additionalFeaturesCopy);
+    return new SpectralArray(channel.copy(), ArrUtils.copy(intensityArr), additionalFeaturesCopy);
   }
 
   public boolean isEmpty() {
@@ -187,26 +161,27 @@ public class SpectralArray implements Serializable {
   }
 
   public String getName() {
-    if (isotope != null) {
-      return isotope.getName();
-    } else {
-      return SnF.doubleToString(mz, NF.D1C3);
-    }
+    return channel.getUIString();
   }
 
-  public Isotope getIsotope() {
-    if (isotope == null) {
-      LOGGER.trace("Unexpected instance of null isotope. Had to guess isotope from mz using the current " +
-          "configuration of spTool. This may cause unexpected matching of mz to isotopes. This indicates " +
-          "that the project was loaded from an earlier version.");
-      isotope = SpTool3Main.getRunTime().getConfParams().resolveConflictOrGet((int) Math.round(mz));
-    }
-    return isotope;
-  }
+  // public Isotope getIsotope() {
+  //   Isotope isotope = channel.getIsotope();
+  //   if (isotope == null) {
+  //     LOGGER.trace("Unexpected instance of null isotope. Had to guess isotope from mz using the current " +
+  //         "configuration of spTool. This may cause unexpected matching of mz to isotopes. This indicates " +
+  //         "that the project was loaded from an earlier version. Channel MZ: " + channel.getMZ() + ".");
+  //     isotope =
+  //         SpTool3Main.getRunTime().getConfParams().resolveConflictOrGet((int) Math.round(channel.getMZ()));
+  //   }
+  //   return isotope;
+  // }
 
+  public Channel getChannel() {
+    return channel;
+  }
 
   public double getMz() {
-    return mz;
+    return channel.getMZ();
   }
 
   @Serial

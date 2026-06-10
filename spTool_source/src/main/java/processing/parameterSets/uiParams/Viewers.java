@@ -23,9 +23,7 @@ import analysis.quant.*;
 import com.google.common.util.concurrent.AtomicDouble;
 import core.SpTool3Main;
 import dataModelNew.*;
-import dataModelNew.mz.Element;
-import dataModelNew.mz.IsotopeMZ;
-import dataModelNew.mz.MZValue;
+import dataModelNew.mz.*;
 import gui.HACCharts;
 import gui.MethodView;
 import gui.ParameterView;
@@ -189,10 +187,10 @@ public abstract class Viewers {
             // Check which type of events to show?
             List<PopulationID> selPops = SpTool3Main.getRunTime().getMainWindowCtl().getSelPops();
             List<Sample> samples = SpTool3Main.getRunTime().getMainWindowCtl().getSelSamples();
-            List<Isotope> selIsotopes = SpTool3Main.getRunTime().getMainWindowCtl().getSelIsotopes();
-            if (samples != null && !samples.isEmpty() && selIsotopes != null && !selIsotopes.isEmpty()) {
+            List<Channel> selChannels = SpTool3Main.getRunTime().getMainWindowCtl().getSelChannels();
+            if (samples != null && !samples.isEmpty() && selChannels != null && !selChannels.isEmpty()) {
 
-              ResultTableData tableData = new ResultTableData(samples, selIsotopes, selPops, false);
+              ResultTableData tableData = new ResultTableData(samples, selChannels, selPops, false);
               progress.set(0.4);
 
 
@@ -445,22 +443,22 @@ public abstract class Viewers {
             table.getColumns().clear();
 
             // add the element column
-            TableColumn<ResponseTableRow, Isotope> isotopeCol = new TableColumn<>("Isotope");
-            isotopeCol.setCellValueFactory(cd ->
-                new ReadOnlyObjectWrapper<>(cd.getValue().getIsotope()));
-            isotopeCol.setCellFactory(col -> new TableCell<>() {
+            TableColumn<ResponseTableRow, CalChannel> channelCol = new TableColumn<>("Isotope");
+            channelCol.setCellValueFactory(cd ->
+                new ReadOnlyObjectWrapper<>(cd.getValue().getCalChannel()));
+            channelCol.setCellFactory(col -> new TableCell<>() {
               @Override
-              protected void updateItem(Isotope item, boolean empty) {
+              protected void updateItem(CalChannel item, boolean empty) {
                 super.updateItem(item, empty);
 
                 if (empty || item == null) {
                   setText(null);
                 } else {
-                  setText(item.getName());
+                  setText(item.channel().getUIString());
                 }
               }
             });
-            table.getColumns().add(isotopeCol);
+            table.getColumns().add(channelCol);
 
             table.getColumns().add(FxSpCalibrationSetTableModel.quantityColumn(
                 "Ionic response",
@@ -490,22 +488,22 @@ public abstract class Viewers {
             table.getColumns().clear();
 
             // add the element column
-            TableColumn<ResponseTableRow, Isotope> isotopeCol = new TableColumn<>("Isotope");
-            isotopeCol.setCellValueFactory(cd ->
-                new ReadOnlyObjectWrapper<>(cd.getValue().getIsotope()));
-            isotopeCol.setCellFactory(col -> new TableCell<>() {
+            TableColumn<ResponseTableRow, CalChannel> channelCol = new TableColumn<>("Isotope");
+            channelCol.setCellValueFactory(cd ->
+                new ReadOnlyObjectWrapper<>(cd.getValue().getCalChannel()));
+            channelCol.setCellFactory(col -> new TableCell<>() {
               @Override
-              protected void updateItem(Isotope item, boolean empty) {
+              protected void updateItem(CalChannel item, boolean empty) {
                 super.updateItem(item, empty);
 
                 if (empty || item == null) {
                   setText(null);
                 } else {
-                  setText(item.getName());
+                  setText(item.channel().getUIString());
                 }
               }
             });
-            table.getColumns().add(isotopeCol);
+            table.getColumns().add(channelCol);
 
             table.getColumns().add(FxSpCalibrationSetTableModel.quantityColumn(
                 "Ionic response",
@@ -530,22 +528,22 @@ public abstract class Viewers {
             table.getColumns().clear();
 
             // add the elememt column
-            TableColumn<ResponseTableRow, Isotope> isotopeCol = new TableColumn<>("Isotope");
-            isotopeCol.setCellValueFactory(cd ->
-                new ReadOnlyObjectWrapper<>(cd.getValue().getIsotope()));
-            isotopeCol.setCellFactory(col -> new TableCell<>() {
+            TableColumn<ResponseTableRow, CalChannel> channelCol = new TableColumn<>("Isotope");
+            channelCol.setCellValueFactory(cd ->
+                new ReadOnlyObjectWrapper<>(cd.getValue().getCalChannel()));
+            channelCol.setCellFactory(col -> new TableCell<>() {
               @Override
-              protected void updateItem(Isotope item, boolean empty) {
+              protected void updateItem(CalChannel item, boolean empty) {
                 super.updateItem(item, empty);
 
                 if (empty || item == null) {
                   setText(null);
                 } else {
-                  setText(item.getName());
+                  setText(item.channel().getUIString());
                 }
               }
             });
-            table.getColumns().add(isotopeCol);
+            table.getColumns().add(channelCol);
 
             table.getColumns().add(FxSpCalibrationSetTableModel.quantityColumn(
                 "NP response",
@@ -915,9 +913,14 @@ public abstract class Viewers {
               "Copy element-specific parameters from this element to the other selected elements.");
           sendToSubSets.setOnAction(e -> {
 
-            List<Element> selElements = SpTool3Main.getRunTime().getMainWindowCtl().getSelIsotopes().stream()
-                .map(Isotope::getElement)
-                .distinct().collect(Collectors.toList());
+            List<Channel> selChannels = SpTool3Main.getRunTime().getMainWindowCtl().getSelChannels();
+            List<CalChannel> selElementChannels = AnalysisUtils.getCalChannel(selChannels);
+
+            List<Element> selElements = selElementChannels.stream()
+                .map(CalChannel::element)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
 
             if (!selElements.isEmpty()) {
               ParamSet thisSet = fxEleSet.getPlainSet();
@@ -960,10 +963,14 @@ public abstract class Viewers {
       // Check which type of events to show?
       List<Sample> samples = SpTool3Main.getRunTime().getMainWindowCtl().getSelSamples();
       List<PopulationID> selPops = SpTool3Main.getRunTime().getMainWindowCtl().getSelPops();
-      List<Isotope> selIsotopes = SpTool3Main.getRunTime().getMainWindowCtl().getSelIsotopes();
-      List<Element> selElements = selIsotopes.stream()
-          .map(Isotope::getElement)
-          .distinct().collect(Collectors.toList());
+      List<Channel> selChannels = SpTool3Main.getRunTime().getMainWindowCtl().getSelChannels();
+      List<CalChannel> selElementChannels = AnalysisUtils.getCalChannel(selChannels);
+
+      List<Element> selElements = selElementChannels.stream()
+          .map(CalChannel::element)
+          .filter(Objects::nonNull)
+          .distinct()
+          .toList();
 
       // just make sure elements are present
       if (!samples.isEmpty() && !selElements.isEmpty()) {
@@ -978,9 +985,7 @@ public abstract class Viewers {
 
         // Prefill the quantification class in the sample with the elements (could be done after
         // processing, too)
-        List<Element> allEleInSample = samples.get(0).listIsotopes().stream()
-            .map(Isotope::getElement)
-            .distinct().collect(Collectors.toList());
+        List<Element> allEleInSample = samples.get(0).listElements();
         for (Element element : allEleInSample) {
           samples.get(0).getQuant().getExperimentalConditions().getOrCreateElementSpecificQuantParams(element);
         }
@@ -1002,13 +1007,13 @@ public abstract class Viewers {
         refreshParameterView();
 
         /// refresh the graph and fill the table
-        tableModel.fill(spCalSet);  // removed "selIsotopes"
+        tableModel.fill(spCalSet);
 
         // refresh the graph/containers
         currentRegressionDataContainer = new RegressionViewContainer(
             spCalSet,
             regTypeComboBox.getValue(),
-            samples, selIsotopes, selPops);
+            samples, selElementChannels, selPops);
 
         // internally checks which data are needed
         currentRegressionDataContainer.refreshSlopes(
@@ -1063,7 +1068,7 @@ public abstract class Viewers {
       AverageViewerParameters plainSet = (AverageViewerParameters) super.getPlainSet();
 
       List<Sample> selSamples = SpTool3Main.getRunTime().getMainWindowCtl().getSelSamples();
-      List<Isotope> selIsotopes = SpTool3Main.getRunTime().getMainWindowCtl().getSelIsotopes();
+      List<Channel> selChannels = SpTool3Main.getRunTime().getMainWindowCtl().getSelChannels();
       List<PopulationID> selPops = SpTool3Main.getRunTime().getMainWindowCtl().getSelPops();
 
       List<ChartComponent> allRawComponents = new ArrayList<>();
@@ -1071,7 +1076,7 @@ public abstract class Viewers {
       List<ChartComponent> allBgComponents = new ArrayList<>();
 
       if (selSamples != null && !selSamples.isEmpty()
-          && selIsotopes != null && !selIsotopes.isEmpty()) {
+          && selChannels != null && !selChannels.isEmpty()) {
 
         // Extract the grouped samples; when averaging, the viewer can show more than 1 sample.
         boolean concatenate = true;
@@ -1079,7 +1084,7 @@ public abstract class Viewers {
         if (concatenate) {
 
           // isotope by isotope
-          for (Isotope isotope : selIsotopes) {
+          for (Channel channel : selChannels) {
             // dont collect all
             for (Sample sample : selSamples) {
 
@@ -1090,12 +1095,12 @@ public abstract class Viewers {
 
 
               for (Sample subSample : sample.getAllSamples()) {
-                Trace trace = subSample.getTrace(isotope);
+                Trace trace = subSample.getTrace(channel);
                 if (trace != null) {
 
                   if (plainSet.getShowRawData().getValue()) {
                     Colors color = AnalysisUtils.getColor(sample,
-                        trace.getMzValue().getIsotope(), selSamples.size(), selIsotopes.size());
+                        trace.getChannel(), selSamples.size(), selChannels.size());
                     List<ChartComponent> rawComponent = getRawComponent(trace, plainSet, color);
                     subRawComponents.addAll(rawComponent);
                   }
@@ -1108,11 +1113,11 @@ public abstract class Viewers {
 
               for (PopulationID pop : selPops) {
                 for (Sample subSample : sample.getAllSamples()) {
-                  Trace trace = subSample.getTrace(isotope);
+                  Trace trace = subSample.getTrace(channel);
                   if (trace != null) {
 
                     Colors color = AnalysisUtils.getColor(sample,
-                        trace.getMzValue().getIsotope(), selSamples.size(), selIsotopes.size());
+                        trace.getChannel(), selSamples.size(), selChannels.size());
 
                     Pair<List<ChartComponent>, List<ChartComponent>> eventComponents = getEventComponents(
                         trace, pop, plainSet, selPops.indexOf(pop), color);
@@ -1142,12 +1147,12 @@ public abstract class Viewers {
           for (Sample sample : allSamples) {
             if (sample != null) {
 
-              List<Trace> selTraces = sample.getTraces(selIsotopes);
+              List<Trace> selTraces = sample.getTraces(selChannels);
 
               for (Trace trace : selTraces) {
                 if (plainSet.getShowRawData().getValue()) {
                   Colors color = AnalysisUtils.getColor(sample,
-                      trace.getMzValue().getIsotope(), allSamples.size(), selIsotopes.size());
+                      trace.getChannel(), allSamples.size(), selChannels.size());
                   List<ChartComponent> rawComponent = getRawComponent(trace, plainSet, color);
                   allRawComponents.addAll(rawComponent);
                 }
@@ -1155,7 +1160,7 @@ public abstract class Viewers {
                 for (PopulationID pop : selPops) {
 
                   Colors color = AnalysisUtils.getColor(sample,
-                      trace.getMzValue().getIsotope(), allSamples.size(), selIsotopes.size());
+                      trace.getChannel(), allSamples.size(), selChannels.size());
 
                   Pair<List<ChartComponent>, List<ChartComponent>> eventComponents = getEventComponents(
                       trace, pop, plainSet, selPops.indexOf(pop), color);
@@ -1291,7 +1296,7 @@ public abstract class Viewers {
 
       ChartComponent raw = new ChartComponent(
           new ChartData(
-              trace.getMzValue().getName() + "_" + trace.getSample().getNickName(),
+              trace.getChannel().getUIString() + "_" + trace.getSample().getNickName(),
               average.getTime(),
               average.getIntensity(),
               "Time", TimeUnit.SECOND, MathMod.NONE,
@@ -1317,7 +1322,7 @@ public abstract class Viewers {
                     + SnF.doubleToString(npReg.intercept, NF.D1C1) + " / "
                     + SnF.doubleToString(npReg.rSquare, NF.D1C3)
                     + "("
-                    + trace.getMzValue().getName() + "_" + trace.getSample().getNickName()
+                    + trace.getChannel().getUIString() + "_" + trace.getSample().getNickName()
                     + ")",
                 npReg.x,
                 npReg.y,
@@ -1386,7 +1391,7 @@ public abstract class Viewers {
 
         ChartComponent npComponent = new ChartComponent(
             new ChartData(
-                "NP of " + trace.getMzValue().getName() + " from " + pop.toString()
+                "NP of " + trace.getChannel().getUIString() + " from " + pop.toString()
                     + " in " + trace.getSample().getNickName(),
                 npAverage.getTime(),
                 npAverage.getIntensity(),
@@ -1413,7 +1418,7 @@ public abstract class Viewers {
                       + " s=" + SnF.doubleToString(npReg.slope, NF.D1C1)
                       + " b=" + SnF.doubleToString(npReg.intercept, NF.D1C1)
                       + " R2=" + SnF.doubleToString(npReg.rSquare, NF.D1C3)
-                      + " (" + trace.getMzValue().getName() + " from" + pop.toString()
+                      + " (" + trace.getChannel().getUIString() + " from" + pop.toString()
                       + " in " + trace.getSample().getNickName()
                       + ")",
                   npReg.x,
@@ -1446,7 +1451,7 @@ public abstract class Viewers {
 
         ChartComponent bgComponent = new ChartComponent(
             new ChartData(
-                "BG of " + trace.getMzValue().getName() + " from " + pop.toString()
+                "BG of " + trace.getChannel().getUIString() + " from " + pop.toString()
                     + " in " + trace.getSample().getNickName(),
                 bgAverage.getTime(),
                 bgAverage.getIntensity(),
@@ -1472,7 +1477,7 @@ public abstract class Viewers {
                   "BG s/i/R:" + SnF.doubleToString(bgReg.slope, NF.D1C1) + " / "
                       + SnF.doubleToString(bgReg.intercept, NF.D1C1) + " / "
                       + SnF.doubleToString(bgReg.rSquare, NF.D1C3)
-                      + "(" + trace.getMzValue().getName() + " from" + pop.toString()
+                      + "(" + trace.getChannel().getUIString() + " from" + pop.toString()
                       + " in " + trace.getSample().getNickName()
                       + ")",
                   bgReg.x,
@@ -1600,7 +1605,7 @@ public abstract class Viewers {
           .setTop(UiUtil.putOnAnchorWithoutInsets(toolbar));
 
       List<Sample> samples = SpTool3Main.getRunTime().getMainWindowCtl().getSelSamples();
-      List<Isotope> selIsotopes = SpTool3Main.getRunTime().getMainWindowCtl().getSelIsotopes();
+      List<Channel> selChannels = SpTool3Main.getRunTime().getMainWindowCtl().getSelChannels();
       List<PopulationID> selPops = SpTool3Main.getRunTime().getMainWindowCtl().getSelPops();
 
       int nEventsToShow = Math.min(12, plainSet.getNumberOfEventsShown().getValue());
@@ -1618,32 +1623,32 @@ public abstract class Viewers {
         // remove non-aligned isotopes or those with no events. Else, equal length check fails.
         // this is meant for cases where not all available isotopes are aligned and hence
         // some selected isotopes may yield zero events
-        selIsotopes.removeIf(iso -> sample.getNPEvents(iso, firstID).isEmpty());
+        selChannels.removeIf(iso -> sample.getNPEvents(iso, firstID).isEmpty());
 
         // make sure that this is not empty are the removal step!
-        if (!selIsotopes.isEmpty()) {
+        if (!selChannels.isEmpty()) {
 
           // Check if we are dealing with aligned population and multiple selected isotopes
-          boolean multiIsotopeMode = AnalysisUtils.isAlignedOrPVal(firstID) && selIsotopes.size() > 1;
+          boolean multiIsotopeMode = AnalysisUtils.isAlignedOrPVal(firstID) && selChannels.size() > 1;
 
           if (multiIsotopeMode) {
 
             // Length checks
-            boolean equalLength = selIsotopes.stream()
+            boolean equalLength = selChannels.stream()
                 .map(iso -> sample.getNPEvents(iso, firstID))
                 .map(List::size)
                 .distinct()
                 .count() == 1;
 
             if (equalLength) {
-              List<Event> firstEventList = sample.getNPEvents(selIsotopes.get(0), firstID);
+              List<Event> firstEventList = sample.getNPEvents(selChannels.get(0), firstID);
               int length = firstEventList.size();
               if (length > 0) {
 
                 // Get the total signal per region of the requested parameter
                 double[] regionBasedEventParameter = new double[length];
-                for (Isotope iso : selIsotopes) {
-                  List<Event> events = sample.getNPEvents(iso, firstID);
+                for (Channel ch : selChannels) {
+                  List<Event> events = sample.getNPEvents(ch, firstID);
                   for (int i = 0; i < events.size(); i++) {
                     Event event = events.get(i);
                     regionBasedEventParameter[i] += event.get(plainSet.getEventParameter().getValue());
@@ -1651,22 +1656,22 @@ public abstract class Viewers {
                 }
 
                 // consider changing this in case it performs too slowly
-                HashMap<Isotope, List<Event>> eventMap = new HashMap<>();
+                HashMap<Channel, List<Event>> eventMap = new HashMap<>();
 
                 // iterate over all regions by assuming the first region as a model (length checked above)
                 if (plainSet.getSortBoolean().getValue()) {
-                  for (Isotope iso : selIsotopes) {
-                    List<Event> events = sample.getNPEvents(iso, firstID);
+                  for (Channel ch : selChannels) {
+                    List<Event> events = sample.getNPEvents(ch, firstID);
                     events = IntStream.range(0, length)
                         .boxed()
                         .sorted(Comparator.comparingDouble(i -> regionBasedEventParameter[i]))
                         .map(events::get)
                         .toList();
-                    eventMap.put(iso, events);
+                    eventMap.put(ch, events);
                   }
                 } else {
-                  for (Isotope iso : selIsotopes) {
-                    eventMap.put(iso, sample.getNPEvents(iso, firstID));
+                  for (Channel ch : selChannels) {
+                    eventMap.put(ch, sample.getNPEvents(ch, firstID));
                   }
                 }
 
@@ -1682,15 +1687,15 @@ public abstract class Viewers {
                 int numCols = 4;
                 int counter = 0;
 
-                HashMap<Isotope, List<TISeries>> eventSeries = new HashMap<>();
-                HashMap<Isotope, List<Integer>> globalEvtIndex = new HashMap<>();
-                HashMap<Isotope, List<Colors>> eventColor = new HashMap<>();
-                HashMap<Isotope, List<TISeries>> previewSeries = new HashMap<>();
-                HashMap<Isotope, List<TISeries>> postviewSeries = new HashMap<>();
+                HashMap<Channel, List<TISeries>> eventSeries = new HashMap<>();
+                HashMap<Channel, List<Integer>> globalEvtIndex = new HashMap<>();
+                HashMap<Channel, List<Colors>> eventColor = new HashMap<>();
+                HashMap<Channel, List<TISeries>> previewSeries = new HashMap<>();
+                HashMap<Channel, List<TISeries>> postviewSeries = new HashMap<>();
 
                 // Build the data sets
-                for (Isotope iso : selIsotopes) {
-                  List<Event> events = eventMap.get(iso);
+                for (Channel ch : selChannels) {
+                  List<Event> events = eventMap.get(ch);
                   if (iteratorController.hasValue()) {
                     iteratorController.setFinalIdx(events.size() - 1);
                     for (int i = iteratorController.getCurrentIdx();
@@ -1700,24 +1705,24 @@ public abstract class Viewers {
                         Event event = events.get(i);
 
                         if (plainSet.getLogYAXis().getValue()) {
-                          eventSeries.computeIfAbsent(iso, k -> new ArrayList<>()).add(event.getLogProfile());
+                          eventSeries.computeIfAbsent(ch, k -> new ArrayList<>()).add(event.getLogProfile());
                         } else {
-                          eventSeries.computeIfAbsent(iso, k -> new ArrayList<>()).add(event.getProfile());
+                          eventSeries.computeIfAbsent(ch, k -> new ArrayList<>()).add(event.getProfile());
                         }
 
-                        globalEvtIndex.computeIfAbsent(iso, k -> new ArrayList<>()).add(i);
-                        eventColor.computeIfAbsent(iso, k -> new ArrayList<>()).add(AnalysisUtils.getColor(
+                        globalEvtIndex.computeIfAbsent(ch, k -> new ArrayList<>()).add(i);
+                        eventColor.computeIfAbsent(ch, k -> new ArrayList<>()).add(AnalysisUtils.getColor(
                             sample,
-                            iso,
+                            ch,
                             1,
-                            selIsotopes.size()));
+                            selChannels.size()));
 
                         if (plainSet.getLogYAXis().getValue()) {
-                          previewSeries.computeIfAbsent(iso, k -> new ArrayList<>()).add(event.getLogPreviousDP(previewWidth));
-                          postviewSeries.computeIfAbsent(iso, k -> new ArrayList<>()).add(event.getLogFollowingDP(previewWidth));
+                          previewSeries.computeIfAbsent(ch, k -> new ArrayList<>()).add(event.getLogPreviousDP(previewWidth));
+                          postviewSeries.computeIfAbsent(ch, k -> new ArrayList<>()).add(event.getLogFollowingDP(previewWidth));
                         } else {
-                          previewSeries.computeIfAbsent(iso, k -> new ArrayList<>()).add(event.getPreviousDP(previewWidth));
-                          postviewSeries.computeIfAbsent(iso, k -> new ArrayList<>()).add(event.getFollowingDP(previewWidth));
+                          previewSeries.computeIfAbsent(ch, k -> new ArrayList<>()).add(event.getPreviousDP(previewWidth));
+                          postviewSeries.computeIfAbsent(ch, k -> new ArrayList<>()).add(event.getFollowingDP(previewWidth));
                         }
                       }
                     }
@@ -1728,7 +1733,7 @@ public abstract class Viewers {
                 List<JFreeChart> charts = new ArrayList<>();
 
                 int numEvents = 0;
-                List<TISeries> serList = eventSeries.get(selIsotopes.get(0));
+                List<TISeries> serList = eventSeries.get(selChannels.get(0));
                 if (serList != null) {
                   numEvents = serList.size();
                 }
@@ -1738,22 +1743,22 @@ public abstract class Viewers {
                   List<ChartComponent> chartComponents = new ArrayList<>();
                   List<ChartComponent> legendComponents = new ArrayList<>();
 
-                  for (Isotope iso : selIsotopes) {
-                    List<TISeries> isoEventSeries = eventSeries.get(iso);
+                  for (Channel ch : selChannels) {
+                    List<TISeries> isoEventSeries = eventSeries.get(ch);
 
                     if (isoEventSeries != null && i < isoEventSeries.size()) {
 
-                      TISeries eventData = eventSeries.get(iso).get(i);
-                      Colors color = eventColor.get(iso).get(i);
-                      TISeries prevData = previewSeries.get(iso).get(i);
-                      TISeries postData = postviewSeries.get(iso).get(i);
-                      int evtIndex = globalEvtIndex.get(iso).get(i);
+                      TISeries eventData = eventSeries.get(ch).get(i);
+                      Colors color = eventColor.get(ch).get(i);
+                      TISeries prevData = previewSeries.get(ch).get(i);
+                      TISeries postData = postviewSeries.get(ch).get(i);
+                      int evtIndex = globalEvtIndex.get(ch).get(i);
 
                       ChartComponent comp;
 
                       if (eventData.size() < 1E3) {
                         comp = new ChartComponent(
-                            new ChartData("Evt # " + (evtIndex + 1) + " - " + iso.getName(),
+                            new ChartData("Evt # " + (evtIndex + 1) + " - " + ch.getShortUIString(),
                                 eventData,
                                 "Time", TimeUnit.SECOND, MathMod.NONE,
                                 "Intensity", IntensityUnit.CTS, mathModYAxis),
@@ -1768,7 +1773,7 @@ public abstract class Viewers {
                         );
                       } else {
                         comp = new ChartComponent(
-                            new ChartData("Evt # " + (evtIndex + 1) + " - " + iso.getName(),
+                            new ChartData("Evt # " + (evtIndex + 1) + " - " + ch.getShortUIString(),
                                 eventData,
                                 "Time", TimeUnit.SECOND, MathMod.NONE,
                                 "Intensity", IntensityUnit.CTS, mathModYAxis),
@@ -1857,8 +1862,8 @@ public abstract class Viewers {
           } else {
 
             // just one isotope
-            Isotope isotope = selIsotopes.get(0);
-            List<Event> events = sample.getNPEvents(isotope, firstID);
+            Channel channel = selChannels.get(0);
+            List<Event> events = sample.getNPEvents(channel, firstID);
 
             if (plainSet.getSortBoolean().getValue()) {
               events.sort((o1, o2) -> {
@@ -1901,9 +1906,9 @@ public abstract class Viewers {
                   globalEvtIndex.add(i);
                   eventColor.add(AnalysisUtils.getColor(
                       sample,
-                      isotope,
+                      channel,
                       1,
-                      selIsotopes.size()));
+                      selChannels.size()));
 
                   if (plainSet.getLogYAXis().getValue()) {
                     previewSeries.add(event.getLogPreviousDP(previewWidth));
@@ -1937,7 +1942,7 @@ public abstract class Viewers {
               // Avoid freezing when too large
               if (eventData.size() < 1E3) {
                 comp = new ChartComponent(
-                    new ChartData("Evt # " + (globalEvtIndex.get(i) + 1) + " - " + isotope.getName(),
+                    new ChartData("Evt # " + (globalEvtIndex.get(i) + 1) + " - " + channel.getShortUIString(),
                         eventData,
                         "Time", TimeUnit.SECOND, MathMod.NONE,
                         "Intensity", IntensityUnit.CTS, mathModYAxis),
@@ -1952,7 +1957,7 @@ public abstract class Viewers {
                 );
               } else {
                 comp = new ChartComponent(
-                    new ChartData("Evt # " + (globalEvtIndex.get(i) + 1) + " - " + isotope.getName(),
+                    new ChartData("Evt # " + (globalEvtIndex.get(i) + 1) + " - " + channel.getShortUIString(),
                         eventData,
                         "Time", TimeUnit.SECOND, MathMod.NONE,
                         "Intensity", IntensityUnit.CTS, mathModYAxis),
@@ -2094,7 +2099,7 @@ public abstract class Viewers {
 
       // retrieve while in UI Thread
       List<Sample> samples = SpTool3Main.getRunTime().getMainWindowCtl().getSelSamples();
-      List<Isotope> selIsotopes = SpTool3Main.getRunTime().getMainWindowCtl().getSelIsotopes();
+      List<Channel> selChannels = SpTool3Main.getRunTime().getMainWindowCtl().getSelChannels();
       // Check which type of events to show?
       List<PopulationID> selPops = SpTool3Main.getRunTime().getMainWindowCtl().getSelPops();
 
@@ -2127,9 +2132,9 @@ public abstract class Viewers {
                 // merged samples will return the main sample
                 sample = sample.getPrincipleSample();
 
-                if (selIsotopes != null && !selIsotopes.isEmpty()) {
+                if (selChannels != null && !selChannels.isEmpty()) {
 
-                  List<Trace> selTraces = sample.getTraces(selIsotopes);
+                  List<Trace> selTraces = sample.getTraces(selChannels);
 
                   if (!selTraces.isEmpty()) {
 
@@ -2150,7 +2155,7 @@ public abstract class Viewers {
                         break traceLoop;
                       }
 
-                      String seriesLabel = trace.getMzValue().getIsotope().getName();
+                      String seriesLabel = trace.getChannel().getIsotope().getNumberAndElement();
                       Colors color = trace.getColor(sample);
                       String colorHex = Colors.toHex(color);
 
@@ -2436,7 +2441,7 @@ public abstract class Viewers {
 
       // retreive while in UI Thread
       List<Sample> samples = SpTool3Main.getRunTime().getMainWindowCtl().getSelSamples();
-      List<Isotope> selIsotopes = SpTool3Main.getRunTime().getMainWindowCtl().getSelIsotopes();
+      List<Channel> selChannels = SpTool3Main.getRunTime().getMainWindowCtl().getSelChannels();
       // Check which type of events to show?
       List<PopulationID> selPops = SpTool3Main.getRunTime().getMainWindowCtl().getSelPops();
 
@@ -2469,9 +2474,9 @@ public abstract class Viewers {
                 // merged samples will return the main sample
                 sample = sample.getPrincipleSample();
 
-                if (selIsotopes != null && !selIsotopes.isEmpty()) {
+                if (selChannels != null && !selChannels.isEmpty()) {
 
-                  List<Trace> selTraces = sample.getTraces(selIsotopes);
+                  List<Trace> selTraces = sample.getTraces(selChannels);
 
                   if (!selTraces.isEmpty()) {
 
@@ -3106,7 +3111,7 @@ public abstract class Viewers {
 
       // Sample selection: retrieve in UI thread
       List<Sample> samples = SpTool3Main.getRunTime().getMainWindowCtl().getSelSamples();
-      List<Isotope> selIsotopes = SpTool3Main.getRunTime().getMainWindowCtl().getSelIsotopes();
+      List<Channel> selChannels = SpTool3Main.getRunTime().getMainWindowCtl().getSelChannels();
       List<PopulationID> selPop = SpTool3Main.getRunTime().getMainWindowCtl().getSelPops();
       Unit unit = SpTool3Main.getRunTime().getMainWindowCtl().getUnit();
 
@@ -3170,7 +3175,7 @@ public abstract class Viewers {
 
           // check if aligned version is present
           boolean isAligned = false;
-          if (selIsotopes.size() == 1) {
+          if (selChannels.size() == 1) {
             isAligned = AnalysisUtils.isAnyAlignedOrPVal(selPop);
           }
 
@@ -3204,12 +3209,12 @@ public abstract class Viewers {
                     }
                     path.closePath();
 
-                    for (Isotope isotope : selIsotopes) {
+                    for (Channel channel : selChannels) {
 
-                      double[] xData = sample.getData(isotope, populationID,
+                      double[] xData = sample.getData(channel, populationID,
                           EventType.NP, plainSet.getEventParameterX().getValue(), unit);
 
-                      double[] yData = sample.getData(isotope, populationID,
+                      double[] yData = sample.getData(channel, populationID,
                           EventType.NP, plainSet.getEventParameterY().getValue(), unit);
 
                       List<Integer> validIndices = new ArrayList<>();
@@ -3223,7 +3228,7 @@ public abstract class Viewers {
                       xData = plainSet.getMathModificationX().getValue().calc(xData);
                       yData = plainSet.getMathModificationY().getValue().calc(yData);
 
-                      Trace trace = sample.getTrace(isotope);
+                      Trace trace = sample.getTrace(channel);
                       if (trace != null) {
                         Population pop = trace.getPopulation(populationID);
                         if (pop != null) {
@@ -3250,13 +3255,13 @@ public abstract class Viewers {
                     }
 
                     // now construct population for all isotopes
-                    List<Isotope> allIsotopes = sample.listIsotopes();
-                    for (Isotope allIso : allIsotopes) {
+                    List<Channel> allChannels = sample.listChannels();
+                    for (Channel allChannel : allChannels) {
 
                       // create population
                       if (!regionsInPolygon.isEmpty()) {
 
-                        Trace trace = sample.getTrace(allIso);
+                        Trace trace = sample.getTrace(allChannel);
                         if (trace != null) {
                           Population pop = trace.getPopulation(populationID);
                           // If pop==null, we know that the isotope never had this population (e.g. b/c
@@ -3282,7 +3287,7 @@ public abstract class Viewers {
                                     pop,
                                     newCollection,
                                     idCopy.toString(),
-                                    pop.getContributingMZs()
+                                    pop.getContributingChannels()
                                 ),
                                 true);
 
@@ -3303,13 +3308,13 @@ public abstract class Viewers {
           } else {
 
             for (Sample sample : samples) {
-              for (Isotope isotope : selIsotopes) {
+              for (Channel channel : selChannels) {
                 for (PopulationID populationID : selPop) {
 
-                  double[] xData = sample.getData(isotope, populationID,
+                  double[] xData = sample.getData(channel, populationID,
                       EventType.NP, plainSet.getEventParameterX().getValue(), unit);
 
-                  double[] yData = sample.getData(isotope, populationID,
+                  double[] yData = sample.getData(channel, populationID,
                       EventType.NP, plainSet.getEventParameterY().getValue(), unit);
 
                   List<Integer> validIndices = new ArrayList<>();
@@ -3322,7 +3327,7 @@ public abstract class Viewers {
                   xData = plainSet.getMathModificationX().getValue().calc(xData);
                   yData = plainSet.getMathModificationY().getValue().calc(yData);
 
-                  Trace trace = sample.getTrace(isotope);
+                  Trace trace = sample.getTrace(channel);
                   if (trace != null) {
                     Population pop = trace.getPopulation(populationID);
                     // If pop==null, we know that the isotope never had this population (e.g. b/c
@@ -3396,7 +3401,7 @@ public abstract class Viewers {
                                       pop,
                                       newCollection,
                                       idCopy.toString(),
-                                      pop.getContributingMZs()
+                                      pop.getContributingChannels()
                                   ),
                                   true);
 
@@ -3420,10 +3425,10 @@ public abstract class Viewers {
         } else {
           for (Sample sample : samples) {
 
-            if (selIsotopes.size() > 1) {
+            if (selChannels.size() > 1) {
               // add the regions (i.e., data on all isotopes) based on these 2 selected isotopes
-              Isotope isotopeX = selIsotopes.get(0);
-              Isotope isotopeY = selIsotopes.get(1);
+              Channel channelX = selChannels.get(0);
+              Channel channelY = selChannels.get(1);
 
               for (int i = 0; i < selPop.size(); i++) {
                 PopulationID populationID = selPop.get(i);
@@ -3433,10 +3438,10 @@ public abstract class Viewers {
 
                 if (isAlignedOrP) {
 
-                  double[] xData = sample.getData(isotopeX, populationID,
+                  double[] xData = sample.getData(channelX, populationID,
                       EventType.NP, plainSet.getEventParameterX().getValue(), unit);
 
-                  double[] yData = sample.getData(isotopeY, populationID,
+                  double[] yData = sample.getData(channelY, populationID,
                       EventType.NP, plainSet.getEventParameterY().getValue(), unit);
 
                   List<Integer> validIndices = new ArrayList<>();
@@ -3452,11 +3457,11 @@ public abstract class Viewers {
                   // iterate over all isotopes and add events that are within the region
                   // (we have to assume that indices on event (i.e., region) in one isotope matches all
                   // others)
-                  List<Isotope> allIsotopes = sample.listIsotopes();
+                  List<Channel> allChannels = sample.listChannels();
 
-                  for (int ij = 0; ij < allIsotopes.size(); ij++) {
-                    Isotope isotope = allIsotopes.get(ij);
-                    Trace trace = sample.getTrace(isotope);
+                  for (int ij = 0; ij < allChannels.size(); ij++) {
+                    Channel channel = allChannels.get(ij);
+                    Trace trace = sample.getTrace(channel);
                     if (trace != null) {
                       Population pop = trace.getPopulation(populationID);
                       // If pop==null, we know that the isotope never had this population (e.g. b/c
@@ -3529,7 +3534,7 @@ public abstract class Viewers {
                                         pop,
                                         coll,
                                         idCopy.toString(),
-                                        pop.getContributingMZs()
+                                        pop.getContributingChannels()
                                     ),
                                     true);
                               }
@@ -3561,7 +3566,7 @@ public abstract class Viewers {
         NotificationFactory.openYesCancel(
             "Remove all populations of polygon-type? This is irreversible.", () -> {
               for (Sample sample : samples) {
-                List<Isotope> isotopes = sample.listIsotopes();
+                List<Channel> isotopes = sample.listChannels();
                 List<PopulationID> popIDs = sample.listAllPopulations().stream()
                     .filter(populationID -> populationID.getSteps().stream()
                         .anyMatch(step -> step instanceof PopulationStep.PolygonSubtype))
@@ -3614,14 +3619,14 @@ public abstract class Viewers {
               selPop.forEach(p -> markerMap.put(p, markerIterator.next()));
 
               // progress counter
-              int totalSteps = samples.size() * selIsotopes.size();
+              int totalSteps = samples.size() * selChannels.size();
               int step = 0;
 
               if (!plainSet.getScatterIsotopes().getValue()) {
                 for (Sample sample : samples) {
 
                   isotopeLoop:
-                  for (Isotope isotope : selIsotopes) {
+                  for (Channel channel : selChannels) {
                     // update progress
                     progress.set((double) step / totalSteps);
                     step++;
@@ -3630,15 +3635,15 @@ public abstract class Viewers {
                     }
 
                     // Decide the color
-                    Colors color = AnalysisUtils.getColor(sample, isotope, samples.size(),
-                        selIsotopes.size());
+                    Colors color = AnalysisUtils.getColor(sample, channel, samples.size(),
+                        selChannels.size());
 
                     for (PopulationID populationID : selPop) {
 
-                      double[] xData = sample.getData(isotope, populationID,
+                      double[] xData = sample.getData(channel, populationID,
                           EventType.NP, plainSet.getEventParameterX().getValue(), unit);
 
-                      double[] yData = sample.getData(isotope, populationID,
+                      double[] yData = sample.getData(channel, populationID,
                           EventType.NP, plainSet.getEventParameterY().getValue(), unit);
 
                       List<Integer> validIndices = new ArrayList<>();
@@ -3655,10 +3660,12 @@ public abstract class Viewers {
                       // create component
                       if (xData.length > 0 && yData.length > 0) {
                         chartComponents.add(new ChartComponent(
-                            new ChartData(AnalysisUtils.getLabelForPlots(sample,
-                                new IsotopeMZ(isotope),
-                                populationID,
-                                EventType.NP),
+                            new ChartData(
+                                AnalysisUtils.getLabelForPlots(
+                                    sample,
+                                    channel,
+                                    populationID,
+                                    EventType.NP),
                                 xData, yData,
                                 xLabel, xUnit, plainSet.getMathModificationX().getValue(),
                                 yLabel, yUnit, plainSet.getMathModificationY().getValue()),
@@ -3686,7 +3693,7 @@ public abstract class Viewers {
                                       + SnF.doubleToString(npReg.intercept, NF.D1C1) + " / "
                                       + SnF.doubleToString(npReg.rSquare, NF.D1C3)
                                       + "("
-                                      + isotope.getName() + "_" + sample.getNickName() + ")",
+                                      + channel.getShortUIString() + "_" + sample.getNickName() + ")",
                                   npReg.x,
                                   npReg.y,
                                   xLabel, xUnit, plainSet.getMathModificationX().getValue(),
@@ -3707,11 +3714,13 @@ public abstract class Viewers {
                   }
                 }
               } else {
+
+                boolean needsAxisLabel = true;
                 for (Sample sample : samples) {
 
-                  if (selIsotopes.size() > 1) {
-                    Isotope isotopeX = selIsotopes.get(0);
-                    Isotope isotopeY = selIsotopes.get(1);
+                  if (selChannels.size() > 1) {
+                    Channel channelX = selChannels.get(0);
+                    Channel channelY = selChannels.get(1);
 
                     // Decide the color
                     Colors color = new SpColor(sample.getColor());
@@ -3723,10 +3732,10 @@ public abstract class Viewers {
                         color = Colors.variationHSB(color, new SpColor(Colors.paletteColor(i)), i);
                       }
 
-                      double[] xData = sample.getData(isotopeX, populationID,
+                      double[] xData = sample.getData(channelX, populationID,
                           EventType.NP, plainSet.getEventParameterX().getValue(), unit);
 
-                      double[] yData = sample.getData(isotopeY, populationID,
+                      double[] yData = sample.getData(channelY, populationID,
                           EventType.NP, plainSet.getEventParameterY().getValue(), unit);
 
                       List<Integer> validIndices = new ArrayList<>();
@@ -3740,8 +3749,12 @@ public abstract class Viewers {
                       xData = plainSet.getMathModificationX().getValue().calc(xData);
                       yData = plainSet.getMathModificationY().getValue().calc(yData);
 
-                      xLabel = isotopeX.getName() + " " + xLabel;
-                      yLabel = isotopeY.getName() + " " + yLabel;
+                      // Else we append as "Si Si Si Si Si Si Element mass /fg"
+                      if (needsAxisLabel) {
+                        xLabel = channelX.getShortUIString() + " " + xLabel;
+                        yLabel = channelY.getShortUIString() + " " + yLabel;
+                        needsAxisLabel = false;
+                      }
 
                       // check if aligned
                       boolean isAlignedOrP = analysis.AnalysisUtils.isAlignedOrPVal(populationID);
@@ -3915,13 +3928,13 @@ public abstract class Viewers {
       if (plainSet != null) {
 
         List<Sample> selSamples = SpTool3Main.getRunTime().getMainWindowCtl().getSelSamples();
-        List<Isotope> selIsotopes = SpTool3Main.getRunTime().getMainWindowCtl().getSelIsotopes();
+        List<Channel> selChannels = SpTool3Main.getRunTime().getMainWindowCtl().getSelChannels();
         List<PopulationID> selPops = SpTool3Main.getRunTime().getMainWindowCtl().getSelPops();
 
         List<ChartComponent> components = new ArrayList<>();
 
         if (selSamples != null && !selSamples.isEmpty()
-            && selIsotopes != null && !selIsotopes.isEmpty()
+            && selChannels != null && !selChannels.isEmpty()
             && selPops != null && !selPops.isEmpty()) {
 
           // Define labels
@@ -3937,16 +3950,22 @@ public abstract class Viewers {
           EventType evtType = plainSet.getEventType().getValue();
 
           for (Sample sample : selSamples) {
-            for (Isotope iso : selIsotopes) {
+            for (Channel ch : selChannels) {
 
-              Colors color = AnalysisUtils.getColor(sample, iso,
-                  selSamples.size(), selIsotopes.size());
+              Colors color = AnalysisUtils.getColor(sample, ch,
+                  selSamples.size(), selChannels.size());
 
               Colors originalColor = color;
 
+              int variationCounter = -1;
               for (PopulationID popID : selPops) {
-                // variation with index=0 returns original!
-                color = Colors.variationHSB(originalColor, color, selPops.indexOf(popID));
+
+                // Do not waste color variations on pops that have no data...
+                if (sample.hasPopulation(popID, ch)) {
+                  variationCounter++;
+                  // variation with index=0 returns original!
+                  color = Colors.variationHSB(originalColor, color, variationCounter);
+                }
 
                 // check data source
                 List<double[]> combinedData = new ArrayList<>();
@@ -3957,7 +3976,7 @@ public abstract class Viewers {
                   // Set event type to NP in order to plot NP outside if this if statement!
                   evtType = EventType.NP;
 
-                  double[] data = sample.getData(iso, popID, EventType.BG,
+                  double[] data = sample.getData(ch, popID, EventType.BG,
                       plainSet.getEventParameter(), unit);
 
                   // reduce BG (?)
@@ -3973,7 +3992,7 @@ public abstract class Viewers {
                 }
 
                 // Default way to retrieve data; in case of NG&NP, this adds the NP data
-                double[] data = sample.getData(iso, popID, evtType,
+                double[] data = sample.getData(ch, popID, evtType,
                     plainSet.getEventParameter(), unit);
                 // check math operations
                 data = plainSet.getMathModification().getValue().calc(data);
@@ -3985,16 +4004,15 @@ public abstract class Viewers {
                 // Empty string will not be written.
                 String shortNameIDs;
                 if (plainSet.getShowIDsOnPlot().getValue()) {
-                  shortNameIDs = AnalysisUtils.getShortCodeNameForPlots(sample, selSamples, iso,
+                  shortNameIDs = AnalysisUtils.getShortCodeNameForPlots(sample, selSamples, ch,
                       popID, selPops);
                 } else {
                   shortNameIDs = "";
                 }
 
-
                 ChartComponent component = new ChartComponent(
                     new HistogramChartData(
-                        AnalysisUtils.getLabelForPlots(sample, new IsotopeMZ(iso), popID, evtType),
+                        AnalysisUtils.getLabelForPlots(sample, ch, popID, evtType),
                         shortNameIDs,
                         data,
                         xLabel, xUnit, MathMod.NONE,
@@ -4092,6 +4110,8 @@ public abstract class Viewers {
         public TaskResult call() throws Exception {
           try {
             if (plainSet != null) {
+
+              double stickWidth = plainSet.getStickWidth().getValue();
 
               if (selSamples != null && !selSamples.isEmpty()
                   && selPops != null && !selPops.isEmpty()) {
@@ -4195,7 +4215,8 @@ public abstract class Viewers {
                       plainSet.getMinAbundancePct().getValue(),
                       excludedFromLabel,
                       plainSet.getFilterSignal().getValue(),
-                      plainSet.getMinSignalNormalized().getValue());
+                      plainSet.getMinSignalNormalized().getValue(),
+                      stickWidth);
 
                   // Check to adjust axis range
                   if (chart != null) {
@@ -4400,8 +4421,8 @@ public abstract class Viewers {
 
         List<Sample> selSamples = SpTool3Main.getRunTime().getMainWindowCtl().getSelSamples();
         List<PopulationID> selPops = SpTool3Main.getRunTime().getMainWindowCtl().getSelPops();
-        List<Isotope> loadedIsotopes = SpTool3Main.getRunTime().getMainWindowCtl().getAllIsotopes();
-        List<Isotope> selIsotopes = SpTool3Main.getRunTime().getMainWindowCtl().getSelIsotopes();
+        List<Channel> loadedChannels = SpTool3Main.getRunTime().getMainWindowCtl().getAllChannels();
+        List<Channel> selChannels = SpTool3Main.getRunTime().getMainWindowCtl().getSelChannels();
 
         double minFractionPct = plainSet.getMinFractionPct().getValue();
         int minClusterSizePie = plainSet.getMinClusterSizePie().getValue();
@@ -4455,7 +4476,7 @@ public abstract class Viewers {
                 final List<SpectralArray> spectralRegionsDataCopy = new ArrayList<>(spectralRegionsData);
 
                 if (spectralRegionsData.isEmpty()) {
-                  // try to compute the spectra from drive b/c the cache inside of the samlpe was empty
+                  // try to compute the spectra from drive b/c the cache inside the samlpe was empty
                   LOGGER.trace("No spectral data. Loading data from available sources.");
                   SpectralUtil.computeSpectra(sample, popID);
                   // try load again
@@ -4468,16 +4489,16 @@ public abstract class Viewers {
                   case ALL_SAMPLE -> {
                   }
                   case ALL_LOADED -> {
-                    spectralRegionsData.removeIf(spectArr -> !loadedIsotopes.contains(spectArr.getIsotope()));
+                    spectralRegionsData.removeIf(spectArr -> !loadedChannels.contains(spectArr.getChannel()));
                   }
                   case SELECTED -> {
-                    spectralRegionsData.removeIf(spectArr -> !selIsotopes.contains(spectArr.getIsotope()));
+                    spectralRegionsData.removeIf(spectArr -> !selChannels.contains(spectArr.getChannel()));
                   }
                   case POSITIVE_LIST_SELECTION -> {
-                    spectralRegionsData.removeIf(spectArr -> !includedList.contains(spectArr.getIsotope()));
+                    spectralRegionsData.removeIf(spectArr -> !includedList.contains(spectArr.getChannel().getIsotope()));
                   }
                   case NEGATIVE_LIST_EXCLUSION -> {
-                    spectralRegionsData.removeIf(spectArr -> excludedList.contains(spectArr.getIsotope()));
+                    spectralRegionsData.removeIf(spectArr -> excludedList.contains(spectArr.getChannel().getIsotope()));
                   }
                   default -> {
                     // keep as is, we should not reach this branch
@@ -4501,8 +4522,8 @@ public abstract class Viewers {
                   return true; // drop
                 });
 
-                List<Isotope> validIsotopes = spectralRegionsData.stream()
-                    .map(SpectralArray::getIsotope)
+                List<Channel> validChannels = spectralRegionsData.stream()
+                    .map(SpectralArray::getChannel)
                     .toList();
 
                 // transpose to regions and elements:
@@ -4520,7 +4541,7 @@ public abstract class Viewers {
                   if (wrapper != null && wrapper.isEqualInstructions(
                       useLog2,
                       zScoreTarget,
-                      validIsotopes)) {
+                      validChannels)) {
                     fitted = wrapper.getFit();
                   } else {
 
@@ -4538,7 +4559,7 @@ public abstract class Viewers {
                         fitted,
                         useLog2,
                         zScoreTarget,
-                        validIsotopes));
+                        validChannels));
                   }
 
                   // **Claude Sonnet implementation of SMILES HAC**
@@ -4688,7 +4709,7 @@ public abstract class Viewers {
                       minFractionPct);
 
                   // get colors for element by most abundant isotope
-                  Map<String, Colors> elementColors = HACCharts.getPieChartColors(sre.getElements());
+                  Map<String, Colors> elementColors = HACCharts.getPieChartColors(sre.getCategories());
 
                   List<ChartComponent> pieChartComponents = new ArrayList<>();
                   for (SpChartFactory.PieChartData pieChartDat : pieChartData) {
@@ -4766,17 +4787,14 @@ public abstract class Viewers {
 
 
                     // check which isotopes to show as population
-                    List<Isotope> isotopes = new ArrayList<>(sample.listIsotopes());
-                    isotopes.removeIf(iso -> !validIsotopes.contains(iso));
-
-                    List<MZValue> mzValues = isotopes.stream()
-                        .map(IsotopeMZ::new)
-                        .map(isoMZ -> (MZValue) isoMZ)
-                        .toList();
+                    List<Channel> channels = new ArrayList<>(sample.listChannels());
+                    // only remove if it has an isotope assigned AND that isotope is blacklisted
+                    channels.removeIf(ch -> ch.getIsotope() != null
+                        && !validChannels.contains(ch));
 
                     // get the Event list for each isotope
-                    for (Isotope isotope : isotopes) {
-                      Trace trace = sample.getTrace(isotope);
+                    for (Channel channel : channels) {
+                      Trace trace = sample.getTrace(channel);
                       if (trace != null) {
                         Population pop = trace.getPopulation(popID);
                         if (pop != null) {
@@ -4808,7 +4826,7 @@ public abstract class Viewers {
                                     pop,
                                     coll,
                                     idCopy.toString(),
-                                    mzValues
+                                    new ArrayList<>(channels)
                                 ),
                                 true);
                           }
@@ -4855,8 +4873,10 @@ public abstract class Viewers {
                           clusterFeatures.put(key, clusterFeatureValues);
                         }
 
-                        clusterSpectra.add(new SpectralArray(sarr.getIsotope(), sarr.getMz(),
-                            clusterIntensities, clusterFeatures));
+                        clusterSpectra.add(new SpectralArray(
+                            sarr.getChannel(),
+                            clusterIntensities,
+                            clusterFeatures));
                       }
 
                       sample.addSpectralData(idCopy, clusterSpectra);
@@ -4873,12 +4893,12 @@ public abstract class Viewers {
                   clearMergedBtn.setOnAction(e -> {
                     NotificationFactory.openYesCancel(
                         "Remove all populations of cluster-type? This is irreversible.", () -> {
-                          List<Isotope> isotopes = sample.listIsotopes();
+                          List<Channel> channels = sample.listChannels();
                           List<PopulationID> popIDs = sample.listAllPopulations().stream()
                               .filter(populationID -> populationID.getSteps().stream()
                                   .anyMatch(step -> step instanceof PopulationStep.ClusterSubtype))
                               .toList();
-                          popIDs.forEach(id -> sample.removePopulations(isotopes, id));
+                          popIDs.forEach(id -> sample.removePopulations(channels, id));
                           SpTool3Main.getRunTime().getMainWindowCtl().updatePopulations();
                         });
                   });
@@ -5074,7 +5094,7 @@ public abstract class Viewers {
       //
       // Extract some previous parameters
       List<Sample> samples = SpTool3Main.getRunTime().getMainWindowCtl().getSelSamples();
-      List<Isotope> selIsotopes = SpTool3Main.getRunTime().getMainWindowCtl().getSelIsotopes();
+      List<Channel> selChannels = SpTool3Main.getRunTime().getMainWindowCtl().getSelChannels();
       List<PopulationID> selPops = SpTool3Main.getRunTime().getMainWindowCtl().getSelPops();
 
       // Chart components and additional containers
@@ -5123,13 +5143,13 @@ public abstract class Viewers {
               Unit xUnit = xAxisLabel.getUnit();
 
               // progress counter
-              int totalSteps = samples.size() * selIsotopes.size();
+              int totalSteps = samples.size() * selChannels.size();
               int step = 0;
 
               for (Sample sample : samples) {
 
                 isotopeLoop:
-                for (Isotope isotope : selIsotopes) {
+                for (Channel channel : selChannels) {
                   // update progress
                   progress.set((double) step / totalSteps);
                   step++;
@@ -5138,15 +5158,15 @@ public abstract class Viewers {
                   }
 
                   // Decide the color
-                  Colors color = AnalysisUtils.getColor(sample, isotope, samples.size(),
-                      selIsotopes.size());
+                  Colors color = AnalysisUtils.getColor(sample, channel, samples.size(),
+                      selChannels.size());
                   Colors mainColor = new SpColor(color.get()); // root for the variations for populations
 
                   for (PopulationID populationID : selPops) {
                     // calc LOD
                     boolean isNet = plainSet.getEventParameter().equals(EventParameter.NET_AREA)
                         || plainSet.getEventParameter().equals(EventParameter.NET_HEIGHT);
-                    double maxThrLOD = sample.getMaxThr(isotope, populationID, isNet, qUnit);
+                    double maxThrLOD = sample.getMaxThr(channel, populationID, isNet, qUnit);
                     maxThrLOD = plainSet.getMathMod().calc(maxThrLOD);
 
                     EventType eventType = plainSet.getEventType();
@@ -5157,7 +5177,7 @@ public abstract class Viewers {
                       // Set event type to NP in order to plot NP outside if this if statement!
                       eventType = EventType.NP;
 
-                      double[] data = sample.getData(isotope, populationID, EventType.BG,
+                      double[] data = sample.getData(channel, populationID, EventType.BG,
                           plainSet.getEventParameter(), qUnit);
 
                       if (plainSet.isJitterBG()) {
@@ -5178,7 +5198,7 @@ public abstract class Viewers {
                       if (data.length > 1) {
                         histoComponents.add(new ChartComponent(
                             new HistogramChartData(AnalysisUtils.getLabelForPlots(sample,
-                                new IsotopeMZ(isotope),
+                                channel,
                                 populationID,
                                 EventType.BG),
                                 data,
@@ -5194,7 +5214,7 @@ public abstract class Viewers {
                     }
 
                     // Default way to retrieve data.
-                    double[] data = sample.getData(isotope, populationID, eventType,
+                    double[] data = sample.getData(channel, populationID, eventType,
                         plainSet.getEventParameter(), qUnit);
 
                     // check if compute nonzero before applying math operations
@@ -5209,7 +5229,7 @@ public abstract class Viewers {
                     if (data.length > 0) {
                       histoComponents.add(new ChartComponent(
                           new HistogramChartData(AnalysisUtils.getLabelForPlots(sample,
-                              new IsotopeMZ(isotope),
+                              channel,
                               populationID,
                               EventType.NP),
                               data,
@@ -5534,13 +5554,13 @@ public abstract class Viewers {
 
         // content (how to overlay the simulated "event only samples"?)
         List<Sample> samples = SpTool3Main.getRunTime().getMainWindowCtl().getSelSamples();
-        List<Isotope> selIsotopes = SpTool3Main.getRunTime().getMainWindowCtl().getSelIsotopes();
+        List<Channel> selChannels = SpTool3Main.getRunTime().getMainWindowCtl().getSelChannels();
         List<PopulationID> selPops = SpTool3Main.getRunTime().getMainWindowCtl().getSelPops();
 
         for (int i = 0; i < params.size(); i++) {
           EventParameter par = params.get(i);
 
-          Node viewNode = getHistoNode(plainSet, samples, selIsotopes, selPops, par);
+          Node viewNode = getHistoNode(plainSet, samples, selChannels, selPops, par);
 
           // Ensure the viewer grows to fill its cell
           GridPane.setHgrow(viewNode, Priority.ALWAYS);
@@ -5558,7 +5578,7 @@ public abstract class Viewers {
 
 
     private Node getHistoNode(CompareHistoParams plainSet,
-                              List<Sample> samples, List<Isotope> selIsotopes,
+                              List<Sample> samples, List<Channel> selChannels,
                               List<PopulationID> selPops,
                               EventParameter par) {
 
@@ -5579,11 +5599,11 @@ public abstract class Viewers {
       Unit xUnit = xAxisLabel.getUnit();
 
       for (Sample sample : samples) {
-        for (Isotope isotope : selIsotopes) {
+        for (Channel channel : selChannels) {
 
           // Decide the color
-          Colors color = AnalysisUtils.getColor(sample, isotope, samples.size(),
-              selIsotopes.size());
+          Colors color = AnalysisUtils.getColor(sample, channel, samples.size(),
+              selChannels.size());
           Colors mainColor = new SpColor(color.get()); // root for the variations for populations
 
           for (PopulationID populationID : selPops) {
@@ -5599,7 +5619,7 @@ public abstract class Viewers {
               // Set event type to NP in order to plot NP outside if this if statement!
               eventType = EventType.NP;
 
-              double[] data = sample.getData(isotope, populationID, EventType.BG, par, unitQ);
+              double[] data = sample.getData(channel, populationID, EventType.BG, par, unitQ);
 
               // check math operations
               data = plainSet.getMathMod().calc(data);
@@ -5608,7 +5628,7 @@ public abstract class Viewers {
               if (data.length > 1) {
                 histoComponents.add(new ChartComponent(
                     new HistogramChartData(AnalysisUtils.getLabelForPlots(sample,
-                        new IsotopeMZ(isotope),
+                        channel,
                         populationID,
                         EventType.BG),
                         data,
@@ -5624,7 +5644,7 @@ public abstract class Viewers {
             }
 
             // Default way to retrieve data.
-            double[] data = sample.getData(isotope, populationID, eventType, par, unitQ);
+            double[] data = sample.getData(channel, populationID, eventType, par, unitQ);
             // check math operations
             data = plainSet.getMathMod().calc(data);
 
@@ -5633,7 +5653,7 @@ public abstract class Viewers {
               histoComponents.add(new ChartComponent(
                   new HistogramChartData(
                       AnalysisUtils.getLabelForPlots(sample,
-                          new IsotopeMZ(isotope),
+                          channel,
                           populationID,
                           EventType.NP),
                       data,

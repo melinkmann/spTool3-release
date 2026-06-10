@@ -20,6 +20,7 @@ package visualizer;
 import analysis.PopulationID;
 import core.RunTimeInstance;
 import dataModelNew.Sample;
+import dataModelNew.mz.Channel;
 import io.TableIO;
 
 import java.util.ArrayList;
@@ -30,7 +31,6 @@ import java.util.List;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import sandbox.montecarlo.Isotope;
 import visualizer.ResultsTable.TablePar;
 
 public class ResultTableData {
@@ -39,7 +39,7 @@ public class ResultTableData {
 
   private final HashMap<Sample, List<TraceCol>> entryMap = new LinkedHashMap<>();
 
-  public ResultTableData(List<Sample> samples, List<Isotope> isotopes,
+  public ResultTableData(List<Sample> samples, List<Channel> channels,
                          List<PopulationID> popIDs, boolean showAllParameters) {
 
     List<TablePar> sampleLevelPars;
@@ -68,8 +68,8 @@ public class ResultTableData {
     for (PopulationID popID : popIDs) {
       int gateRowCount = 0;
       for (Sample sample : samples) {
-        for (Isotope isotope : isotopes) {
-          gateRowCount = Math.max(gateRowCount, sample.tabGates(isotope, popID).size());
+        for (Channel channel : channels) {
+          gateRowCount = Math.max(gateRowCount, sample.tabGates(channel, popID).size());
         }
       }
       gateRowCounts.put(popID, gateRowCount);
@@ -81,8 +81,8 @@ public class ResultTableData {
       // Get selected traces
 
       // Make columns
-      for (Isotope isotope : isotopes) {
-        TraceCol col = new TraceCol(isotope.getName());
+      for (Channel channel : channels) {
+        TraceCol col = new TraceCol(channel.getShortUIString());
         if (!entryMap.containsKey(sample)) {
           entryMap.put(sample, new ArrayList<>());
         }
@@ -90,17 +90,17 @@ public class ResultTableData {
 
         // Sample level
         for (TablePar par : sampleLevelPars) {
-          col.add(par, par.getValues(sample, isotope, null, 0));
+          col.add(par, par.getValues(sample, channel, null, 0));
         }
 
         // Trace level
         for (TablePar par : traceLevelPars) {
-          col.add(par, par.getValues(sample, isotope, null, 0));
+          col.add(par, par.getValues(sample, channel, null, 0));
         }
 
         // Trace quant level
         for (TablePar par : quantLevelPars) {
-          col.add(par, par.getValues(sample, isotope, null, 0));
+          col.add(par, par.getValues(sample, channel, null, 0));
         }
 
 
@@ -109,13 +109,13 @@ public class ResultTableData {
 
           // // Population level: the NP and BG population
           for (TablePar par : populationLevelPars) {
-            col.add(par, par.getValues(sample, isotope, pop, 0));
+            col.add(par, par.getValues(sample, channel, pop, 0));
           }
 
           // Population level: the background (Show label of the pop first, then the detection conditions)
           int fillRows = gateRowCounts.get(pop) != null ? gateRowCounts.get(pop) : 0;
           for (TablePar par : populationBLNLevelPars) {
-            col.add(par, par.getValues(sample, isotope, pop, fillRows));
+            col.add(par, par.getValues(sample, channel, pop, fillRows));
           }
         }
       }

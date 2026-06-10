@@ -23,7 +23,7 @@ import analysis.Baseline.ThrMeasureOfSignificance;
 import dataModelNew.Sample;
 import dataModelNew.SampleImpl;
 import dataModelNew.Trace;
-import dataModelNew.mz.MZValue;
+import dataModelNew.mz.Channel;
 import math.stat.MeasureOfLocation;
 import math.stat.Median;
 import org.apache.commons.lang3.exception.ExceptionUtils;
@@ -52,15 +52,15 @@ public class AlignTask extends AbstractWorkingTask implements WorkingTask {
   private final PopulationBranch branch;
   private final AlignerParams params;
   private final AtomicReference<Sample> sampleRef;
-  private final List<Isotope> selectedIsotopes;
+  private final List<Channel> selChannels;
 
   public AlignTask(String taskName, PopulationBranch branch, AlignerParams params,
-                   AtomicReference<Sample> sampleRef, List<Isotope> selectedIsotopes) {
+                   AtomicReference<Sample> sampleRef, List<Channel> selChannels) {
     super(taskName);
     this.branch = branch;
     this.params = (AlignerParams) params.getCopyWithPreviousDateFileAndID();
     this.sampleRef = sampleRef;
-    this.selectedIsotopes=new ArrayList<>(selectedIsotopes);
+    this.selChannels = new ArrayList<>(selChannels);
   }
 
   @Override
@@ -99,20 +99,20 @@ public class AlignTask extends AbstractWorkingTask implements WorkingTask {
               case ALL_LOADED -> {
               }
               case SELECTED -> {
-                traces.removeIf(t -> !selectedIsotopes.contains(t.getMzValue().getIsotope()));
+                traces.removeIf(t -> !selChannels.contains(t.getChannel().getIsotope()));
               }
               case POSITIVE_LIST_SELECTION -> {
-                traces.removeIf(t -> !includedIsotopes.contains(t.getMzValue().getIsotope()));
+                traces.removeIf(t -> !includedIsotopes.contains(t.getChannel().getIsotope()));
               }
               case NEGATIVE_LIST_EXCLUSION -> {
-                traces.removeIf(t -> excludedIsotopes.contains(t.getMzValue().getIsotope()));
+                traces.removeIf(t -> excludedIsotopes.contains(t.getChannel().getIsotope()));
               }
               default -> {
                 // keep as is, we should not reach this branch
               }
             }
 
-            List<MZValue> contributingMZs = new ArrayList<>();
+            List<Channel> contributingChannels = new ArrayList<>();
 
             // Extract event collections of current leading population
             List<EventCollection> eventCollections = new ArrayList<>();
@@ -154,7 +154,7 @@ public class AlignTask extends AbstractWorkingTask implements WorkingTask {
                 for (Trace trace : traces) {
                   counter++;
 
-                  contributingMZs.add(trace.getMzValue());
+                  contributingChannels.add(trace.getChannel());
 
                   // only apply to leading population in the branch
                   PopulationID oldPopID = branch.getID(trace);
@@ -212,6 +212,16 @@ public class AlignTask extends AbstractWorkingTask implements WorkingTask {
                           toIdx = -(toIdx + 1) - 1;
                         }
 
+                        // guard against too small windows
+                        int count = toIdx - fromIdx + 1;
+                        if (count <= 0) {
+                          // Window contains no background indices: fallback:
+                          event.setBgPerNP(0.0);
+                          LOGGER.error("No BG indices available in the window around the event. Event is " +
+                              "too wide! Use baseline for net correction instead or increase the window.");
+                          continue;
+                        }
+
                         if (netSignalLocation.equals(MeasureOfLocation.MEDIAN)) {
                           double[] region = new double[toIdx - fromIdx + 1];
                           // chatGPT revealed this double increment which is awesome!
@@ -234,6 +244,7 @@ public class AlignTask extends AbstractWorkingTask implements WorkingTask {
                             int bgIdx = bgIndicesArr[i];
                             bgSum += intensities[bgIdx];
                           }
+
                           double bgPerNP = bgSum / (toIdx - fromIdx + 1) * event.getNoOfPoints();
                           if (suppressNegativeNetValues) {
                             double grossArea = event.get(EventParameter.AREA);
@@ -280,6 +291,16 @@ public class AlignTask extends AbstractWorkingTask implements WorkingTask {
                         int toIdx = Arrays.binarySearch(bgTimes, endTime);
                         if (toIdx < 0) {
                           toIdx = -(toIdx + 1) - 1;
+                        }
+
+                        // guard against too small windows
+                        int count = toIdx - fromIdx + 1;
+                        if (count <= 0) {
+                          // Window contains no background indices: fallback:
+                          event.setBgPerNP(0.0);
+                          LOGGER.error("No BG indices available in the window around the event. Event is " +
+                              "too wide! Use baseline for net correction instead or increase the window.");
+                          continue;
                         }
 
                         if (netSignalLocation.equals(MeasureOfLocation.MEDIAN)) {
@@ -357,7 +378,7 @@ public class AlignTask extends AbstractWorkingTask implements WorkingTask {
                             oldPop,
                             coll,
                             idCopy.toString(),
-                            contributingMZs),
+                            contributingChannels),
                         false);
                     // (4) Updating the branch:
                     // Make this new head of branch! Else, OG ID in HashMap is altered, affecting bucketing

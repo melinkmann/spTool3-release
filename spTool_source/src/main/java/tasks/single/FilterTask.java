@@ -28,6 +28,7 @@ import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
+import dataModelNew.mz.Channel;
 import dataModelNew.mz.IsotopeMZ;
 import dataModelNew.mz.MZValue;
 import math.HistogramFilters;
@@ -107,35 +108,36 @@ public class FilterTask extends AbstractWorkingTask implements WorkingTask {
               // 1. Identify aligned isotopes and their popIDs
               // A sample could have two branches, so we collect all aligned population IDs
               // and the isotopes that belong to each.
-              HashMap<PopulationID, List<Isotope>> alignedIDs = new HashMap<>();
+              HashMap<PopulationID, List<Channel>> alignedIDs = new HashMap<>();
 
               for (Trace trace : sample.getTraces()) {
                 PopulationID popID = branch.getID(trace);
                 if (AnalysisUtils.isAlignedOrPVal(popID)) {
                   alignedIDs.computeIfAbsent(popID, k -> new ArrayList<>())
-                      .add(trace.getMzValue().getIsotope());
+                      .add(trace.getChannel());
                 }
               }
 
               // 2. For each aligned population, apply the intensity filter
               for (PopulationID popIDKey : alignedIDs.keySet()) {
-                List<Isotope> alignedIsotopes = alignedIDs.get(popIDKey);
+                List<Channel> alignedChannels = alignedIDs.get(popIDKey);
 
                 // Find which of the user-specified limits apply to this population
                 // (only restrictions whose isotope is actually present in this population)
-                HashMap<Isotope, AlignFilterStartStopBundle> restrictedIsotopes = new HashMap<>();
+                HashMap<Channel, AlignFilterStartStopBundle> restrictedChannels = new HashMap<>();
                 for (AlignFilterStartStopBundle alignBundle : alignBundles) {
                   Isotope restrictedIsotope = alignBundle.isotopeHeaderParameter.getValue().unwrap();
-                  if (alignedIsotopes.contains(restrictedIsotope)) {
-                    restrictedIsotopes.put(restrictedIsotope, alignBundle);
+                  Channel restrictedChannel = AnalysisUtils.getChannel(alignedChannels, restrictedIsotope);
+                  if (restrictedChannel != null) {
+                    restrictedChannels.put(restrictedChannel, alignBundle);
                   }
                 }
 
                 // Are there any restrictions to filter?
-                if (!restrictedIsotopes.isEmpty()) {
+                if (!restrictedChannels.isEmpty()) {
 
                   // Double check that all of these populations have the same size!
-                  long distinctSizes = restrictedIsotopes.keySet().stream()
+                  long distinctSizes = restrictedChannels.keySet().stream()
                       .map(sample::getTrace)
                       .filter(Objects::nonNull)
                       .map(trace -> trace.getPopulation(popIDKey).getEvents().size())
@@ -150,19 +152,19 @@ public class FilterTask extends AbstractWorkingTask implements WorkingTask {
                     // validIndexPositions[p] = true means particle p survives all restrictions.
                     boolean[] validIndexPositions = null;
 
-                    for (Isotope isotope : restrictedIsotopes.keySet()) {
-                      AlignFilterStartStopBundle alignBundle = restrictedIsotopes.get(isotope);
+                    for (Channel channel : restrictedChannels.keySet()) {
+                      AlignFilterStartStopBundle alignBundle = restrictedChannels.get(channel);
                       double lower = alignBundle.start.getValue();
                       double upper = alignBundle.end.getValue();
                       EventParameter eventParameter = params.getEventParameter().getValue();
                       Unit unit = params.getUnitConversion();
                       MathMod math = params.getMathConversion().getValue();
 
-                      double[] data = sample.getData(isotope, popIDKey, EventType.NP, eventParameter, unit);
+                      double[] data = sample.getData(channel, popIDKey, EventType.NP, eventParameter, unit);
                       data = math.calc(data);
 
                       // ensure data exists
-                      if (data != null || data.length != 0) {
+                      if (data != null && data.length != 0) {
 
                         // Initialise mask on first isotope as TRUE
                         if (validIndexPositions == null) {
@@ -183,11 +185,11 @@ public class FilterTask extends AbstractWorkingTask implements WorkingTask {
 
                         } else {
                           LOGGER.warn("Isotope {} has {} particles but expected {}! Skipping filtering.",
-                              isotope, data.length, validIndexPositions.length);
+                              channel, data.length, validIndexPositions.length);
                         }
                       } else {
                         LOGGER.warn("No data for isotope {} in population {}! Skipping filtering.",
-                            isotope, popIDKey);
+                            channel, popIDKey);
                       }
                     }
 
@@ -212,14 +214,14 @@ public class FilterTask extends AbstractWorkingTask implements WorkingTask {
                         PopulationID filteredPopID = new PopulationID(popIDKey);
                         filteredPopID.append(
                             new PopulationStep.ManualAlignFilterSubtype(label,
-                                new ArrayList<>(restrictedIsotopes.keySet())
+                                new ArrayList<>(restrictedChannels.keySet())
                             ));
 
                         // 5. Slice events for each isotope:
                         // For each isotope in the aligned population, pick only the surviving
                         // particle indices from the event list and register a new subpopulation.
-                        for (Isotope isotope : alignedIsotopes) {
-                          Trace trace = sample.getTrace(isotope);
+                        for (Channel channel : alignedChannels) {
+                          Trace trace = sample.getTrace(channel);
                           if (trace != null) {
 
                             Population pop = trace.getPopulation(popIDKey);
@@ -237,7 +239,7 @@ public class FilterTask extends AbstractWorkingTask implements WorkingTask {
                                   LOGGER.warn("Surviving index {} out of bounds for isotope {} (events={}) " +
                                           "— " +
                                           "skipping.",
-                                      idx, isotope, events.size());
+                                      idx, channel, events.size());
                                 }
                               }
 
@@ -246,9 +248,8 @@ public class FilterTask extends AbstractWorkingTask implements WorkingTask {
                                   collection);
                               filteredCollection.add(survivingEvents);
 
-                              List<MZValue> mzValues = alignedIsotopes.stream()
-                                  .map(IsotopeMZ::new)
-                                  .map(isoMZ -> (MZValue) isoMZ)
+                              List<Channel> channels = alignedChannels.stream()
+                                  .map(Channel::copy)
                                   .toList();
 
                               trace.addOverridePopulation(filteredPopID,
@@ -257,7 +258,7 @@ public class FilterTask extends AbstractWorkingTask implements WorkingTask {
                                       pop,
                                       filteredCollection,
                                       filteredPopID.toString(),
-                                      mzValues
+                                      channels
                                   ),
                                   false);
                             }
@@ -285,7 +286,7 @@ public class FilterTask extends AbstractWorkingTask implements WorkingTask {
                               } else {
                                 LOGGER.warn("Particle index {} out of bounds for spectral array "
                                         + "isotope {} (length {}) — filling 0.",
-                                    particleIdx, sarr.getIsotope(), allIntensities.length);
+                                    particleIdx, sarr.getChannel().getUIString(), allIntensities.length);
                                 filteredIntensities[j] = 0.0;
                               }
                             }
@@ -308,8 +309,7 @@ public class FilterTask extends AbstractWorkingTask implements WorkingTask {
                             }
 
                             filteredSpectra.add(new SpectralArray(
-                                sarr.getIsotope(),
-                                sarr.getMz(),
+                                sarr.getChannel(),
                                 filteredIntensities,
                                 filteredFeatures));
                           }
@@ -571,7 +571,7 @@ public class FilterTask extends AbstractWorkingTask implements WorkingTask {
                       if (oldPop != null) {
 
                         // check for isotope-specific limits
-                        Isotope isotope = trace.getMzValue().getIsotope();
+                        Channel channel = trace.getChannel();
 
                         // extract params
                         RoiCategory roiCategory = params.roiCategory.getValue();
@@ -590,7 +590,7 @@ public class FilterTask extends AbstractWorkingTask implements WorkingTask {
 
                         boolean hasExceptionData = false;
                         for (RoiStartStopBundle startStopException : startStopExceptions) {
-                          if (startStopException.isotopeHeaderParameter.getValue().unwrap().equals(isotope)) {
+                          if (startStopException.isotopeHeaderParameter.getValue().unwrap().equals(channel.getIsotope())) {
                             startPar = startStopException.start.getValue();
                             endPar = startStopException.end.getValue();
                             hasExceptionData = true;
@@ -599,7 +599,7 @@ public class FilterTask extends AbstractWorkingTask implements WorkingTask {
                         }
 
                         for (RoiSigFactorBundle sigException : sigFactorExceptions) {
-                          if (sigException.isotopeHeaderParameter.getValue().unwrap().equals(isotope)) {
+                          if (sigException.isotopeHeaderParameter.getValue().unwrap().equals(channel.getIsotope())) {
                             sigFactor = sigException.sigFactor.getValue();
                             hasExceptionData = true;
                             break; // break at first match
@@ -652,9 +652,9 @@ public class FilterTask extends AbstractWorkingTask implements WorkingTask {
                           if (applyRoi) {
 
                             // try to revert quantification
-                            double[] startParArr = sampleImpl.revertQuant(new double[]{startPar}, isotope,
+                            double[] startParArr = sampleImpl.revertQuant(new double[]{startPar}, channel,
                                 eventParameter, unit);
-                            double[] endParArr = sampleImpl.revertQuant(new double[]{endPar}, isotope,
+                            double[] endParArr = sampleImpl.revertQuant(new double[]{endPar}, channel,
                                 eventParameter, unit);
 
                             // in some edge cases where quant is not done correctly, empty arrays return
@@ -757,7 +757,7 @@ public class FilterTask extends AbstractWorkingTask implements WorkingTask {
                           Percentile percentile = new Percentile();
                           // percentile only uses order, which does not changer with math mod, but distance
                           // +1.5IQR scales differently on log scale!
-                          double[] data = sample.getData(isotope, popID, EventType.NP, eventParameter, unit);
+                          double[] data = sample.getData(channel, popID, EventType.NP, eventParameter, unit);
                           // This does not support QUANT:
                           // double[] data = oldPop.getEvents().get(EventType.NP, eventParameter);
 
@@ -800,7 +800,7 @@ public class FilterTask extends AbstractWorkingTask implements WorkingTask {
                           sigFactor = Math.max(sigFactor, Double.MIN_VALUE);
                           // percentile only uses order, which does not changer with math mod,
                           // but distance +1.5MAD scales differently on log scale!
-                          double[] data = sample.getData(isotope, popID, EventType.NP, eventParameter, unit);
+                          double[] data = sample.getData(channel, popID, EventType.NP, eventParameter, unit);
                           // This does not support QUANT:
                           // double[] data = oldPop.getEvents().get(EventType.NP, eventParameter);
 
@@ -833,7 +833,7 @@ public class FilterTask extends AbstractWorkingTask implements WorkingTask {
                             continue; // skip to next trace and do not add ROI
                           }
                         } else if (roiCategory.equals(RoiCategory.OTSU)) {
-                          double[] data = sample.getData(isotope, popID, EventType.NP, eventParameter, unit);
+                          double[] data = sample.getData(channel, popID, EventType.NP, eventParameter, unit);
                           data = mathConversion.calc(data);
 
                           BinWidthEstimator estimator = params.getBinWidthEstimator().getValue();
@@ -898,7 +898,7 @@ public class FilterTask extends AbstractWorkingTask implements WorkingTask {
                             continue;
                           }
                         } else if (roiCategory.equals(RoiCategory.CHANGE_POINT)) {
-                          double[] data = sample.getData(isotope, popID, EventType.NP, eventParameter, unit);
+                          double[] data = sample.getData(channel, popID, EventType.NP, eventParameter, unit);
 
                           data = mathConversion.calc(data);
 

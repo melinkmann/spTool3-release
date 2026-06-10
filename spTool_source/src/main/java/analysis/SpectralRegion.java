@@ -17,6 +17,7 @@
 
 package analysis;
 
+import dataModelNew.mz.Channel;
 import sandbox.montecarlo.Isotope;
 
 import java.util.ArrayList;
@@ -24,7 +25,7 @@ import java.util.List;
 
 public class SpectralRegion {
 
-  final List<Isotope> isotopes;
+  final List<Channel> isotopes;
   final List<String> names;
   final double[] mzs;
   final double[][] intensities;
@@ -44,7 +45,7 @@ public class SpectralRegion {
 
       SpectralArray sa = spectralArrays.get(i);
 
-      isotopes.add(sa.getIsotope());
+      isotopes.add(sa.getChannel());
       names.add(sa.getName());
       mzs[i] = sa.getMz();
 

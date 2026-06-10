@@ -17,6 +17,7 @@
 
 package math.regression;
 
+import dataModelNew.mz.CalChannel;
 import math.stat.MeasureOfLocation;
 import math.units.Unit;
 import org.apache.logging.log4j.LogManager;
@@ -114,8 +115,8 @@ public abstract class RegressionUtils {
       String yLbl, Unit yUnit,
       Colors color,
       MarkerStyle markerStyle,
-      Isotope isotope,
-      Map<Isotope, Double> slopes,
+      CalChannel calChannel,
+      Map<CalChannel, Double> slopes,
       LinRegType linRegType) {
 
     // Make sure there is data!
@@ -150,7 +151,7 @@ public abstract class RegressionUtils {
       linReg = getWLS(reduced.x, reduced.y, makeWeights(reduced.y), 1.2);
     }
 
-    slopes.put(isotope, linReg.slope);
+    slopes.put(calChannel, linReg.slope);
 
     SpChartFactory.ChartComponent regressionComponent = new SpChartFactory.ChartComponent(
         new SpChartFactory.ChartData(

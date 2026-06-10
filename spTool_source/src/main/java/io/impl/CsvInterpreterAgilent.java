@@ -27,6 +27,8 @@ import dataModelNew.TISeriesHDD;
 import dataModelNew.TISeriesRAM;
 import dataModelNew.Trace;
 import dataModelNew.TraceImpl;
+import dataModelNew.mz.Channel;
+import dataModelNew.mz.MSID;
 import dataModelNew.mz.MZValue;
 import io.FileInterpreterUtils;
 
@@ -143,7 +145,7 @@ public class CsvInterpreterAgilent implements CsvInterpreter {
           + ". Details: " + ExceptionUtils.getStackTrace(e));
     }
 
-    List<MZValue> mzValues = new ArrayList<>();
+    List<Channel> mzValues = new ArrayList<>();
 
     /*
     [0] C:\Agilent\ICPMH\1\DATA\AXK\2022-08-04_microFAST-Test_2-Isotope.b\Test_Au_Ag.d
@@ -193,11 +195,11 @@ public class CsvInterpreterAgilent implements CsvInterpreter {
         if (mzRowStr != null && mzRowStr.length > mzColStart) {
           for (int i = mzColStart; i < mzRowStr.length; i++) {
             String rawMZ = mzRowStr[i];
-            MZValue mz = FileInterpreterUtils.parseAgilentTQmz(rawMZ);
+            Channel mz = FileInterpreterUtils.parseAgilentTQmz(rawMZ);
             mzValues.add(mz);
           }
           LOGGER.trace("Identified mz " + mzValues.stream()
-              .map(MZValue::getElementTransition)
+              .map(Channel::getUIString)
               .collect(Collectors.joining(" ")));
         }
       }
@@ -316,7 +318,7 @@ public class CsvInterpreterAgilent implements CsvInterpreter {
         Top level map: each mz
         Low level map: index of the section, i.e., which gas mode, i.e., which sample
          */
-        Map<MZValue, HashMap<Integer, TISeries>> tiSeriesListMap = new LinkedHashMap<>();
+        Map<Channel, HashMap<Integer, TISeries>> tiSeriesListMap = new LinkedHashMap<>();
 
         // Split if there is gap:
         if (timeHasGasModeGap) {
@@ -333,7 +335,7 @@ public class CsvInterpreterAgilent implements CsvInterpreter {
                   double[] correctedTime = replaceTimeStamps(section.getTimeOfSection());
                   // Make sure that we can call get on mz list without error
                   if (mzValues.size() == allIntensitySeries.size()) {
-                    MZValue mz = mzValues.get(i);
+                    Channel mz = mzValues.get(i);
                     // add list
                     if (!tiSeriesListMap.containsKey(mz)) tiSeriesListMap.put(mz, new LinkedHashMap<>());
                     // put tiSeries to list
@@ -357,10 +359,10 @@ public class CsvInterpreterAgilent implements CsvInterpreter {
             for (int i = 0; i < allIntensitySeries.size(); i++) {
               List<Double> intensitySeries = allIntensitySeries.get(i);
               double[] correctedTime = replaceTimeStamps(time);
-              MZValue mz = mzValues.get(i);
+              Channel mzChannel = mzValues.get(i);
               // add list
-              if (!tiSeriesListMap.containsKey(mz)) tiSeriesListMap.put(mz, new LinkedHashMap<>());
-              tiSeriesListMap.get(mz).put(0, new TISeriesRAM(correctedTime, intensitySeries));
+              if (!tiSeriesListMap.containsKey(mzChannel)) tiSeriesListMap.put(mzChannel, new LinkedHashMap<>());
+              tiSeriesListMap.get(mzChannel).put(0, new TISeriesRAM(correctedTime, intensitySeries));
             }
           }
         }
@@ -386,8 +388,8 @@ public class CsvInterpreterAgilent implements CsvInterpreter {
           List<Trace> traces = new ArrayList<>();
 
           // iterate over all mz to fill the list of traces for the current sample
-          for (MZValue mzValue : tiSeriesListMap.keySet()) {
-            HashMap<Integer, TISeries> tiSeriesMap = tiSeriesListMap.get(mzValue);
+          for (Channel mzChannel : tiSeriesListMap.keySet()) {
+            HashMap<Integer, TISeries> tiSeriesMap = tiSeriesListMap.get(mzChannel);
 
             // does this gas mode (=section = sample) have data for that isotope?
             if (tiSeriesMap.containsKey(sIdx)) {
@@ -413,7 +415,7 @@ public class CsvInterpreterAgilent implements CsvInterpreter {
                 y = RawProcessingUtils.cpsToCts(x, y);
               }
               tiSeries = new TISeriesHDD(x, y);
-              Trace trace = new TraceImpl(sample, mzValue, tiSeries);
+              Trace trace = new TraceImpl(sample, mzChannel, tiSeries);
               traces.add(trace);
             }
           }

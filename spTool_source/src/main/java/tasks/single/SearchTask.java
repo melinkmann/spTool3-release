@@ -32,6 +32,7 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
+import dataModelNew.mz.Channel;
 import math.stat.MeasureOfLocation;
 import math.stat.Median;
 import org.apache.commons.lang3.exception.ExceptionUtils;
@@ -57,15 +58,15 @@ public class SearchTask extends AbstractWorkingTask implements WorkingTask {
   private final PopulationBranch branch;
   private final NormalSearchParams params;
   private final AtomicReference<Sample> sampleRef;
-  private final List<Isotope> selIsotopes;
+  private final List<Channel> selIsotopes;
 
   public SearchTask(String taskName, PopulationBranch branch, NormalSearchParams params,
-                    AtomicReference<Sample> sampleRef, List<Isotope> selIsotope) {
+                    AtomicReference<Sample> sampleRef, List<Channel> selChannels) {
     super(taskName);
     this.branch = branch;
     this.params = (NormalSearchParams) params.getCopyWithPreviousDateFileAndID();
     this.sampleRef = sampleRef;
-    this.selIsotopes = new ArrayList<>(selIsotope);
+    this.selIsotopes = new ArrayList<>(selChannels);
   }
 
   @Override
@@ -236,6 +237,16 @@ public class SearchTask extends AbstractWorkingTask implements WorkingTask {
                         toIdx = -(toIdx + 1) - 1;
                       }
 
+                      // guard against too small windows
+                      int count = toIdx - fromIdx + 1;
+                      if (count <= 0) {
+                        // Window contains no background indices: fallback:
+                        event.setBgPerNP(0.0);
+                        LOGGER.error("No BG indices available in the window around the event. Event is " +
+                            "too wide! Use baseline for net correction instead or increase the window.");
+                        continue;
+                      }
+
                       if (netSignalLocation.equals(MeasureOfLocation.MEDIAN)) {
                         double[] region = new double[toIdx - fromIdx + 1];
                         // chatGPT revealed this double increment which is awesome!
@@ -304,6 +315,16 @@ public class SearchTask extends AbstractWorkingTask implements WorkingTask {
                       int toIdx = Arrays.binarySearch(bgTimes, endTime);
                       if (toIdx < 0) {
                         toIdx = -(toIdx + 1) - 1;
+                      }
+
+                      // guard against too small windows
+                      int count = toIdx - fromIdx + 1;
+                      if (count <= 0) {
+                        // Window contains no background indices: fallback:
+                        event.setBgPerNP(0.0);
+                        LOGGER.error("No BG indices available in the window around the event. Event is " +
+                            "too wide! Use baseline for net correction instead or increase the window.");
+                        continue;
                       }
 
                       if (netSignalLocation.equals(MeasureOfLocation.MEDIAN)) {
@@ -392,13 +413,13 @@ public class SearchTask extends AbstractWorkingTask implements WorkingTask {
                 case ALL_LOADED -> {
                 }
                 case SELECTED -> {
-                  traces.removeIf(t -> !selIsotopes.contains(t.getMzValue().getIsotope()));
+                  traces.removeIf(t -> !selIsotopes.contains(t.getChannel().getIsotope()));
                 }
                 case POSITIVE_LIST_SELECTION -> {
-                  traces.removeIf(t -> !includedIsotopes.contains(t.getMzValue().getIsotope()));
+                  traces.removeIf(t -> !includedIsotopes.contains(t.getChannel().getIsotope()));
                 }
                 case NEGATIVE_LIST_EXCLUSION -> {
-                  traces.removeIf(t -> excludedIsotopes.contains(t.getMzValue().getIsotope()));
+                  traces.removeIf(t -> excludedIsotopes.contains(t.getChannel().getIsotope()));
                 }
                 default -> {
                   // keep as is, we should not reach this branch
@@ -454,8 +475,8 @@ public class SearchTask extends AbstractWorkingTask implements WorkingTask {
               }
 
               // Just sme quick feedback
-              LOGGER.trace("Added traces: " + preScreenMap.keySet().stream().map(t -> t.getMzValue().getName()).collect(Collectors.joining(", ")));
-              LOGGER.trace("Excluded traces: " + excludedTraces.stream().map(t -> t.getMzValue().getName()).collect(Collectors.joining(", ")));
+              LOGGER.trace("Added traces: " + preScreenMap.keySet().stream().map(t -> t.getChannel().getUIString()).collect(Collectors.joining(", ")));
+              LOGGER.trace("Excluded traces: " + excludedTraces.stream().map(t -> t.getChannel().getUIString()).collect(Collectors.joining(", ")));
 
               // ################################################################################
               // now iterate over all interesting traces and perform the p-value estimation
@@ -749,8 +770,8 @@ public class SearchTask extends AbstractWorkingTask implements WorkingTask {
                           preScreenHeightThrMap.get(trace) != null ? preScreenHeightThrMap.get(trace) :
                               new ThresholdSupplierInstructions(),
                           popParSummary);
-                      population.setContributingMZs(preScreenMap.keySet().stream()
-                          .map(Trace::getMzValue)
+                      population.setContributingChannels(preScreenMap.keySet().stream()
+                          .map(Trace::getChannel)
                           .collect(Collectors.toList()));
                       trace.addOverridePopulation(populationID, population,
                           false);
@@ -790,6 +811,16 @@ public class SearchTask extends AbstractWorkingTask implements WorkingTask {
                           int toIdx = Arrays.binarySearch(bgIndicesArr, endIdx);
                           if (toIdx < 0) {
                             toIdx = -(toIdx + 1) - 1;
+                          }
+
+                          // guard against too small windows
+                          int count = toIdx - fromIdx + 1;
+                          if (count <= 0) {
+                            // Window contains no background indices: fallback:
+                            event.setBgPerNP(0.0);
+                            LOGGER.error("No BG indices available in the window around the event. Event is " +
+                                "too wide! Use baseline for net correction instead or increase the window.");
+                            continue;
                           }
 
                           if (netSignalLocation.equals(MeasureOfLocation.MEDIAN)) {
@@ -862,6 +893,16 @@ public class SearchTask extends AbstractWorkingTask implements WorkingTask {
                           int toIdx = Arrays.binarySearch(bgTimes, endTime);
                           if (toIdx < 0) {
                             toIdx = -(toIdx + 1) - 1;
+                          }
+
+                          // guard against too small windows
+                          int count = toIdx - fromIdx + 1;
+                          if (count <= 0) {
+                            // Window contains no background indices: fallback:
+                            event.setBgPerNP(0.0);
+                            LOGGER.error("No BG indices available in the window around the event. Event is " +
+                                "too wide! Use baseline for net correction instead or increase the window.");
+                            continue;
                           }
 
                           if (netSignalLocation.equals(MeasureOfLocation.MEDIAN)) {

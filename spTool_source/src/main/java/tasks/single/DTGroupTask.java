@@ -22,10 +22,11 @@ import core.SpTool3Main;
 import dataModelNew.Sample;
 import java.util.ArrayList;
 import java.util.List;
+
+import dataModelNew.mz.Channel;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import processing.parameterSets.impl.CsvInterpreterParams;
 import processing.parameterSets.impl.DTGroupParams;
 import sandbox.montecarlo.Isotope;
 import tasks.TaskResult;
@@ -38,17 +39,17 @@ public class DTGroupTask extends AbstractWorkingTask implements WorkingTask {
 
   private final DTGroupParams dtGroupParams;
   private final List<Sample> selSamples;
-  private final List<Isotope> selIsotopes;
+  private final List<Channel> selChannels;
 
   // create new samples based on selected: check for NULL!
   public DTGroupTask(DTGroupParams dtGroupParams, List<Sample> selSamples,
-      List<Isotope> selIsotopes) {
+                     List<Channel> selChannels) {
     super("DT grouping");
     // pass a copy to avoid changes in UI trickling down into multi thread environment when running in the background
     DTGroupParams p = ((DTGroupParams) dtGroupParams.getCopyWithPreviousDateFileAndID());
     this.dtGroupParams = p;
     this.selSamples = selSamples;
-    this.selIsotopes = selIsotopes;
+    this.selChannels = selChannels;
   }
 
   @Override
@@ -64,7 +65,7 @@ public class DTGroupTask extends AbstractWorkingTask implements WorkingTask {
           + " in thread " + Thread.currentThread().getId());
 
       RawProcessingUtils.groupDT(selSamples,
-          selIsotopes,
+          selChannels,
           dtGroupParams.getTargetDwellTime().getValue() / 1000,
           dtGroupParams.getExportIntermediateSteps().getValue());
 

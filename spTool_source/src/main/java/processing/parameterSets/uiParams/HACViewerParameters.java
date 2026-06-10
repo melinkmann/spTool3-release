@@ -17,6 +17,7 @@
 
 package processing.parameterSets.uiParams;
 
+import dataModelNew.mz.Channel;
 import dataModelNew.mz.MZValue;
 import gui.util.TextFormatterOption;
 import io.XmlUtil;
@@ -361,11 +362,14 @@ public class HACViewerParameters extends AbstractParamSet implements ParamSet {
                 // SpTool3Main.getRunTime().getMainWindowCtl().getAllIsotopes(),
                 prevSel);                  // null or empty = open blank
 
-            List<MZValue> resultingMZ = dlg.showAndWait();
-            if (resultingMZ != null) {
+            List<Channel> resultingCh = dlg.showAndWait();
+            if (resultingCh != null) {
               List<Isotope> resultingIsotopes = new ArrayList<>();
-              for (MZValue mzValue : resultingMZ) {
-                resultingIsotopes.add(mzValue.getIsotope());
+              for (Channel channel : resultingCh) {
+                Isotope isotope = channel.getIsotope();
+                if (isotope != null){
+                  resultingIsotopes.add(isotope);
+                }
               }
               excludedIsotopes.setValue(NuInterpreterParams.isotopesToString(resultingIsotopes));
             }
@@ -391,11 +395,14 @@ public class HACViewerParameters extends AbstractParamSet implements ParamSet {
                 // SpTool3Main.getRunTime().getMainWindowCtl().getAllIsotopes(),
                 prevSel);                  // null or empty = open blank
 
-            List<MZValue> resultingMZ = dlg.showAndWait();
-            if (resultingMZ != null) {
+            List<Channel> resultingCh = dlg.showAndWait();
+            if (resultingCh != null) {
               List<Isotope> resultingIsotopes = new ArrayList<>();
-              for (MZValue mzValue : resultingMZ) {
-                resultingIsotopes.add(mzValue.getIsotope());
+              for (Channel channel : resultingCh) {
+                Isotope isotope = channel.getIsotope();
+                if (isotope != null){
+                  resultingIsotopes.add(isotope);
+                }
               }
               includedIsotopes.setValue(NuInterpreterParams.isotopesToString(resultingIsotopes));
             }

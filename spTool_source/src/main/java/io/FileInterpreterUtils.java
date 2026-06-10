@@ -23,11 +23,7 @@ import com.opencsv.CSVParserBuilder;
 import com.opencsv.CSVReader;
 import com.opencsv.CSVReaderBuilder;
 import com.opencsv.exceptions.CsvException;
-import dataModelNew.mz.Element;
-import dataModelNew.mz.MZValue;
-import dataModelNew.mz.SQmz;
-import dataModelNew.mz.TOFmz;
-import dataModelNew.mz.TQmz;
+import dataModelNew.mz.*;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedReader;
@@ -97,7 +93,7 @@ public class FileInterpreterUtils {
 
 
   // iCAP in TQ mode writes mz as "56Fe | 56Fe.16O" OR "24Mg | 24Mg"--> parse this!
-  public static Pair<Boolean, MZValue> parseIcapTQmz(String rawMzField) {
+  public static Pair<Boolean, Channel> parseIcapTQmz(String rawMzField) {
     // in some exports, e.g., form QTegra, there seem to be cases where it says "Intensity (cps) 197Au"
 
     if (rawMzField.toLowerCase(Locale.ROOT).contains("intensity")) {
@@ -106,8 +102,10 @@ public class FileInterpreterUtils {
       rawMzField = rawMzField.substring(rawMzField.indexOf("Time") + 4).trim();
     }
 
+    // dummy instance
+    Pair<Boolean, Channel> result = new Pair<>(false,new MZChannel());
+
     // "|" indicates TQ data
-    Pair<Boolean, MZValue> result;
     if (rawMzField.contains("|")) {
       // cut out first mz (Q1)
       String q3Mass = rawMzField.substring(rawMzField.indexOf("|"));
@@ -124,19 +122,24 @@ public class FileInterpreterUtils {
         double shift = SnF.strToDouble(massShiftMZ);
         String elementLetter = SnF.getLettersOnly(firstMass);
 
-        Pair<Boolean, MZValue> q1 = safelyGetMZ1(elementLetter, mz);
-        result = new Pair<>(q1.getKey(), new TQmz(mz, mz + shift, elementLetter));
+        Pair<Boolean, Isotope> q1 = safelyGetMZ1(elementLetter, mz);
+        Isotope isotope = q1.getValue();
+        Channel ch = new MZChannel(new MSIDImpl(new MZImpl(mz), new MZImpl(mz + shift)), isotope);
+        result = new Pair<>(q1.getKey(), ch);
         // TQ is on mass
       } else {
         String q3ExtractedMZ = q3Mass.trim();
-        result = safelyGetMZ1(q3ExtractedMZ);
+        Pair<Boolean, Isotope> q3 = safelyGetMZ1(q3ExtractedMZ);
+        Isotope isotope = q3.getValue();
+        Channel ch = new MZChannel(new MSIDImpl(new MZImpl(isotope.getIsotopicNumber())), isotope);
+        result = new Pair<>(q3.getKey(), ch);
       }
     } else {
       // check if simple parsing is possible:
-      result = safelyGetMZ1(rawMzField.trim());
+      Pair<Boolean, Isotope> q = safelyGetMZ1(rawMzField.trim());
 
       // parsing failed: try to decode isotope:
-      if (!result.getKey()) {
+      if (!q.getKey()) {
 
         // Try to split TQ mz in case it is given as "28Si16O" without any separators
         // Extract leading isotope like "28Si" from "28Si16O"
@@ -165,7 +168,10 @@ public class FileInterpreterUtils {
           leadingIsotope = rawMzField; // fallback
         }
         // try parse isotope string to isotope object
-        result = safelyGetMZ1(leadingIsotope.trim());
+        q = safelyGetMZ1(leadingIsotope.trim());
+        Isotope isotope = q.getValue();
+        Channel ch = new MZChannel(new MSIDImpl(new MZImpl(isotope.getIsotopicNumber())), isotope);
+        result = new Pair<>(q.getKey(), ch);
       }
     }
     return result;
@@ -210,14 +216,15 @@ public class FileInterpreterUtils {
   }
 
 
-  public static MZValue parseAnalytikJenaSQmz(String rawMzField) {
+  public static Channel parseAnalytikJenaSQmz(String rawMzField) {
     String extractedMZ = SnF.getDigitsOnly(rawMzField);
-    return new SQmz(extractedMZ);
+    Isotope parsedIsotope = safelyGetMZ1(extractedMZ).getValue();
+    return new MZChannel(new MSIDImpl(new MZImpl(parsedIsotope.getIsotopicNumber())), parsedIsotope);
   }
 
-  public static MZValue parseAgilentTQmz(String rawMzField) throws IndexOutOfBoundsException {
+  public static Channel parseAgilentTQmz(String rawMzField) throws IndexOutOfBoundsException {
     // "->" indicates TQ data, cf: "Fe56 -> 72" or "Fe55 -> 55"
-    MZValue mzValue;
+    Channel mzValue;
     if (rawMzField.contains("->")) {
       String firstMass = rawMzField.substring(0, rawMzField.indexOf("-"));
       String secondMass = rawMzField.substring(rawMzField.indexOf(">"));
@@ -228,49 +235,54 @@ public class FileInterpreterUtils {
       double secondMassValue = SnF.strToDouble(secondExtractedMZ);
       // TQ has mass shift?
       if (!DoubleMath.fuzzyEquals(fistMassValue, secondMassValue, MZValue.EPSILON)) {
-        mzValue = new TQmz(firstExtractedMZ, secondMassValue);
+        Isotope parsedIsotope = safelyGetMZ1(firstExtractedMZ).getValue();
+        mzValue = new MZChannel(
+            new MSIDImpl(new MZImpl(fistMassValue), new MZImpl(secondMassValue)),
+            parsedIsotope);
         // TQ is on mass
       } else {
-        mzValue = new SQmz(firstExtractedMZ);
+        Isotope parsedIsotope = safelyGetMZ1(firstExtractedMZ).getValue();
+        mzValue = new MZChannel(new MSIDImpl(new MZImpl(fistMassValue)), parsedIsotope);
       }
     } else {
       String cleanStr = SnF.getDigitsAndLettersOnly(rawMzField);
-      mzValue = new SQmz(cleanStr);
+      Isotope parsedIsotope = safelyGetMZ1(cleanStr).getValue();
+      mzValue = new MZChannel(new MSIDImpl(new MZImpl(parsedIsotope.getIsotopicNumber())), parsedIsotope);
     }
     return mzValue;
   }
 
-  public static Pair<Boolean, MZValue> safelyGetMZ1(String elementAndNumber) {
+  public static Pair<Boolean, Isotope> safelyGetMZ1(String elementAndNumber) {
     boolean isValid = true;
     Isotope candidate = Isotope.guessFromString(elementAndNumber);
     if (candidate == null || !candidate.isValid()) {
       candidate = Element.UNKNOWN.getMostAbundant();
       isValid = false;
     }
-    return new Pair<>(isValid, new SQmz(candidate));
+    return new Pair<>(isValid, candidate);
   }
 
 
-  public static Pair<Boolean, MZValue> safelyGetMZ1(String element, double mz) {
+  public static Pair<Boolean, Isotope> safelyGetMZ1(String element, double mz) {
     return safelyGetMZ1(SnF.doubleToString(mz, NF.D1C0) + element);
   }
 
 
   // Tofwerk writes mz as "[195Pt]+ mass 194.964" --> parse this!
-  public static MZValue parseTOFmz(String rawMZfield) throws IndexOutOfBoundsException {
-    int idxBracketStart = rawMZfield.indexOf("[");
-    int idxBracketEnd = rawMZfield.indexOf("]");
-    String elementBracket = rawMZfield.substring(idxBracketStart + 1, idxBracketEnd);
-    String element = SnF.getAlphabetOnlyPattern().matcher(elementBracket).replaceAll("");
-    String massInformation = rawMZfield.substring(rawMZfield.indexOf("+"));
-
-    String nominalMass = SnF.getDigitOnlyPattern().matcher(elementBracket).replaceAll("");
-    String theoreticalMass = SnF.getDecimalDigitPattern().matcher(massInformation).replaceAll("");
-
-    double nominal = SnF.strToDouble(nominalMass);
-    double theoretical = SnF.strToDouble(theoreticalMass);
-    return new TOFmz(nominal, theoretical, element);
-  }
+//  public static Isotope parseTOFmz(String rawMZfield) throws IndexOutOfBoundsException {
+//    int idxBracketStart = rawMZfield.indexOf("[");
+//    int idxBracketEnd = rawMZfield.indexOf("]");
+//    String elementBracket = rawMZfield.substring(idxBracketStart + 1, idxBracketEnd);
+//    String element = SnF.getAlphabetOnlyPattern().matcher(elementBracket).replaceAll("");
+//    String massInformation = rawMZfield.substring(rawMZfield.indexOf("+"));
+//
+//    String nominalMass = SnF.getDigitOnlyPattern().matcher(elementBracket).replaceAll("");
+//    String theoreticalMass = SnF.getDecimalDigitPattern().matcher(massInformation).replaceAll("");
+//
+//    double nominal = SnF.strToDouble(nominalMass);
+//    double theoretical = SnF.strToDouble(theoreticalMass);
+//    return new TOFmz(nominal, theoretical, element);
+//  }
 
 
 }

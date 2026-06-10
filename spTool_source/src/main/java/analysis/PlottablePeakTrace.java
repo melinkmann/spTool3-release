@@ -20,6 +20,7 @@ package analysis;
 import core.SpTool3Main;
 import dataModelNew.TISeries;
 import dataModelNew.Trace;
+import dataModelNew.mz.Channel;
 import sandbox.montecarlo.Isotope;
 import visualizer.styles.Colors;
 import visualizer.styles.Colors.SpColor;
@@ -49,11 +50,7 @@ public interface PlottablePeakTrace {
     public MatrixPeakTrace(Trace trace, PopulationID popID, TISeries data) {
       this.markerData = data;
       this.populationLabel = popID.toString();
-      if (trace.getMzValue().hasIsotope()) {
-        this.mzLabel = trace.getMzValue().getIsotope().getName();
-      } else {
-        this.mzLabel = trace.getMzValue().getElementTransition();
-      }
+      this.mzLabel = trace.getChannel().getShortUIString();
     }
 
     @Override
@@ -113,11 +110,7 @@ public interface PlottablePeakTrace {
     @Override
     public String getMZLabel() {
       Trace trace = population.getEvents().getTrace();
-      if (trace.getMzValue().hasIsotope()) {
-        return trace.getMzValue().getIsotope().getName();
-      } else {
-        return trace.getMzValue().getElementTransition();
-      }
+      return trace.getChannel().getShortUIString();
     }
 
     @Override
@@ -144,14 +137,8 @@ public interface PlottablePeakTrace {
 
     @Override
     public Colors getColor() {
-      Colors color;
       Trace trace = population.getEvents().getTrace();
-      if (trace.getMzValue().hasIsotope()) {
-        Isotope isotope = trace.getMzValue().getIsotope();
-        color = SpTool3Main.getRunTime().getConfParams().getColor(isotope);
-      } else {
-        color = new SpColor(trace.getSample().getColor());
-      }
+      Colors color = SpTool3Main.getRunTime().getConfParams().getColor(trace.getSample(), trace.getChannel());
       return color;
     }
   }

@@ -1,5 +1,6 @@
 package analysis;
 
+import dataModelNew.mz.ChannelCategory;
 import dataModelNew.mz.Element;
 import sandbox.montecarlo.Isotope;
 import util.ArrUtils;
@@ -8,26 +9,25 @@ import java.util.*;
 
 public class SpectralRegionElement {
 
-  private final List<Element> elements;
+  private final List<ChannelCategory> categories;
   private final List<String> names;
   private final List<double[]> intensities; // layout: [element][particle]
 
   public SpectralRegionElement(List<SpectralArray> spectralArrays) {
 
     // Group SpectralArrays by their parent Element (multiple isotopes per element are summed later)
-    HashMap<Element, List<SpectralArray>> map = new LinkedHashMap<>();
+    HashMap<ChannelCategory, List<SpectralArray>> map = new LinkedHashMap<>();
     for (SpectralArray spectralArray : spectralArrays) {
-      Isotope isotope = spectralArray.getIsotope();
-      if (isotope != null) {
-        Element element = isotope.getElement();
-        map.computeIfAbsent(element, k -> new ArrayList<>()).add(spectralArray);
+      ChannelCategory category = spectralArray.getChannel().getCategory();
+      if (category != null) {
+        map.computeIfAbsent(category, k -> new ArrayList<>()).add(spectralArray);
       }
     }
 
     // Preserve insertion order of elements
-    elements = new ArrayList<>(map.keySet());
+    categories = new ArrayList<>(map.keySet());
 
-    int elementCount = elements.size();
+    int elementCount = categories.size();
     // Each SpectralArray holds one intensity value per region (particle)
     int regionsCount = 0;
     if (!spectralArrays.isEmpty() && elementCount > 0){
@@ -39,9 +39,9 @@ public class SpectralRegionElement {
 
     for (int i = 0; i < elementCount; i++) {
 
-      Element element = elements.get(i);
-      List<SpectralArray> spectralArraysOfElement = map.get(element);
-      names.add(element.getSymbol());
+      ChannelCategory category = categories.get(i);
+      List<SpectralArray> spectralArraysOfElement = map.get(category);
+      names.add(category.getUIString());
 
       // Sum intensities across all isotopes belonging to this element
       double[] data = new double[regionsCount];
@@ -60,8 +60,8 @@ public class SpectralRegionElement {
     return names;
   }
 
-  public List<Element> getElements() {
-    return elements;
+  public List<ChannelCategory> getCategories() {
+    return categories;
   }
 
   public List<double[]> getIntensities() {

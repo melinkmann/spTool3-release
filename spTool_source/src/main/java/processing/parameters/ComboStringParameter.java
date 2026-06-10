@@ -45,6 +45,8 @@ public class ComboStringParameter extends AbstractParameter<String> implements
     String match(String inputString, String[] options);
 
 
+    // TODO: make this a channel matcher
+    // If direct lookup (e.g., for Isotope) fails, strip letters and make numeric comparison
     public static Matcher getIsotopeMatcher() {
       Matcher isotopeMatcher = new Matcher() {
         @Override

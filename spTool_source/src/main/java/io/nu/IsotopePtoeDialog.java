@@ -42,7 +42,7 @@
 package io.nu;
 
 import core.SpTool3Main;
-import dataModelNew.mz.Element;
+import dataModelNew.mz.*;
 
 import gui.util.UiUtil;
 import javafx.animation.PauseTransition;
@@ -64,8 +64,6 @@ import javafx.scene.text.FontWeight;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.stage.Window;
-import dataModelNew.mz.MZValue;
-import dataModelNew.mz.SQmz;
 import javafx.util.Duration;
 import sandbox.montecarlo.Isotope;
 import util.NF;
@@ -170,7 +168,7 @@ public final class IsotopePtoeDialog {
   // -------------------------------------------------------------------------
 
   private final Stage stage;
-  private List<MZValue> dialogResult = null;   // null = cancelled
+  private List<Channel> dialogResult = null;   // null = cancelled
 
   // =========================================================================
   // Constructor
@@ -188,7 +186,7 @@ public final class IsotopePtoeDialog {
    */
   /**
    * Case B constructor: available channels come from recorded m/z values in a
-   * Nu Instruments data file (i.e. from {@link NuReader_v1#readAvailableMZ}).
+   * Nu Instruments data file (i.e. from Nu Data import}).
    *
    * @param owner                    parent window
    * @param availableMz              sorted list of recorded m/z values
@@ -267,12 +265,12 @@ public final class IsotopePtoeDialog {
   /**
    * Shows the dialog and blocks until it is closed.
    *
-   * @return list of {@link MZValue} (each wrapping an exact m/z and its assigned
+   * @return list of {@link Channel} (each wrapping an exact m/z and its assigned
    * {@link Isotope}), or {@code null} if the user cancelled.
    * Isobaric pairs (e.g. 48Ti and 48Ca) each produce a separate entry pointing
    * to the same recorded m/z value.
    */
-  public List<MZValue> showAndWait() {
+  public List<Channel> showAndWait() {
     stage.showAndWait();
     return dialogResult;
   }
@@ -374,7 +372,7 @@ public final class IsotopePtoeDialog {
 
   private Stage buildStage(@Nullable Window owner) {
     Stage s = new Stage();
-    if (owner!=null){
+    if (owner != null) {
       s.initOwner(owner);
     }
     s.initModality(Modality.WINDOW_MODAL);
@@ -418,7 +416,7 @@ public final class IsotopePtoeDialog {
     okBtn.setOnAction(e -> {
       dialogResult = new ArrayList<>();
       for (Map.Entry<Isotope, Double> entry : selectedItems.entrySet()) {
-        dialogResult.add(new SQmz(entry.getValue(), entry.getKey()));
+        dialogResult.add(new MZChannel(new MSIDImpl(new MZImpl(entry.getValue())), entry.getKey()));
       }
       s.close();
     });
@@ -472,8 +470,13 @@ public final class IsotopePtoeDialog {
     });
 
     loadTableBtn.setOnAction(e -> {
-      List<Isotope> selIsotopes = SpTool3Main.getRunTime().getMainWindowCtl().getSelIsotopes();
-      if (selIsotopes == null || selIsotopes.isEmpty()) {
+      List<Channel> selChannels = SpTool3Main.getRunTime().getMainWindowCtl().getSelChannels();
+      List<Isotope> selIsotopes = selChannels.stream()
+          .map(Channel::getIsotope)
+          .filter(Objects::nonNull)
+          .toList();
+
+      if (selIsotopes.isEmpty()) {
         return;
       }
 
@@ -496,7 +499,7 @@ public final class IsotopePtoeDialog {
       }
     });
 
-    HBox buttonBar = new HBox(8, hint, selectAllBtn, selectAllMZBtn,loadTableBtn, deselectAllBtn,
+    HBox buttonBar = new HBox(8, hint, selectAllBtn, selectAllMZBtn, loadTableBtn, deselectAllBtn,
         new Separator(Orientation.VERTICAL),
         okBtn, cancelBtn);
     buttonBar.setAlignment(Pos.CENTER_RIGHT);

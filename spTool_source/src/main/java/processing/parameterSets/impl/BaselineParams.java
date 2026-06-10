@@ -98,8 +98,8 @@ public class BaselineParams extends AbstractParamSet implements ParamSet {
     );
 
     this.baselineWidthPerSegment = new DoubleParameter(
-        "Segment width [ms]",
-        "Width defines data points per segment of the dynamic baseline [ms]",
+        "Segment width [msId]",
+        "Width defines data points per segment of the dynamic baseline [msId]",
         100d,
         NF.D1C2,
         TextFormatterOption.ASSURE_NONZERO_POSITIVE_INTEGER,

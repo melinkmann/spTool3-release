@@ -142,6 +142,31 @@ public enum MeasureOfLocation implements MeasureOfStat {
     }
   },
 
+  TRUNCATED_POISSON_MEAN {
+    @Override
+    public double calc(List<Double> data) {
+      if (!data.isEmpty()) {
+        return TruncatedPoissonEstimator.estimateMean(ArrUtils.doubleListToArr(data));
+      } else {
+        return 0;
+      }
+    }
+
+    @Override
+    public double calc(double[] data) {
+      if (data.length > 0) {
+        return TruncatedPoissonEstimator.estimateMean(data);
+      } else {
+        return 0;
+      }
+    }
+
+    @Override
+    public String toString() {
+      return "Truncated Poisson mean";
+    }
+  },
+
 
   CUSTOM {
     @Override
@@ -161,7 +186,7 @@ public enum MeasureOfLocation implements MeasureOfStat {
   };
 
   public static MeasureOfLocation[] baseline() {
-    return new MeasureOfLocation[]{MEAN, MEDIAN, MEDIAN_NONZERO, MEDIAN_AVOID_ZERO};
+    return new MeasureOfLocation[]{MEAN, MEDIAN, MEDIAN_NONZERO, MEDIAN_AVOID_ZERO, TRUNCATED_POISSON_MEAN};
   }
 
   public static MeasureOfLocation[] window() {

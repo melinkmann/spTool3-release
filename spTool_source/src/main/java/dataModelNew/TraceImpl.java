@@ -23,8 +23,8 @@ import analysis.Population;
 import analysis.PopulationID;
 import analysis.RawProcessingUtils;
 import com.google.common.math.DoubleMath;
-import dataModelNew.mz.MZValue;
-import dataModelNew.mz.SQmz;
+import dataModelNew.mz.Channel;
+import dataModelNew.mz.MZChannel;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
@@ -53,7 +53,7 @@ public class TraceImpl implements Trace, Serializable {
   private static final Logger LOGGER = LogManager.getLogger(TraceImpl.class.getName());
 
   private final Sample parentSample;
-  protected final MZValue mzValue;
+  protected final Channel channel;
   protected TISeries tiSeries;
   protected TISeries tiSeriesCopy;
   protected final double siaShape;
@@ -68,7 +68,7 @@ public class TraceImpl implements Trace, Serializable {
   // Dummy
   public TraceImpl() {
     this.parentSample = new SampleImpl();
-    this.mzValue = new SQmz();
+    this.channel = new MZChannel();
     this.tiSeries = new TISeriesRAM();
     this.tiSeriesCopy = tiSeries;
     this.siaShape = 0;
@@ -78,9 +78,9 @@ public class TraceImpl implements Trace, Serializable {
     this.xySeriesPlotCache = new SoftReference<>(null);
   }
 
-  public TraceImpl(Sample sample, MZValue mzValue, TISeries tiSeries) {
+  public TraceImpl(Sample sample, Channel channel, TISeries tiSeries) {
     this.parentSample = sample;
-    this.mzValue = mzValue;
+    this.channel = channel;
     this.tiSeries = tiSeries;
     this.tiSeriesCopy = tiSeries;
     this.siaShape = 0;
@@ -91,9 +91,9 @@ public class TraceImpl implements Trace, Serializable {
   }
 
   // For TOF data including SIA
-  public TraceImpl(Sample sample, MZValue mzValue, TISeries tiSeries, double siaShape) {
+  public TraceImpl(Sample sample, Channel channel, TISeries tiSeries, double siaShape) {
     this.parentSample = sample;
-    this.mzValue = mzValue;
+    this.channel = channel;
     this.tiSeries = tiSeries;
     this.tiSeriesCopy = tiSeries;
     this.siaShape = siaShape;
@@ -104,13 +104,13 @@ public class TraceImpl implements Trace, Serializable {
   }
 
   // Copy
-  public TraceImpl(Sample parentSample, MZValue mzValue, TISeries tiSeries,
+  public TraceImpl(Sample parentSample, Channel channel, TISeries tiSeries,
                    TISeries tiSeriesCopy, double siaShape,
                    HashMap<DataFlag, List<Integer>> rawDataFlags,
                    Baseline baseline,
                    HashMap<PopulationID, Population> populations) {
     this.parentSample = parentSample;
-    this.mzValue = mzValue.copy();
+    this.channel = channel.copy();
     this.tiSeries = tiSeries.copy();
     this.tiSeriesCopy = tiSeriesCopy.copy();
     this.siaShape = siaShape;
@@ -132,7 +132,7 @@ public class TraceImpl implements Trace, Serializable {
   @Override
   public Trace copy(Sample newSample) {
     Trace newTrace = new TraceImpl(newSample,
-        mzValue, tiSeries, tiSeriesCopy, siaShape, rawDataFlags, baseline, populations);
+        channel, tiSeries, tiSeriesCopy, siaShape, rawDataFlags, baseline, populations);
     return newTrace;
   }
 
@@ -254,8 +254,8 @@ public class TraceImpl implements Trace, Serializable {
   }
 
   @Override
-  public MZValue getMzValue() {
-    return mzValue;
+  public Channel getChannel() {
+    return channel;
   }
 
   @Override
@@ -395,7 +395,7 @@ public class TraceImpl implements Trace, Serializable {
       series = xySeriesPlotCache.get();
       //LOGGER.trace("Received plot from cache");
     } else {
-      String seriesName = AnalysisUtils.getLabelForPlots(parentSample, this.mzValue, null, null);
+      String seriesName = AnalysisUtils.getLabelForPlots(parentSample, this.channel, null, null);
       double[] xData = tiSeries.getTime();
       double[] yData = tiSeries.getIntensity();
 

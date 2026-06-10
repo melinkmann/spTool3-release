@@ -21,9 +21,10 @@ import analysis.*;
 import core.SpTool3Main;
 import dataModelNew.Sample;
 import dataModelNew.Trace;
+import dataModelNew.fxImpl.FxChannel;
 import dataModelNew.fxImpl.FxSample;
+import dataModelNew.mz.Channel;
 import dataModelNew.mz.Element;
-import dataModelNew.mz.MZValue;
 import gui.dialog.FxEntry;
 import gui.dialog.FxEntryFactory;
 import gui.dialog.FxEntryFactory.SampleSetEntryFactory;
@@ -60,9 +61,12 @@ import javafx.scene.text.Text;
 import javafx.stage.Stage;
 import javafx.stage.Window;
 import javafx.util.Duration;
+import math.stat.MeasureOfLocation;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import processing.options.EventParameter;
+import processing.options.EventType;
 import sandbox.montecarlo.Isotope;
 import util.ArrUtils;
 import util.ClipboardUtils;
@@ -97,9 +101,9 @@ public class SampleListAndTable {
   private final TextField sampleSearchField = new TextField();
 
   // Not editable!
-  private final TableView<Isotope> isotopeTableView;
-  private final TextField isotopeSearchField = new TextField();
-  private final List<Isotope> prevSelIsotopes = new ArrayList<>();
+  private final TableView<FxChannel> channelTableView;
+  private final TextField channelSearchField = new TextField();
+  private final List<FxChannel> prevSelFxChannels = new ArrayList<>();
 
   private final Text sampleSizeTxt = new Text("0 / 0");
   private final StackPane sampleViewStackPane = new StackPane();
@@ -121,7 +125,7 @@ public class SampleListAndTable {
   public SampleListAndTable(
       ListView<FxEntry<SampleSet>> view,
       TableView<FxSample> sampleTableView,
-      TableView<Isotope> isotopeTableView,
+      TableView<FxChannel> channelTableView,
       ListView<PopulationID> populationListView,
       SelectionMode sampleSetSelectionMode,
       boolean isEditable) {
@@ -130,7 +134,7 @@ public class SampleListAndTable {
 
     this.sampleTableView = sampleTableView;
 
-    this.isotopeTableView = isotopeTableView;
+    this.channelTableView = channelTableView;
 
     this.populationListView = populationListView;
 
@@ -224,6 +228,8 @@ public class SampleListAndTable {
       SpTool3Main.getRunTime().getGuiParameterManager()
           .notifySampleOrPopulationSelectionChange();
       updateSampleTableValues();
+      // updates NMP, muBG, netArea
+      updateChannelTableValues();
     });
 
     populationListView.getSelectionModel().getSelectedIndices().addListener(
@@ -263,7 +269,7 @@ public class SampleListAndTable {
           // check if no sample contains
           boolean anySampleContains;
           List<Sample> selSamples = getSelSamples();
-          List<Isotope> selIsotopes = getSelIsotopes();
+          List<Channel> selIsotopes = getSelChannels();
           List<PopulationID> availableIDs = AnalysisUtils.listPopulations(selSamples,
               selIsotopes);
           anySampleContains = availableIDs.contains(item);
@@ -291,23 +297,22 @@ public class SampleListAndTable {
       fillAndReselectPopulations();
 
       // update current selection
-      if (!isotopeTableView.getSelectionModel().getSelectedIndices().isEmpty()) {
-        prevSelIsotopes.clear();
-        prevSelIsotopes.addAll(isotopeTableView.getSelectionModel().getSelectedItems());
+      if (!channelTableView.getSelectionModel().getSelectedIndices().isEmpty()) {
+        prevSelFxChannels.clear();
+        prevSelFxChannels.addAll(channelTableView.getSelectionModel().getSelectedItems());
       }
 
       // These are obsolete if population reselect triggers,
       // but make sure that sth was reselected at all. If not, likely no Pop found yet.
       // In that case refresh the UI -> tell the manager that change occurred
       if (populationListView.getItems().isEmpty()) {
-        SpTool3Main.getRunTime().getGuiParameterManager()
-            .notifySampleOrPopulationSelectionChange();
+        SpTool3Main.getRunTime().getGuiParameterManager().notifySampleOrPopulationSelectionChange();
         updateSampleTableValues();
       }
     });
 
     // change triggers pause
-    isotopeTableView.getSelectionModel().getSelectedCells().addListener(
+    channelTableView.getSelectionModel().getSelectedCells().addListener(
         new ListChangeListener<TablePosition>() {
           @Override
           public void onChanged(Change<? extends TablePosition> c) {
@@ -322,17 +327,19 @@ public class SampleListAndTable {
     TableFactory.setupSampleTable(sampleTableView,
         this, sampleSearchField);
 
-    TableFactory.setupIsotopeTable(isotopeTableView);
+    TableFactory.setupIsotopeTable(channelTableView);
     // this is the cleaner version of double click select:
-    isotopeTableView.setOnMouseClicked(new EventHandler<MouseEvent>() {
+    channelTableView.setOnMouseClicked(new EventHandler<MouseEvent>() {
       @Override
       public void handle(MouseEvent click) {
         // @ double click
         if (click.getClickCount() == 2) {
           if (click.isControlDown()) {
-            isotopeTableView.getSelectionModel().clearSelection();
-            getSampleDefaultIsotopes().forEach(iso -> {
-              isotopeTableView.getSelectionModel().select(iso);
+            channelTableView.getSelectionModel().clearSelection();
+            List<FxChannel> defaultChannels = new ArrayList<>();
+            getSampleDefaultChannels().forEach(c -> defaultChannels.add(new FxChannel(c)));
+            defaultChannels.forEach(channel -> {
+              channelTableView.getSelectionModel().select(channel);
             });
           } else {
             selectDefaultIsotopes();
@@ -341,7 +348,7 @@ public class SampleListAndTable {
       }
     });
 
-    provideContextMenu(isotopeTableView);
+    provideContextMenu(channelTableView);
     addSelectMostAbundantMenu();
     addSelectAllMenu();
     addDefaultList();
@@ -352,10 +359,10 @@ public class SampleListAndTable {
   // Methods
   // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // //
 
-  private List<Isotope> getSampleDefaultIsotopes() {
-    Set<Isotope> isotopes = new HashSet<>();
+  private List<Channel> getSampleDefaultChannels() {
+    Set<Channel> isotopes = new HashSet<>();
     for (Sample selSample : getSelSamples()) {
-      isotopes.addAll(selSample.getSampleDefaultIsotopes());
+      isotopes.addAll(selSample.getSampleDefaultChannels());
     }
     return new ArrayList<>(isotopes);
   }
@@ -424,10 +431,10 @@ public class SampleListAndTable {
 
         List<PopulationID> selIDs = getSelPopulations();
         List<Sample> selSamples = getSelSamples();
-        List<Isotope> selIsotopes = getSelIsotopes();
+        List<Channel> selChannels = getSelChannels();
         for (Sample selSample : selSamples) {
           for (PopulationID selID : selIDs) {
-            selSample.removePopulations(selIsotopes, selID);
+            selSample.removePopulations(selChannels, selID);
           }
         }
         fillAndReselectPopulations(); // when previously locked was removed and has to go
@@ -457,29 +464,29 @@ public class SampleListAndTable {
         for (Sample s : selSample.getAllSamples()) {
           List<Trace> tracesInSample = s.getTraces();
           for (PopulationID id : selIDs) {
-            List<MZValue> excludedMZ = tracesInSample.stream()
-                .map(Trace::getMzValue)
+            List<Channel> excludedChannels = tracesInSample.stream()
+                .map(Trace::getChannel)
                 .collect(Collectors.toList());
             for (Trace trace : tracesInSample) {
               Population pop = trace.getPopulation(id);
-              if (pop != null && !pop.getContributingMZs().isEmpty()) {
+              if (pop != null && !pop.getContributingChannels().isEmpty()) {
                 StringBuilder str = new StringBuilder();
                 str.append("Nick name: ").append(s.getNickName())
                     .append("\n\t\tPopulation: ").append(pop.getId().toString())
                     .append("\n\t\tContributing MZ:");
-                for (MZValue contributingMZ : pop.getContributingMZs()) {
-                  str.append("\n\t\t").append(contributingMZ.getName());
+                for (Channel contributingChannel : pop.getContributingChannels()) {
+                  str.append("\n\t\t").append(contributingChannel.getShortUIString());
                 }
-                if (pop.getContributingMZs().isEmpty()) {
+                if (pop.getContributingChannels().isEmpty()) {
                   str.append("\n\t\tNone contribute.");
                 }
 
-                excludedMZ.removeAll(pop.getContributingMZs());
+                excludedChannels.removeAll(pop.getContributingChannels());
                 str.append("\n\t\tExcluded MZ:");
-                for (MZValue excluded : excludedMZ) {
-                  str.append("\n\t\t").append(excluded.getName());
+                for (Channel excluded : excludedChannels) {
+                  str.append("\n\t\t").append(excluded.getUIString());
                 }
-                if (excludedMZ.isEmpty()) {
+                if (excludedChannels.isEmpty()) {
                   str.append("\n\t\tNone excluded.");
                 }
 
@@ -629,6 +636,8 @@ public class SampleListAndTable {
     sampleTableView.getSelectionModel()
         .selectIndices(-1, ArrUtils.integerListToArr(prevSelIndices));
 
+    // updates NMP, muBG, NetArea
+    updateChannelTableValues();
     updateSampleTableValues();
   }
 
@@ -644,20 +653,20 @@ public class SampleListAndTable {
     // keep previous selection: via global list ---// List<Isotope> prevSelIsotopes = getSelIsotopes();
 
     // clear
-    isotopeTableView.getItems().clear();
+    channelTableView.getItems().clear();
 
     List<Sample> selSamples = getSelSamples();
 
-    List<Isotope> isotopes = AnalysisUtils.listIsotopes(selSamples);
+    List<Channel> isotopes = AnalysisUtils.listIsotopes(selSamples);
 
     // TODO: Filter these according to the "fill()" method using a Selectable FxEntry
     //  and also the textfield.
-    isotopeTableView.getItems().addAll(isotopes);
+    channelTableView.getItems().addAll(isotopes.stream().map(FxChannel::new).toList());
 
     // sort according to isotope
-    TableColumn<Isotope, ?> retrievedColumn = null;
-    for (TableColumn<Isotope, ?> column : isotopeTableView.getColumns()) {
-      if ("Isotope".equals(column.getText())) {
+    TableColumn<FxChannel, ?> retrievedColumn = null;
+    for (TableColumn<FxChannel, ?> column : channelTableView.getColumns()) {
+      if ("MZ".equals(column.getText())) {
         retrievedColumn = column;
       }
     }
@@ -665,18 +674,18 @@ public class SampleListAndTable {
     if (retrievedColumn != null) {
       retrievedColumn.setSortType(TableColumn.SortType.ASCENDING);
       // Add the column to the sort order
-      isotopeTableView.getSortOrder().add(retrievedColumn);
+      channelTableView.getSortOrder().add(retrievedColumn);
       // Apply the sort
-      isotopeTableView.sort();
+      channelTableView.sort();
     }
 
     // reselect
     List<Integer> prevSelIndices = new ArrayList<>();
-    List<Isotope> availableIsotopes = new ArrayList<>(isotopeTableView.getItems());
-    if (!prevSelIsotopes.isEmpty()) {
-      for (int i = 0; i < availableIsotopes.size(); i++) {
-        Isotope isotope = availableIsotopes.get(i);
-        if (prevSelIsotopes.contains(isotope)) {
+    List<FxChannel> availableChannels = new ArrayList<>(channelTableView.getItems());
+    if (!prevSelFxChannels.isEmpty()) {
+      for (int i = 0; i < availableChannels.size(); i++) {
+        FxChannel fxChannel = availableChannels.get(i);
+        if (prevSelFxChannels.contains(fxChannel)) {
           prevSelIndices.add(i);
         }
       }
@@ -685,8 +694,8 @@ public class SampleListAndTable {
     // select "always selected": This must be added here since below selectDefaultIsotopes();
     // only fires if there is no prevSel --> MOVED THIS TO CTL DOUBLE CLICK
     // if (!pseSelIsotopes.isEmpty()) {
-    //   for (int i = 0; i < availableIsotopes.size(); i++) {
-    //     Isotope isotope = availableIsotopes.get(i);
+    //   for (int i = 0; i < availableChannels.size(); i++) {
+    //     Isotope isotope = availableChannels.get(i);
     //     if (pseSelIsotopes.contains(isotope) && !prevSelIndices.contains(i)) {
     //       prevSelIndices.add(i);
     //     }
@@ -697,14 +706,14 @@ public class SampleListAndTable {
 //        .selectIndices(-1, ArrUtils.integerListToArr(prevSelIndices));
 
     // Clear previous selection
-    isotopeTableView.getSelectionModel().clearSelection();
+    channelTableView.getSelectionModel().clearSelection();
 
     // Select previously selected indices
     if (!prevSelIndices.isEmpty()) {
       // Select previously selected indices using a normal for loop
       for (int index : prevSelIndices) {
-        if (isotopeTableView.getItems().size() > index) {
-          isotopeTableView.getSelectionModel().select(index);
+        if (channelTableView.getItems().size() > index) {
+          channelTableView.getSelectionModel().select(index);
         }
       }
     } else {
@@ -716,6 +725,8 @@ public class SampleListAndTable {
     // then based on selection, fill the population
     fillAndReselectPopulations();
 
+    // updates NMP, muBG, NetArea
+    updateChannelTableValues();
     updateSampleTableValues();
 
     // refresh the UI -> tell the manager that change occurred
@@ -728,26 +739,87 @@ public class SampleListAndTable {
   }
 
   public void updateSampleTableValues() {
-    List<FxSample> samples = new ArrayList<>(sampleTableView.getItems());
+    List<FxSample> fxSamples = new ArrayList<>(sampleTableView.getItems());
     List<PopulationID> allPops = new ArrayList<>(populationListView.getItems());
     List<PopulationID> selPops = new ArrayList<>(populationListView.getSelectionModel()
         .getSelectedItems());
-    List<Isotope> allIsotopes = new ArrayList<>(isotopeTableView.getItems());
-    List<Isotope> selIsotopes = new ArrayList<>(isotopeTableView.getSelectionModel()
-        .getSelectedItems());
+    List<Channel> allChannel = new ArrayList<>(channelTableView.getItems().stream()
+        .map(FxChannel::getChannel)
+        .toList());
+    List<Channel> selChannels = new ArrayList<>(channelTableView.getSelectionModel()
+        .getSelectedItems().stream()
+        .map(FxChannel::getChannel)
+        .toList());
 
     // Easy to compute
-    for (FxSample fxSample : samples) {
+    for (FxSample fxSample : fxSamples) {
       Sample sample = fxSample.getPlainSample();
-      double nEvt = sample.getAverageNoOfEvents(selIsotopes, selPops);
+      double nEvt = sample.getAverageNoOfEvents(selChannels, selPops);
       fxSample.setEventCount((int) nEvt);
     }
 
     // Time-consuming but we prepare the Drift factor at the multi-threaded processing
-    for (FxSample fxSample : samples) {
+    for (FxSample fxSample : fxSamples) {
       Sample sample = fxSample.getPlainSample();
-      double drift = sample.getAverageDrift(allIsotopes, allPops);
+      double drift = sample.getAverageDrift(selChannels, selPops);
       fxSample.setDriftFactor(drift);
+    }
+  }
+
+  public void updateChannelTableValues() {
+    List<Sample> selSamples = getSelSamples();
+    List<PopulationID> selPops = new ArrayList<>(populationListView.getSelectionModel()
+        .getSelectedItems());
+    List<FxChannel> allChannels = new ArrayList<>(channelTableView.getItems());
+//    List<Channel> selChannels = new ArrayList<>(channelTableView.getSelectionModel()
+//        .getSelectedItems().stream()
+//        .map(FxChannel::getChannel)
+//        .toList());
+
+    for (FxChannel fxChannel : allChannels) {
+      Channel channel = fxChannel.getChannel();
+
+      double meanNMP = 0;
+      double meanBG = 0;
+      double meanArea = 0;
+      double meanHeight = 0;
+      int counter = 0;
+      for (Sample sample : selSamples) {
+        Trace trace = sample.getTrace(channel);
+        if (trace != null) {
+
+          for (PopulationID selPop : selPops) {
+
+            Population pop = trace.getPopulation(selPop);
+            if (pop != null) {
+              meanNMP += pop.getEvents().size();
+              meanArea += MeasureOfLocation.MEAN.
+                  calc(pop.getEvents().get(EventType.NP, EventParameter.NET_AREA));
+              meanHeight += MeasureOfLocation.MEAN.
+                  calc(pop.getEvents().get(EventType.NP, EventParameter.NET_HEIGHT));
+              meanBG += MeasureOfLocation.MEAN.
+                  calc(pop.getEvents().get(EventType.BG, EventParameter.AREA));
+              counter++;
+            }
+          }
+        }
+      }
+
+      if (counter > 0) {
+        meanNMP = meanNMP / counter;
+        meanArea = meanArea / counter;
+        meanBG = meanBG / counter;
+        fxChannel.getNmpCountProperty().set(SnF.doubleToString(meanNMP, NF.D1C1));
+        fxChannel.getMuBGProperty().set(SnF.doubleToString(meanBG, NF.D1C2));
+        fxChannel.getNetAreaProperty().set(SnF.doubleToString(meanArea, NF.D1C1));
+        fxChannel.getSignalToNoiseProperty().set(SnF.doubleToString(meanHeight / Math.max(1, meanBG),
+            NF.D1C1));
+      } else {
+        fxChannel.getNmpCountProperty().set(" ");
+        fxChannel.getMuBGProperty().set(" ");
+        fxChannel.getNetAreaProperty().set(" ");
+        fxChannel.getSignalToNoiseProperty().set(" ");
+      }
     }
   }
 
@@ -756,7 +828,7 @@ public class SampleListAndTable {
     menu.setOnAction(e -> {
       selectDefaultIsotopes();
     });
-    isotopeTableView.getContextMenu().getItems().add(menu);
+    channelTableView.getContextMenu().getItems().add(menu);
   }
 
   private void addSelectAllMenu() {
@@ -764,7 +836,7 @@ public class SampleListAndTable {
     menu.setOnAction(e -> {
       selectAllIsotopes();
     });
-    isotopeTableView.getContextMenu().getItems().add(menu);
+    channelTableView.getContextMenu().getItems().add(menu);
   }
 
   private void addIsotopeRemover() {
@@ -774,25 +846,33 @@ public class SampleListAndTable {
           Delete isotope(s)?
           This is irreversible.""", () -> {
 
-        List<Isotope> selIsotopes = getSelIsotopes();
+        List<Channel> selChannels = getSelChannels();
         List<Sample> selSamples = getAllSamples();
         for (Sample selSample : selSamples) {
-          selSample.removeIsotopes(selIsotopes);
+          selSample.removeChannels(selChannels);
         }
-        prevSelIsotopes.clear(); // force reselect from default: else, index-based reselection fails
+        prevSelFxChannels.clear(); // force reselect from default: else, index-based reselection fails
         fireSampleChange(); // essentially, refresh all!
       });
 
     });
-    isotopeTableView.getContextMenu().getItems().add(new SeparatorMenuItem());
-    isotopeTableView.getContextMenu().getItems().add(menu);
+    channelTableView.getContextMenu().getItems().add(new SeparatorMenuItem());
+    channelTableView.getContextMenu().getItems().add(menu);
   }
 
   private void addDefaultList() {
     MenuItem menu = UiUtil.getImageMenuItem("Fix isotopes", "/img/tableTrace.png");
     menu.setOnAction(e -> {
 
-      List<Isotope> sampleDefaultIsotopes = getSampleDefaultIsotopes();
+      List<Channel> sampleDefaultChannels = getSampleDefaultChannels();
+      HashMap<Isotope, Channel> matchMap = new LinkedHashMap<>();
+      for (Channel ch : sampleDefaultChannels) {
+        Isotope isotope = ch.getIsotope();
+        if (isotope != null) {
+          matchMap.put(isotope, ch);
+        }
+      }
+      List<Isotope> sampleDefaultIsotopes = new ArrayList<>(matchMap.keySet());
 
       // needed for the PTOE popup
       Window owner = menu.getParentPopup().getOwnerWindow();
@@ -806,49 +886,56 @@ public class SampleListAndTable {
           dataModelNew.mz.Element.getAllIsotopes(),   // all isotopes available
           sampleDefaultIsotopes);                  // null or empty = open blank
 
-      List<MZValue> resultingMZ = dlg.showAndWait();
-      if (resultingMZ != null) {
-        List<Isotope> resultingIsotopes = new ArrayList<>();
-        for (MZValue mzValue : resultingMZ) {
-          resultingIsotopes.add(mzValue.getIsotope());
-        }
-        sampleDefaultIsotopes.clear();
-        sampleDefaultIsotopes.addAll(resultingIsotopes);
+      List<Channel> resultingChannels = dlg.showAndWait();
+      if (resultingChannels != null) {
+        sampleDefaultChannels.clear();
+        sampleDefaultChannels.addAll(resultingChannels);
       }
       // set to samples
       for (Sample selSample : getSelSamples()) {
-        selSample.setSampleDefaultIsotopes(sampleDefaultIsotopes);
+        selSample.setSampleDefaultChannels(sampleDefaultChannels);
       }
 
       fireSampleChange(); // refresh
     });
-    isotopeTableView.getContextMenu().getItems().add(new SeparatorMenuItem());
-    isotopeTableView.getContextMenu().getItems().add(menu);
+    channelTableView.getContextMenu().getItems().add(new SeparatorMenuItem());
+    channelTableView.getContextMenu().getItems().add(menu);
   }
 
   private void selectDefaultIsotopes() {
     // Deselect all, else the right-clicked isotope remains.
-    isotopeTableView.getSelectionModel().clearSelection();
-    List<Element> elements = isotopeTableView.getItems().stream()
+    channelTableView.getSelectionModel().clearSelection();
+    List<Element> elements = channelTableView.getItems().stream()
+        .map(FxChannel::getChannel)
+        .map(Channel::getIsotope)
+        .filter(Objects::nonNull)
         .map(Isotope::getElement)
         .distinct()
-        .collect(Collectors.toList());
+        .toList();
 
-    List<Isotope> defaultIsotopes = new ArrayList<>();
+    HashMap<Isotope, FxChannel> matchMap = new HashMap<>();
+    for (FxChannel fxCh : channelTableView.getItems()) {
+      Isotope isotope = fxCh.getChannel().getIsotope();
+      if (isotope != null) {
+        matchMap.put(isotope, fxCh);
+      }
+    }
+
+    List<FxChannel> defaultChannels = new ArrayList<>();
     for (Element element : elements) {
       Isotope defaultIsotope = SpTool3Main.getRunTime().getConfParams().getDefaultIsotope(element);
 
       // Check if isotope is present in table. If not, go through by abundance
-      if (isotopeTableView.getItems().contains(defaultIsotope)) {
-        defaultIsotopes.add(defaultIsotope);
+      if (matchMap.containsKey(defaultIsotope)) {
+        defaultChannels.add(matchMap.get(defaultIsotope));
       } else {
         // by abundance
         List<Isotope> allIsoOfEle = element.getIsotopes();
         allIsoOfEle.sort(Comparator.comparingDouble(Isotope::getAbundance));
         Collections.reverse(allIsoOfEle); // select MOST abundant not LEAST
         for (Isotope isotope : allIsoOfEle) {
-          if (isotopeTableView.getItems().contains(isotope)) {
-            defaultIsotopes.add(isotope);
+          if (matchMap.containsKey(isotope)) {
+            defaultChannels.add(matchMap.get(defaultIsotope));
             break;
           }
         }
@@ -862,34 +949,40 @@ public class SampleListAndTable {
     //   }
     // }
 
-    defaultIsotopes.forEach(iso -> {
-      isotopeTableView.getSelectionModel().select(iso);
+    defaultChannels.forEach(iso -> {
+      channelTableView.getSelectionModel().select(iso);
     });
   }
 
   private void selectAllIsotopes() {
     // Deselect all, else the right-clicked isotope remains.
-    isotopeTableView.getSelectionModel().selectAll();
+    channelTableView.getSelectionModel().selectAll();
   }
 
 
   public void addIsotopeColorPicker() {
     MenuItem view = UiUtil.getImageMenuItem("Color", "/img/pickColor.png");
-    isotopeTableView.getContextMenu().getItems().add(view);
+    channelTableView.getContextMenu().getItems().add(view);
 
     view.setOnAction(e -> {
-      if (!isotopeTableView.getSelectionModel().getSelectedItems().isEmpty()) {
-        Isotope isotope = isotopeTableView.getSelectionModel().getSelectedItems().get(0);
-        Colors currentColor = SpTool3Main.getRunTime().getConfParams().getColor(isotope);
+      if (!channelTableView.getSelectionModel().getSelectedItems().isEmpty()) {
+        Channel channel = channelTableView.getSelectionModel().getSelectedItems().get(0).getChannel();
+        Colors currentColor = SpTool3Main.getRunTime().getConfParams().getColor(channel);
+        Scene scene = channelTableView.getScene();
+        Stage parent = null;
+        if (scene != null) {
+          parent = (Stage) scene.getWindow();
+        }
         CustomColorPicker custom = new CustomColorPicker(
             currentColor.getFX(),
             Colors.getDefaultColors(),
             new Consumer<Color>() {
               @Override
               public void accept(Color color) {
-                SpTool3Main.getRunTime().getConfParams().setColor(isotope, new SpColor(color));
+                SpTool3Main.getRunTime().getConfParams().setColor(channel, new SpColor(color));
               }
-            });
+            },
+            parent);
         custom.show();
       }
     });
@@ -911,10 +1004,10 @@ public class SampleListAndTable {
     HashSet<PopulationID> allPopulationIDs = new LinkedHashSet<>(lockedPopulations);
 
     List<Sample> selSamples = getSelSamples();
-    List<Isotope> selIsotopes = getSelIsotopes();
+    List<Channel> selChannels = getSelChannels();
 
     // get all population IDs
-    allPopulationIDs.addAll(AnalysisUtils.listPopulations(selSamples, selIsotopes));
+    allPopulationIDs.addAll(AnalysisUtils.listPopulations(selSamples, selChannels));
 
     // Note: LinkedHashSet cannot sort, but insertion order is maintained!
     List<PopulationID> uniquePopulations = new ArrayList<>(allPopulationIDs);
@@ -997,9 +1090,10 @@ public class SampleListAndTable {
         .getSelectedItems());
   }
 
-  public List<Isotope> getSelIsotopes() {
-    return new ArrayList<>(isotopeTableView.getSelectionModel()
-        .getSelectedItems());
+  public List<Channel> getSelChannels() {
+    return new ArrayList<>(channelTableView.getSelectionModel()
+        .getSelectedItems().stream()
+        .map(FxChannel::getChannel).toList());
   }
 
   public List<Sample> getSelSamples() {
@@ -1012,8 +1106,9 @@ public class SampleListAndTable {
     return new ArrayList<>(populationListView.getItems());
   }
 
-  public List<Isotope> getAllIsotopes() {
-    return new ArrayList<>(isotopeTableView.getItems());
+  public List<Channel> getAllChannels() {
+    return new ArrayList<>(channelTableView.getItems().stream()
+        .map(FxChannel::getChannel).toList());
   }
 
   public List<Sample> getAllSamples() {

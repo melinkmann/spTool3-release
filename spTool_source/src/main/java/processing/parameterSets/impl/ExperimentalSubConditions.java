@@ -105,8 +105,7 @@ public class ExperimentalSubConditions extends AbstractParamSet implements Param
         "npQuantificationApproach"
     );
 
-    this.npDensity
-        = new QuantParameter<>("Density",
+    this.npDensity = new QuantParameter<>("Density",
         "NP density",
         0d,
         NF.D1C2,
@@ -483,10 +482,7 @@ public class ExperimentalSubConditions extends AbstractParamSet implements Param
 
       } else if (SampleType.PARTICLE.equals(sampleType)) {
 
-        setParentParameters(
-            npQuantificationApproach,
-            npConcentration
-        );
+        setParentParameters(npQuantificationApproach, npConcentration);
 
         if (npQuantificationApproach.getValue().equals(ParticleQuantApproach.ESD)) {
           if (npConcentration.getValue() > 0 && npSphericalDiameter.getValue() > 0 && npDensity.getValue() > 0) {
@@ -550,6 +546,9 @@ public class ExperimentalSubConditions extends AbstractParamSet implements Param
     if (element == null) {
       element = dataModelNew.mz.Element.UNKNOWN;
     }
+
+    // adds the decoration
+    organize();
 
   }
 

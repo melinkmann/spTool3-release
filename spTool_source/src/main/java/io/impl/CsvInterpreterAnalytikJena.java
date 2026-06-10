@@ -26,6 +26,7 @@ import dataModelNew.TISeries;
 import dataModelNew.TISeriesHDD;
 import dataModelNew.Trace;
 import dataModelNew.TraceImpl;
+import dataModelNew.mz.Channel;
 import dataModelNew.mz.MZValue;
 import io.FileInterpreterUtils;
 
@@ -161,17 +162,17 @@ public class CsvInterpreterAnalytikJena implements CsvInterpreter {
           .collect(Collectors.toList());
 
       // Make a list of all MZs across all samples
-      List<MZValue[]> allMZ = new ArrayList<>();
+      List<Channel[]> allMZ = new ArrayList<>();
       for (String[] mzRow : mzRowString) {
-        List<MZValue> mzInRow = new ArrayList<>();
+        List<Channel> mzInRow = new ArrayList<>();
         for (int i = MZ_COL; i < mzRow.length; i++) {
           String mzCandidate = mzRow[i];
-          MZValue mz = FileInterpreterUtils.parseAnalytikJenaSQmz(mzCandidate);
-          if (mz.getMZ() > 0) {
-            mzInRow.add(mz);
+          Channel ch = FileInterpreterUtils.parseAnalytikJenaSQmz(mzCandidate);
+          if (ch.getMZ() > 0) {
+            mzInRow.add(ch);
           }
         }
-        allMZ.add(mzInRow.toArray(new MZValue[0]));
+        allMZ.add(mzInRow.toArray(new Channel[0]));
       }
 
       // Create a sublist of the entire csv; one for each sample.
@@ -204,8 +205,8 @@ public class CsvInterpreterAnalytikJena implements CsvInterpreter {
           Sample sample = new SampleImpl(name, new SampleFile(file, name));
           subSamples.add(sample);
 
-          MZValue[] mzVals = allMZ.get(sampleIdx);
-          double nMZ = mzVals.length;
+          Channel[] channels = allMZ.get(sampleIdx);
+          double nMZ = channels.length;
           if (nMZ > 1) {
             LOGGER.trace("Time stamps will be divided by number of mz to account for QMS scan, n={}.", nMZ);
           }
@@ -226,7 +227,7 @@ public class CsvInterpreterAnalytikJena implements CsvInterpreter {
           for (int traceIdx = 0; traceIdx < allMZ.get(sampleIdx).length; traceIdx++) {
 
             // get mz
-            MZValue mzValue = allMZ.get(sampleIdx)[traceIdx];
+            Channel mzChannel = allMZ.get(sampleIdx)[traceIdx];
 
             // get y data
             List<Double> y = new ArrayList<>();
@@ -256,7 +257,7 @@ public class CsvInterpreterAnalytikJena implements CsvInterpreter {
             // Create traces.
             if (x.size() == y.size()) {
               TISeries tiSeries = new TISeriesHDD(x, y);
-              Trace trace = new TraceImpl(sample, mzValue, tiSeries);
+              Trace trace = new TraceImpl(sample, mzChannel, tiSeries);
               trace.setFlags(DataFlag.OVER_RANGE, orIndices);
               // Add trace
               sample.addTrace(trace);

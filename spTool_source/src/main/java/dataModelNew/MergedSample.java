@@ -21,6 +21,7 @@ import analysis.*;
 import analysis.quant.Calibration;
 import analysis.quant.Cal;
 import core.SpTool3Main;
+import dataModelNew.mz.Channel;
 import dataModelNew.mz.MZValue;
 import io.export.ExportSimulationEventContainer;
 
@@ -48,7 +49,6 @@ import processing.options.EventType;
 import processing.options.MathMod;
 import processing.parameterSets.ListMethod;
 import processing.parameterSets.Method;
-import sandbox.montecarlo.Isotope;
 import sandbox.montecarlo.ParticlePopulationMatrix;
 import util.ArrUtils;
 import util.NF;
@@ -70,8 +70,8 @@ public class MergedSample implements Sample, Serializable {
   private Sample principleSample;
   private Cal quant;
   private Color color;
-  private List<Isotope> sampleDefaultIsotopes;
-  private List<String> removedIsotopeInfo;
+  private List<Channel> sampleDefaultChannels;
+  private List<String> removedChannelInfo;
 
   public MergedSample() {
     this.samples = new ArrayList<>();
@@ -82,8 +82,8 @@ public class MergedSample implements Sample, Serializable {
     this.comment = "";
     this.quant = new Calibration();
     this.color = SpTool3Main.getRunTime().getNextSampleColor().get();
-    this.sampleDefaultIsotopes = new ArrayList<>();
-    this.removedIsotopeInfo = new ArrayList<>();
+    this.sampleDefaultChannels = new ArrayList<>();
+    this.removedChannelInfo = new ArrayList<>();
   }
 
   public MergedSample(String nickName, List<Sample> samples) {
@@ -102,23 +102,23 @@ public class MergedSample implements Sample, Serializable {
     this.comment = commentBuilder.toString();
     this.quant = new Calibration(nickName);
     this.color = SpTool3Main.getRunTime().getNextSampleColor().get();
-    this.sampleDefaultIsotopes = new ArrayList<>();
-    this.removedIsotopeInfo = new ArrayList<>();
+    this.sampleDefaultChannels = new ArrayList<>();
+    this.removedChannelInfo = new ArrayList<>();
     for (Sample sample : samples) {
-      for (Isotope isotope : sample.getSampleDefaultIsotopes()) {
-        if (!sampleDefaultIsotopes.contains(isotope)) {
-          sampleDefaultIsotopes.add(isotope);
+      for (Channel channel : sample.getSampleDefaultChannels()) {
+        if (!sampleDefaultChannels.contains(channel)) {
+          sampleDefaultChannels.add(channel);
         }
       }
-      removedIsotopeInfo.addAll(sample.getRemovedIsotopeInfo());
+      removedChannelInfo.addAll(sample.getRemovedChannelInfo());
     }
   }
 
   // Deep copy: note: this constructor does not copy. You have to pass copies as arguments.
   public MergedSample(String nickName, boolean highlighted, String comment, Color color,
                       List<Sample> samples, Sample principleSample, Cal quant,
-                      List<Isotope> sampleDefaultIsotopes,
-                      List<String> removedIsotopeInfo) {
+                      List<Channel> sampleDefaultChannels,
+                      List<String> removedChannelInfo) {
     this.nickName = nickName;
     this.samples = new ArrayList<>(samples);
     // no nesting
@@ -129,8 +129,8 @@ public class MergedSample implements Sample, Serializable {
     this.color = color;
     this.quant = quant;
     this.principleSample = principleSample;
-    this.sampleDefaultIsotopes = new ArrayList<>(sampleDefaultIsotopes);
-    this.removedIsotopeInfo = new ArrayList<>();
+    this.sampleDefaultChannels = new ArrayList<>(sampleDefaultChannels);
+    this.removedChannelInfo = new ArrayList<>();
   }
 
   public Sample copy() {
@@ -150,8 +150,8 @@ public class MergedSample implements Sample, Serializable {
         copySamples,
         principleSampleCopy,
         quant.copy(),
-        sampleDefaultIsotopes,
-        removedIsotopeInfo);
+        sampleDefaultChannels,
+        removedChannelInfo);
     return newSample;
   }
 
@@ -173,8 +173,8 @@ public class MergedSample implements Sample, Serializable {
         principleSampleCopy,
         // I assume, here we would have to requantify as after merging q is not defined clearly
         new Calibration(),
-        sampleDefaultIsotopes,
-        removedIsotopeInfo);
+        sampleDefaultChannels,
+        removedChannelInfo);
     return newSample;
   }
 
@@ -193,11 +193,11 @@ public class MergedSample implements Sample, Serializable {
     if (quant == null) {
       this.quant = new Calibration();
     }
-    if (sampleDefaultIsotopes == null) {
-      this.sampleDefaultIsotopes = new ArrayList<>();
+    if (sampleDefaultChannels == null) {
+      this.sampleDefaultChannels = new ArrayList<>();
     }
-    if (removedIsotopeInfo == null) {
-      this.removedIsotopeInfo = new ArrayList<>();
+    if (removedChannelInfo == null) {
+      this.removedChannelInfo = new ArrayList<>();
     }
     LOGGER.trace("Read from object: " + getNickName());
   }
@@ -241,8 +241,8 @@ public class MergedSample implements Sample, Serializable {
   }
 
   @Override
-  public List<String> getRemovedIsotopeInfo() {
-    return removedIsotopeInfo;
+  public List<String> getRemovedChannelInfo() {
+    return removedChannelInfo;
   }
 
   @Override
@@ -259,27 +259,26 @@ public class MergedSample implements Sample, Serializable {
   }
 
   /**
-   * Returns a list of isotopes that is unique, i.e., even if two traces contain the same isotopes,
-   * we get a unique list of isotopes where no duplicates exist.
+   * Returns a list of channels that is unique, i.e., even if two traces contain the same channels,
+   * we get a unique list of channels where no duplicates exist.
    * <p>
-   * We need this method to fill the UI (return isotopes here instead of using instance checks to
+   * We need this method to fill the UI (return channels here instead of using instance checks to
    * handle different sample implementations elsewhere).
    */
   @Override
-  public List<Isotope> listIsotopes() {
+  public List<Channel> listChannels() {
 
-    List<Isotope> isotopes = samples.stream()
+    List<Channel> channels = samples.stream()
         .flatMap(sample -> sample.getTraces().stream())
-        .map(Trace::getMzValue)
-        .filter(MZValue::hasIsotope)
-        .map(MZValue::getIsotope)
+        .map(Trace::getChannel)
+        .filter(c->c.getIsotope()!=null)
         .distinct() // ensures uniqueness
         .collect(Collectors.toList());
-    return isotopes;
+    return channels;
   }
 
   @Override
-  public List<Isotope> getRecordedTofRange() {
+  public List<Channel> getRecordedTofRange() {
     return samples.stream()
         .map(Sample::getRecordedTofRange)
         .flatMap(Collection::stream)
@@ -295,7 +294,7 @@ public class MergedSample implements Sample, Serializable {
   }
 
   @Override
-  public List<Trace> getTraces(List<Isotope> isotopes) {
+  public List<Trace> getTraces(List<Channel> channels) {
     LOGGER.warn("You should not call this method for merged samples! "
         + ExceptionUtils.getStackTrace(new Throwable()));
     return new ArrayList<>();
@@ -303,7 +302,7 @@ public class MergedSample implements Sample, Serializable {
 
   @Nullable
   @Override
-  public Trace getTrace(Isotope isotope) {
+  public Trace getTrace(Channel channel) {
     return null;
   }
 
@@ -312,7 +311,7 @@ public class MergedSample implements Sample, Serializable {
    * for each case.
    */
   @Override
-  public List<ParticlePopulationMatrix> getMatrices(Isotope isotope) {
+  public List<ParticlePopulationMatrix> getMatrices(Channel channel) {
     LOGGER.warn("You should not call this method for merged samples! "
         + ExceptionUtils.getStackTrace(new Throwable()));
     return new ArrayList<>();
@@ -340,12 +339,12 @@ public class MergedSample implements Sample, Serializable {
   public List<SpectralArray> getSpectralData(PopulationID popID) {
     List<SpectralArray> result = new ArrayList<>();
 
-    HashMap<Double, Isotope> allMZ = new HashMap<>();
+    HashMap<Double, Channel> allMZ = new HashMap<>();
     for (Sample sample : samples) {
       List<SpectralArray> specArrays = sample.getSpectralData(popID);
       if (specArrays != null) {
         for (SpectralArray spectralArr : specArrays) {
-          allMZ.put(spectralArr.getMz(), spectralArr.getIsotope());
+          allMZ.put(spectralArr.getMz(), spectralArr.getChannel());
         }
       }
     }
@@ -354,7 +353,7 @@ public class MergedSample implements Sample, Serializable {
     sortedMZ.sort(Double::compare);
 
     for (Double mz : sortedMZ) {
-      Isotope isotope = allMZ.get(mz);
+      Channel channel = allMZ.get(mz);
 
       // --- Pass 1: collect all feature keys and determine maxLen for this mz ---
       Set<String> allFeatureKeys = new LinkedHashSet<>();
@@ -405,7 +404,7 @@ public class MergedSample implements Sample, Serializable {
         mergedFeatures.put(key, ArrUtils.merge(additionalFeatures.get(key)));
       }
 
-      result.add(new SpectralArray(isotope, mz, ArrUtils.merge(data), mergedFeatures));
+      result.add(new SpectralArray(channel, ArrUtils.merge(data), mergedFeatures));
     }
     return result;
   }
@@ -438,10 +437,10 @@ public class MergedSample implements Sample, Serializable {
   }
 
   @Override
-  public List<PopulationID> listPopulations(List<Isotope> isotopes) {
+  public List<PopulationID> listPopulations(List<Channel> channels) {
     List<PopulationID> pops = new ArrayList<>();
     for (Sample sample : samples) {
-      List<PopulationID> subSamplePops = sample.listPopulations(isotopes);
+      List<PopulationID> subSamplePops = sample.listPopulations(channels);
       for (PopulationID pop : subSamplePops) {
         if (!pops.contains(pop)) {
           pops.add(pop);
@@ -453,16 +452,16 @@ public class MergedSample implements Sample, Serializable {
 
 
   @Override
-  public void removePopulations(List<Isotope> isotopes, PopulationID populationID) {
+  public void removePopulations(List<Channel> channels, PopulationID populationID) {
     for (Sample sample : samples) {
-      sample.removePopulations(isotopes, populationID);
+      sample.removePopulations(channels, populationID);
     }
   }
 
   @Override
-  public void removeIsotopes(List<Isotope> isotopes) {
+  public void removeChannels(List<Channel> channels) {
     for (Sample sample : samples) {
-      sample.removeIsotopes(isotopes);
+      sample.removeChannels(channels);
     }
   }
 
@@ -521,14 +520,14 @@ public class MergedSample implements Sample, Serializable {
   }
 
   @Override
-  public List<Isotope> getSampleDefaultIsotopes() {
-    return new ArrayList<>(sampleDefaultIsotopes);
+  public List<Channel> getSampleDefaultChannels() {
+    return new ArrayList<>(sampleDefaultChannels);
   }
 
   @Override
-  public void setSampleDefaultIsotopes(List<Isotope> sampleDefaultIsotopes) {
-    this.sampleDefaultIsotopes.clear();
-    this.sampleDefaultIsotopes.addAll(sampleDefaultIsotopes);
+  public void setSampleDefaultChannels(List<Channel> sampleDefaultChannels) {
+    this.sampleDefaultChannels.clear();
+    this.sampleDefaultChannels.addAll(sampleDefaultChannels);
   }
 
   /// /////////////////////////////////////////////////////////////////////////////////////////////
@@ -555,13 +554,13 @@ public class MergedSample implements Sample, Serializable {
   /// /////////////////////////// Calculations for UI //////////////////////////////////////
 
   @Override
-  public double[] getData(Isotope isotope, PopulationID populationID, EventType eventType,
+  public double[] getData(Channel channel, PopulationID populationID, EventType eventType,
                           EventParameter param, Unit unit) {
 
     List<double[]> dataList = new ArrayList<>();
 
     for (Sample sample : samples) {
-      dataList.add(sample.getData(isotope, populationID, eventType, param, unit));
+      dataList.add(sample.getData(channel, populationID, eventType, param, unit));
     }
 
     double[] data = ArrUtils.merge(dataList);
@@ -570,42 +569,42 @@ public class MergedSample implements Sample, Serializable {
   }
 
   @Override
-  public double getAerosolTEConvention(Isotope isotope) {
+  public double getAerosolTEConvention(Channel channel) {
     double te = 0;
     for (Sample sample : samples) {
-      te += sample.getAerosolTEConvention(isotope);
+      te += sample.getAerosolTEConvention(channel);
     }
     te /= samples.size();
     return te;
   }
 
   @Override
-  public double getPncTEConvention(Isotope isotope) {
+  public double getPncTEConvention(Channel channel) {
     double te = 0;
     for (Sample sample : samples) {
-      te += sample.getPncTEConvention(isotope);
+      te += sample.getPncTEConvention(channel);
     }
     te /= samples.size();
     return te;
   }
 
   @Override
-  public double getMaxThr(@Nullable Isotope isotope, PopulationID populationID, boolean netSignal) {
+  public double getMaxThr(@Nullable Channel channel, PopulationID populationID, boolean netSignal) {
     double maxThr = 0;
     for (Sample sample : samples) {
-      maxThr = Math.max(maxThr, sample.getMaxThr(isotope, populationID, netSignal));
+      maxThr = Math.max(maxThr, sample.getMaxThr(channel, populationID, netSignal));
     }
     return maxThr;
   }
 
   @Override
-  public double getMaxThr(@Nullable Isotope isotope, PopulationID populationID, boolean netSignal,
+  public double getMaxThr(@Nullable Channel channel, PopulationID populationID, boolean netSignal,
                           Unit unit) {
     double maxThrQ = 0;
     for (Sample sample : samples) {
       if (sample instanceof SampleImpl) {
-        double thr = sample.getMaxThr(isotope, populationID, netSignal);
-        double[] qThr = ((SampleImpl) sample).applyQuant(new double[]{thr}, isotope,
+        double thr = sample.getMaxThr(channel, populationID, netSignal);
+        double[] qThr = ((SampleImpl) sample).applyQuant(new double[]{thr}, channel,
             EventParameter.NET_AREA, unit);
         if (qThr.length > 0) {
           maxThrQ = Math.max(maxThrQ, qThr[0]);
@@ -616,19 +615,19 @@ public class MergedSample implements Sample, Serializable {
   }
 
   @Override
-  public List<Event> getNPEvents(Isotope isotope, PopulationID popID) {
+  public List<Event> getNPEvents(Channel channel, PopulationID popID) {
     List<Event> npEvents = new ArrayList<>();
     for (Sample sample : samples) {
-      npEvents.addAll(sample.getNPEvents(isotope, popID));
+      npEvents.addAll(sample.getNPEvents(channel, popID));
     }
     return npEvents;
   }
 
   @Override
-  public int getTotalDataPoints(Isotope isotope) {
+  public int getTotalDataPoints(Channel channel) {
     int dp = 0;
     for (Sample sample : samples) {
-      Trace trace = sample.getTrace(isotope);
+      Trace trace = sample.getTrace(channel);
       if (trace != null) {
         dp += trace.getTISeries().size();
       }
@@ -638,14 +637,14 @@ public class MergedSample implements Sample, Serializable {
   }
 
   @Override
-  public double getRawMeanCPS(Isotope isotope) {
+  public double getRawMeanCPS(Channel channel) {
     // I think, taking all samples, to merge all their data points is unnecessarily cumbersome.
     // For calibration, and if we assume merging is justified, mean of means should be "close enough"
     double val = 0;
     for (Sample sample : samples) {
       // only add if trace is there, else mean is diluted by the zeros that are returned
-      if (sample.getTrace(isotope) != null) {
-        val += sample.getRawMeanCPS(isotope);
+      if (sample.getTrace(channel) != null) {
+        val += sample.getRawMeanCPS(channel);
       }
     }
     val = val / samples.size();
@@ -654,14 +653,14 @@ public class MergedSample implements Sample, Serializable {
 
 
   @Override
-  public double getRawMedianCPS(Isotope isotope) {
+  public double getRawMedianCPS(Channel channel) {
     // I think, taking all samples, to merge all their data points is unnecessarily cumbersome.
     // For calibration, and if we assume merging is justified, mean of means should be "close enough"
     double val = 0;
     for (Sample sample : samples) {
       // only add if trace is there, else mean is diluted by the zeros that are returned
-      if (sample.getTrace(isotope) != null) {
-        val += sample.getRawMedianCPS(isotope);
+      if (sample.getTrace(channel) != null) {
+        val += sample.getRawMedianCPS(channel);
       }
     }
     val = val / samples.size();
@@ -669,13 +668,13 @@ public class MergedSample implements Sample, Serializable {
   }
 
   @Override
-  public double getEventRate(@Nullable Isotope isotope, PopulationID populationID) {
+  public double getEventRate(@Nullable Channel channel, PopulationID populationID) {
     double rate = 0;
     int nNP = 0;
     double durationSec = 0;
     for (Sample sample : samples) {
       // call getter (possibly null)
-      Trace trace = sample.getTrace(isotope);
+      Trace trace = sample.getTrace(channel);
       if (trace != null) {
         nNP += trace.getNoOfEvents(populationID);
         durationSec += trace.getTISeries().getDuration();
@@ -712,12 +711,12 @@ public class MergedSample implements Sample, Serializable {
   }
 
   @Override
-  public double getAverageDrift(List<Isotope> isotopes, List<PopulationID> populations) {
+  public double getAverageDrift(List<Channel> channels, List<PopulationID> populations) {
     double averageDrift = NpPopulation.DEFAULT_DRIFT;
     if (samples.size() > 0) {
       averageDrift = 0;
       for (Sample sample : samples) {
-        averageDrift += sample.getAverageDrift(isotopes, populations);
+        averageDrift += sample.getAverageDrift(channels, populations);
       }
       averageDrift = averageDrift / samples.size();
     }
@@ -725,11 +724,11 @@ public class MergedSample implements Sample, Serializable {
   }
 
   @Override
-  public double getAverageNoOfEvents(List<Isotope> isotopes, List<PopulationID> populations) {
+  public double getAverageNoOfEvents(List<Channel> channels, List<PopulationID> populations) {
     double averageNoOfEvents = 0;
     if (samples.size() > 0) {
       for (Sample sample : samples) {
-        averageNoOfEvents += sample.getAverageNoOfEvents(isotopes, populations);
+        averageNoOfEvents += sample.getAverageNoOfEvents(channels, populations);
       }
       // JUST RETURN THE SUM OF THE EVENTS :-)
     }
@@ -788,10 +787,10 @@ public class MergedSample implements Sample, Serializable {
   }
 
   @Override
-  public String tabDwellTime(Isotope isotope) {
+  public String tabDwellTime(Channel channel) {
     String val = EMPTY_CELL;
     double mean = getAllSamples().stream()
-        .map(s -> s.getTrace(isotope))
+        .map(s -> s.getTrace(channel))
         .filter(Objects::nonNull)
         .mapToDouble(t -> t.getTISeries().getDT() * 1E6)
         .average()
@@ -801,10 +800,10 @@ public class MergedSample implements Sample, Serializable {
   }
 
   @Override
-  public String tabDuration(Isotope isotope) {
+  public String tabDuration(Channel channel) {
     String val = EMPTY_CELL;
     double mean = getAllSamples().stream()
-        .map(s -> s.getTrace(isotope))
+        .map(s -> s.getTrace(channel))
         .filter(Objects::nonNull)
         .mapToDouble(t -> t.getTISeries().getDuration())
         .sum();
@@ -813,10 +812,10 @@ public class MergedSample implements Sample, Serializable {
   }
 
   @Override
-  public String tabPoints(Isotope isotope) {
+  public String tabPoints(Channel channel) {
     String val = EMPTY_CELL;
     double mean = getAllSamples().stream()
-        .map(s -> s.getTrace(isotope))
+        .map(s -> s.getTrace(channel))
         .filter(Objects::nonNull)
         .mapToDouble(t -> t.getTISeries().size())
         .sum();
@@ -826,17 +825,17 @@ public class MergedSample implements Sample, Serializable {
   }
 
   @Override
-  public String tabTISeriesLimits(Isotope isotope) {
+  public String tabTISeriesLimits(Channel channel) {
     return getAllSamples().stream()
-        .map(s -> s.tabTISeriesLimits(isotope))
+        .map(s -> s.tabTISeriesLimits(channel))
         .collect(Collectors.joining(" --- "));
   }
 
   @Override
-  public String tabRawMean(Isotope isotope) {
+  public String tabRawMean(Channel channel) {
     String val = EMPTY_CELL;
     double mean = getAllSamples().stream()
-        .map(s -> s.getTrace(isotope))
+        .map(s -> s.getTrace(channel))
         .filter(Objects::nonNull)
         .mapToDouble(t -> t.getTISeries().getMeanIntensity())
         .average()
@@ -846,12 +845,12 @@ public class MergedSample implements Sample, Serializable {
   }
 
   @Override
-  public String tabRawMeanCPS(Isotope isotope) {
+  public String tabRawMeanCPS(Channel channel) {
     String val = EMPTY_CELL;
-    Trace trace = getTrace(isotope);
+    Trace trace = getTrace(channel);
     if (trace != null) {
       double cps = getAllSamples().stream()
-          .map(s -> s.getTrace(isotope))
+          .map(s -> s.getTrace(channel))
           .filter(Objects::nonNull)
           .mapToDouble(t -> {
             double dtSec = t.getTISeries().getDT();
@@ -867,10 +866,10 @@ public class MergedSample implements Sample, Serializable {
   }
 
   @Override
-  public String tabRawMedian(Isotope isotope) {
+  public String tabRawMedian(Channel channel) {
     String val = EMPTY_CELL;
     double mean = getAllSamples().stream()
-        .map(s -> s.getTrace(isotope))
+        .map(s -> s.getTrace(channel))
         .filter(Objects::nonNull)
         .mapToDouble(t -> t.getTISeries().getMedianIntensity())
         .average()
@@ -880,12 +879,12 @@ public class MergedSample implements Sample, Serializable {
   }
 
   @Override
-  public String tabRawMedianCPS(Isotope isotope) {
+  public String tabRawMedianCPS(Channel channel) {
     String val = EMPTY_CELL;
-    Trace trace = getTrace(isotope);
+    Trace trace = getTrace(channel);
     if (trace != null) {
       double cps = getAllSamples().stream()
-          .map(s -> s.getTrace(isotope))
+          .map(s -> s.getTrace(channel))
           .filter(Objects::nonNull)
           .mapToDouble(t -> {
             double dtSec = t.getTISeries().getDT();
@@ -901,10 +900,10 @@ public class MergedSample implements Sample, Serializable {
   }
 
   @Override
-  public String tabRawSD(Isotope isotope) {
+  public String tabRawSD(Channel channel) {
     String val = EMPTY_CELL;
     double mean = getAllSamples().stream()
-        .map(s -> s.getTrace(isotope))
+        .map(s -> s.getTrace(channel))
         .filter(Objects::nonNull)
         .mapToDouble(t -> t.getTISeries().getSD())
         .average()
@@ -914,10 +913,10 @@ public class MergedSample implements Sample, Serializable {
   }
 
   @Override
-  public String tabRawMAD(Isotope isotope) {
+  public String tabRawMAD(Channel channel) {
     String val = EMPTY_CELL;
     double mean = getAllSamples().stream()
-        .map(s -> s.getTrace(isotope))
+        .map(s -> s.getTrace(channel))
         .filter(Objects::nonNull)
         .mapToDouble(t -> t.getTISeries().getMadSD())
         .average()
@@ -927,10 +926,10 @@ public class MergedSample implements Sample, Serializable {
   }
 
   @Override
-  public String tabSIAShape(Isotope isotope) {
+  public String tabSIAShape(Channel channel) {
     String val = EMPTY_CELL;
     double mean = getAllSamples().stream()
-        .map(s -> s.getTrace(isotope))
+        .map(s -> s.getTrace(channel))
         .filter(Objects::nonNull)
         .mapToDouble(Trace::getSiaShape)
         .filter(d -> d > 0)
@@ -941,32 +940,32 @@ public class MergedSample implements Sample, Serializable {
   }
 
   @Override
-  public String tabMeanSIAShape(Isotope isotope) {
+  public String tabMeanSIAShape(Channel channel) {
     return str(getMeanSiaShape(), NF.D1C4);
   }
 
   @Override
-  public String tabPopName(Isotope isotope, PopulationID populationID) {
+  public String tabPopName(Channel channel, PopulationID populationID) {
     return getAllSamples().stream()
-        .map(s -> s.tabPopName(isotope, populationID))
+        .map(s -> s.tabPopName(channel, populationID))
         .distinct()
         .collect(Collectors.joining(" --- "));
   }
 
   @Override
-  public String tabPopAdditional(Isotope isotope, PopulationID populationID) {
+  public String tabPopAdditional(Channel channel, PopulationID populationID) {
     return getAllSamples().stream()
-        .map(s -> s.tabPopAdditional(isotope, populationID))
+        .map(s -> s.tabPopAdditional(channel, populationID))
         // dont put distinct as there are input parameters in this string (else, you dont know which sample
         // is which set)
         .collect(Collectors.joining(" --- "));
   }
 
   @Override
-  public String tabPopNpCount(Isotope isotope, PopulationID populationID) {
+  public String tabPopNpCount(Channel channel, PopulationID populationID) {
     String val = EMPTY_CELL;
     double sum = getAllSamples().stream()
-        .map(s -> s.getTrace(isotope))
+        .map(s -> s.getTrace(channel))
         .filter(Objects::nonNull)
         .filter(t -> t.hasType(populationID))
         .filter(t -> t.getPopulation(populationID) != null)
@@ -977,11 +976,11 @@ public class MergedSample implements Sample, Serializable {
   }
 
   @Override
-  public String tabLodCts(Isotope isotope, PopulationID populationID) {
+  public String tabLodCts(Channel channel, PopulationID populationID) {
     String result = EMPTY_CELL;
     List<Double> lodList = new ArrayList<>();
     for (Sample sample : samples) {
-      lodList.add(sample.getMaxThr(isotope, populationID, true));
+      lodList.add(sample.getMaxThr(channel, populationID, true));
     }
     if (!lodList.isEmpty()) {
       double worstLD = Collections.max(lodList);
@@ -991,13 +990,13 @@ public class MergedSample implements Sample, Serializable {
   }
 
   @Override
-  public String tabLodAg(Isotope isotope, PopulationID populationID) {
+  public String tabLodAg(Channel channel, PopulationID populationID) {
     String result = EMPTY_CELL;
     List<Double> lodList = new ArrayList<>();
     for (Sample sample : samples) {
       if (sample instanceof SampleImpl) {
-        double[] cts = new double[]{getMaxThr(isotope, populationID, true)};
-        double[] quant = ((SampleImpl) sample).applyQuant(cts, isotope, MassUnit.ATTO_GRAM);
+        double[] cts = new double[]{getMaxThr(channel, populationID, true)};
+        double[] quant = ((SampleImpl) sample).applyQuant(cts, channel, MassUnit.ATTO_GRAM);
         if (quant.length > 0) {
           lodList.add(quant[0]);
         }
@@ -1011,13 +1010,13 @@ public class MergedSample implements Sample, Serializable {
   }
 
   @Override
-  public String tabLodNm(Isotope isotope, PopulationID populationID) {
+  public String tabLodNm(Channel channel, PopulationID populationID) {
     String result = EMPTY_CELL;
     List<Double> lodList = new ArrayList<>();
     for (Sample sample : samples) {
       if (sample instanceof SampleImpl) {
-        double[] cts = new double[]{getMaxThr(isotope, populationID, true)};
-        double[] quant = ((SampleImpl) sample).applyQuant(cts, isotope, SizeUnit.NANO_METER);
+        double[] cts = new double[]{getMaxThr(channel, populationID, true)};
+        double[] quant = ((SampleImpl) sample).applyQuant(cts, channel, SizeUnit.NANO_METER);
         if (quant.length > 0) {
           lodList.add(quant[0]);
         }
@@ -1031,13 +1030,13 @@ public class MergedSample implements Sample, Serializable {
   }
 
   @Override
-  public String tabLodAmol(Isotope isotope, PopulationID populationID) {
+  public String tabLodAmol(Channel channel, PopulationID populationID) {
     String result = EMPTY_CELL;
     List<Double> lodList = new ArrayList<>();
     for (Sample sample : samples) {
       if (sample instanceof SampleImpl) {
-        double[] cts = new double[]{getMaxThr(isotope, populationID, true)};
-        double[] quant = ((SampleImpl) sample).applyQuant(cts, isotope, MolarUnit.ATTO_MOL);
+        double[] cts = new double[]{getMaxThr(channel, populationID, true)};
+        double[] quant = ((SampleImpl) sample).applyQuant(cts, channel, MolarUnit.ATTO_MOL);
         if (quant.length > 0) {
           lodList.add(quant[0]);
         }
@@ -1051,11 +1050,11 @@ public class MergedSample implements Sample, Serializable {
   }
 
   @Override
-  public String tabPNC(Isotope isotope, PopulationID populationID) {
+  public String tabPNC(Channel channel, PopulationID populationID) {
     String val = EMPTY_CELL;
     List<Double> concs = new ArrayList<>();
     for (Sample sample : samples) {
-      Trace t = sample.getTrace(isotope);
+      Trace t = sample.getTrace(channel);
       if (t != null) {
         Population pop = t.getPopulation(populationID);
         if (pop != null) {
@@ -1064,7 +1063,7 @@ public class MergedSample implements Sample, Serializable {
           double duration = pop.getEvents().getCheckedTISeries().getDuration();
           int nNP = t.getPopulation(populationID).getEvents().size();
 
-          double te = sample.getPncTEConvention(isotope) / 100d;
+          double te = sample.getPncTEConvention(channel) / 100d;
           double npPerMin = 60 * nNP / duration;
           npPerMin = npPerMin / te; // we have more NP in reality
           double mLPerMin = sample.getQuant()
@@ -1083,17 +1082,17 @@ public class MergedSample implements Sample, Serializable {
   }
 
   @Override
-  public String tabPopNpRate(Isotope isotope, PopulationID popID) {
+  public String tabPopNpRate(Channel channel, PopulationID popID) {
     String val = EMPTY_CELL;
     double sumNP = getAllSamples().stream()
-        .map(s -> s.getTrace(isotope))
+        .map(s -> s.getTrace(channel))
         .filter(Objects::nonNull)
         .filter(t -> t.hasType(popID))
         .filter(t -> t.getPopulation(popID) != null)
         .mapToDouble(t -> t.getPopulation(popID).getEvents().size())
         .sum();
     double sumDur = getAllSamples().stream()
-        .map(s -> s.getTrace(isotope))
+        .map(s -> s.getTrace(channel))
         .filter(Objects::nonNull)
         .filter(t -> t.hasType(popID))
         .filter(t -> t.getPopulation(popID) != null)
@@ -1104,10 +1103,10 @@ public class MergedSample implements Sample, Serializable {
   }
 
   @Override
-  public String tabPopNpMean(Isotope isotope, PopulationID populationID) {
+  public String tabPopNpMean(Channel channel, PopulationID populationID) {
     String val = EMPTY_CELL;
     List<double[]> data = getAllSamples().stream()
-        .map(s -> s.getTrace(isotope))
+        .map(s -> s.getTrace(channel))
         .filter(Objects::nonNull)
         .filter(t -> t.hasType(populationID))
         .map(t -> t.get(populationID, EventType.NP, EventParameter.NET_AREA))
@@ -1120,10 +1119,10 @@ public class MergedSample implements Sample, Serializable {
   }
 
   @Override
-  public String tabNpSD(Isotope isotope, PopulationID populationID) {
+  public String tabNpSD(Channel channel, PopulationID populationID) {
     String val = EMPTY_CELL;
     List<double[]> data = getAllSamples().stream()
-        .map(s -> s.getTrace(isotope))
+        .map(s -> s.getTrace(channel))
         .filter(Objects::nonNull)
         .filter(t -> t.hasType(populationID))
         .map(t -> t.get(populationID, EventType.NP, EventParameter.NET_AREA))
@@ -1137,10 +1136,10 @@ public class MergedSample implements Sample, Serializable {
 
 
   @Override
-  public String tabNpMedian(Isotope isotope, PopulationID populationID) {
+  public String tabNpMedian(Channel channel, PopulationID populationID) {
     String val = EMPTY_CELL;
     List<double[]> data = getAllSamples().stream()
-        .map(s -> s.getTrace(isotope))
+        .map(s -> s.getTrace(channel))
         .filter(Objects::nonNull)
         .filter(t -> t.hasType(populationID))
         .map(t -> t.get(populationID, EventType.NP, EventParameter.NET_AREA))
@@ -1153,11 +1152,11 @@ public class MergedSample implements Sample, Serializable {
   }
 
   @Override
-  public String tabPopNpCustomParamMean(Isotope isotope, PopulationID populationID, EventParameter par,
+  public String tabPopNpCustomParamMean(Channel channel, PopulationID populationID, EventParameter par,
                                         MathMod math) {
     String val = EMPTY_CELL;
     List<double[]> data = getAllSamples().stream()
-        .map(s -> s.getTrace(isotope))
+        .map(s -> s.getTrace(channel))
         .filter(Objects::nonNull)
         .filter(t -> t.hasType(populationID))
         .map(t -> math.calc(t.get(populationID, EventType.NP, par)))
@@ -1170,11 +1169,11 @@ public class MergedSample implements Sample, Serializable {
   }
 
   @Override
-  public String tabNpCustomParamMedian(Isotope isotope, PopulationID populationID, EventParameter par,
+  public String tabNpCustomParamMedian(Channel channel, PopulationID populationID, EventParameter par,
                                        MathMod math) {
     String val = EMPTY_CELL;
     List<double[]> data = getAllSamples().stream()
-        .map(s -> s.getTrace(isotope))
+        .map(s -> s.getTrace(channel))
         .filter(Objects::nonNull)
         .filter(t -> t.hasType(populationID))
         .map(t -> math.calc(t.get(populationID, EventType.NP, par)))
@@ -1187,11 +1186,11 @@ public class MergedSample implements Sample, Serializable {
   }
 
   @Override
-  public String tabNpCustomParamSD(Isotope isotope, PopulationID populationID, EventParameter par,
+  public String tabNpCustomParamSD(Channel channel, PopulationID populationID, EventParameter par,
                                    MathMod math) {
     String val = EMPTY_CELL;
     List<double[]> data = getAllSamples().stream()
-        .map(s -> s.getTrace(isotope))
+        .map(s -> s.getTrace(channel))
         .filter(Objects::nonNull)
         .filter(t -> t.hasType(populationID))
         .map(t -> math.calc(t.get(populationID, EventType.NP, par)))
@@ -1204,10 +1203,10 @@ public class MergedSample implements Sample, Serializable {
   }
 
   @Override
-  public String tabMeanHeight(Isotope isotope, PopulationID populationID) {
+  public String tabMeanHeight(Channel channel, PopulationID populationID) {
     String val = EMPTY_CELL;
     List<double[]> data = getAllSamples().stream()
-        .map(s -> s.getTrace(isotope))
+        .map(s -> s.getTrace(channel))
         .filter(Objects::nonNull)
         .filter(t -> t.hasType(populationID))
         .map(t -> t.get(populationID, EventType.NP, EventParameter.HEIGHT))
@@ -1220,10 +1219,10 @@ public class MergedSample implements Sample, Serializable {
   }
 
   @Override
-  public String tabSdHeight(Isotope isotope, PopulationID populationID) {
+  public String tabSdHeight(Channel channel, PopulationID populationID) {
     String val = EMPTY_CELL;
     List<double[]> data = getAllSamples().stream()
-        .map(s -> s.getTrace(isotope))
+        .map(s -> s.getTrace(channel))
         .filter(Objects::nonNull)
         .filter(t -> t.hasType(populationID))
         .map(t -> t.get(populationID, EventType.NP, EventParameter.HEIGHT))
@@ -1236,10 +1235,10 @@ public class MergedSample implements Sample, Serializable {
   }
 
   @Override
-  public String tabMeanDuration(Isotope isotope, PopulationID populationID) {
+  public String tabMeanDuration(Channel channel, PopulationID populationID) {
     String val = EMPTY_CELL;
     List<double[]> data = getAllSamples().stream()
-        .map(s -> s.getTrace(isotope))
+        .map(s -> s.getTrace(channel))
         .filter(Objects::nonNull)
         .filter(t -> t.hasType(populationID))
         .map(t -> t.get(populationID, EventType.NP, EventParameter.DURATION))
@@ -1252,10 +1251,10 @@ public class MergedSample implements Sample, Serializable {
   }
 
   @Override
-  public String tabSdDuration(Isotope isotope, PopulationID populationID) {
+  public String tabSdDuration(Channel channel, PopulationID populationID) {
     String val = EMPTY_CELL;
     List<double[]> data = getAllSamples().stream()
-        .map(s -> s.getTrace(isotope))
+        .map(s -> s.getTrace(channel))
         .filter(Objects::nonNull)
         .filter(t -> t.hasType(populationID))
         .map(t -> t.get(populationID, EventType.NP, EventParameter.DURATION))
@@ -1268,13 +1267,13 @@ public class MergedSample implements Sample, Serializable {
   }
 
   @Override
-  public String tabMeanSize(Isotope isotope, PopulationID populationID) {
+  public String tabMeanSize(Channel channel, PopulationID populationID) {
     String val = EMPTY_CELL;
     List<double[]> data = new ArrayList<>();
     for (Sample sample : samples) {
-      Trace t = sample.getTrace(isotope);
+      Trace t = sample.getTrace(channel);
       if (t != null && t.hasType(populationID)) {
-        data.add(getData(isotope, populationID, EventType.NP,
+        data.add(getData(channel, populationID, EventType.NP,
             quant.getExperimentalConditions().getEventPar(),
             SizeUnit.NANO_METER));
       }
@@ -1287,13 +1286,13 @@ public class MergedSample implements Sample, Serializable {
   }
 
   @Override
-  public String tabMedianSize(Isotope isotope, PopulationID populationID) {
+  public String tabMedianSize(Channel channel, PopulationID populationID) {
     String val = EMPTY_CELL;
     List<double[]> data = new ArrayList<>();
     for (Sample sample : samples) {
-      Trace t = sample.getTrace(isotope);
+      Trace t = sample.getTrace(channel);
       if (t != null && t.hasType(populationID)) {
-        data.add(getData(isotope, populationID, EventType.NP,
+        data.add(getData(channel, populationID, EventType.NP,
             quant.getExperimentalConditions().getEventPar(),
             SizeUnit.NANO_METER));
       }
@@ -1307,13 +1306,13 @@ public class MergedSample implements Sample, Serializable {
 
 
   @Override
-  public String tabSizeSD(Isotope isotope, PopulationID populationID) {
+  public String tabSizeSD(Channel channel, PopulationID populationID) {
     String val = EMPTY_CELL;
     List<double[]> data = new ArrayList<>();
     for (Sample sample : samples) {
-      Trace t = sample.getTrace(isotope);
+      Trace t = sample.getTrace(channel);
       if (t != null && t.hasType(populationID)) {
-        data.add(getData(isotope, populationID, EventType.NP,
+        data.add(getData(channel, populationID, EventType.NP,
             quant.getExperimentalConditions().getEventPar(),
             SizeUnit.NANO_METER));
       }
@@ -1327,13 +1326,13 @@ public class MergedSample implements Sample, Serializable {
 
 
   @Override
-  public String tabMeanMass(Isotope isotope, PopulationID populationID) {
+  public String tabMeanMass(Channel channel, PopulationID populationID) {
     String val = EMPTY_CELL;
     List<double[]> data = new ArrayList<>();
     for (Sample sample : samples) {
-      Trace t = sample.getTrace(isotope);
+      Trace t = sample.getTrace(channel);
       if (t != null && t.hasType(populationID)) {
-        data.add(getData(isotope, populationID, EventType.NP,
+        data.add(getData(channel, populationID, EventType.NP,
             quant.getExperimentalConditions().getEventPar(),
             MassUnit.FEMTO_GRAM));
       }
@@ -1347,13 +1346,13 @@ public class MergedSample implements Sample, Serializable {
 
 
   @Override
-  public String tabMedianMass(Isotope isotope, PopulationID populationID) {
+  public String tabMedianMass(Channel channel, PopulationID populationID) {
     String val = EMPTY_CELL;
     List<double[]> data = new ArrayList<>();
     for (Sample sample : samples) {
-      Trace t = sample.getTrace(isotope);
+      Trace t = sample.getTrace(channel);
       if (t != null && t.hasType(populationID)) {
-        data.add(getData(isotope, populationID, EventType.NP,
+        data.add(getData(channel, populationID, EventType.NP,
             quant.getExperimentalConditions().getEventPar(),
             MassUnit.FEMTO_GRAM));
       }
@@ -1366,13 +1365,13 @@ public class MergedSample implements Sample, Serializable {
   }
 
   @Override
-  public String tabMassSD(Isotope isotope, PopulationID populationID) {
+  public String tabMassSD(Channel channel, PopulationID populationID) {
     String val = EMPTY_CELL;
     List<double[]> data = new ArrayList<>();
     for (Sample sample : samples) {
-      Trace t = sample.getTrace(isotope);
+      Trace t = sample.getTrace(channel);
       if (t != null && t.hasType(populationID)) {
-        data.add(getData(isotope, populationID, EventType.NP,
+        data.add(getData(channel, populationID, EventType.NP,
             quant.getExperimentalConditions().getEventPar(), MassUnit.FEMTO_GRAM));
       }
     }
@@ -1385,13 +1384,13 @@ public class MergedSample implements Sample, Serializable {
 
 
   @Override
-  public String tabMeanMol(Isotope isotope, PopulationID populationID) {
+  public String tabMeanMol(Channel channel, PopulationID populationID) {
     String val = EMPTY_CELL;
     List<double[]> data = new ArrayList<>();
     for (Sample sample : samples) {
-      Trace t = sample.getTrace(isotope);
+      Trace t = sample.getTrace(channel);
       if (t != null && t.hasType(populationID)) {
-        data.add(getData(isotope, populationID, EventType.NP,
+        data.add(getData(channel, populationID, EventType.NP,
             quant.getExperimentalConditions().getEventPar(),
             MolarUnit.ATTO_MOL));
       }
@@ -1405,13 +1404,13 @@ public class MergedSample implements Sample, Serializable {
 
 
   @Override
-  public String tabMedianMol(Isotope isotope, PopulationID populationID) {
+  public String tabMedianMol(Channel channel, PopulationID populationID) {
     String val = EMPTY_CELL;
     List<double[]> data = new ArrayList<>();
     for (Sample sample : samples) {
-      Trace t = sample.getTrace(isotope);
+      Trace t = sample.getTrace(channel);
       if (t != null && t.hasType(populationID)) {
-        data.add(getData(isotope, populationID, EventType.NP,
+        data.add(getData(channel, populationID, EventType.NP,
             quant.getExperimentalConditions().getEventPar(),
             MolarUnit.ATTO_MOL));
       }
@@ -1424,13 +1423,13 @@ public class MergedSample implements Sample, Serializable {
   }
 
   @Override
-  public String tabMolSD(Isotope isotope, PopulationID populationID) {
+  public String tabMolSD(Channel channel, PopulationID populationID) {
     String val = EMPTY_CELL;
     List<double[]> data = new ArrayList<>();
     for (Sample sample : samples) {
-      Trace t = sample.getTrace(isotope);
+      Trace t = sample.getTrace(channel);
       if (t != null && t.hasType(populationID)) {
-        data.add(getData(isotope, populationID, EventType.NP,
+        data.add(getData(channel, populationID, EventType.NP,
             quant.getExperimentalConditions().getEventPar(), MolarUnit.ATTO_MOL));
       }
     }
@@ -1442,10 +1441,10 @@ public class MergedSample implements Sample, Serializable {
   }
 
   @Override
-  public String tabPopBgMean(Isotope isotope, PopulationID populationID) {
+  public String tabPopBgMean(Channel channel, PopulationID populationID) {
     String val = EMPTY_CELL;
     List<double[]> data = getAllSamples().stream()
-        .map(s -> s.getTrace(isotope))
+        .map(s -> s.getTrace(channel))
         .filter(Objects::nonNull)
         .filter(t -> t.hasType(populationID))
         .map(t -> t.get(populationID, EventType.BG, EventParameter.AREA))
@@ -1458,10 +1457,10 @@ public class MergedSample implements Sample, Serializable {
   }
 
   @Override
-  public String tabPopBgSD(Isotope isotope, PopulationID populationID) {
+  public String tabPopBgSD(Channel channel, PopulationID populationID) {
     String val = EMPTY_CELL;
     List<double[]> data = getAllSamples().stream()
-        .map(s -> s.getTrace(isotope))
+        .map(s -> s.getTrace(channel))
         .filter(Objects::nonNull)
         .filter(t -> t.hasType(populationID))
         .map(t -> t.get(populationID, EventType.BG, EventParameter.AREA))
@@ -1474,10 +1473,10 @@ public class MergedSample implements Sample, Serializable {
   }
 
   @Override
-  public String tabPopBgN(Isotope isotope, PopulationID populationID) {
+  public String tabPopBgN(Channel channel, PopulationID populationID) {
     String val = EMPTY_CELL;
     int totalSize = getAllSamples().stream()
-        .map(s -> s.getTrace(isotope))
+        .map(s -> s.getTrace(channel))
         .filter(Objects::nonNull)
         .filter(t -> t.hasType(populationID))
         .map(t -> t.get(populationID, EventType.BG, EventParameter.AREA))
@@ -1489,12 +1488,12 @@ public class MergedSample implements Sample, Serializable {
   }
 
   @Override
-  public String tabPopDrift(Isotope isotope, PopulationID populationID) {
+  public String tabPopDrift(Channel channel, PopulationID populationID) {
     String val = EMPTY_CELL;
     double[] drifts = new double[samples.size()];
     for (int i = 0; i < samples.size(); i++) {
       Sample sample = samples.get(i);
-      Trace t = sample.getTrace(isotope);
+      Trace t = sample.getTrace(channel);
       if (t != null) {
         Population pop = t.getPopulation(populationID);
         if (pop != null) {
@@ -1514,17 +1513,17 @@ public class MergedSample implements Sample, Serializable {
   }
 
   @Override
-  public String tabBlnDistr(Isotope isotope, PopulationID populationID) {
+  public String tabBlnDistr(Channel channel, PopulationID populationID) {
     return getAllSamples().stream()
-        .map(s -> s.tabBlnDistr(isotope, populationID))
+        .map(s -> s.tabBlnDistr(channel, populationID))
         .collect(Collectors.joining(" --- "));
   }
 
   @Override
-  public String tabBlnMean(Isotope isotope, PopulationID populationID) {
+  public String tabBlnMean(Channel channel, PopulationID populationID) {
     String val = EMPTY_CELL;
     List<Double> data = getAllSamples().stream()
-        .map(s -> s.getTrace(isotope))
+        .map(s -> s.getTrace(channel))
         .filter(Objects::nonNull)
         .filter(t -> t.getBaseline() != null)
         .filter(t -> t.getBaseline().hasBaseline())
@@ -1537,10 +1536,10 @@ public class MergedSample implements Sample, Serializable {
   }
 
   @Override
-  public String tabBlnSD(Isotope isotope, PopulationID populationID) {
+  public String tabBlnSD(Channel channel, PopulationID populationID) {
     String val = EMPTY_CELL;
     List<double[]> data = getAllSamples().stream()
-        .map(s -> s.getTrace(isotope))
+        .map(s -> s.getTrace(channel))
         .filter(Objects::nonNull)
         .filter(t -> t.hasType(populationID))
         .map(t -> t.get(populationID, EventType.BG, EventParameter.AREA))
@@ -1553,20 +1552,20 @@ public class MergedSample implements Sample, Serializable {
   }
 
   @Override
-  public String tabBlnOutlierZ(Isotope isotope, PopulationID populationID) {
+  public String tabBlnOutlierZ(Channel channel, PopulationID populationID) {
     return getAllSamples().stream()
-        .map(s -> s.tabBlnOutlierZ(isotope, populationID))
+        .map(s -> s.tabBlnOutlierZ(channel, populationID))
         .collect(Collectors.joining(" --- "));
   }
 
   @Override
-  public String tabEquivBGConc(Isotope isotope) {
+  public String tabEquivBGConc(Channel channel) {
     String val = EMPTY_CELL;
     double sumBG = 0;
     int counter = 0;
     for (Sample sample : samples) {
       if (sample instanceof SampleImpl) {
-        double bgConc = ((SampleImpl) sample).calcEquivBGConc(isotope);
+        double bgConc = ((SampleImpl) sample).calcEquivBGConc(channel);
         if (bgConc > 0) {
           sumBG += bgConc;
           counter++;
@@ -1583,10 +1582,10 @@ public class MergedSample implements Sample, Serializable {
   }
 
   @Override
-  public String tabSearchStart(Isotope isotope, PopulationID populationID) {
+  public String tabSearchStart(Channel channel, PopulationID populationID) {
     String val = EMPTY_CELL;
     List<Double> data = getAllSamples().stream()
-        .map(s -> s.getTrace(isotope))
+        .map(s -> s.getTrace(channel))
         .filter(Objects::nonNull)
         .filter(t -> t.getBaseline() != null)
         .filter(t -> t.getBaseline().hasBaseline())
@@ -1605,10 +1604,10 @@ public class MergedSample implements Sample, Serializable {
   }
 
   @Override
-  public String tabSearchStop(Isotope isotope, PopulationID populationID) {
+  public String tabSearchStop(Channel channel, PopulationID populationID) {
     String val = EMPTY_CELL;
     List<Double> data = getAllSamples().stream()
-        .map(s -> s.getTrace(isotope))
+        .map(s -> s.getTrace(channel))
         .filter(Objects::nonNull)
         .filter(t -> t.getBaseline() != null)
         .filter(t -> t.getBaseline().hasBaseline())
@@ -1627,10 +1626,10 @@ public class MergedSample implements Sample, Serializable {
   }
 
   @Override
-  public String tabSearchHeight(Isotope isotope, PopulationID populationID) {
+  public String tabSearchHeight(Channel channel, PopulationID populationID) {
     String val = EMPTY_CELL;
     List<Double> data = getAllSamples().stream()
-        .map(s -> s.getTrace(isotope))
+        .map(s -> s.getTrace(channel))
         .filter(Objects::nonNull)
         .filter(t -> t.getBaseline() != null)
         .filter(t -> t.getBaseline().hasBaseline())
@@ -1649,10 +1648,10 @@ public class MergedSample implements Sample, Serializable {
   }
 
   @Override
-  public List<String> tabGates(Isotope isotope, PopulationID populationID) {
+  public List<String> tabGates(Channel channel, PopulationID populationID) {
     List<List<String>> values = new ArrayList<>();
     for (Sample sample : samples) {
-      List<String> gates = sample.tabGates(isotope, populationID);
+      List<String> gates = sample.tabGates(channel, populationID);
       for (int i = 0; i < gates.size(); i++) {
         if (values.size() > i) {
           values.get(i).add(gates.get(i));
@@ -1670,31 +1669,31 @@ public class MergedSample implements Sample, Serializable {
   }
 
   @Override
-  public String tabSearchStartMeta(Isotope isotope, PopulationID populationID) {
+  public String tabSearchStartMeta(Channel channel, PopulationID populationID) {
     return getAllSamples().stream()
-        .map(s -> s.tabSearchStartMeta(isotope, populationID))
+        .map(s -> s.tabSearchStartMeta(channel, populationID))
         .collect(Collectors.joining(" --- "));
   }
 
   @Override
-  public String tabSearchStopMeta(Isotope isotope, PopulationID populationID) {
+  public String tabSearchStopMeta(Channel channel, PopulationID populationID) {
     return getAllSamples().stream()
-        .map(s -> s.tabSearchStopMeta(isotope, populationID))
+        .map(s -> s.tabSearchStopMeta(channel, populationID))
         .collect(Collectors.joining(" --- "));
   }
 
   @Override
-  public String tabSearchHeightMeta(Isotope isotope, PopulationID populationID) {
+  public String tabSearchHeightMeta(Channel channel, PopulationID populationID) {
     return getAllSamples().stream()
-        .map(s -> s.tabSearchHeightMeta(isotope, populationID))
+        .map(s -> s.tabSearchHeightMeta(channel, populationID))
         .collect(Collectors.joining(" --- "));
   }
 
   @Override
-  public List<String> tabGatesMeta(Isotope isotope, PopulationID populationID) {
+  public List<String> tabGatesMeta(Channel channel, PopulationID populationID) {
     List<List<String>> values = new ArrayList<>();
     for (Sample sample : samples) {
-      List<String> gates = sample.tabGatesMeta(isotope, populationID);
+      List<String> gates = sample.tabGatesMeta(channel, populationID);
       for (int i = 0; i < gates.size(); i++) {
         if (values.size() > i) {
           values.get(i).add(gates.get(i));

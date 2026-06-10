@@ -17,6 +17,8 @@
 
 package analysis.quant;
 
+import dataModelNew.mz.CalChannel;
+import dataModelNew.mz.Channel;
 import processing.options.CalibrationStrategy;
 import processing.parameterSets.impl.ExperimentalConditions;
 import sandbox.montecarlo.Isotope;
@@ -86,8 +88,8 @@ public class Calibration implements Cal, Serializable {
   }
 
   @Override
-  public List<Isotope> listIsotopes() {
-    return spCalibrationSet.listIsotopes();
+  public List<CalChannel> listChannels() {
+    return spCalibrationSet.listChannels();
   }
 
   @Serial

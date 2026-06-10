@@ -20,7 +20,9 @@ package gui.table;
 import core.SpTool3Main;
 import dataModelNew.MergedSample;
 import dataModelNew.Sample;
+import dataModelNew.fxImpl.FxChannel;
 import dataModelNew.fxImpl.FxSample;
+import dataModelNew.mz.ComputedChannel;
 import gui.ReadonlyMethodView;
 import gui.RerunMethodView;
 import gui.StageFactory;
@@ -33,14 +35,11 @@ import io.SampleSet;
 
 import java.awt.MouseInfo;
 import java.awt.Point;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
-import java.util.stream.Collectors;
 
 import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.StringProperty;
@@ -49,6 +48,7 @@ import javafx.beans.value.ObservableValue;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.geometry.Pos;
+import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.ContextMenu;
@@ -85,9 +85,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import processing.parameterSets.Method;
 import processing.parameterSets.action.Actions;
-import sandbox.montecarlo.Isotope;
-import util.NF;
-import util.SnF;
+import util.ChannelTableComparator;
 import util.WindowsSorter;
 import visualizer.styles.Colors;
 import visualizer.styles.CustomColorPicker;
@@ -798,6 +796,11 @@ public class TableFactory {
     view.setOnAction(e -> {
       if (!table.getSelectionModel().getSelectedItems().isEmpty()) {
         FxSample sample = table.getSelectionModel().getSelectedItems().get(0);
+        Scene scene = table.getScene();
+        Stage parent = null;
+        if (scene != null) {
+          parent = (Stage) scene.getWindow();
+        }
         CustomColorPicker custom = new CustomColorPicker(
             Colors.awtToFx(sample.getPlainSample().getColor()),
             Colors.getDefaultColors(),
@@ -806,7 +809,8 @@ public class TableFactory {
               public void accept(Color color) {
                 sample.getPlainSample().setColor(Colors.fxToAwt(color));
               }
-            });
+            },
+            parent);
         custom.show();
       }
     });
@@ -997,7 +1001,7 @@ public class TableFactory {
   /// ///////////////////////////////////////////////////////////////////////////////////////
   /// ///////////////////////////////////////////////////////////////////////////////////////
 
-  public static void setupIsotopeTable(TableView<Isotope> table) {
+  public static void setupIsotopeTable(TableView<FxChannel> table) {
 
     table.setPrefWidth(50);
 
@@ -1008,36 +1012,25 @@ public class TableFactory {
     table.setContextMenu(new ContextMenu());
     table.setColumnResizePolicy(TableView.UNCONSTRAINED_RESIZE_POLICY);
 
-    List<TableColumn<Isotope, ?>> columns = new ArrayList<>();
+    List<TableColumn<FxChannel, ?>> columns = new ArrayList<>();
     //////////////////////////////////////////////////////////////////////////////////////////////
 
-    TableColumn<Isotope, String> col = new TableColumn<>("Isotope");
+    TableColumn<FxChannel, String> col = new TableColumn<>("MZ");
 
     col.setPrefWidth(60);
     col.setMaxWidth(100);
     col.setStyle("-fx-alignment: CENTER-LEFT;");
 
-    col.setComparator((o1, o2) -> {
-      // These strings are likely only isotopes like 156 (Gd).
-      String num1 = o1.replaceAll("[^\\d]+", ""); // Keep only digits
-      String num2 = o2.replaceAll("[^\\d]+", ""); // Keep only digits
-
-      double d1 = SnF.strToDouble(num1);
-      double d2 = SnF.strToDouble(num2);
-
-      return Double.compare(d1, d2);
-    });
+    col.setComparator(new ChannelTableComparator());
 
     // shown value
     col.setCellValueFactory(
-        new Callback<CellDataFeatures<Isotope, String>, ObservableValue<String>>() {
+        new Callback<CellDataFeatures<FxChannel, String>, ObservableValue<String>>() {
           @Override
-          public ObservableValue<String> call(CellDataFeatures<Isotope, String> param) {
+          public ObservableValue<String> call(CellDataFeatures<FxChannel, String> param) {
             StringProperty cellContent;
             if (param != null) {
-              String num = SnF.intToString(param.getValue().getIsotopicNumber(), NF.D1C0);
-              String element = param.getValue().getElement().getSymbol();
-              // cellContent = new SimpleStringProperty(num + "(" + element + ")");
+              String num = param.getValue().getChannel().getMZStr();
               cellContent = new SimpleStringProperty(num);
 
             } else {
@@ -1057,19 +1050,22 @@ public class TableFactory {
     col.setMaxWidth(100);
     col.setStyle("-fx-alignment: CENTER-LEFT;");
 
-    col.setComparator(new WindowsSorter.WindowsExplorerComparator());
+    col.setComparator(new ChannelTableComparator());
 
     // shown value
     col.setCellValueFactory(
-        new Callback<CellDataFeatures<Isotope, String>, ObservableValue<String>>() {
+        new Callback<CellDataFeatures<FxChannel, String>, ObservableValue<String>>() {
           @Override
-          public ObservableValue<String> call(CellDataFeatures<Isotope, String> param) {
+          public ObservableValue<String> call(CellDataFeatures<FxChannel, String> param) {
             StringProperty cellContent;
             if (param != null) {
-              String num = SnF.intToString(param.getValue().getIsotopicNumber(), NF.D1C0);
-              String element = param.getValue().getElement().getSymbol();
-              // cellContent = new SimpleStringProperty(num + "(" + element + ")");
-              cellContent = new SimpleStringProperty(element);
+              if (param.getValue().getChannel() instanceof ComputedChannel) {
+                cellContent = new SimpleStringProperty(param.getValue().getChannel().getUIString());
+              } else {
+                // element is category, and we get the field name() of the enum here
+                String element = param.getValue().getChannel().getCategory().getUIString();
+                cellContent = new SimpleStringProperty(element);
+              }
             } else {
               cellContent = new SimpleStringProperty(EMPTYSTR);
             }
@@ -1078,6 +1074,116 @@ public class TableFactory {
         });
 
     columns.add(col);
+
+    //////////////////////////////////////////////////////////////////////////////////////////////
+
+    boolean extendTable = SpTool3Main.getRunTime().getConfParams().getExtendChannelTable().getValue();
+
+    col = new TableColumn<>("# NMP");
+
+    col.setPrefWidth(55);
+    col.setMaxWidth(75);
+    col.setStyle("-fx-alignment: CENTER-LEFT;");
+
+    col.setComparator(new ChannelTableComparator());
+
+    // shown value
+    col.setCellValueFactory(
+        new Callback<CellDataFeatures<FxChannel, String>, ObservableValue<String>>() {
+          @Override
+          public ObservableValue<String> call(CellDataFeatures<FxChannel, String> param) {
+            StringProperty cellContent;
+            if (param != null) {
+              cellContent = param.getValue().getNmpCountProperty();
+            } else {
+              cellContent = new SimpleStringProperty(" ");
+            }
+            return cellContent;
+          }
+        });
+
+    if (extendTable) columns.add(col);
+
+    //////////////////////////////////////////////////////////////////////////////////////////////
+
+    col = new TableColumn<>("NetArea");
+
+    col.setPrefWidth(60);
+    col.setMaxWidth(80);
+    col.setStyle("-fx-alignment: CENTER-LEFT;");
+
+    col.setComparator(new ChannelTableComparator());
+
+    // shown value
+    col.setCellValueFactory(
+        new Callback<CellDataFeatures<FxChannel, String>, ObservableValue<String>>() {
+          @Override
+          public ObservableValue<String> call(CellDataFeatures<FxChannel, String> param) {
+            StringProperty cellContent;
+            if (param != null) {
+              cellContent = param.getValue().getNetAreaProperty();
+            } else {
+              cellContent = new SimpleStringProperty(" ");
+            }
+            return cellContent;
+          }
+        });
+
+    if (extendTable) columns.add(col);
+
+    //////////////////////////////////////////////////////////////////////////////////////////////
+
+    col = new TableColumn<>("µ BG");
+
+    col.setPrefWidth(60);
+    col.setMaxWidth(80);
+    col.setStyle("-fx-alignment: CENTER-LEFT;");
+
+    col.setComparator(new ChannelTableComparator());
+
+    // shown value
+    col.setCellValueFactory(
+        new Callback<CellDataFeatures<FxChannel, String>, ObservableValue<String>>() {
+          @Override
+          public ObservableValue<String> call(CellDataFeatures<FxChannel, String> param) {
+            StringProperty cellContent;
+            if (param != null) {
+              cellContent = param.getValue().getMuBGProperty();
+            } else {
+              cellContent = new SimpleStringProperty(" ");
+            }
+            return cellContent;
+          }
+        });
+
+    if (extendTable) columns.add(col);
+
+    //////////////////////////////////////////////////////////////////////////////////////////////
+
+    col = new TableColumn<>("S/N");
+
+    col.setPrefWidth(60);
+    col.setMaxWidth(80);
+    col.setStyle("-fx-alignment: CENTER-LEFT;");
+
+    col.setComparator(new ChannelTableComparator());
+
+    // shown value
+    col.setCellValueFactory(
+        new Callback<CellDataFeatures<FxChannel, String>, ObservableValue<String>>() {
+          @Override
+          public ObservableValue<String> call(CellDataFeatures<FxChannel, String> param) {
+            StringProperty cellContent;
+            if (param != null) {
+              cellContent = param.getValue().getSignalToNoiseProperty();
+            } else {
+              cellContent = new SimpleStringProperty(" ");
+            }
+            return cellContent;
+          }
+        });
+
+    if (extendTable) columns.add(col);
 
     //////////////////////////////////////////////////////////////////////////////////////////////
     //////////////////////////////////////////////////////////////////////////////////////////////
@@ -1094,7 +1200,7 @@ public class TableFactory {
     TableUtils.installHeaderLeft(table);
 
     // initialize empty
-    final ObservableList<Isotope> tabEntries = FXCollections.observableArrayList();
+    final ObservableList<FxChannel> tabEntries = FXCollections.observableArrayList();
     table.setItems(tabEntries);
   }
 }

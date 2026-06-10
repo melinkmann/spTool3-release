@@ -18,6 +18,7 @@
 package processing.parameterSets.impl;
 
 import core.SpTool3Main;
+import dataModelNew.mz.Channel;
 import dataModelNew.mz.MZValue;
 import dataModelNew.mz.SQmz;
 import gui.util.TextFormatterOption;
@@ -245,11 +246,14 @@ public class NuInterpreterParams extends AbstractParamSet implements Serializabl
                 availableIsotopes,
                 prevSel);                  // null or empty = open blank
 
-            List<MZValue> resultingMZ = dlg.showAndWait();
-            if (resultingMZ != null) {
+            List<Channel> resultingChannels = dlg.showAndWait();
+            if (resultingChannels != null) {
               List<Isotope> resultingIsotopes = new ArrayList<>();
-              for (MZValue mzValue : resultingMZ) {
-                resultingIsotopes.add(mzValue.getIsotope());
+              for (Channel channel : resultingChannels) {
+                Isotope isotope = channel.getIsotope();
+                if (isotope != null){
+                  resultingIsotopes.add(isotope);
+                }
               }
               selectedIsotopes.setValue(isotopesToString(resultingIsotopes));
             }
@@ -305,8 +309,14 @@ public class NuInterpreterParams extends AbstractParamSet implements Serializabl
   }
 
   /// ///////////////////////////////////////////////////////////////
-  public void setRecordedTofRange(List<Isotope> recordedTofRange) {
-    this.recordedTofRange = new ArrayList<>(recordedTofRange);
+  public void setRecordedTofRange(List<Channel> recordedTofRange) {
+    this.recordedTofRange = new ArrayList<>();
+    for (Channel channel : recordedTofRange) {
+      Isotope isotope = channel.getIsotope();
+      if (isotope != null) {
+        this.recordedTofRange.add(isotope);
+      }
+    }
   }
 
   /// ///////////////////////////////////////////////////////////////

@@ -20,6 +20,8 @@ package io.export;
 import analysis.*;
 import core.SpTool3Main;
 import dataModelNew.*;
+import dataModelNew.mz.Channel;
+import dataModelNew.mz.ComputedChannel;
 import dataModelNew.mz.Element;
 import dataModelNew.mz.IsotopeMZ;
 import gui.table.TableUtils;
@@ -29,7 +31,6 @@ import io.fastExport.TabBlock;
 import io.fastExport.TabBlockColl;
 import io.fastExport.TabCol;
 
-import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
@@ -136,12 +137,12 @@ public abstract class DataExport {
     return hBlock;
   }
 
-  public static List<TabularBlock> extractPopulationData(Sample sample, Isotope isotope,
+  public static List<TabularBlock> extractPopulationData(Sample sample, Channel channel,
                                                          PopulationID popID) {
     List<TabularBlock> blockList = new ArrayList<>();
     TabularBlock hBlock = new TabularBlockHorizontal();
 
-    List<Event> events = sample.getNPEvents(isotope, popID);
+    List<Event> events = sample.getNPEvents(channel, popID);
     String nNP = SnF.intToString(events.size(), NF.D1C0);
 
     hBlock.addColumn("Evaluated population export.", "Name", popID.toString());
@@ -161,19 +162,19 @@ public abstract class DataExport {
     List<String> noOfPoints = new ArrayList<>();
     List<String> bgPerNP = new ArrayList<>();
 
-    grossArea.addAll(SnF.doubleToStrList(sample.getData(isotope, popID, EventType.NP,
+    grossArea.addAll(SnF.doubleToStrList(sample.getData(channel, popID, EventType.NP,
         EventParameter.AREA), NF.D1C6));
-    netArea.addAll(SnF.doubleToStrList(sample.getData(isotope, popID, EventType.NP,
+    netArea.addAll(SnF.doubleToStrList(sample.getData(channel, popID, EventType.NP,
         EventParameter.NET_AREA), NF.D1C6));
-    grossHeight.addAll(SnF.doubleToStrList(sample.getData(isotope, popID, EventType.NP,
+    grossHeight.addAll(SnF.doubleToStrList(sample.getData(channel, popID, EventType.NP,
         EventParameter.HEIGHT), NF.D1C6));
-    netHeight.addAll(SnF.doubleToStrList(sample.getData(isotope, popID, EventType.NP,
+    netHeight.addAll(SnF.doubleToStrList(sample.getData(channel, popID, EventType.NP,
         EventParameter.NET_HEIGHT), NF.D1C6));
-    duration.addAll(SnF.doubleToStrList(sample.getData(isotope, popID, EventType.NP,
+    duration.addAll(SnF.doubleToStrList(sample.getData(channel, popID, EventType.NP,
         EventParameter.DURATION), NF.D1C6));
-    noOfPoints.addAll(SnF.doubleToStrList(sample.getData(isotope, popID, EventType.NP,
+    noOfPoints.addAll(SnF.doubleToStrList(sample.getData(channel, popID, EventType.NP,
         EventParameter.NO_OF_POINTS), NF.D1C6));
-    bgPerNP.addAll(SnF.doubleToStrList(sample.getData(isotope, popID, EventType.NP,
+    bgPerNP.addAll(SnF.doubleToStrList(sample.getData(channel, popID, EventType.NP,
         EventParameter.BACKGROUND_PER_NP), NF.D1C6));
 
     // Keep for when we switch back to using MZ instead of isotopes.
@@ -185,7 +186,7 @@ public abstract class DataExport {
     //    } else {
     //      elementLabel = Collections.singletonList(mz.getElementTransition());
     //    }
-    String elementLabel = isotope.getName();
+    String elementLabel = channel.getUIString();
 
     hBlock.addColumn(elementLabel,
         "Peak time [s]", peakTime);
@@ -209,7 +210,7 @@ public abstract class DataExport {
   }
 
   public static List<TabularBlock> extractCustomPopulationData(Sample sample,
-                                                               List<Isotope> isotopes,
+                                                               List<Channel> selChannels,
                                                                List<PopulationID> popIDs,
                                                                boolean exportBG,
                                                                boolean applyJitter,
@@ -225,14 +226,14 @@ public abstract class DataExport {
     overheadDescriptors.add(sample.getSampleFile().getNameWithinFile());
     overheadDescriptors.add(sample.getSampleFile().getFileName());
 
-    for (Isotope isotope : isotopes) {
+    for (Channel channel : selChannels) {
       List<String> isotopeOverheadDescriptors = new ArrayList<>(overheadDescriptors);
-      isotopeOverheadDescriptors.add(isotope.getName());
+      isotopeOverheadDescriptors.add(channel.getUIString());
       for (PopulationID popID : popIDs) {
         List<String> populationOverheadDescriptors = new ArrayList<>(isotopeOverheadDescriptors);
         populationOverheadDescriptors.add(popID.toString());
         if (exportBG) {
-          double[] bg = sample.getData(isotope, popID, EventType.BG, EventParameter.AREA);
+          double[] bg = sample.getData(channel, popID, EventType.BG, EventParameter.AREA);
           if (applyJitter) {
             bg = Statistics.quantileSampleWithMurmurHashedJitter(bg, noOfBgDP, 2);
           }
@@ -241,7 +242,7 @@ public abstract class DataExport {
           hBlock.addColumn(populationOverheadDescriptors, label, SnF.doubleToStrList(bg, NF.D1C6));
         }
         if (exportNP) {
-          double[] np = sample.getData(isotope, popID, EventType.NP, npPar, NMPUnit.getUnit());
+          double[] np = sample.getData(channel, popID, EventType.NP, npPar, NMPUnit.getUnit());
           AxisLabel npLabel = AxisLabel.getUnit(npPar);
           String unitStr = npLabel.getUnit().getLiteralString();
           if (!NMPUnit.equals(math.units.enums.NMPUnit.CTS)) {
@@ -309,43 +310,43 @@ public abstract class DataExport {
         List<Isotope> isotopes = element.getIsotopes();
         for (Isotope isotope : isotopes) {
 
-          hBlock.addColumn(Arrays.asList(element.getSymbol(), isotope.getName()),
+          hBlock.addColumn(Arrays.asList(element.getSymbol(), isotope.getNumberAndElement()),
               "Initial net signal [" + IntensityUnit.CTS.getLiteralString() + "]",
               SnF.doubleToStrArr(cont.getRandNetSignal().get(isotope), NF.D1C6));
 
           if (cont.getDataMap().containsKey(isotope)) {
-            hBlock.addColumn(Arrays.asList(element.getSymbol(), isotope.getName()),
+            hBlock.addColumn(Arrays.asList(element.getSymbol(), isotope.getNumberAndElement()),
                 "Gross area (integrated at >1cts & calculated) [" + IntensityUnit.CTS.getLiteralString() +
                     "]",
                 SnF.doubleToStrArr(cont.getDataMap().get(isotope).get(EventParameter.AREA),
                     NF.D1C6));
 
-            hBlock.addColumn(Arrays.asList(element.getSymbol(), isotope.getName()),
+            hBlock.addColumn(Arrays.asList(element.getSymbol(), isotope.getNumberAndElement()),
                 "Net area (integrated at >1cts) [" + IntensityUnit.CTS.getLiteralString() + "]",
                 SnF.doubleToStrArr(cont.getDataMap().get(isotope).get(EventParameter.NET_AREA),
                     NF.D1C6));
 
-            hBlock.addColumn(Arrays.asList(element.getSymbol(), isotope.getName()),
+            hBlock.addColumn(Arrays.asList(element.getSymbol(), isotope.getNumberAndElement()),
                 "Gross height (integrated at >1cts & calculated) [" + IntensityUnit.CTS.getLiteralString() + "]",
                 SnF.doubleToStrArr(cont.getDataMap().get(isotope).get(EventParameter.HEIGHT),
                     NF.D1C6));
 
-            hBlock.addColumn(Arrays.asList(element.getSymbol(), isotope.getName()),
+            hBlock.addColumn(Arrays.asList(element.getSymbol(), isotope.getNumberAndElement()),
                 "Net height (integrated at >1cts) [" + IntensityUnit.CTS.getLiteralString() + "]",
                 SnF.doubleToStrArr(cont.getDataMap().get(isotope).get(EventParameter.NET_HEIGHT),
                     NF.D1C6));
 
-            hBlock.addColumn(Arrays.asList(element.getSymbol(), isotope.getName()),
+            hBlock.addColumn(Arrays.asList(element.getSymbol(), isotope.getNumberAndElement()),
                 "Width (integrated at >1cts) [" + TimeUnit.MICROSECOND.getLiteralString() + "]",
                 SnF.doubleToStrArr(cont.getDataMap().get(isotope).get(EventParameter.DURATION),
                     NF.D1C6));
 
-            hBlock.addColumn(Arrays.asList(element.getSymbol(), isotope.getName()),
+            hBlock.addColumn(Arrays.asList(element.getSymbol(), isotope.getNumberAndElement()),
                 "Number of points (integrated at >1cts) [" + ViewUnits.NONE.getLiteralString() + "]",
                 SnF.doubleToStrArr(cont.getDataMap().get(isotope).get(EventParameter.NO_OF_POINTS),
                     NF.D1C6));
 
-            hBlock.addColumn(Arrays.asList(element.getSymbol(), isotope.getName()),
+            hBlock.addColumn(Arrays.asList(element.getSymbol(), isotope.getNumberAndElement()),
                 "BG per NP (summed at >1cts) [" + IntensityUnit.CTS.getLiteralString() + "]",
                 SnF.doubleToStrArr(
                     cont.getDataMap().get(isotope).get(EventParameter.BACKGROUND_PER_NP),
@@ -659,7 +660,7 @@ public abstract class DataExport {
 
     // Get link between isotope and its trace
     HashMap<Isotope, TraceMC> traceMap = new LinkedHashMap<>();
-    traces.forEach(t -> traceMap.put(t.getMzValue().getIsotope(), t));
+    traces.forEach(t -> traceMap.put(t.getChannel().getIsotope(), t));
 
     // Get a unique list of all isotopes
     HashSet<Isotope> isotopesSet = new HashSet<>();
@@ -691,7 +692,7 @@ public abstract class DataExport {
 
       // For each population, prepare the containers
       List<String> isotopeNames = isotopes.stream()
-          .map(Isotope::getName)
+          .map(Isotope::getNumberAndElement)
           .collect(Collectors.toList());
 
       List<String> points = new ArrayList<>();
@@ -856,7 +857,7 @@ public abstract class DataExport {
    * Here, we only allow sampleImpls, i.e., not merges! MergedSamples are extracted previously.
    */
 
-  public static List<TabBlock> extractRawData(SampleImpl sample, List<Isotope> selIsotopes,
+  public static List<TabBlock> extractRawData(SampleImpl sample, List<Channel> selChannel,
                                               List<PopulationID> selPops,
                                               double height, boolean limitToSelIsotopes, boolean showPop,
                                               boolean spCalExport, boolean showPeaks) {
@@ -876,19 +877,14 @@ public abstract class DataExport {
     // Raw data itself can be exported for synthetic and normal data :-)
     List<Trace> traces;
     if (limitToSelIsotopes) {
-      traces = sample.getTraces(selIsotopes);
+      traces = sample.getTraces(selChannel);
     } else {
       traces = sample.getTraces();
     }
 
     for (int i = 0; i < traces.size(); i++) {
       Trace trace = traces.get(i);
-      String seriesLabel;
-      if (trace.getMzValue().hasIsotope()) {
-        seriesLabel = trace.getMzValue().getIsotope().getName();
-      } else {
-        seriesLabel = trace.getMzValue().getElementTransition();
-      }
+      String seriesLabel = trace.getChannel().getUIString();
       TISeries tiSeries = trace.getTISeries();
 
       if (i == 0) {
@@ -976,7 +972,7 @@ public abstract class DataExport {
     return blocks;
   }
 
-  public static List<TabBlock> extractIsotopeRatioData(SampleImpl sample, List<Isotope> selIsotopes,
+  public static List<TabBlock> extractIsotopeRatioData(SampleImpl sample, List<Channel> selChannels,
                                                        boolean invertRatio) {
 
     List<TabBlock> blocks = new ArrayList<>();
@@ -988,7 +984,7 @@ public abstract class DataExport {
     blocks.add(populationMarkerBlock);
     blocks.add(eventMarkerBlock);
 
-    List<Trace> traces = sample.getTraces(selIsotopes);
+    List<Trace> traces = sample.getTraces(selChannels);
 
     // ensure we have 2 traces at least
     if (traces.size() > 1) {
@@ -1001,6 +997,21 @@ public abstract class DataExport {
       // get data
       Trace upperFrac = traces.get(0);
       Trace lowerFrac = traces.get(1);
+
+      // try to get element
+      Element element = null;
+      Isotope iso1 = upperFrac.getChannel().getIsotope();
+      Isotope iso2 = lowerFrac.getChannel().getIsotope();
+      if (iso1 != null && iso2 != null) {
+        if (iso1.getElement() == iso2.getElement()) {
+          element = iso1.getElement();
+        }
+      }
+
+      // Store contributing channels
+      List<Channel> contributingChannels = new ArrayList<>();
+      contributingChannels.add(upperFrac.getChannel());
+      contributingChannels.add(lowerFrac.getChannel());
 
       TISeries upperFracTiSeries = upperFrac.getTISeries();
       TISeries lowerFracTiSeries = lowerFrac.getTISeries();
@@ -1032,47 +1043,30 @@ public abstract class DataExport {
         String[] ratioArr = ArrUtils.stringListToArr(ratios);
 
         // store
-        String combinedIsotopicNumberStr =
-            upperFrac.getMzValue().getIsotope().getIsotopicNumber()
-                + ""
-                + lowerFrac.getMzValue().getIsotope().getIsotopicNumber(); //
-        int combinedIsotopicNumber = Integer.parseInt(combinedIsotopicNumberStr);
+        String ratioLabel =
+            upperFrac.getChannel().getShortUIString()
+                + "/"
+                + lowerFrac.getChannel().getShortUIString();
 
-        Isotope sumIso = new Isotope(upperFrac.getMzValue().getIsotope().getElement(),
-            combinedIsotopicNumber, 0, 1);
+        Channel ratioChannel;
+        if (element != null) {
+          ratioChannel = new ComputedChannel(element, ratioLabel, contributingChannels);
+        } else {
+          ratioChannel = new ComputedChannel(ratioLabel, contributingChannels);
+        }
+
+
         TISeries sumSeries = new TISeriesHDD(ratioTimes, ratioDoubles);
-        Trace sumTrace = new TraceImpl(sample, new IsotopeMZ(sumIso), sumSeries);
+        Trace sumTrace = new TraceImpl(sample, ratioChannel, sumSeries);
         sample.addTrace(sumTrace);
-
-        String upperSeriesLabel;
-        if (upperFrac.getMzValue().hasIsotope()) {
-          upperSeriesLabel = upperFrac.getMzValue().getIsotope().getName();
-        } else {
-          upperSeriesLabel = upperFrac.getMzValue().getElementTransition();
-        }
-
-        String lowerSeriesLabel;
-        if (lowerFrac.getMzValue().hasIsotope()) {
-          lowerSeriesLabel = lowerFrac.getMzValue().getIsotope().getName();
-        } else {
-          lowerSeriesLabel = lowerFrac.getMzValue().getElementTransition();
-        }
-
-        String ratioLabel;
-        if (upperFrac.getMzValue().hasIsotope()
-            && lowerFrac.getMzValue().hasIsotope()) {
-          ratioLabel = upperFrac.getMzValue().getIsotope().getName()
-              + "/" + lowerFrac.getMzValue().getIsotope().getName();
-        } else {
-          ratioLabel = upperFrac.getMzValue().getElementTransition()
-              + "/" + lowerFrac.getMzValue().getElementTransition();
-        }
 
         String timeLabel = "Time [s]";
 
         xyBlock.addCol(new TabCol(timeLabel, SnF.doubleToStrArr(upperFracTime, NF.D1C6)));
-        xyBlock.addCol(new TabCol(upperSeriesLabel, SnF.doubleToStrArr(upperFracIntensity, NF.D1C6)));
-        xyBlock.addCol(new TabCol(lowerSeriesLabel, SnF.doubleToStrArr(lowerFracIntensity, NF.D1C6)));
+        xyBlock.addCol(new TabCol(upperFrac.getChannel().getUIString(),
+            SnF.doubleToStrArr(upperFracIntensity, NF.D1C6)));
+        xyBlock.addCol(new TabCol(lowerFrac.getChannel().getUIString(),
+            SnF.doubleToStrArr(lowerFracIntensity, NF.D1C6)));
         xyBlock.addCol(new TabCol(ratioLabel, ratioArr));
       }
     }
@@ -1084,7 +1078,7 @@ public abstract class DataExport {
    * Intended for the exporter if one wants to show the p-value approach.
    */
 
-  public static void exportPValues(Sample sample, List<Isotope> selIsotopes,
+  public static void exportPValues(Sample sample, List<Channel> selChannels,
                                    NormalSearchParams params, ExportWriter writer) {
     if (sample instanceof SampleImpl) {
 
@@ -1136,13 +1130,13 @@ public abstract class DataExport {
         case ALL_LOADED -> {
         }
         case SELECTED -> {
-          traces.removeIf(t -> !selIsotopes.contains(t.getMzValue().getIsotope()));
+          traces.removeIf(t -> !selChannels.contains(t.getChannel().getIsotope()));
         }
         case POSITIVE_LIST_SELECTION -> {
-          traces.removeIf(t -> !includedIsotopes.contains(t.getMzValue().getIsotope()));
+          traces.removeIf(t -> !includedIsotopes.contains(t.getChannel().getIsotope()));
         }
         case NEGATIVE_LIST_EXCLUSION -> {
-          traces.removeIf(t -> excludedIsotopes.contains(t.getMzValue().getIsotope()));
+          traces.removeIf(t -> excludedIsotopes.contains(t.getChannel().getIsotope()));
         }
         default -> {
           // keep as is, we should not reach this branch
@@ -1191,9 +1185,9 @@ public abstract class DataExport {
       List<String> excludedTraces = new ArrayList<>();
       for (Trace trace : traces) {
         if (preScreenMap.containsKey(trace)) {
-          includedTraces.add(trace.getMzValue().getName());
+          includedTraces.add(trace.getChannel().getUIString());
         } else {
-          excludedTraces.add(trace.getMzValue().getName());
+          excludedTraces.add(trace.getChannel().getUIString());
         }
       }
       metaBlock.addCol(new TabCol("Included mz", ArrUtils.stringListToArr(includedTraces)));
@@ -1344,7 +1338,7 @@ public abstract class DataExport {
 
         // Export after i iteration but sort by isotope number
         List<Trace> exportTraces = new ArrayList<>(preScreenMap.keySet());
-        exportTraces.sort(Comparator.comparingDouble(o -> o.getMzValue().getIsotope().getIsotopicNumber()));
+        exportTraces.sort(Comparator.comparingDouble(o -> o.getChannel().getIsotope().getIsotopicNumber()));
         boolean needsTime = true;
         for (Trace trace : exportTraces) {
           if (needsTime) {
@@ -1352,8 +1346,8 @@ public abstract class DataExport {
                 SnF.doubleToStrArr(trace.getTISeries().getTime(), NF.D1C6)));
             needsTime = false;
           }
-          if (selIsotopes.contains(trace.getMzValue().getIsotope())) {
-            pBlock.addCol(new TabCol(trace.getMzValue().getName(), "Intensity [cts]",
+          if (selChannels.contains(trace.getChannel().getIsotope())) {
+            pBlock.addCol(new TabCol(trace.getChannel().getUIString(), "Intensity [cts]",
                 SnF.doubleToStrArr(trace.getTISeries().getIntensity()
                     , NF.D1C6)));
             pBlock.addCol(new TabCol("p value", SnF.doubleToStrArr(pValuesInTraceMap.get(trace),
@@ -1526,10 +1520,10 @@ public abstract class DataExport {
                 String mz = SnF.doubleToString(spectralArray.getMz(), NF.D1C6);
                 row.add(mz);
 
-                Isotope iso = spectralArray.getIsotope();
-                if (iso != null) {
-                  row.add(iso.getName());
-                  row.add(iso.getElement().getSymbol());
+                Channel ch = spectralArray.getChannel();
+                row.add(ch.getUIString());
+                if (ch.getIsotope() != null) {
+                  row.add(ch.getIsotope().getElement().getSymbol());
                 } else {
                   row.add(mz);
                   row.add(mz);
@@ -1551,6 +1545,107 @@ public abstract class DataExport {
           }
         }
       }
+    }
+  }
+
+  public static void exportLpcAsLines(List<Sample> samples, Path dir) {
+
+    if (Files.isDirectory(dir)) {
+
+      double x = 0;
+      double y = 0;
+      double stepSize = 20;
+      double dt = 0.001;
+
+      for (int i = 0; i < samples.size(); i++) {
+        Sample sample = samples.get(i);
+        if (sample instanceof IncompleteSample) {
+          x += stepSize;
+          y = 0;
+
+          // blacklist string that we do not need for UMAP
+          List<String> blacklistKeys = new ArrayList<>();
+          blacklistKeys.add("TARGET");
+          //blacklistKeys.add("id");
+          blacklistKeys.add("frame");
+          blacklistKeys.add("x");
+          blacklistKeys.add("y");
+
+          //blacklistKeys.add("particle_id");
+          blacklistKeys.add("detection_time");
+          blacklistKeys.add("frame_id");
+          blacklistKeys.add("centroid_row");
+          blacklistKeys.add("centroid_col");
+
+          // Output dir and writer
+          Path filePath = dir.resolve("line_" + (i + 1) + ".csv");
+          ExportWriter writer = new CsvExportWriter(filePath.toFile());
+
+          // Data
+          IncompleteParticleMatrix matrix = ((IncompleteSample) sample).getMatrix();
+
+          if (matrix instanceof LPCParticleMatrix) {
+            HashMap<String, List<Double>> allData = ((LPCParticleMatrix) matrix).getAllData();
+
+            // Determine size
+            int size = Integer.MAX_VALUE;
+            for (String key : allData.keySet()) {
+              if (!blacklistKeys.contains(key)) {
+                List<Double> data = allData.get(key);
+                size = Math.min(size, data.size());
+              }
+            }
+
+            // Write metadata
+            writer.writeLine(List.of("Timestamp:", "2024-05-28T17:09:13.063096"));
+            writer.writeLine(List.of("Laser line number:", "1"));
+            writer.writeLine(List.of("Sample name:", sample.getNickName()));
+            writer.writeLine(List.of("Laser image name:", ""));
+            writer.writeLine(List.of("Starting X:", String.valueOf(0)));
+            writer.writeLine(List.of("Starting Y:", String.valueOf(0)));
+            writer.writeLine(List.of("Starting Z:", String.valueOf(0)));
+            writer.writeLine(List.of("Spot size:", String.valueOf(20)));
+            writer.writeLine(List.of("Spot spacing:", String.valueOf(20)));
+            writer.writeLine(List.of("Number of shots:", String.valueOf(size)));
+            writer.writeLine(List.of("Direction of ablation:", "0", "Left to Right"));
+
+            List<String> headerList = new ArrayList<>(List.of("Cycle time (ms)", "x [um]", "y [um]"));
+            List<String> validKeys = new ArrayList<>(allData.keySet());
+            validKeys.removeIf(blacklistKeys::contains);
+            for (int p = 0; p < validKeys.size(); p++) {
+              String vk = validKeys.get(p);
+              headerList.add(p + vk);
+            }
+            writer.writeLine(headerList);
+
+            for (int r = 0; r < size; r++) {
+              y += stepSize;
+              dt += dt;
+              List<String> line = new ArrayList<>();
+              line.add(SnF.doubleToString(dt, NF.D1C6));
+              line.add(String.valueOf(x));
+              line.add(String.valueOf(y));
+
+              for (String validKey : validKeys) {
+                List<Double> data = allData.get(validKey);
+                if (data != null) {
+                  // trims data just in case
+                  if (data.size() > size) {
+                    data.subList(size, data.size()).clear();
+                  }
+                  line.add(String.valueOf(data.get(r)));
+
+                  // WRITE data line
+                }
+              }
+              writer.writeLine(line);
+            }
+          }
+          writer.close();
+        }
+      }
+
+
     }
   }
 

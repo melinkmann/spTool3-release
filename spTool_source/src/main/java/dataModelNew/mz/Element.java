@@ -36,7 +36,7 @@ import sandbox.montecarlo.Statistics;
 import util.ArrUtils;
 import util.Util;
 
-public enum Element implements Fillable<Element>, FillCollection<Element> {
+public enum Element implements ChannelCategory, Fillable<Element>, FillCollection<Element> {
 
   H("Hydrogen", 1, new int[]{1, 2, 3}, new double[]{0.999885, 0.000115, 0.0},
       new double[]{1.007825, 2.014102, 3.016049}),
@@ -280,12 +280,13 @@ public enum Element implements Fillable<Element>, FillCollection<Element> {
     return name;
   }
 
+  // returns the name of the enum
   public String getShortName() {
     return name();
   }
 
   public String getSymbol() {
-    return toString();
+    return name(); //same as toString() in current implementation
   }
 
   public int getAtomicNumber() {
@@ -326,28 +327,6 @@ public enum Element implements Fillable<Element>, FillCollection<Element> {
   }
 
 
-  public HashMap<Isotope, Double> calcRandomizedIsotopeSignalLvl(double elementSignal,
-                                                                 double isotopicUncertainty) {
-    HashMap<Isotope, Double> isotopicFractions = new LinkedHashMap<>();
-
-    List<Isotope> isotopes = getIsotopes();
-    double[] fractions = new double[isotopes.size()];
-
-    // Calculate, then normalize
-    for (int i = 0; i < isotopes.size(); i++) {
-      Isotope isotope = isotopes.get(i);
-      fractions[i] = Statistics.randomifyPercent(isotope.getAbundance(), isotopicUncertainty);
-    }
-    ArrUtils.normalizeBySumOverriding(fractions);
-    ArrUtils.multiplyOverriding(fractions, elementSignal);
-
-    for (int i = 0; i < isotopes.size(); i++) {
-      isotopicFractions.put(isotopes.get(i), fractions[i]);
-    }
-
-    return isotopicFractions;
-  }
-
   public HashMap<Isotope, Double> calcIsotopeSignalLvl(double elementSignal) {
     HashMap<Isotope, Double> isotopicFractions = new LinkedHashMap<>();
 
@@ -369,7 +348,7 @@ public enum Element implements Fillable<Element>, FillCollection<Element> {
 
       // Remove potential numbers and special characters, convert to lower case
       String cleanSymbol = symbol.replaceAll("[^a-zA-Z]", "");
-      cleanSymbol = symbol.toLowerCase(Locale.ROOT);
+      cleanSymbol = cleanSymbol.toLowerCase(Locale.ROOT);
 
       for (Element value : Element.values()) {
         // Au
@@ -386,6 +365,21 @@ public enum Element implements Fillable<Element>, FillCollection<Element> {
     return element;
   }
 
+  /// ################## CHANNEL CATEGORY  ###############
+  @Override
+  public String getUIString() {
+    return getShortName();
+  }
+
+
+  // returns the same as getShortName() namely the enum field name BUT via direct access to skip changes to
+  // getShortName()
+  @Override
+  public String getUniqueXmlString() {
+    return Channel.wrap(name());
+  }
+
+  /// ################## FILLABLE  ###############
   @Override
   public String getStringValue() {
     return this.getShortName() + " (" + this.getLongName() + ")";
@@ -400,7 +394,6 @@ public enum Element implements Fillable<Element>, FillCollection<Element> {
   public Element unwrap() {
     return this;
   }
-
 
   @Override
   public List<Fillable<Element>> getItems() {
@@ -425,6 +418,7 @@ public enum Element implements Fillable<Element>, FillCollection<Element> {
     return match;
   }
 
+  /// ################## STATIC UTILITY  ###############
   public static List<Isotope> getIsotopes(List<Element> elements) {
     List<Isotope> isotopes = new ArrayList<>();
     for (Element element : elements) {
@@ -488,6 +482,35 @@ public enum Element implements Fillable<Element>, FillCollection<Element> {
     return map;
   }
 
+
+  public static String[] getAllIsotopeFullUINames() {
+    List<Isotope> isotopes = getAllIsotopes();
+    List<String> names = new ArrayList<>();
+    for (Isotope isotope : isotopes) {
+      names.add(isotope.getFullUIName());
+    }
+    names.sort(String::compareTo);
+    return ArrUtils.stringListToArr(names);
+  }
+
+  public static String[] getAllElementNames() {
+    List<String> names = Arrays.stream(dataModelNew.mz.Element.values())
+        .map(dataModelNew.mz.Element::getLongName)
+        .collect(Collectors.toList());
+    names.sort(String::compareTo);
+    return ArrUtils.stringListToArr(names);
+  }
+
+  // Do not change the labelling here!!! These are constants to find the isotopes in xml files!
+  public static List<String> getAllIsotopeNamesForXML() {
+    List<Isotope> isotopes = getAllIsotopes();
+    List<String> names = new ArrayList<>();
+    for (Isotope isotope : isotopes) {
+      names.add(isotope.getXMLCode());
+    }
+    return names;
+  }
+
   private static boolean isPriority(int nomIsotopicMass, Element element) {
     return switch (nomIsotopicMass) {
       case 3 -> element == H;    // He is noble gas; H trace but preferred
@@ -520,7 +543,7 @@ public enum Element implements Fillable<Element>, FillCollection<Element> {
       case 108 -> element == Pd;   // Pd 26.5% >> Cd 0.9%
       case 110 -> element == Cd;   // Cd 12.5% ≈ Pd 11.7%; Cd slightly higher
       case 112 -> element == Cd;   // Cd 24.1% >> Sn 1.0%
-      case 113 ->element == In;   // In 4.3% vs Cd 12.2%;
+      case 113 -> element == In;   // In 4.3% vs Cd 12.2%;
       // but In has only 2 isotopes — 113/115 both used; keep In
       case 114 -> element == Cd;   // Cd 28.7% >> Sn 0.7%
       case 115 -> element == In;   // In 95.7% >> Sn 0.3%; classic In internal standard mass
@@ -569,35 +592,6 @@ public enum Element implements Fillable<Element>, FillCollection<Element> {
       case 294 -> element == Ts;   // Both synthetic superheavies; arbitrary
       default -> false;
     };
-  }
-
-
-  public static String[] getAllIsotopeFullUINames() {
-    List<Isotope> isotopes = getAllIsotopes();
-    List<String> names = new ArrayList<>();
-    for (Isotope isotope : isotopes) {
-      names.add(isotope.getFullUIName());
-    }
-    names.sort(String::compareTo);
-    return ArrUtils.stringListToArr(names);
-  }
-
-  public static String[] getAllElementNames() {
-    List<String> names = Arrays.stream(dataModelNew.mz.Element.values())
-        .map(dataModelNew.mz.Element::getLongName)
-        .collect(Collectors.toList());
-    names.sort(String::compareTo);
-    return ArrUtils.stringListToArr(names);
-  }
-
-  // Do not change the labelling here!!! These are constants to find the isotopes in xml files!
-  public static List<String> getAllIsotopeNamesForXML() {
-    List<Isotope> isotopes = getAllIsotopes();
-    List<String> names = new ArrayList<>();
-    for (Isotope isotope : isotopes) {
-      names.add(isotope.getXMLCode());
-    }
-    return names;
   }
 
 

@@ -23,7 +23,7 @@ import dataModelNew.TISeries;
 import dataModelNew.TISeriesRAM;
 import dataModelNew.Trace;
 import dataModelNew.TraceMC;
-import dataModelNew.mz.IsotopeMZ;
+import dataModelNew.mz.Channel;
 import dataModelNew.mz.MZValue;
 
 import java.io.IOException;
@@ -52,7 +52,7 @@ public class MCPopulation implements Population, Serializable {
   private final PopulationID id;
   private String name;
   private final EventCollection mainEventCollection;
-  private List<MZValue> contributingMZs; // always empty as this type of Pop is not "aligned"
+  private List<Channel> contributingMZs; // always empty as this type of Pop is not "aligned"
 
   // Dummy
   public MCPopulation() {
@@ -123,13 +123,13 @@ public class MCPopulation implements Population, Serializable {
   }
 
   @Override
-  public List<MZValue> getContributingMZs() {
+  public List<Channel> getContributingChannels() {
     return contributingMZs;
   }
 
   @Override
-  public void setContributingMZs(List<MZValue> contributingMZs) {
-    this.contributingMZs = contributingMZs;
+  public void setContributingChannels(List<Channel> contributingChannels) {
+    this.contributingMZs = contributingChannels;
   }
 
   @Override
@@ -189,7 +189,7 @@ public class MCPopulation implements Population, Serializable {
       // it should be MC but check to avoid cast issues
       if (mainEventCollection.getTrace() instanceof TraceMC) {
         TraceMC mcTrace = ((TraceMC) mainEventCollection.getTrace());
-        mzLabel = mcTrace.getMzValue().getName();
+        mzLabel = mcTrace.getChannel().getShortUIString();
 
         // use this DT not the macro!!: there might be aliasing from e.g. DT=9.999999999 ms and a grid time of e.g. 5 µs would cause DT=9.999995 ms
         double macroDT = mcTrace.getTISeries().getDT();
@@ -209,7 +209,7 @@ public class MCPopulation implements Population, Serializable {
 
           // Check to prevent null pointer (in principle Trace should only have Matrices with
           // their isotope, but better save than run time exception).
-          Isotope isotope = mcTrace.getMzValue().getIsotope();
+          Isotope isotope = mcTrace.getChannel().getIsotope();
           if (popMarkers.containsKey(isotope)) {
 
             // calc intensity at that index

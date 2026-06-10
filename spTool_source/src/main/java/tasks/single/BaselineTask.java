@@ -84,11 +84,15 @@ public class BaselineTask extends AbstractWorkingTask implements WorkingTask {
               double[] data = trace.getTISeries().getIntensity();
               double siaShape = trace.getSiaShape();
               if (siaShape < lowerSIALim || siaShape > upperSIALim) {
-                LOGGER.info(trace.getMzValue().getName() + ": " +
-                    "Empirical SIA shape was ill conditioned: " + siaShape
-                    + ". Passing average SIA of all isotopes to the baseline computation: " + meanSIA
-                    + ". Allowed limits are set in configuration:" +
-                    "Lower: " + lowerSIALim + ", upper: " + upperSIALim + ".");
+                if (params.getPreferEmpiricalSIA().getValue()){
+                  LOGGER.trace(trace.getChannel().getUIString() + ": " +
+                      "Preparing baseline computation. Checking empirical SIA:"
+                      + " SIA shape was ill conditioned: " + siaShape
+                      + ". Passing average SIA of all isotopes to the baseline computation: " + meanSIA
+                      + ". Allowed limits are set in configuration:" +
+                      "Lower: " + lowerSIALim + ", upper: " + upperSIALim + "."
+                      +" Note that the decision if empirical or user defined SIA shape is used comes at later stage.");
+                }
                 siaShape = meanSIA;
               }
               Baseline bln = BaselineGenerator.generateBaseline(params, data, trace.getTISeries().getDT(),

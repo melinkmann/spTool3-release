@@ -85,7 +85,7 @@ public class TOFmz implements MZValue, Serializable {
   @Override
   public String getElementTransition() {
     if (hasIsotope()) {
-      return getIsotope().getName() + "(" + getTransition() + ")";
+      return getIsotope().getNumberAndElement() + "(" + getTransition() + ")";
     } else {
       return getTransition();
     }
@@ -94,7 +94,7 @@ public class TOFmz implements MZValue, Serializable {
   @Override
   public String getTypesafeElementTransition() {
     if (hasIsotope()) {
-      return getTransition() + "-" + getIsotope().getName();
+      return getTransition() + "-" + getIsotope().getNumberAndElement();
     } else {
       return getTransition();
     }

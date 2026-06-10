@@ -56,7 +56,7 @@ public class SignalModificationParams extends AbstractParamSet implements ParamS
     this.excludeIsobars = new BooleanParameter("Isobaric conflicts",
         "Skip conflicts",
         "Do not add isotopes with expected isobaric conflicts",
-        false,
+        true,
         false,
         "excludeIsobars"
     );
@@ -111,6 +111,7 @@ public class SignalModificationParams extends AbstractParamSet implements ParamS
     );
 
     isotopeSumBoolean.addConditionalChild(true, excludeIsobars,onlyUseSelectedIsotopesForSum);
+
 
 
   }

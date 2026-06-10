@@ -21,7 +21,7 @@ import analysis.Baseline;
 import analysis.Population;
 import analysis.PopulationID;
 import core.SpTool3Main;
-import dataModelNew.mz.MZValue;
+import dataModelNew.mz.Channel;
 
 import java.io.Serializable;
 import java.util.HashSet;
@@ -43,7 +43,7 @@ public interface Trace extends Serializable {
 
   Sample getSample();
 
-  MZValue getMzValue();
+  Channel getChannel();
 
   TISeries getTISeries();
 
@@ -92,12 +92,7 @@ public interface Trace extends Serializable {
 
   default Colors getColor(Sample sample) {
     Colors color;
-    if (getMzValue().hasIsotope()) {
-      Isotope isotope = getMzValue().getIsotope();
-      color = SpTool3Main.getRunTime().getConfParams().getColor(isotope);
-    } else {
-      color = new SpColor(sample.getColor());
-    }
+    color = SpTool3Main.getRunTime().getConfParams().getColor(sample, getChannel());
     return color;
   }
 

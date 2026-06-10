@@ -19,8 +19,12 @@ package processing.parameters;
 
 import gui.util.TextFormatterOption;
 import io.XmlUtil;
+
+import java.io.IOException;
+import java.io.ObjectInputStream;
 import java.io.Serial;
 import java.io.Serializable;
+
 import org.apache.commons.text.StringEscapeUtils;
 import org.w3c.dom.Element;
 import visualizer.styles.Colors;
@@ -33,18 +37,26 @@ public class ColorParameter extends AbstractParameter<String> implements Seriali
   private static final long serialVersionUID = 1_000_000L;
 
   private String value;
-  // Supplier allows to call the same method again. Otherwise, the same formatter will be used in various UI controls at the same time.
+  // Supplier allows to call the same method again. Otherwise, the same formatter will be used in various
+  // UI controls at the same time.
   // has to be a SOURCE, i.e. a method reference!
   private final TextFormatterOption textFormatterOption = TextFormatterOption.ALL_PASS;
 
+  // stores unique ID for channels
+  private String channelXmlID;
+  private String matcherID;
 
   public ColorParameter(String label,
-      String explanation,
-      String value,
-      boolean isLimitedToExperts,
-      String xmlLabel) {
-    super(label, explanation, value,isLimitedToExperts, xmlLabel);
+                        String explanation,
+                        String value,
+                        boolean isLimitedToExperts,
+                        String matcherID,
+                        String channelXmlID,
+                        String xmlLabel) {
+    super(label, explanation, value, isLimitedToExperts, xmlLabel);
     this.value = value;
+    this.matcherID = matcherID;
+    this.channelXmlID = channelXmlID;
   }
 
   // quasi constructor
@@ -54,6 +66,8 @@ public class ColorParameter extends AbstractParameter<String> implements Seriali
         super.getExplanation(),
         value,
         super.isLimitedToExpert(),
+        matcherID,
+        channelXmlID,
         super.getXmlID());
     copy.setDefaultValue(getDefaultValue());
     return copy;
@@ -65,6 +79,8 @@ public class ColorParameter extends AbstractParameter<String> implements Seriali
     String value = xmlElement.getAttribute(XmlUtil.PAR_VALUE_ATTRIBUTE);
     String defaultValue = xmlElement.getAttribute(XmlUtil.PAR_DEFAULT_ATTRIBUTE);
     String isExpertStr = xmlElement.getAttribute(XmlUtil.PAR_EXPERT_ATTRIBUTE);
+    String chXmlID = xmlElement.getAttribute(XmlUtil.PAR_CHANNEL_ID_ATTRIBUTE);
+    String matchID = xmlElement.getAttribute(XmlUtil.PAR_MATCH_ID_ATTRIBUTE);
 
     if (value != null && !value.isEmpty()) {
       setValue(StringEscapeUtils.unescapeXml(value));
@@ -77,6 +93,23 @@ public class ColorParameter extends AbstractParameter<String> implements Seriali
     if (isExpertStr != null && !isExpertStr.isEmpty() && isExpertStr.equals("true")) {
       setLimitedToExperts(true);
     }
+
+    if (chXmlID != null && !chXmlID.isEmpty()) {
+      this.channelXmlID = chXmlID;
+    }
+
+    if (matchID != null && !matchID.isEmpty()) {
+      this.matcherID = matchID;
+    }
+  }
+
+  @Override
+  public void writeToXmlElement(Element xmlElement) {
+    super.writeToXmlElement(xmlElement);
+    xmlElement.setAttribute(XmlUtil.PAR_CHANNEL_ID_ATTRIBUTE,
+        StringEscapeUtils.escapeXml10(channelXmlID));
+    xmlElement.setAttribute(XmlUtil.PAR_MATCH_ID_ATTRIBUTE,
+        StringEscapeUtils.escapeXml10(matcherID));
   }
 
   @Override
@@ -129,5 +162,29 @@ public class ColorParameter extends AbstractParameter<String> implements Seriali
   public void setColor(Colors colors) {
     this.value = Colors.colorToRgbForXML(colors.getFX());
   }
+
+  public String getChannelXmlID() {
+    return channelXmlID;
+  }
+
+  public String getMatcherID() {
+    return matcherID;
+  }
+
+  @Serial
+  private void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException {
+    // Default serialization: Note that ram/hdd conversion is carried out in each sample when called
+    in.defaultReadObject();
+
+    if (channelXmlID == null) {
+      this.channelXmlID = "";
+    }
+
+    if (matcherID == null) {
+      this.matcherID = "";
+    }
+
+  }
+
 
 }

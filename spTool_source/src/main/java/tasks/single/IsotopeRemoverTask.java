@@ -18,7 +18,6 @@
 package tasks.single;
 
 import analysis.*;
-import core.SpTool3Main;
 import dataModelNew.Sample;
 import dataModelNew.SampleImpl;
 import dataModelNew.Trace;
@@ -30,7 +29,6 @@ import processing.options.EventType;
 import processing.parameterSets.impl.IsotopeRemoverParams;
 import tasks.TaskResult;
 import tasks.WorkingTask;
-import tasks.results.EmptyTaskResult;
 import tasks.results.FunctionalTaskResult;
 import util.ArrUtils;
 import util.NF;
@@ -110,25 +108,25 @@ public class IsotopeRemoverTask extends AbstractWorkingTask implements WorkingTa
                     double lowerAreaCutoff = params.getNetAreaThreshold().getValue();
                     if (rate > upperCutoff && params.getRemoveMoreIsotopesThan().getValue()) {
                       badTraces.merge(trace,
-                          trace.getMzValue().getName() + ">" + SnF.doubleToString(upperCutoff, NF.D1C1),
+                          trace.getChannel().getUIString() + ">" + SnF.doubleToString(upperCutoff, NF.D1C1),
                           (existing, newVal) -> existing + "&" + newVal);
                       hasChanged.set(true);
                     }
                     if (nEvt < lowerCutoff && params.getRemoveFewerIsotopesThan().getValue()) {
                       badTraces.merge(trace,
-                          trace.getMzValue().getName() + "<" + lowerCutoff,
+                          trace.getChannel().getUIString() + "<" + lowerCutoff,
                           (existing, newVal) -> existing + "&" + newVal);
                       hasChanged.set(true);
                     }
                     if (minNetArea < lowerAreaCutoff && params.getRemoveLessIntenseIsotopesThan().getValue()) {
                       badTraces.merge(trace,
-                          trace.getMzValue().getName() + "<" + minNetArea + "cts",
+                          trace.getChannel().getUIString() + "<" + minNetArea + "cts",
                           (existing, newVal) -> existing + "&" + newVal);
                       hasChanged.set(true);
                     }
                   } else {
                     // pop does not event exist -> remove
-                    badTraces.put(trace, trace.getMzValue().getName() + ":N/A");
+                    badTraces.put(trace, trace.getChannel().getUIString() + ":N/A");
                   }
 
                 }

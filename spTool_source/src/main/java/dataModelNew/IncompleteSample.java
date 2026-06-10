@@ -21,9 +21,7 @@ import analysis.*;
 import analysis.quant.Calibration;
 import analysis.quant.Cal;
 import core.SpTool3Main;
-import dataModelNew.mz.Element;
-import dataModelNew.mz.MZValue;
-import dataModelNew.mz.SQmz;
+import dataModelNew.mz.*;
 import io.export.ExportSimulationEventContainer;
 
 import java.awt.Color;
@@ -47,7 +45,6 @@ import processing.options.EventType;
 import processing.options.MathMod;
 import processing.parameterSets.ListMethod;
 import processing.parameterSets.Method;
-import sandbox.montecarlo.Isotope;
 import sandbox.montecarlo.ParticlePopulationMatrix;
 import util.NF;
 
@@ -64,11 +61,11 @@ public class IncompleteSample implements Sample, Serializable {
   private boolean highlighted;
   private String comment;
   private final SampleFile sampleFile;
-  private final HashMap<Isotope, Trace> traces;
+  private final HashMap<Channel, Trace> traces;
   private Method method;
   private Cal quant;
   private Color color;
-  private List<Isotope> sampleDefaultIsotopes;
+  private List<Channel> sampleDefaultChannels;
   private List<String> removedIsotopeInfo;
 
   private final IncompleteParticleMatrix matrix;
@@ -85,7 +82,7 @@ public class IncompleteSample implements Sample, Serializable {
     this.sampleFile = new SampleFile();
     this.quant = new Calibration();
     this.color = SpTool3Main.getRunTime().getNextSampleColor().get();
-    this.sampleDefaultIsotopes = new ArrayList<>();
+    this.sampleDefaultChannels = new ArrayList<>();
     this.removedIsotopeInfo = new ArrayList<>();
   }
 
@@ -99,18 +96,18 @@ public class IncompleteSample implements Sample, Serializable {
     this.sampleFile = sampleFile;
     this.quant = new Calibration(nickName);
     this.color = SpTool3Main.getRunTime().getNextSampleColor().get();
-    this.sampleDefaultIsotopes = new ArrayList<>();
+    this.sampleDefaultChannels = new ArrayList<>();
     this.removedIsotopeInfo = new ArrayList<>();
   }
 
   // Deep copy
   public IncompleteSample(String nickName, boolean highlighted, String comment,
-                          SampleFile sampleFile, HashMap<Isotope, Trace> traces,
+                          SampleFile sampleFile, HashMap<Channel, Trace> traces,
                           Method method,
                           Cal quant,
                           Color color,
                           IncompleteParticleMatrix matrix,
-                          List<Isotope> sampleDefaultIsotopes,
+                          List<Channel> sampleDefaultChannels,
                           List<String> removedIsotopeInfo) {
     this.nickName = nickName;
     this.highlighted = highlighted;
@@ -121,7 +118,7 @@ public class IncompleteSample implements Sample, Serializable {
     this.quant = quant;
     this.color = color;
     this.matrix = matrix.copy();
-    this.sampleDefaultIsotopes = new ArrayList<>(sampleDefaultIsotopes);
+    this.sampleDefaultChannels = new ArrayList<>(sampleDefaultChannels);
     this.removedIsotopeInfo = new ArrayList<>(removedIsotopeInfo);
   }
 
@@ -133,7 +130,7 @@ public class IncompleteSample implements Sample, Serializable {
   @Override
   public Sample copyWithoutTraces() {
     return new IncompleteSample(nickName, highlighted, comment, sampleFile,
-        traces, method.getCopyWithoutFile(), quant, color, matrix.copy(), sampleDefaultIsotopes,
+        traces, method.getCopyWithoutFile(), quant, color, matrix.copy(), sampleDefaultChannels,
         removedIsotopeInfo);
   }
 
@@ -154,8 +151,8 @@ public class IncompleteSample implements Sample, Serializable {
     if (quant == null) {
       this.quant = new Calibration();
     }
-    if (sampleDefaultIsotopes == null) {
-      this.sampleDefaultIsotopes = new ArrayList<>();
+    if (sampleDefaultChannels == null) {
+      this.sampleDefaultChannels = new ArrayList<>();
     }
     if (removedIsotopeInfo == null) {
       this.removedIsotopeInfo = new ArrayList<>();
@@ -205,7 +202,7 @@ public class IncompleteSample implements Sample, Serializable {
   }
 
   @Override
-  public List<String> getRemovedIsotopeInfo() {
+  public List<String> getRemovedChannelInfo() {
     return new ArrayList<>(removedIsotopeInfo);
   }
 
@@ -229,33 +226,33 @@ public class IncompleteSample implements Sample, Serializable {
 
   @Nullable
   @Override
-  public Trace getTrace(Isotope isotope) {
-    return traces.get(isotope);
+  public Trace getTrace(Channel channel) {
+    return traces.get(channel);
   }
 
-  /**
-   * @param isotopes Isotopes that may or may not be present in this sample.
+  /*
+   * @param channels Channels that may or may not be present in this sample.
    * @return A list of the corresponding traces. List is empty if no match is found.
    */
   @Override
-  public List<Trace> getTraces(List<Isotope> isotopes) {
+  public List<Trace> getTraces(List<Channel> channels) {
     List<Trace> result = new ArrayList<>();
-    for (Isotope isotope : isotopes) {
-      if (traces.containsKey(isotope)) {
-        result.add(traces.get(isotope));
+    for (Channel channel : channels) {
+      if (traces.containsKey(channel)) {
+        result.add(traces.get(channel));
       }
     }
     return result;
   }
 
   @Override
-  public List<Isotope> listIsotopes() {
+  public List<Channel> listChannels() {
     return Collections.unmodifiableList(new ArrayList<>(traces.keySet()));
   }
 
 
   @Override
-  public List<Isotope> getRecordedTofRange() {
+  public List<Channel> getRecordedTofRange() {
     return new ArrayList<>();
   }
 
@@ -292,7 +289,7 @@ public class IncompleteSample implements Sample, Serializable {
   }
 
   @Override
-  public List<ParticlePopulationMatrix> getMatrices(Isotope isotope) {
+  public List<ParticlePopulationMatrix> getMatrices(Channel channel) {
     return new ArrayList<>();
   }
 
@@ -312,9 +309,9 @@ public class IncompleteSample implements Sample, Serializable {
   }
 
   @Override
-  public List<PopulationID> listPopulations(List<Isotope> isotopes) {
+  public List<PopulationID> listPopulations(List<Channel> channels) {
     List<PopulationID> pops = new ArrayList<>();
-    List<Trace> traces = getTraces(isotopes);
+    List<Trace> traces = getTraces(channels);
     for (Trace trace : traces) {
       for (PopulationID popID : trace.getAllPopulationsTypes()) {
         if (!pops.contains(popID)) {
@@ -326,16 +323,16 @@ public class IncompleteSample implements Sample, Serializable {
   }
 
   @Override
-  public void removePopulations(List<Isotope> isotopes, PopulationID populationID) {
-    List<Trace> traces = getTraces(isotopes);
+  public void removePopulations(List<Channel> channels, PopulationID populationID) {
+    List<Trace> traces = getTraces(channels);
     for (Trace trace : traces) {
       trace.removePopulation(populationID);
     }
   }
 
   @Override
-  public void removeIsotopes(List<Isotope> isotopes) {
-    this.traces.keySet().removeAll(isotopes);
+  public void removeChannels(List<Channel> channels) {
+    this.traces.keySet().removeAll(channels);
   }
 
   @Override
@@ -351,7 +348,7 @@ public class IncompleteSample implements Sample, Serializable {
 
   @Override
   public void addTrace(Trace trace) {
-    traces.put(trace.getMzValue().getIsotope(), trace);
+    traces.put(trace.getChannel(), trace);
   }
 
   @Override
@@ -380,14 +377,14 @@ public class IncompleteSample implements Sample, Serializable {
   }
 
   @Override
-  public List<Isotope> getSampleDefaultIsotopes() {
-    return new ArrayList<>(sampleDefaultIsotopes);
+  public List<Channel> getSampleDefaultChannels() {
+    return new ArrayList<>(sampleDefaultChannels);
   }
 
   @Override
-  public void setSampleDefaultIsotopes(List<Isotope> sampleDefaultIsotopes) {
-    this.sampleDefaultIsotopes.clear();
-    this.sampleDefaultIsotopes.addAll(sampleDefaultIsotopes);
+  public void setSampleDefaultChannels(List<Channel> sampleDefaultChannels) {
+    this.sampleDefaultChannels.clear();
+    this.sampleDefaultChannels.addAll(sampleDefaultChannels);
   }
 
 
@@ -400,13 +397,13 @@ public class IncompleteSample implements Sample, Serializable {
   }
 
   // only has one MZ
-  public MZValue getMZ() {
+  public Channel getChannel() {
     if (traces.isEmpty()) {
       // dummy
-      return new SQmz(Element.UNKNOWN.getIsotopes().get(0));
+      return new MZChannel();
     } else {
-      List<Isotope> keys = new ArrayList<>(traces.keySet());
-      return traces.get(keys.get(0)).getMzValue();
+      List<Channel> keys = new ArrayList<>(traces.keySet());
+      return traces.get(keys.get(0)).getChannel();
     }
   }
 
@@ -425,14 +422,14 @@ public class IncompleteSample implements Sample, Serializable {
   /// /////////////////////////// Calculations for UI //////////////////////////////////////
 
   @Override
-  public double[] getData(Isotope isotope, PopulationID populationID, EventType eventType,
+  public double[] getData(Channel channel, PopulationID populationID, EventType eventType,
                           EventParameter param, Unit unit) {
 
     double[] data = new double[0];
     // Just return, whatever has been stored (user may load quant or external data)
     //if (IntensityUnit.CTS.equals(unit)) {
     // call getter (possibly null)
-    Trace trace = getTrace(isotope);
+    Trace trace = getTrace(channel);
     if (trace != null) {
       data = trace.get(populationID, eventType, param);
     }
@@ -441,42 +438,42 @@ public class IncompleteSample implements Sample, Serializable {
   }
 
   @Override
-  public double getAerosolTEConvention(Isotope isotope) {
+  public double getAerosolTEConvention(Channel channel) {
     return 0;
   }
 
   @Override
-  public double getPncTEConvention(Isotope isotope) {
+  public double getPncTEConvention(Channel channel) {
     return 0;
   }
 
   @Override
-  public double getMaxThr(@Nullable Isotope isotope, PopulationID populationID, boolean netSignal) {
+  public double getMaxThr(@Nullable Channel channel, PopulationID populationID, boolean netSignal) {
     return 0;
   }
 
   @Override
-  public double getMaxThr(@Nullable Isotope isotope, PopulationID populationID, boolean netSignal,
+  public double getMaxThr(@Nullable Channel channel, PopulationID populationID, boolean netSignal,
                           Unit unit) {
     return 0;
   }
 
   @Override
-  public List<Event> getNPEvents(Isotope isotope, PopulationID popID) {
+  public List<Event> getNPEvents(Channel channel, PopulationID popID) {
     return new ArrayList<>();
   }
 
   @Override
-  public int getTotalDataPoints(Isotope isotope) {
+  public int getTotalDataPoints(Channel channel) {
     int dp = 0;
     return dp;
   }
 
   @Override
-  public double getRawMeanCPS(Isotope isotope) {
+  public double getRawMeanCPS(Channel channel) {
     double val = 0;
-    if (traces.containsKey(isotope)) {
-      Trace trace = traces.get(isotope);
+    if (traces.containsKey(channel)) {
+      Trace trace = traces.get(channel);
       val = trace.getTISeries().getMeanIntensity();
       val = val / trace.getTISeries().getDT();
     }
@@ -485,10 +482,10 @@ public class IncompleteSample implements Sample, Serializable {
 
 
   @Override
-  public double getRawMedianCPS(Isotope isotope) {
+  public double getRawMedianCPS(Channel channel) {
     double val = 0;
-    if (traces.containsKey(isotope)) {
-      Trace trace = traces.get(isotope);
+    if (traces.containsKey(channel)) {
+      Trace trace = traces.get(channel);
       val = trace.getTISeries().getMedianIntensity();
       val = val / trace.getTISeries().getDT();
     }
@@ -496,10 +493,10 @@ public class IncompleteSample implements Sample, Serializable {
   }
 
   @Override
-  public double getEventRate(Isotope isotope, PopulationID populationID) {
+  public double getEventRate(Channel channel, PopulationID populationID) {
     double rate = 0;
     // call getter (possibly null)
-    Trace trace = getTrace(isotope);
+    Trace trace = getTrace(channel);
     if (trace != null) {
       int nNP = trace.getNoOfEvents(populationID);
       double durationSec = trace.getTISeries().getDuration();
@@ -514,18 +511,18 @@ public class IncompleteSample implements Sample, Serializable {
   }
 
   @Override
-  public double getAverageDrift(List<Isotope> isotopes, List<PopulationID> populations) {
+  public double getAverageDrift(List<Channel> channels, List<PopulationID> populations) {
     return NpPopulation.DEFAULT_DRIFT;
   }
 
   @Override
-  public double getAverageNoOfEvents(List<Isotope> isotopes, List<PopulationID> populations) {
+  public double getAverageNoOfEvents(List<Channel> channels, List<PopulationID> populations) {
     int sumEvents = 0;
     double counter = 0;
 
-    List<Trace> tracesWithIsotopes = getTraces(isotopes);
+    List<Trace> tracesWithChannels = getTraces(channels);
 
-    for (Trace trace : tracesWithIsotopes) {
+    for (Trace trace : tracesWithChannels) {
       for (PopulationID popID : populations) {
         sumEvents += trace.getNoOfEvents(popID);
         counter++;
@@ -567,59 +564,59 @@ public class IncompleteSample implements Sample, Serializable {
   }
 
   @Override
-  public String tabDwellTime(Isotope isotope) {
+  public String tabDwellTime(Channel channel) {
     return EMPTY_CELL;
   }
 
   @Override
-  public String tabDuration(Isotope isotope) {
+  public String tabDuration(Channel channel) {
     return EMPTY_CELL;
   }
 
   @Override
-  public String tabPoints(Isotope isotope) {
+  public String tabPoints(Channel channel) {
     return EMPTY_CELL;
   }
 
   @Override
-  public String tabTISeriesLimits(Isotope isotope) {
+  public String tabTISeriesLimits(Channel channel) {
     return EMPTY_CELL;
   }
 
   @Override
-  public String tabRawMean(Isotope isotope) {
+  public String tabRawMean(Channel channel) {
     return EMPTY_CELL;
   }
 
   @Override
-  public String tabRawMeanCPS(Isotope isotope) {
+  public String tabRawMeanCPS(Channel channel) {
     return EMPTY_CELL;
   }
 
   @Override
-  public String tabRawMedian(Isotope isotope) {
+  public String tabRawMedian(Channel channel) {
     return EMPTY_CELL;
   }
 
   @Override
-  public String tabRawMedianCPS(Isotope isotope) {
+  public String tabRawMedianCPS(Channel channel) {
     return EMPTY_CELL;
   }
 
   @Override
-  public String tabRawSD(Isotope isotope) {
+  public String tabRawSD(Channel channel) {
     return EMPTY_CELL;
   }
 
   @Override
-  public String tabRawMAD(Isotope isotope) {
+  public String tabRawMAD(Channel channel) {
     return EMPTY_CELL;
   }
 
   @Override
-  public String tabSIAShape(Isotope isotope) {
+  public String tabSIAShape(Channel channel) {
     String val = EMPTY_CELL;
-    Trace trace = getTrace(isotope);
+    Trace trace = getTrace(channel);
     if (trace != null) {
       double siaShape = trace.getSiaShape();
       if (siaShape > 0) {
@@ -630,62 +627,62 @@ public class IncompleteSample implements Sample, Serializable {
   }
 
   @Override
-  public String tabMeanSIAShape(Isotope isotope) {
+  public String tabMeanSIAShape(Channel channel) {
     return str(getMeanSiaShape(), NF.D1C4);
   }
 
   @Override
-  public String tabPopName(Isotope isotope, PopulationID populationID) {
-    return check(isotope, populationID) ?
-        getTrace(isotope).getPopulation(populationID).getName() : EMPTY_CELL;
+  public String tabPopName(Channel channel, PopulationID populationID) {
+    return check(channel, populationID) ?
+        getTrace(channel).getPopulation(populationID).getName() : EMPTY_CELL;
   }
 
   @Override
-  public String tabPopAdditional(Isotope isotope, PopulationID populationID) {
-    return check(isotope, populationID) ?
-        getTrace(isotope).getPopulation(populationID).translateParams() : EMPTY_CELL;
+  public String tabPopAdditional(Channel channel, PopulationID populationID) {
+    return check(channel, populationID) ?
+        getTrace(channel).getPopulation(populationID).translateParams() : EMPTY_CELL;
   }
 
   @Override
-  public String tabPopNpCount(Isotope isotope, PopulationID populationID) {
-    return check(isotope, populationID) ?
-        str(getTrace(isotope).getPopulation(populationID).getEvents().size(), NF.D1C0) : EMPTY_CELL;
+  public String tabPopNpCount(Channel channel, PopulationID populationID) {
+    return check(channel, populationID) ?
+        str(getTrace(channel).getPopulation(populationID).getEvents().size(), NF.D1C0) : EMPTY_CELL;
   }
 
   @Override
-  public String tabLodCts(Isotope isotope, PopulationID populationID) {
+  public String tabLodCts(Channel channel, PopulationID populationID) {
     return EMPTY_CELL;
   }
 
   @Override
-  public String tabLodAg(Isotope isotope, PopulationID populationID) {
+  public String tabLodAg(Channel channel, PopulationID populationID) {
     return EMPTY_CELL;
   }
 
   @Override
-  public String tabLodNm(Isotope isotope, PopulationID populationID) {
+  public String tabLodNm(Channel channel, PopulationID populationID) {
     return EMPTY_CELL;
   }
 
   @Override
-  public String tabLodAmol(Isotope isotope, PopulationID populationID) {
+  public String tabLodAmol(Channel channel, PopulationID populationID) {
     return EMPTY_CELL;
   }
 
   @Override
-  public String tabPNC(Isotope isotope, PopulationID populationID) {
+  public String tabPNC(Channel channel, PopulationID populationID) {
     return EMPTY_CELL;
   }
 
   @Override
-  public String tabPopNpRate(Isotope isotope, PopulationID populationID) {
+  public String tabPopNpRate(Channel channel, PopulationID populationID) {
     return EMPTY_CELL;
   }
 
   @Override
-  public String tabPopNpMean(Isotope isotope, PopulationID populationID) {
+  public String tabPopNpMean(Channel channel, PopulationID populationID) {
     String val = EMPTY_CELL;
-    Trace t = getTrace(isotope);
+    Trace t = getTrace(channel);
     if (t != null && t.hasType(populationID)) {
       val = str(mu(t.get(populationID, EventType.NP, EventParameter.NET_AREA)), NF.D1C3);
     }
@@ -693,9 +690,9 @@ public class IncompleteSample implements Sample, Serializable {
   }
 
   @Override
-  public String tabNpSD(Isotope isotope, PopulationID populationID) {
+  public String tabNpSD(Channel channel, PopulationID populationID) {
     String val = EMPTY_CELL;
-    Trace t = getTrace(isotope);
+    Trace t = getTrace(channel);
     if (t != null && t.hasType(populationID)) {
       val = str(sd(t.get(populationID, EventType.NP, EventParameter.NET_AREA)), NF.D1C3);
     }
@@ -703,9 +700,9 @@ public class IncompleteSample implements Sample, Serializable {
   }
 
   @Override
-  public String tabNpMedian(Isotope isotope, PopulationID populationID) {
+  public String tabNpMedian(Channel channel, PopulationID populationID) {
     String val = EMPTY_CELL;
-    Trace t = getTrace(isotope);
+    Trace t = getTrace(channel);
     if (t != null && t.hasType(populationID)) {
       val = str(md(t.get(populationID, EventType.NP, EventParameter.NET_AREA)), NF.D1C3);
     }
@@ -713,10 +710,10 @@ public class IncompleteSample implements Sample, Serializable {
   }
 
   @Override
-  public String tabPopNpCustomParamMean(Isotope isotope, PopulationID populationID, EventParameter par,
+  public String tabPopNpCustomParamMean(Channel channel, PopulationID populationID, EventParameter par,
                                         MathMod math) {
     String val = EMPTY_CELL;
-    Trace t = getTrace(isotope);
+    Trace t = getTrace(channel);
     if (t != null && t.hasType(populationID)) {
       val = str(mu(math.calc(t.get(populationID, EventType.NP, par))), NF.D1C3);
     }
@@ -724,10 +721,10 @@ public class IncompleteSample implements Sample, Serializable {
   }
 
   @Override
-  public String tabNpCustomParamMedian(Isotope isotope, PopulationID populationID, EventParameter par,
+  public String tabNpCustomParamMedian(Channel channel, PopulationID populationID, EventParameter par,
                                        MathMod math) {
     String val = EMPTY_CELL;
-    Trace t = getTrace(isotope);
+    Trace t = getTrace(channel);
     if (t != null && t.hasType(populationID)) {
       val = str(md(math.calc(t.get(populationID, EventType.NP, par))), NF.D1C3);
     }
@@ -735,10 +732,10 @@ public class IncompleteSample implements Sample, Serializable {
   }
 
   @Override
-  public String tabNpCustomParamSD(Isotope isotope, PopulationID populationID, EventParameter par,
+  public String tabNpCustomParamSD(Channel channel, PopulationID populationID, EventParameter par,
                                    MathMod math) {
     String val = EMPTY_CELL;
-    Trace t = getTrace(isotope);
+    Trace t = getTrace(channel);
     if (t != null && t.hasType(populationID)) {
       val = str(sd(math.calc(t.get(populationID, EventType.NP, par))), NF.D1C3);
     }
@@ -746,9 +743,9 @@ public class IncompleteSample implements Sample, Serializable {
   }
 
   @Override
-  public String tabMeanHeight(Isotope isotope, PopulationID populationID) {
+  public String tabMeanHeight(Channel channel, PopulationID populationID) {
     String val = EMPTY_CELL;
-    Trace t = getTrace(isotope);
+    Trace t = getTrace(channel);
     if (t != null && t.hasType(populationID)) {
       val = str(mu(t.get(populationID, EventType.NP, EventParameter.HEIGHT)), NF.D1C3);
     }
@@ -756,9 +753,9 @@ public class IncompleteSample implements Sample, Serializable {
   }
 
   @Override
-  public String tabSdHeight(Isotope isotope, PopulationID populationID) {
+  public String tabSdHeight(Channel channel, PopulationID populationID) {
     String val = EMPTY_CELL;
-    Trace t = getTrace(isotope);
+    Trace t = getTrace(channel);
     if (t != null && t.hasType(populationID)) {
       val = str(sd(t.get(populationID, EventType.NP, EventParameter.HEIGHT)), NF.D1C3);
     }
@@ -766,9 +763,9 @@ public class IncompleteSample implements Sample, Serializable {
   }
 
   @Override
-  public String tabMeanDuration(Isotope isotope, PopulationID populationID) {
+  public String tabMeanDuration(Channel channel, PopulationID populationID) {
     String val = EMPTY_CELL;
-    Trace t = getTrace(isotope);
+    Trace t = getTrace(channel);
     if (t != null && t.hasType(populationID)) {
       val = str(mu(t.get(populationID, EventType.NP, EventParameter.DURATION)), NF.D1C3);
     }
@@ -776,9 +773,9 @@ public class IncompleteSample implements Sample, Serializable {
   }
 
   @Override
-  public String tabSdDuration(Isotope isotope, PopulationID populationID) {
+  public String tabSdDuration(Channel channel, PopulationID populationID) {
     String val = EMPTY_CELL;
-    Trace t = getTrace(isotope);
+    Trace t = getTrace(channel);
     if (t != null && t.hasType(populationID)) {
       val = str(sd(t.get(populationID, EventType.NP, EventParameter.DURATION)), NF.D1C3);
     }
@@ -786,54 +783,54 @@ public class IncompleteSample implements Sample, Serializable {
   }
 
   @Override
-  public String tabMeanSize(Isotope isotope, PopulationID populationID) {
+  public String tabMeanSize(Channel channel, PopulationID populationID) {
     return EMPTY_CELL;
   }
 
   @Override
-  public String tabSizeSD(Isotope isotope, PopulationID populationID) {
+  public String tabSizeSD(Channel channel, PopulationID populationID) {
     return EMPTY_CELL;
   }
 
   @Override
-  public String tabMedianSize(Isotope isotope, PopulationID populationID) {
+  public String tabMedianSize(Channel channel, PopulationID populationID) {
     return EMPTY_CELL;
   }
 
   @Override
-  public String tabMeanMass(Isotope isotope, PopulationID populationID) {
+  public String tabMeanMass(Channel channel, PopulationID populationID) {
     return EMPTY_CELL;
   }
 
   @Override
-  public String tabMassSD(Isotope isotope, PopulationID populationID) {
+  public String tabMassSD(Channel channel, PopulationID populationID) {
     return EMPTY_CELL;
   }
 
   @Override
-  public String tabMedianMass(Isotope isotope, PopulationID populationID) {
+  public String tabMedianMass(Channel channel, PopulationID populationID) {
     return EMPTY_CELL;
   }
 
   @Override
-  public String tabMeanMol(Isotope isotope, PopulationID populationID) {
+  public String tabMeanMol(Channel channel, PopulationID populationID) {
     return EMPTY_CELL;
   }
 
   @Override
-  public String tabMolSD(Isotope isotope, PopulationID populationID) {
+  public String tabMolSD(Channel channel, PopulationID populationID) {
     return EMPTY_CELL;
   }
 
   @Override
-  public String tabMedianMol(Isotope isotope, PopulationID populationID) {
+  public String tabMedianMol(Channel channel, PopulationID populationID) {
     return EMPTY_CELL;
   }
 
   @Override
-  public String tabPopBgMean(Isotope isotope, PopulationID populationID) {
+  public String tabPopBgMean(Channel channel, PopulationID populationID) {
     String val = EMPTY_CELL;
-    Trace t = getTrace(isotope);
+    Trace t = getTrace(channel);
     if (t != null && t.hasType(populationID)) {
       val = str(mu(t.get(populationID, EventType.BG, EventParameter.AREA)), NF.D1C3);
     }
@@ -841,9 +838,9 @@ public class IncompleteSample implements Sample, Serializable {
   }
 
   @Override
-  public String tabPopBgSD(Isotope isotope, PopulationID populationID) {
+  public String tabPopBgSD(Channel channel, PopulationID populationID) {
     String val = EMPTY_CELL;
-    Trace t = getTrace(isotope);
+    Trace t = getTrace(channel);
     if (t != null && t.hasType(populationID)) {
       val = str(sd(t.get(populationID, EventType.BG, EventParameter.AREA)), NF.D1C4);
     }
@@ -851,9 +848,9 @@ public class IncompleteSample implements Sample, Serializable {
   }
 
   @Override
-  public String tabPopBgN(Isotope isotope, PopulationID populationID) {
+  public String tabPopBgN(Channel channel, PopulationID populationID) {
     String val = EMPTY_CELL;
-    Trace t = getTrace(isotope);
+    Trace t = getTrace(channel);
     if (t != null && t.hasType(populationID)) {
       val = str(t.get(populationID, EventType.BG, EventParameter.AREA).length, NF.D1C0);
     }
@@ -861,72 +858,72 @@ public class IncompleteSample implements Sample, Serializable {
   }
 
   @Override
-  public String tabPopDrift(Isotope isotope, PopulationID populationID) {
+  public String tabPopDrift(Channel channel, PopulationID populationID) {
     return EMPTY_CELL;
   }
 
   @Override
-  public String tabBlnDistr(Isotope isotope, PopulationID populationID) {
+  public String tabBlnDistr(Channel channel, PopulationID populationID) {
     return EMPTY_CELL;
   }
 
   @Override
-  public String tabBlnMean(Isotope isotope, PopulationID populationID) {
+  public String tabBlnMean(Channel channel, PopulationID populationID) {
     return EMPTY_CELL;
   }
 
   @Override
-  public String tabBlnSD(Isotope isotope, PopulationID populationID) {
+  public String tabBlnSD(Channel channel, PopulationID populationID) {
     return EMPTY_CELL;
   }
 
   @Override
-  public String tabBlnOutlierZ(Isotope isotope, PopulationID populationID) {
+  public String tabBlnOutlierZ(Channel channel, PopulationID populationID) {
     return EMPTY_CELL;
   }
 
   @Override
-  public String tabEquivBGConc(Isotope isotope) {
+  public String tabEquivBGConc(Channel channel) {
     return EMPTY_CELL;
   }
 
   @Override
-  public String tabSearchStart(Isotope isotope, PopulationID populationID) {
+  public String tabSearchStart(Channel channel, PopulationID populationID) {
     return EMPTY_CELL;
   }
 
   @Override
-  public String tabSearchStop(Isotope isotope, PopulationID populationID) {
+  public String tabSearchStop(Channel channel, PopulationID populationID) {
     return EMPTY_CELL;
   }
 
   @Override
-  public String tabSearchHeight(Isotope isotope, PopulationID populationID) {
+  public String tabSearchHeight(Channel channel, PopulationID populationID) {
     return EMPTY_CELL;
   }
 
   @Override
-  public List<String> tabGates(Isotope isotope, PopulationID populationID) {
+  public List<String> tabGates(Channel channel, PopulationID populationID) {
     return List.of(EMPTY_CELL);
   }
 
   @Override
-  public String tabSearchStartMeta(Isotope isotope, PopulationID populationID) {
+  public String tabSearchStartMeta(Channel channel, PopulationID populationID) {
     return EMPTY_CELL;
   }
 
   @Override
-  public String tabSearchStopMeta(Isotope isotope, PopulationID populationID) {
+  public String tabSearchStopMeta(Channel channel, PopulationID populationID) {
     return EMPTY_CELL;
   }
 
   @Override
-  public String tabSearchHeightMeta(Isotope isotope, PopulationID populationID) {
+  public String tabSearchHeightMeta(Channel channel, PopulationID populationID) {
     return EMPTY_CELL;
   }
 
   @Override
-  public List<String> tabGatesMeta(Isotope isotope, PopulationID populationID) {
+  public List<String> tabGatesMeta(Channel channel, PopulationID populationID) {
     return List.of(EMPTY_CELL);
   }
 

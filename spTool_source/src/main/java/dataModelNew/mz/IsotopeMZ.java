@@ -54,12 +54,12 @@ public class IsotopeMZ implements MZValue, Serializable {
 
   @Override
   public String getElementTransition() {
-    return getIsotope().getName() + "(" + getTransition() + ")";
+    return getIsotope().getNumberAndElement() + "(" + getTransition() + ")";
   }
 
   @Override
   public String getTypesafeElementTransition() {
-    return getTransition() + "-" + getIsotope().getName();
+    return getTransition() + "-" + getIsotope().getNumberAndElement();
   }
 
   @Override

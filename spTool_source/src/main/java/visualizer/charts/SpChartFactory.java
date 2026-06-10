@@ -384,7 +384,8 @@ public abstract class SpChartFactory {
                                                    double minAbundancePct,
                                                    List<Isotope> excludedFromLabel,
                                                    boolean filterSignalForLabels,
-                                                   double minSignalRelative) {
+                                                   double minSignalRelative,
+                                                   double stickWidth) {
 
     JFreeChart chart = ChartFactory.createScatterPlot(null, "", "", new DefaultXYDataset());
 
@@ -474,7 +475,7 @@ public abstract class SpChartFactory {
         XYIntervalSeriesCollection dataset =
             (XYIntervalSeriesCollection) chart.getXYPlot().getDataset(i);
         component = components.get(i);
-        fillMassSpecDataset(dataset, component);
+        fillMassSpecDataset(dataset, component,stickWidth);
       }
 
       // Reactivate notifications
@@ -491,7 +492,7 @@ public abstract class SpChartFactory {
    * Each peak is a bar from y=0 to y=intensity, with a tiny x-interval around the m/z value.
    */
   private static void fillMassSpecDataset(XYIntervalSeriesCollection dataset,
-                                          ChartComponent component) {
+                                          ChartComponent component, double stickWidth) {
     XYIntervalSeries series = new XYIntervalSeries(component.getData().getSeriesShortname());
 
     double[] mzArr = component.getData().getX();
@@ -499,7 +500,7 @@ public abstract class SpChartFactory {
 
     if (mzArr.length == signalArr.length) {
 
-      double halfWidth = 0.25; // 0.5 amu total bar width (fixed for ~0.5 amu resolution)
+      double halfWidth = stickWidth / 2d; // 0.5 amu total bar width (fixed for ~0.5 amu resolution)
 
       for (int i = 0; i < mzArr.length; i++) {
         double mz = mzArr[i];

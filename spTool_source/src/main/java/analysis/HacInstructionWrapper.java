@@ -17,12 +17,14 @@
 
 package analysis;
 
+import dataModelNew.mz.Channel;
 import math.HAC;
 import processing.options.ZScoreTarget;
 import sandbox.montecarlo.Isotope;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 public class HacInstructionWrapper {
 
@@ -31,13 +33,13 @@ public class HacInstructionWrapper {
   // inputs for comparison
   private final boolean useLog2;
   private final ZScoreTarget zScoreTarget;
-  private final List<Isotope> validIsotopes;
+  private final List<Channel> validIsotopes;
 
 
   public HacInstructionWrapper(HAC.FittedHAC fittedHAC,
                                boolean useLog2,
                                ZScoreTarget zScoreTarget,
-                               List<Isotope> validIsotopes) {
+                               List<Channel> validIsotopes) {
     this.fittedHAC = fittedHAC;
     this.useLog2 = useLog2;
     this.zScoreTarget = zScoreTarget;
@@ -50,16 +52,16 @@ public class HacInstructionWrapper {
 
   public boolean isEqualInstructions(boolean useLog2,
                                      ZScoreTarget zScoreTarget,
-                                     List<Isotope> validIsotopes) {
+                                     List<Channel> validIsotopes) {
     boolean equal = this.useLog2 == useLog2;
     equal = equal && this.zScoreTarget == zScoreTarget;
-    equal = equal && this.validIsotopes == validIsotopes;
+    equal = equal && Objects.equals(this.validIsotopes,validIsotopes);
 
     boolean equalElements = this.validIsotopes.size() == validIsotopes.size();
     if (equalElements) {
       for (int i = 0; i < this.validIsotopes.size(); i++) {
-        Isotope thisIsotope = this.validIsotopes.get(i);
-        Isotope thatIsotope = validIsotopes.get(i);
+        Channel thisIsotope = this.validIsotopes.get(i);
+        Channel thatIsotope = validIsotopes.get(i);
         equalElements = thisIsotope.equals(thatIsotope);
         if (!equalElements) break;
       }

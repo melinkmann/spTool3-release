@@ -19,6 +19,7 @@ package analysis;
 
 import core.SpTool3Main;
 import dataModelNew.*;
+import dataModelNew.mz.Channel;
 import io.SampleSet;
 
 import java.util.ArrayList;
@@ -35,7 +36,6 @@ import math.units.enums.IntensityUnit;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import processing.options.SignalConversionOption;
-import processing.parameterSets.impl.DTGroupParams;
 import sandbox.montecarlo.Isotope;
 import util.ArrUtils;
 
@@ -169,7 +169,7 @@ public class RawProcessingUtils {
   /// ///////////////////////////////////////////////////////////////////////////////////////////////////
   /// ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-  public static void groupDT(List<Sample> samples, List<Isotope> selIsotopes,
+  public static void groupDT(List<Sample> samples, List<Channel> selChannels,
                              double newDT,
                              boolean exportSteps) {
 
@@ -180,7 +180,7 @@ public class RawProcessingUtils {
         // Prepare: Only keep those traces from any sample that are selected.
         List<Trace> tracesInSample = new ArrayList<>(sample.getTraces());
         tracesInSample.removeIf(t ->
-            selIsotopes.stream().noneMatch(iso -> iso.isEqual(t.getMzValue().getIsotope())));
+            selChannels.stream().noneMatch(ch -> ch.equals(t.getChannel())));
 
         // Do the grouping
         HashMap<Trace, List<TISeries>> groupCollection = new HashMap<>();
@@ -211,14 +211,14 @@ public class RawProcessingUtils {
               sample.getMethod(),
               sample.getQuant(),
               sample.getColor(),
-              sample.getSampleDefaultIsotopes(),
-              sample.getRemovedIsotopeInfo(),
+              sample.getSampleDefaultChannels(),
+              sample.getRemovedChannelInfo(),
               sample.getRecordedTofRange());
           for (Trace ogTrace : groupCollection.keySet()) {
             List<TISeries> tiSeriesList = groupCollection.get(ogTrace);
             if (i < tiSeriesList.size()) {
               TISeries series = tiSeriesList.get(i);
-              Trace newTrace = new TraceImpl(newSample, ogTrace.getMzValue(), series);
+              Trace newTrace = new TraceImpl(newSample, ogTrace.getChannel(), series);
               newSample.addTrace(newTrace);
             }
           }

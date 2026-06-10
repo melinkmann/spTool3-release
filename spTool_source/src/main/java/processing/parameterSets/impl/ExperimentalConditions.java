@@ -78,7 +78,7 @@ public class ExperimentalConditions extends AbstractParamSet implements ParamSet
         FlowUnit.values(),
         FlowUnit.class,
         false,
-        false,
+        true,
         "sampleIntroductionFlowRate");
 
     this.calibratorRole = new ComboEnumParameter<>(

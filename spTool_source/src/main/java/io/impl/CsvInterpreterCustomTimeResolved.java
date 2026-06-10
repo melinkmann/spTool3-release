@@ -25,13 +25,14 @@ import dataModelNew.TISeries;
 import dataModelNew.TISeriesHDD;
 import dataModelNew.Trace;
 import dataModelNew.TraceImpl;
-import dataModelNew.mz.MZValue;
-import dataModelNew.mz.SQmz;
+import dataModelNew.mz.*;
 import io.FileInterpreterUtils;
 import io.PathUtil;
+
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+
 import math.units.Unit;
 import math.units.enums.ViewUnits;
 import org.apache.commons.lang3.exception.ExceptionUtils;
@@ -85,7 +86,7 @@ public class CsvInterpreterCustomTimeResolved implements CsvInterpreter {
 
     if (!csv.isEmpty()) {
       List<Trace> traces = new ArrayList<>();
-      List<MZValue> mzValues = new ArrayList<>();
+      List<Channel> mzChannels = new ArrayList<>();
 
       try {
         // Find Name.
@@ -99,15 +100,20 @@ public class CsvInterpreterCustomTimeResolved implements CsvInterpreter {
         int headerLineIndex = params.getFirstLine().getValue() - 1;
 
         // Find MZ.
+        // TODO: This is subpar. We should offer option to set first col.
+        //  else, you cannot have data with time stamp and override the DT as this would shift import by 1
+        //  col.
         int firstMZCol = params.getDwellTimeSource().getValue().equals(Source.CUSTOM) ? 0 : 1;
         if (params.getMzSource().getValue().equals(Source.CUSTOM)) {
           Isotope isotope = params.getIsotopeParameter().getValue().unwrap();
-          mzValues.add(new SQmz(isotope));
-        } else if (headerLineIndex < csv.size()){
+          // Isotope channel is correct since the user assigned this isotope via parameter!
+          mzChannels.add(new IsotopeChannel(isotope));
+        } else if (headerLineIndex < csv.size()) {
           for (int i = firstMZCol; i < csv.get(headerLineIndex).length; i++) {
             if (i < csv.get(headerLineIndex).length) {
               String mzStr = csv.get(headerLineIndex)[i];
-              mzValues.add(new SQmz(mzStr));
+              Isotope isotope = Isotope.guessFromString(mzStr);
+              mzChannels.add(new MZChannel(new MSIDImpl(new MZImpl(isotope.getIsotopicNumber())), isotope));
             }
           }
         }
@@ -121,7 +127,7 @@ public class CsvInterpreterCustomTimeResolved implements CsvInterpreter {
         for (int lineIdx = headerLineIndex + 1; lineIdx < csv.size(); lineIdx++) {
 
           // time
-          if (params.getHasXData().getValue()){
+          if (params.getHasXData().getValue()) {
 
           }
           if (params.getDwellTimeSource().getValue().equals(Source.CUSTOM)) {
@@ -149,12 +155,12 @@ public class CsvInterpreterCustomTimeResolved implements CsvInterpreter {
             if (line.length > 1) {
               time.add(SnF.strToDoubleSilent(line[0]));
               for (int colIdx = 1; colIdx < line.length; colIdx++) {
-                if (allIntensitySeries.size() < line.length-1) {
+                if (allIntensitySeries.size() < line.length - 1) {
                   List<Double> intensity = new ArrayList<>();
                   intensity.add(SnF.strToDoubleSilent(line[colIdx]));
                   allIntensitySeries.add(intensity);
                 } else {
-                  allIntensitySeries.get(colIdx-1).add(SnF.strToDoubleSilent(line[colIdx]));
+                  allIntensitySeries.get(colIdx - 1).add(SnF.strToDoubleSilent(line[colIdx]));
                 }
               }
             }
@@ -162,14 +168,14 @@ public class CsvInterpreterCustomTimeResolved implements CsvInterpreter {
         }
 
         Sample sample = new SampleImpl(sampleName, sampleFile);
-        if (mzValues.size() == allIntensitySeries.size()) {
-          for (int i = 0; i < mzValues.size(); i++) {
+        if (mzChannels.size() == allIntensitySeries.size()) {
+          for (int i = 0; i < mzChannels.size(); i++) {
             // Create sample.
             TISeries tiSeries = new TISeriesHDD(time, allIntensitySeries.get(i));
-            Trace trace = new TraceImpl(sample, mzValues.get(i), tiSeries);
+            Trace trace = new TraceImpl(sample, mzChannels.get(i), tiSeries);
             traces.add(trace);
           }
-        }else{
+        } else {
           LOGGER.error("Cannot add samples as there are not as many isotopes as intensity series found.");
         }
         traces.forEach(sample::addTrace);

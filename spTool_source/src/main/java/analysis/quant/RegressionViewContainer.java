@@ -17,11 +17,14 @@
 
 package analysis.quant;
 
+import analysis.AnalysisUtils;
 import analysis.PopulationID;
 import com.google.common.primitives.Doubles;
 import core.SpTool3Main;
 import dataModelNew.Sample;
+import dataModelNew.mz.Channel;
 import dataModelNew.mz.Element;
+import dataModelNew.mz.CalChannel;
 import gui.dialog.notification.NotificationFactory;
 import gui.util.UiUtil;
 import javafx.geometry.Orientation;
@@ -57,10 +60,10 @@ public class RegressionViewContainer {
 
   private final SpCalibrationSet responseCalibrationSet;
   private final List<Sample> selSamples;
-  private final List<Isotope> selIsotopes;
+  private final List<CalChannel> selCalChannels;
   private final List<PopulationID> selPops;
-  private final HashMap<Isotope, List<Double>> xData;
-  private final HashMap<Isotope, List<Double>> yData;
+  private final HashMap<CalChannel, List<Double>> xData;
+  private final HashMap<CalChannel, List<Double>> yData;
 
   private String xLbl = "";
   private String yLbl = "";
@@ -70,7 +73,7 @@ public class RegressionViewContainer {
   private final Iterable<MarkerStyle> markerStyles = MarkerStyle.getScatterAwtIterator();
   private final Iterator<MarkerStyle> markers = markerStyles.iterator();
 
-  private final HashMap<Isotope, Double> slopes;
+  private final HashMap<CalChannel, Double> slopes;
   private final List<ChartComponent> graphComponents;
   private final List<ChartComponent> legendComponents;
 
@@ -83,12 +86,12 @@ public class RegressionViewContainer {
   public RegressionViewContainer(SpCalibrationSet responseCalibrationSet,
                                  LinRegType linRegType,
                                  List<Sample> selSamples,
-                                 List<Isotope> selIsotopes,
+                                 List<CalChannel> selCalChannels,
                                  List<PopulationID> selPops) {
 
     this.responseCalibrationSet = responseCalibrationSet;
     this.linRegType = linRegType;
-    this.selIsotopes = selIsotopes;
+    this.selCalChannels = selCalChannels;
     this.selSamples = selSamples;
     this.selPops = selPops;
 
@@ -125,16 +128,16 @@ public class RegressionViewContainer {
                                          ToggleButton pnTeActiveToggle) {
 
     // All currently selected isotopes will be added
-    List<Isotope> isotopes = new ArrayList<>(selIsotopes);
-    responseCalibrationSet.populateWithIsotopes(isotopes);
+    List<CalChannel> calChannels = new ArrayList<>(selCalChannels);
+    responseCalibrationSet.populateWithChannels(calChannels);
 
     ///  PARTICLE RESPONSE
     if (npResponseActiveToggle.isSelected()) {
-      for (Isotope isotope : isotopes) {
-        if (responseCalibrationSet.hasNpResponse(isotope) && slopes.containsKey(isotope)) {
-          double s = slopes.get(isotope);
+      for (CalChannel channel : calChannels) {
+        if (responseCalibrationSet.hasNpResponse(channel) && slopes.containsKey(channel)) {
+          double s = slopes.get(channel);
           if (Doubles.isFinite(s)) {
-            responseCalibrationSet.getOrCreateNpResponse(isotope).change(slopes.get(isotope),
+            responseCalibrationSet.getOrCreateNpResponse(channel).change(slopes.get(channel),
                 SensitivityUnit.CTS_PER_FEMTOGRAM);
           }
         }
@@ -143,11 +146,11 @@ public class RegressionViewContainer {
 
       /// IONIC RESPONSE
     } else if (ionicResponseActiveToggle.isSelected()) {
-      for (Isotope isotope : isotopes) {
-        if (responseCalibrationSet.hasIonicResponse(isotope) && slopes.containsKey(isotope)) {
-          double s = slopes.get(isotope);
+      for (CalChannel calChannel : calChannels) {
+        if (responseCalibrationSet.hasIonicResponse(calChannel) && slopes.containsKey(calChannel)) {
+          double s = slopes.get(calChannel);
           if (Doubles.isFinite(s)) {
-            responseCalibrationSet.getOrCreateIonicResponse(isotope).change(s,
+            responseCalibrationSet.getOrCreateIonicResponse(calChannel).change(s,
                 SensitivityUnit.CTS_PER_FEMTOGRAM);
           }
         }
@@ -156,13 +159,13 @@ public class RegressionViewContainer {
 
       /// AEROSOL TRANSPORT EFFICIENCY
     } else if (teActiveToggle.isSelected()) {
-      for (Isotope isotope : isotopes) {
-        if (responseCalibrationSet.hasAerosolTE(isotope) && slopes.containsKey(isotope)) {
-          double s = 100 * slopes.get(isotope);
+      for (CalChannel calChannel : calChannels) {
+        if (responseCalibrationSet.hasAerosolTE(calChannel) && slopes.containsKey(calChannel)) {
+          double s = 100 * slopes.get(calChannel);
           if (Double.isFinite(s)) {
-            responseCalibrationSet.getOrCreateAerosolTE(isotope).change(s);
-            if (responseCalibrationSet.hasParticleNumberTE(isotope)) {
-              responseCalibrationSet.getOrCreateParticleNumberTE(isotope).change(s);
+            responseCalibrationSet.getOrCreateAerosolTE(calChannel).change(s);
+            if (responseCalibrationSet.hasParticleNumberTE(calChannel)) {
+              responseCalibrationSet.getOrCreateParticleNumberTE(calChannel).change(s);
             }
           }
         }
@@ -170,11 +173,11 @@ public class RegressionViewContainer {
 
       /// PARTICLE NUMBER TRANSPORT EFFICIENCY
     } else if (pnTeActiveToggle.isSelected()) {
-      for (Isotope isotope : isotopes) {
-        if (responseCalibrationSet.hasParticleNumberTE(isotope) && slopes.containsKey(isotope)) {
-          double s = 100 * slopes.get(isotope);
+      for (CalChannel calChannel : calChannels) {
+        if (responseCalibrationSet.hasParticleNumberTE(calChannel) && slopes.containsKey(calChannel)) {
+          double s = 100 * slopes.get(calChannel);
           if (Double.isFinite(s)) {
-            responseCalibrationSet.getOrCreateParticleNumberTE(isotope).change(s);
+            responseCalibrationSet.getOrCreateParticleNumberTE(calChannel).change(s);
           }
         }
       }
@@ -211,13 +214,13 @@ public class RegressionViewContainer {
     xData.clear();
     yData.clear();
     slopes.clear();
-    for (Isotope selIsotope : selIsotopes) {
-      xData.put(selIsotope, new ArrayList<>());
-      yData.put(selIsotope, new ArrayList<>());
+    for (CalChannel channel : selCalChannels) {
+      xData.put(channel, new ArrayList<>());
+      yData.put(channel, new ArrayList<>());
     }
 
     // sel pops must be empty in case ionic sample
-    if (!selSamples.isEmpty() && !selIsotopes.isEmpty()) {
+    if (!selSamples.isEmpty() && !selCalChannels.isEmpty()) {
       if (npResponseActiveToggle.isSelected()) {
         computeResponseForNP();
       } else if (ionicResponseActiveToggle.isSelected()) {
@@ -229,22 +232,22 @@ public class RegressionViewContainer {
       }
 
       // add to graphs
-      for (Isotope isotope : xData.keySet()) {
+      for (CalChannel channel : xData.keySet()) {
         // don't add if data is zero, e.g, b/c diameter was never set or so
-        boolean nonzero = !ArrUtils.nonzero(xData.get(isotope)).isEmpty()
-            && !ArrUtils.nonzero(xData.get(isotope)).isEmpty();
+        boolean nonzero = !ArrUtils.nonzero(xData.get(channel)).isEmpty()
+            && !ArrUtils.nonzero(xData.get(channel)).isEmpty();
         if (nonzero) {
           RegressionUtils.addPlotsToListAndRegression(
               graphComponents,
               legendComponents,
-              isotope.getName(),
-              ArrUtils.doubleListToArr(xData.get(isotope)),
-              ArrUtils.doubleListToArr(yData.get(isotope)),
+              channel.channel().getUIString(),
+              ArrUtils.doubleListToArr(xData.get(channel)),
+              ArrUtils.doubleListToArr(yData.get(channel)),
               xLbl, xUnit,
               yLbl, yUnit,
-              SpTool3Main.getRunTime().getConfParams().getColor(isotope),
+              SpTool3Main.getRunTime().getConfParams().getColor(channel.channel()),
               markers.next(),
-              isotope,
+              channel,
               slopes,
               linRegType
           );
@@ -274,15 +277,16 @@ public class RegressionViewContainer {
         // check if this is a particle sample and a calibrator
         if (calibratorRole.equals(CalibratorRole.CALIBRATOR) && sampleType.equals(SampleType.PARTICLE)) {
 
-          for (Isotope selIsotope : selIsotopes) {
-            Element element = selIsotope.getElement();
+          for (CalChannel selCalChannel : selCalChannels) {
+            Element element = selCalChannel.element();
             ExperimentalSubConditions subQuant = subQuants.get(element);
-            if (subQuant != null) {
+
+            if (subQuant != null && selCalChannel != null) {
 
               // find correct population: it is possible that we have different IDs (e.g. gating on/off)
               List<PopulationID> selAndAvailablePops = selPops.stream()
-                  .filter(id -> sample.hasPopulation(id, selIsotope))
-                  .collect(Collectors.toList());
+                  .filter(id -> sample.hasPopulation(id, selCalChannel.channel()))
+                  .toList();
 
               if (!selAndAvailablePops.isEmpty()) {
                 PopulationID pop = selAndAvailablePops.get(0);
@@ -343,14 +347,14 @@ public class RegressionViewContainer {
                   eventPar = EventParameter.NET_HEIGHT;
                   loc = MeasureOfLocation.MEDIAN;
                 }
-                double[] npData = sample.getData(selIsotope, pop, EventType.NP, eventPar);
+                double[] npData = sample.getData(selCalChannel.channel(), pop, EventType.NP, eventPar);
                 double yVal = loc.calc(npData);
 
-                xData.get(selIsotope).add(xVal);
+                xData.get(selCalChannel).add(xVal);
                 xUnit = elementalMassUnit;
                 xLbl = "Elemental mass";
 
-                yData.get(selIsotope).add(yVal);
+                yData.get(selCalChannel).add(yVal);
                 yUnit = (IntensityUnit.JUST_CTS);
                 yLbl = "Intensity";
               }
@@ -381,31 +385,34 @@ public class RegressionViewContainer {
       if (calibratorRole.equals(CalibratorRole.CALIBRATOR) && sampleType.equals(SampleType.IONIC)) {
         double flow = sample.getQuant().getExperimentalConditions().getFlowRate(FlowUnit.LITRE_PER_SECOND);
 
-        for (Isotope isotope : selIsotopes) {
+        for (CalChannel selCalChannel : selCalChannels) {
 
-          // get raw signal
-          double rawCps;
-          if (rawDataPar.equals(QuantParam.RAW_MEDIAN)) {
-            rawCps = sample.getRawMedianCPS(isotope);
-          } else {
-            rawCps = sample.getRawMeanCPS(isotope);
-          }
+          if (selCalChannel != null) {
 
-          // get x value of sample (flow rate)
-          final ConcentrationUnit targetConcUnit = ConcentrationUnit.FMETOGRAM_PER_LITRE;
-          Element traceEle = isotope.getElement();
-          if (sample.getQuant().getExperimentalConditions().getElementSpecificQuantParams().containsKey(traceEle)) {
-            double ionicConc = sample.getQuant().getExperimentalConditions().getElementSpecificQuantParams()
-                .get(traceEle).getIonicConc(targetConcUnit);
-            double massFlow = ionicConc * flow;
+            // get raw signal
+            double rawCps;
+            if (rawDataPar.equals(QuantParam.RAW_MEDIAN)) {
+              rawCps = sample.getRawMedianCPS(selCalChannel.channel());
+            } else {
+              rawCps = sample.getRawMeanCPS(selCalChannel.channel());
+            }
 
-            xData.get(isotope).add(massFlow);
-            xUnit = MassFlowUnit.FMETOGRAM_PER_SECOND;
-            xLbl = "Elemental mass flow";
+            // get x value of sample (flow rate)
+            final ConcentrationUnit targetConcUnit = ConcentrationUnit.FMETOGRAM_PER_LITRE;
+            Element traceEle = selCalChannel.element();
+            if (sample.getQuant().getExperimentalConditions().getElementSpecificQuantParams().containsKey(traceEle)) {
+              double ionicConc = sample.getQuant().getExperimentalConditions().getElementSpecificQuantParams()
+                  .get(traceEle).getIonicConc(targetConcUnit);
+              double massFlow = ionicConc * flow;
 
-            yData.get(isotope).add(rawCps);
-            yUnit = (IntensityUnit.CPS);
-            yLbl = "Intensity";
+              xData.get(selCalChannel).add(massFlow);
+              xUnit = MassFlowUnit.FMETOGRAM_PER_SECOND;
+              xLbl = "Elemental mass flow";
+
+              yData.get(selCalChannel).add(rawCps);
+              yUnit = (IntensityUnit.CPS);
+              yLbl = "Intensity";
+            }
           }
         }
       }
@@ -434,16 +441,16 @@ public class RegressionViewContainer {
           double flowLitrePerSec =
               sample.getQuant().getExperimentalConditions().getFlowRate(FlowUnit.LITRE_PER_SECOND);
 
-          for (Isotope selIsotope : selIsotopes) {
-            Element element = selIsotope.getElement();
+          for (CalChannel selCalChannel : selCalChannels) {
+            Element element = selCalChannel.element();
             ExperimentalSubConditions subQuant = subQuants.get(element);
 
             // Make sure the element has data assigned and that we actually have NP conc
-            if (subQuant != null) {
+            if (subQuant != null && selCalChannel != null) {
 
               // find correct population: it is possible that we have different IDs (e.g. gating on/off)
               List<PopulationID> selAndAvailablePops = selPops.stream()
-                  .filter(id -> sample.hasPopulation(id, selIsotope))
+                  .filter(id -> sample.hasPopulation(id, selCalChannel.channel()))
                   .collect(Collectors.toList());
 
               if (!selAndAvailablePops.isEmpty()) {
@@ -466,13 +473,13 @@ public class RegressionViewContainer {
                 double xVal = npRatePerSec;
 
                 // find y val
-                double npPerSecDetected = sample.getEventRate(selIsotope, pop);
+                double npPerSecDetected = sample.getEventRate(selCalChannel.channel(), pop);
 
-                xData.get(selIsotope).add(xVal);
+                xData.get(selCalChannel).add(xVal);
                 xUnit = ViewUnits.NP_PER_SECOND;
                 xLbl = "Delivered NP rate";
 
-                yData.get(selIsotope).add(npPerSecDetected);
+                yData.get(selCalChannel).add(npPerSecDetected);
                 yUnit = ViewUnits.NP_PER_SECOND;
                 yLbl = "Detected NP rate";
               }
@@ -507,16 +514,16 @@ public class RegressionViewContainer {
           double flowLitrePerSec =
               sample.getQuant().getExperimentalConditions().getFlowRate(FlowUnit.LITRE_PER_SECOND);
 
-          for (Isotope selIsotope : selIsotopes) {
-            Element element = selIsotope.getElement();
+          for (CalChannel selCalChannel : selCalChannels) {
+            Element element = selCalChannel.element();
             ExperimentalSubConditions subQuant = subQuants.get(element);
 
             // Make sure the element has data assigned and that we actually have NP conc
-            if (subQuant != null) {
+            if (subQuant != null && selCalChannel != null) {
 
               // find correct population: it is possible that we have different IDs (e.g. gating on/off)
               List<PopulationID> selAndAvailablePops = selPops.stream()
-                  .filter(id -> sample.hasPopulation(id, selIsotope))
+                  .filter(id -> sample.hasPopulation(id, selCalChannel.channel()))
                   .collect(Collectors.toList());
 
               if (!selAndAvailablePops.isEmpty()) {
@@ -539,13 +546,13 @@ public class RegressionViewContainer {
                 double xVal = npRatePerSec;
 
                 // find y val
-                double npPerSecDetected = sample.getEventRate(selIsotope, pop);
+                double npPerSecDetected = sample.getEventRate(selCalChannel.channel(), pop);
 
-                xData.get(selIsotope).add(xVal);
+                xData.get(selCalChannel).add(xVal);
                 xUnit = ViewUnits.NP_PER_SECOND;
                 xLbl = "Delivered NP rate";
 
-                yData.get(selIsotope).add(npPerSecDetected);
+                yData.get(selCalChannel).add(npPerSecDetected);
                 yUnit = ViewUnits.NP_PER_SECOND;
                 yLbl = "Detected NP rate";
               }

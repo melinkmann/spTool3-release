@@ -21,8 +21,11 @@ import analysis.AlphaBetaEvaluation;
 import analysis.Event;
 import analysis.PopulationID;
 import core.SpTool3Main;
+import dataModelNew.IncompleteSample;
+import dataModelNew.LPCParticleMatrix;
 import dataModelNew.Sample;
 import dataModelNew.SampleImpl;
+import dataModelNew.mz.Channel;
 import gui.dialog.DialogUtil;
 import gui.dialog.FxStage;
 import gui.dialog.FxStageButton;
@@ -262,7 +265,7 @@ public class ExportViewController implements ParameterView, FxStage, Hotkeyable 
 
             int i = 0;
             List<Sample> selSamples = SpTool3Main.getRunTime().getMainWindowCtl().getSelSamples();
-            List<Isotope> selIsotopes = SpTool3Main.getRunTime().getMainWindowCtl().getSelIsotopes();
+            List<Channel> selChannels = SpTool3Main.getRunTime().getMainWindowCtl().getSelChannels();
             List<PopulationID> selPops = SpTool3Main.getRunTime().getMainWindowCtl().getSelPops();
 
             List<SampleImpl> samples = selSamples.stream()
@@ -270,7 +273,7 @@ public class ExportViewController implements ParameterView, FxStage, Hotkeyable 
                 .flatMap(List::stream)
                 .filter(s -> s instanceof SampleImpl)
                 .map(s -> (SampleImpl) s)
-                .collect(Collectors.toList());
+                .toList();
 
             if (!samples.isEmpty()) {
 
@@ -297,7 +300,7 @@ public class ExportViewController implements ParameterView, FxStage, Hotkeyable 
                 }
 
                 TabBlockColl coll = new TabBlockColl(writer, false);
-                List<TabBlock> blocks = DataExport.extractRawData(sample, selIsotopes, selPops,
+                List<TabBlock> blocks = DataExport.extractRawData(sample, selChannels, selPops,
                     height,
                     exportParamSet.isSelectedIsotopesForRaw(),
                     exportParamSet.getIncludePopulationMarkers().getValue(),
@@ -333,10 +336,10 @@ public class ExportViewController implements ParameterView, FxStage, Hotkeyable 
             // Check which type of events to show?
             List<PopulationID> selPops = SpTool3Main.getRunTime().getMainWindowCtl().getSelPops();
             List<Sample> samples = SpTool3Main.getRunTime().getMainWindowCtl().getSelSamples();
-            List<Isotope> selIsotopes = SpTool3Main.getRunTime().getMainWindowCtl().getSelIsotopes();
-            if (samples != null && !samples.isEmpty() && selIsotopes != null && !selIsotopes.isEmpty()) {
+            List<Channel> selChannels = SpTool3Main.getRunTime().getMainWindowCtl().getSelChannels();
+            if (samples != null && !samples.isEmpty() && selChannels != null && !selChannels.isEmpty()) {
 
-              ResultTableData tableData = new ResultTableData(samples, selIsotopes, selPops, true);
+              ResultTableData tableData = new ResultTableData(samples, selChannels, selPops, true);
 
               TableView<ResultsTable.TableRowData> table =
                   ResultsTable.buildNestedTable(tableData.getEntryMap());
@@ -377,14 +380,14 @@ public class ExportViewController implements ParameterView, FxStage, Hotkeyable 
           () -> {
 
             List<Sample> selSamples = SpTool3Main.getRunTime().getMainWindowCtl().getSelSamples();
-            List<Isotope> selIsotopes = SpTool3Main.getRunTime().getMainWindowCtl().getSelIsotopes();
+            List<Channel> selChannels = SpTool3Main.getRunTime().getMainWindowCtl().getSelChannels();
 
             List<SampleImpl> samples = selSamples.stream()
                 .map(Sample::getAllSamples)
                 .flatMap(List::stream)
                 .filter(s -> s instanceof SampleImpl)
                 .map(s -> (SampleImpl) s)
-                .collect(Collectors.toList());
+                .toList();
 
             Method currentMethod =
                 SpTool3Main.getRunTime().getMainWindowCtl().getMethodView().getCurrentMethod();
@@ -427,7 +430,7 @@ public class ExportViewController implements ParameterView, FxStage, Hotkeyable 
                   }
                 }
 
-                DataExport.exportPValues(sample, selIsotopes, params, writer);
+                DataExport.exportPValues(sample, selChannels, params, writer);
               }
             }
 
@@ -473,6 +476,26 @@ public class ExportViewController implements ParameterView, FxStage, Hotkeyable 
 
             }
 
+            // Check if we also export as lines for MIA
+            List<Sample> lpcSamples = new ArrayList<>();
+            for (Sample selSample : selSamples) {
+              if (selSample instanceof IncompleteSample) {
+                if (((IncompleteSample) selSample).getMatrix() instanceof LPCParticleMatrix) {
+                  lpcSamples.add(selSample);
+                }
+              }
+            }
+            if (!lpcSamples.isEmpty()) {
+              if (exportParamSet.getExportFormat().getValue().equals(ExportTarget.CSV)) {
+                String pathStr = exportParamSet.getCurrentExportPath().getValue();
+                Path path = Paths.get(pathStr);
+                String time = Util.getYearMonthDateDayHourMinuteSecond();
+                path = PathUtil.addDir(path, "Data", time + "_LPC");
+                PathUtil.createDir(path);
+                DataExport.exportLpcAsLines(lpcSamples, path);
+              }
+            }
+
           }, new FunctionalTaskResult(() -> {
         Platform.runLater(() -> {
           NotificationFactory.openAutocloseInfo("Export finished");
@@ -490,11 +513,11 @@ public class ExportViewController implements ParameterView, FxStage, Hotkeyable 
 
       List<PopulationID> selIDs = SpTool3Main.getRunTime().getMainWindowCtl().getSelPops();
       List<Sample> selSamples = SpTool3Main.getRunTime().getMainWindowCtl().getSelSamples();
-      List<Isotope> selIsotopes = SpTool3Main.getRunTime().getMainWindowCtl().getSelIsotopes();
+      List<Channel> selChannels = SpTool3Main.getRunTime().getMainWindowCtl().getSelChannels();
 
       List<PopulationID> simIDs = selIDs.stream()
           .filter(id -> id.getType().equals(PopulationType.SIMULATION))
-          .collect(Collectors.toList());
+          .toList();
 
       List<PopulationID> evalIDs = new ArrayList<>(selIDs);
       evalIDs.removeIf(id -> id.getType().equals(PopulationType.SIMULATION));
@@ -516,16 +539,16 @@ public class ExportViewController implements ParameterView, FxStage, Hotkeyable 
 
               for (Sample selSample : selSamples) {
 
-                for (Isotope selIsotope : selIsotopes) {
-                  List<Event> simEvts = selSample.getNPEvents(selIsotope, simIDs.get(0));
+                for (Channel selChannel : selChannels) {
+                  List<Event> simEvts = selSample.getNPEvents(selChannel, simIDs.get(0));
 
                   for (PopulationID evalID : evalIDs) {
 
                     sampleNames.add(selSample.getNickName());
-                    isotopeNames.add(selIsotope.getName());
+                    isotopeNames.add(selChannel.getUIString());
                     popIDNames.add(evalID.toString());
 
-                    List<Event> evalEvts = selSample.getNPEvents(selIsotope, evalID);
+                    List<Event> evalEvts = selSample.getNPEvents(selChannel, evalID);
 
                     List<Event> matchFromSim = new ArrayList<>();
                     List<Event> matchFromEval = new ArrayList<>();
@@ -561,7 +584,7 @@ public class ExportViewController implements ParameterView, FxStage, Hotkeyable 
                     recalls.add(SnF.doubleToString(recall, NF.D1C6));
 
                     Key3 key = new Key3(selSample.getNickName(),
-                        selIsotope.getName(),
+                        selChannel.getUIString(),
                         evalID.toString());
                     if (!averagePrecision.containsKey(key)) {
                       averagePrecision.put(key, new ArrayList<>());
@@ -673,13 +696,13 @@ public class ExportViewController implements ParameterView, FxStage, Hotkeyable 
           () -> {
 
             List<Sample> samples = SpTool3Main.getRunTime().getMainWindowCtl().getSelSamples();
-            List<Isotope> selIsotopes = SpTool3Main.getRunTime().getMainWindowCtl().getSelIsotopes();
+            List<Channel> selChannels = SpTool3Main.getRunTime().getMainWindowCtl().getSelChannels();
             List<PopulationID> selPops = SpTool3Main.getRunTime().getMainWindowCtl().getSelPops();
 
             EventParameter eventParameter = exportParamSet.getEmdEventParameter().getValue();
             MathMod mathMod = exportParamSet.getEmdMathParameter().getValue();
 
-            if (!samples.isEmpty() && !selIsotopes.isEmpty() && !selPops.isEmpty()) {
+            if (!samples.isEmpty() && !selChannels.isEmpty() && !selPops.isEmpty()) {
 
               ExportWriter writer = new ClipboardWriter();
               if (exportParamSet.getExportFormat().getValue().equals(ExportTarget.CSV)) {
@@ -699,7 +722,7 @@ public class ExportViewController implements ParameterView, FxStage, Hotkeyable 
               TabBlockColl coll = new TabBlockColl(writer, true);
               coll.write(DataExport.getShortMeta(null));
 
-              for (Isotope isotope : selIsotopes) {
+              for (Channel channel : selChannels) {
 
                 List<String> sampleCol1 = new ArrayList<>();
                 List<String> populationCol1 = new ArrayList<>();
@@ -711,14 +734,14 @@ public class ExportViewController implements ParameterView, FxStage, Hotkeyable 
                   for (PopulationID populationID1 : selPops) {
                     EventType eventType = EventType.NP;
                     // Default way to retrieve data.
-                    double[] data1 = sample1.getData(isotope, populationID1, eventType, eventParameter);
+                    double[] data1 = sample1.getData(channel, populationID1, eventType, eventParameter);
                     // check math operations
                     data1 = mathMod.calc(data1);
 
                     for (Sample sample2 : samples) {
                       for (PopulationID populationID2 : selPops) {
                         // Default way to retrieve data.
-                        double[] data2 = sample2.getData(isotope, populationID2, eventType,
+                        double[] data2 = sample2.getData(channel, populationID2, eventType,
                             eventParameter);
                         // check math operations
                         data2 = mathMod.calc(data2);
@@ -744,7 +767,7 @@ public class ExportViewController implements ParameterView, FxStage, Hotkeyable 
                 block.addCol(new TabCol("Sample B", ArrUtils.stringListToArr(sampleCol2)));
                 block.addCol(new TabCol("Population B", ArrUtils.stringListToArr(populationCol2)));
 
-                block.addCol(new TabCol("Similarity [0-1]", isotope.getFullUIName(),
+                block.addCol(new TabCol("Similarity [0-1]", channel.getUIString(),
                     ArrUtils.stringListToArr(isotopeCol)));
 
                 coll.add(block);
@@ -766,7 +789,7 @@ public class ExportViewController implements ParameterView, FxStage, Hotkeyable 
     exportPopulationsBtn.setOnAction(e -> {
       int i = 0;
       List<Sample> samples = SpTool3Main.getRunTime().getMainWindowCtl().getSelSamples();
-      List<Isotope> selIsotopes = SpTool3Main.getRunTime().getMainWindowCtl().getSelIsotopes();
+      List<Channel> selChannels = SpTool3Main.getRunTime().getMainWindowCtl().getSelChannels();
       List<PopulationID> selPops = SpTool3Main.getRunTime().getMainWindowCtl().getSelPops();
 
       // At least export the simulation...
@@ -807,8 +830,8 @@ public class ExportViewController implements ParameterView, FxStage, Hotkeyable 
               blocks = DataExport.extractSyntheticPopulationData(sample, id);
             } else {
               blocks = new ArrayList<>();
-              for (Isotope isotope : selIsotopes) {
-                blocks.addAll(DataExport.extractPopulationData(sample, isotope, id));
+              for (Channel channel : selChannels) {
+                blocks.addAll(DataExport.extractPopulationData(sample, channel, id));
               }
             }
             blocks.forEach(hColl::addBlock);
@@ -824,7 +847,7 @@ public class ExportViewController implements ParameterView, FxStage, Hotkeyable 
     exportCustomEventDataBtn.setOnAction(e -> {
       int i = 0;
       List<Sample> samples = SpTool3Main.getRunTime().getMainWindowCtl().getSelSamples();
-      List<Isotope> selIsotopes = SpTool3Main.getRunTime().getMainWindowCtl().getSelIsotopes();
+      List<Channel> selChannels = SpTool3Main.getRunTime().getMainWindowCtl().getSelChannels();
       List<PopulationID> selPops = SpTool3Main.getRunTime().getMainWindowCtl().getSelPops();
 
       boolean exportBG = exportParamSet.getExportBackgroundData().getValue();
@@ -833,7 +856,7 @@ public class ExportViewController implements ParameterView, FxStage, Hotkeyable 
       boolean exportNP = exportParamSet.getExportParticleData().getValue();
       EventParameter npPar = exportParamSet.getParticleEventParameter().getValue();
       NMPUnit NMPUnit = exportParamSet.getParticleUnitParameter().getValue();
-      if (!samples.isEmpty() && !selIsotopes.isEmpty() && !selPops.isEmpty()) {
+      if (!samples.isEmpty() && !selChannels.isEmpty() && !selPops.isEmpty()) {
         String dateTag = Util.getYearMonthDateDayHourMinuteSecond();
         String fileName = dateTag + "EventData";
         fileName = GlobalIO.cleanupWindowsFileName(fileName);
@@ -860,7 +883,7 @@ public class ExportViewController implements ParameterView, FxStage, Hotkeyable 
         for (Sample sample : samples) {
           blocks.addAll(DataExport.extractCustomPopulationData(
               sample,
-              selIsotopes,
+              selChannels,
               selPops,
               exportBG,
               applyJitter,

@@ -310,7 +310,7 @@ public class ParticlePopulationMatrixRAM implements ParticlePopulationMatrix, Se
       TraceMC traceMC) {
 
     // We can use this BG to estimate net/gross conversion
-    Isotope isotope = traceMC.getMzValue().getIsotope();
+    Isotope isotope = traceMC.getChannel().getIsotope();
     double bg = traceMC.getEmpiricalMeanBG(); // includes sine oscillation. [not time-resolved!]
 
     // Integrate the peak

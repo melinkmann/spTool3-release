@@ -20,6 +20,8 @@ package processing.parameterSets.impl;
 import core.CpuThreadOption;
 import core.SpTool3Main;
 import dataModelNew.Sample;
+import dataModelNew.mz.Channel;
+import dataModelNew.mz.IsotopeChannel;
 import gui.dialog.notification.NotificationFactory;
 import gui.util.TextFormatterOption;
 import io.GlobalIO;
@@ -29,16 +31,15 @@ import java.io.File;
 import java.io.Serial;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Locale;
+import java.util.*;
 import java.util.stream.Collectors;
 
+import io.nu.IsotopePtoeDialog;
 import javafx.stage.FileChooser.ExtensionFilter;
 
 import javax.annotation.Nullable;
 
+import javafx.stage.Window;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.w3c.dom.Element;
@@ -54,11 +55,14 @@ import processing.parameters.*;
 import processing.parameters.ComboStringParameter.Matcher;
 import sandbox.montecarlo.Isotope;
 import util.ArrUtils;
+import util.Functional;
 import util.NF;
 import util.SnF;
 import visualizer.styles.Colors;
 import visualizer.styles.Colors.SpColor;
-import visualizer.styles.OkabeItoColors;
+
+import static processing.parameterSets.impl.NuInterpreterParams.isotopeFromString;
+import static processing.parameterSets.impl.NuInterpreterParams.isotopesToString;
 
 public class ConfParams extends AbstractParamSet implements ParamSet {
 
@@ -71,7 +75,7 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
   public static final File CONFIG_FILE = GlobalIO.makeConfFile().toFile();
   private static final File METHODS_PATH = GlobalIO.makeMethodsFolder().toFile();
 
-  private static final String RGB_KEY = "isotopeRgbUiColorMap";
+  private static final String RGB_KEY = "channelColorMemory";
   private static final String ISOTOPE_KEY = "defaultIsotopeMap";
   private static final String ISOTOPE_CONFLICT_KEY = "isotopeConflictMap";
 
@@ -116,14 +120,12 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
   private final Parameter<Boolean> showCompareHistoToggle;
   private final Parameter<Boolean> showQuantToggle;
   private final Parameter<Boolean> showLoggerToggle;
+  private final Parameter<Boolean> extendChannelTable;
   private final Parameter<Boolean> loadDockingSizes;
 
   private final Parameter<String> nuImportSelectedIsotopes;
 
-  private final Parameter<String> isotopeColorIsotopePar;
-  // Uses the String value, that is shown in the isotopeNamePar as key to retrieve the parameters.
-  private final HashMap<String, ColorParameter> isotopeRgbUiColorMap;
-  private final HashMap<String, String> rgbXmlToUiDictionary;
+  private final Parameter<String> isotopeColorIsotopeMainParameter;
 
   private final Parameter<String> defaultIsotopeElementPar;
   private final HashMap<String, Parameter<String>> defaultIsotopeMap;
@@ -473,6 +475,14 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
         false,
         "showLoggerToggle");
 
+    extendChannelTable = new BooleanParameter(
+        "MZ table",
+        "Show NMP, area and BG mean",
+        "Show more details in the isotope/mz/channel table",
+        false,
+        false,
+        "extendChannelTable");
+
     this.loadDockingSizes = new BooleanParameter(
         "Docking",
         "Load sizes and positions",
@@ -500,9 +510,9 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
     );
 
 
+    //
     String[] isotopeNames = dataModelNew.mz.Element.getAllIsotopeFullUINames();
-
-    this.isotopeColorIsotopePar = new ComboStringParameter(
+    this.isotopeColorIsotopeMainParameter = new ComboStringParameter(
         "Isotope color",
         "Specify the color used for a specific isotope",
         isotopeNames[0],
@@ -510,23 +520,29 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
         true,
         Matcher.getIsotopeMatcher(),
         false,
-        "isotopeColorIsotopePar"
+        "isotopeColorIsotopeMainParameter"
     );
 
-    isotopeRgbUiColorMap = new LinkedHashMap<>();
-    rgbXmlToUiDictionary = new LinkedHashMap<>();
+
+    // For isotopes, we have defaults that we can populate the parameter with right away.
     for (Isotope isotope : dataModelNew.mz.Element.getAllIsotopes()) {
-      Colors defaultColor = Colors.getColor(isotope);
+      Channel dummyChannel = new IsotopeChannel(isotope);
+
+      // Return the same string for IsotopeChannel and MzChannel if isotope is assigned
+      String colorXmlID = dummyChannel.getColorXmlIDString();
+      String colorMatchString = dummyChannel.getColorMatcherString();
+
+      Colors defaultColor = Colors.getColor(dummyChannel);
       String rgb = Colors.colorToRgbForXML(defaultColor.getFX());
-      isotopeRgbUiColorMap.put(isotope.getFullUIName(), new ColorParameter(
+      isotopeColorIsotopeMainParameter.addConditionalChild(colorMatchString, new ColorParameter(
           "Color",
           "RGB Color code",
           rgb,
           false,
-          RGB_KEY + "_" + isotope.getXMLCode()
+          colorMatchString,
+          colorXmlID,
+          RGB_KEY + "_" + colorXmlID
       ));
-      // Translate
-      rgbXmlToUiDictionary.put(isotope.getXMLCode(), isotope.getFullUIName());
     }
 
     defaultIsotopeElementPar = new ComboStringParameter(
@@ -795,6 +811,7 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
     this.showCompareHistoToggle = confParams.showCompareHistoToggle.copyWithoutChildren();
     this.showAverageView = confParams.showAverageView.copyWithoutChildren();
     this.showQuantToggle = confParams.showQuantToggle.copyWithoutChildren();
+    this.extendChannelTable = confParams.extendChannelTable.copyWithoutChildren();
     this.loadDockingSizes = confParams.loadDockingSizes.copyWithoutChildren();
 
     this.eventParameter = confParams.eventParameter.copyWithoutChildren();
@@ -814,20 +831,15 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
 
     // Default colors
 
-    this.isotopeColorIsotopePar = confParams.isotopeColorIsotopePar.copyWithoutChildren();
-
-    this.isotopeRgbUiColorMap = new LinkedHashMap<>();
-    HashMap<String, ColorParameter> thatCodes = confParams.getIsotopeColorCodeMap();
-    for (String key : thatCodes.keySet()) {
-      if (thatCodes.get(key) != null) {
-        isotopeRgbUiColorMap.put(key, (ColorParameter) thatCodes.get(key).copyWithoutChildren());
+    this.isotopeColorIsotopeMainParameter = confParams.isotopeColorIsotopeMainParameter.copyWithoutChildren();
+    // add copy of children
+    for (Parameter<?> parameter : confParams.isotopeColorIsotopeMainParameter.getAllChildrenFirstGen()) {
+      if (parameter instanceof ColorParameter colorParameter) {
+        String colorMatchString = colorParameter.getChannelXmlID();
+        this.isotopeColorIsotopeMainParameter.addConditionalChild(colorMatchString,
+            colorParameter.copyWithoutChildren());
       }
     }
-
-    // Dictionary
-    this.rgbXmlToUiDictionary = new LinkedHashMap<>();
-    dataModelNew.mz.Element.getAllIsotopes().forEach(iso ->
-        this.rgbXmlToUiDictionary.put(iso.getXMLCode(), iso.getFullUIName()));
 
     // Default isotopes
     this.defaultIsotopeElementPar = confParams.defaultIsotopeElementPar.copyWithoutChildren();
@@ -881,11 +893,11 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
           dragDropImportFileType,
           useMethodsCsvReader,
           createNewSampleSetOnImport,
-          nuImportSelectedIsotopes,
           defaultMethodPath,
           currentMethodFile,
+          nuImportSelectedIsotopes,
           new SeparatorParameter(),
-          isotopeColorIsotopePar,
+          isotopeColorIsotopeMainParameter,
           defaultIsotopeElementPar,
           resolveIsotopeConflictPar,
           new SeparatorParameter(),
@@ -910,6 +922,7 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
           showQuantToggle,
           showIclToggle,
           showLoggerToggle,
+          extendChannelTable,
           loadDockingSizes,
           eventParameter,
           eventMathModification,
@@ -936,7 +949,7 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
           defaultProjectPath,
           defaultMethodPath,
           currentMethodFile,
-          isotopeColorIsotopePar,
+          isotopeColorIsotopeMainParameter,
           defaultIsotopeElementPar,
           resolveIsotopeConflictPar,
           lockZoomInGraphs,
@@ -957,6 +970,7 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
           showCompareHistoToggle,
           showAverageView,
           showLoggerToggle,
+          extendChannelTable,
           loadDockingSizes,
           eventParameter,
           eventMathModification,
@@ -990,29 +1004,29 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
 
     createNewSampleSetOnImport.addConditionalChild(true, incrementNewSampleSetOnImport);
 
-    // RGB tuples
-    for (Isotope isotope : dataModelNew.mz.Element.getAllIsotopes()) {
-      Parameter<String> rgbPar = isotopeRgbUiColorMap.get(isotope.getFullUIName());
-      if (rgbPar != null) {
-        isotopeColorIsotopePar.addConditionalChild(isotope.getFullUIName(), rgbPar);
-        rgbPar.setDecoration(new ButtonDecoration<>(
+    // RGB tuples: children have been added above where they were created. Now only add the decoration
+    for (Parameter<?> parameter : isotopeColorIsotopeMainParameter.getAllChildrenFirstGen()) {
+      if (parameter instanceof ColorParameter colorParameter) {
+        parameter.setDecoration(new ButtonDecoration<>(
             "Reset all colors to their default values",
             "/img/ignorechange.png",
             () -> {
-              for (String s : isotopeRgbUiColorMap.keySet()) {
-                ColorParameter par = isotopeRgbUiColorMap.get(s);
-                if (par != null) {
-                  Isotope parsedIsotope = Isotope.getFromFullUIName(s);
-                  // Allow "unknown" to have a color
-                  if (parsedIsotope != null) {
-                    Colors defaultColor = Colors.getColor(parsedIsotope);
-                    par.setColor(defaultColor);
+
+              for (Parameter<?> par : isotopeColorIsotopeMainParameter.getAllChildrenFirstGen()) {
+                if (par instanceof ColorParameter rgbPar) {
+                  String colorMatchString = rgbPar.getChannelXmlID();
+                  Isotope isotope = Isotope.getFromFullUIName(colorMatchString);
+                  if (isotope != null) {
+                    IsotopeChannel dummyChannel = new IsotopeChannel(isotope);
+                    Colors defaultColor = Colors.getColor(dummyChannel);
+                    rgbPar.setColor(defaultColor);
                   }
                 }
               }
             }));
       }
     }
+
 
     // Default isotopes
     for (dataModelNew.mz.Element element : dataModelNew.mz.Element.values()) {
@@ -1046,6 +1060,40 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
     showTableToggle.setDecoration(new ImageDecoration<>("/img/tab.png"));
     showCompareHistoToggle.setDecoration(new ImageDecoration<>("/img/4by4histo.png"));
     showAverageView.setDecoration(new ImageDecoration<>("/img/averageView.png"));
+
+    nuImportSelectedIsotopes.setDecoration(new ParamSetterButtonDecoration<>("Select isotopes", "/img" +
+        "/tableTrace.png",
+        new Functional() {
+
+          @Override
+          public void proceed() {
+            proceed(null);
+          }
+
+          @Override
+          public void proceed(Window window) {
+            List<Isotope> prevSel = isotopeFromString(nuImportSelectedIsotopes.getValue());
+
+            List<Isotope> availableIsotopes = dataModelNew.mz.Element.getAllIsotopes();
+
+            IsotopePtoeDialog dlg = IsotopePtoeDialog.forIsotopeSelection(
+                window,
+                availableIsotopes,
+                prevSel);                  // null or empty = open blank
+
+            List<Channel> resultingChannels = dlg.showAndWait();
+            if (resultingChannels != null) {
+              List<Isotope> resultingIsotopes = new ArrayList<>();
+              for (Channel channel : resultingChannels) {
+                Isotope isotope = channel.getIsotope();
+                if (isotope != null) {
+                  resultingIsotopes.add(isotope);
+                }
+              }
+              nuImportSelectedIsotopes.setValue(isotopesToString(resultingIsotopes));
+            }
+          }
+        }));
   }
 
   @Override
@@ -1100,7 +1148,8 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
           case "showIclToggle" -> showIclToggle;
           case "showAverageView" -> showAverageView;
           case "showLoggerToggle" -> showLoggerToggle;
-          case "isotopeColorIsotopePar" -> isotopeColorIsotopePar;
+          case "extendChannelTable" -> extendChannelTable;
+          case "isotopeColorIsotopePar" -> isotopeColorIsotopeMainParameter;
           case "defaultIsotopeElementPar" -> defaultIsotopeElementPar;
           case "resolveIsotopeConflictPar" -> resolveIsotopeConflictPar;
           case "showQuantToggle" -> showQuantToggle;
@@ -1130,20 +1179,48 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
         }
 
         // Special case: check RGB tuples
+        // make hash map of existing xmlIDs to match with existing parameter
+        HashMap<String, ColorParameter> existingColorParams = new HashMap<>();
+        for (Parameter<?> parameter : isotopeColorIsotopeMainParameter.getAllChildrenFirstGen()) {
+          if (parameter instanceof ColorParameter colorParameter) {
+            String xmlRgbKey = colorParameter.getChannelXmlID();
+            if (xmlRgbKey != null && !xmlRgbKey.isEmpty()) {
+              existingColorParams.put(xmlRgbKey, colorParameter);
+            }
+          }
+        }
         if (key.toLowerCase(Locale.ROOT).contains(RGB_KEY.toLowerCase(Locale.ROOT))) {
           String[] segments = key.split("_");
           // Grab the last segment, i.e., the one after the "_"
           if (segments.length > 0) {
             String xmlRgbKey = segments[segments.length - 1];
-            String uiRgbKey = rgbXmlToUiDictionary.get(xmlRgbKey);
-            if (uiRgbKey != null) {
-              Parameter<String> rgbParam = isotopeRgbUiColorMap.get(uiRgbKey);
+            if (xmlRgbKey != null) {
+              ColorParameter rgbParam = existingColorParams.get(xmlRgbKey);
               if (rgbParam != null) {
                 rgbParam.readFromXmlElement(element);
+              } else {
+                // create new color parameter
+                rgbParam = new ColorParameter(
+                    "Color",
+                    "RGB Color code",
+                    "", // to be read from xml string
+                    false,
+                    "", // to be read from xml string
+                    xmlRgbKey,
+                    RGB_KEY + "_" + xmlRgbKey
+                );
+                rgbParam.readFromXmlElement(element);
+                // now extract the colorMatchString to add as child
+                String colorMatchString = rgbParam.getChannelXmlID();
+                isotopeColorIsotopeMainParameter.addConditionalChild(colorMatchString, rgbParam);
               }
             }
           }
         }
+
+        // Add the tuples that do not concern isotopes. These come directly from the xml entry.
+        // Note that these do not get the decoration from organize() which is OK since they do not
+        // have default color values that we could set them to.
 
         // Special case: check default isotopes
         if (key.toLowerCase(Locale.ROOT).contains(ISOTOPE_KEY.toLowerCase(Locale.ROOT))) {
@@ -1375,6 +1452,10 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
     return showCompareHistoToggle;
   }
 
+  public Parameter<Boolean> getExtendChannelTable() {
+    return extendChannelTable;
+  }
+
   public Parameter<Boolean> getLoadDockingSizes() {
     return loadDockingSizes;
   }
@@ -1391,9 +1472,6 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
     return showLoggerToggle.getValue();
   }
 
-  public HashMap<String, ColorParameter> getIsotopeColorCodeMap() {
-    return isotopeRgbUiColorMap;
-  }
 
   public HashMap<String, Parameter<String>> getDefaultIsotopeMap() {
     return defaultIsotopeMap;
@@ -1403,10 +1481,27 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
     return isotopeConflictMap;
   }
 
-  public Colors getColor(Sample sample, Isotope isotope) {
+  public Colors getColor(Sample sample, Channel channel) {
     Colors color;
-    if (isotope != null) {
-      color = getColor(isotope);
+    if (channel != null) {
+      String colorXmlID = channel.getColorXmlIDString();
+      // make hash map of existing xmlIDs to match with existing parameter
+      HashMap<String, ColorParameter> existingColorParams = new HashMap<>();
+      for (Parameter<?> parameter : isotopeColorIsotopeMainParameter.getAllChildrenFirstGen()) {
+        if (parameter instanceof ColorParameter colorParameter) {
+          String xmlRgbKey = colorParameter.getChannelXmlID();
+          if (xmlRgbKey != null && !xmlRgbKey.isEmpty()) {
+            existingColorParams.put(xmlRgbKey, colorParameter);
+          }
+        }
+      }
+
+      ColorParameter colorParameter = existingColorParams.get(colorXmlID);
+      if (colorParameter != null) {
+        color = colorParameter.getColor();
+      } else {
+        color = Colors.getColor(channel);
+      }
     } else {
       color = new SpColor(sample.getColor());
     }
@@ -1414,23 +1509,68 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
   }
 
   public Colors getColor(Isotope isotope) {
-    if (isotope != null) {
-      ColorParameter colorParameter = isotopeRgbUiColorMap.get(isotope.getFullUIName());
+    return getColor(new IsotopeChannel(isotope));
+  }
+
+  public Colors getColor(Channel channel) {
+    if (channel != null) {
+      String colorXmlID = channel.getColorXmlIDString();
+
+      // make hash map of existing xmlIDs to match with existing parameter
+      HashMap<String, ColorParameter> existingColorParams = new HashMap<>();
+      for (Parameter<?> parameter : isotopeColorIsotopeMainParameter.getAllChildrenFirstGen()) {
+        if (parameter instanceof ColorParameter colorParameter) {
+          String xmlRgbKey = colorParameter.getChannelXmlID();
+          if (xmlRgbKey != null && !xmlRgbKey.isEmpty()) {
+            existingColorParams.put(xmlRgbKey, colorParameter);
+          }
+        }
+      }
+
+      ColorParameter colorParameter = existingColorParams.get(colorXmlID);
       if (colorParameter != null) {
         return colorParameter.getColor();
       } else {
-        return Colors.getColor(isotope);
+        return Colors.getColor(channel);
       }
     } else {
-      return OkabeItoColors.BLACK;
+      return ArrUtils.randomEntry(Colors.getDefaultColors());
     }
   }
 
-  public void setColor(Isotope isotope, Colors color) {
-    if (isotope != null && color != null) {
-      ColorParameter colorParameter = isotopeRgbUiColorMap.get(isotope.getFullUIName());
+  public void setColor(Channel channel, Colors color) {
+    if (channel != null && color != null) {
+      String colorXmlID = channel.getColorXmlIDString();
+      String colorMatchString = channel.getColorMatcherString();
+
+      // make hash map of existing xmlIDs to match with existing parameter
+      HashMap<String, ColorParameter> existingColorParams = new HashMap<>();
+      for (Parameter<?> parameter : isotopeColorIsotopeMainParameter.getAllChildrenFirstGen()) {
+        if (parameter instanceof ColorParameter colorParameter) {
+          String xmlRgbKey = colorParameter.getChannelXmlID();
+          // Grab the last segment, i.e., the one after the "_"
+          if (xmlRgbKey != null && !xmlRgbKey.isEmpty()) {
+            existingColorParams.put(xmlRgbKey, colorParameter);
+          }
+        }
+      }
+
+      ColorParameter colorParameter = existingColorParams.get(colorXmlID);
       if (colorParameter != null) {
         colorParameter.setColor(color);
+      } else {
+        // we need to add this channel to the lookup map!
+        String xmlRGB = Colors.colorToRgbForXML(color.getFX());
+        ColorParameter rgbPar = new ColorParameter(
+            "Color",
+            "RGB Color code",
+            xmlRGB,
+            false,
+            colorMatchString,
+            colorXmlID,
+            RGB_KEY + "_" + colorXmlID
+        );
+        isotopeColorIsotopeMainParameter.addConditionalChild(colorMatchString, rgbPar);
       }
     }
   }
@@ -1469,7 +1609,7 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
         if (isotope.getIsotopicNumber() == isotopicNumber) {
           suggestion = isotope;
           LOGGER.trace("Resolved conflict: Used user-defined default isotope from configuration: "
-              + suggestion.getName() + " for mz " + isotopicNumber);
+              + suggestion.getNumberAndElement() + " for mz " + isotopicNumber);
           break;
         }
       }

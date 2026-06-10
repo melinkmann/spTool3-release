@@ -19,17 +19,10 @@ package visualizer.charts;
 
 import dataModelNew.TISeries;
 
-import java.lang.reflect.Constructor;
-import java.lang.reflect.Field;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 import dataModelNew.mz.Element;
-import javafx.scene.control.Tooltip;
-import javafx.util.Duration;
-import org.jfree.chart.fx.ChartViewer;
-import org.jfree.chart.plot.XYPlot;
 import org.jfree.data.statistics.HistogramDataset;
 import org.jfree.data.xy.XYDataset;
 import org.jfree.data.xy.XYIntervalSeriesCollection;
@@ -62,16 +55,23 @@ public abstract class JFreeUtil {
             && relSignal > minSignal
             && !excludedFromLabel.contains(iso)) {
           if (showAbundance) {
-            matchingIsotopes.add(iso.getName() + "(" + SnF.doubleToString(100 * iso.getAbundance(),
+            matchingIsotopes.add(iso.getNumberAndElement() + "(" + SnF.doubleToString(100 * iso.getAbundance(),
                 NF.D1C1) + "%)");
           } else {
-            matchingIsotopes.add(iso.getName());
+            matchingIsotopes.add(iso.getNumberAndElement());
           }
         }
       }
     }
 
-    return String.join("\n", matchingIsotopes);
+    String tip;
+    if (!matchingIsotopes.isEmpty()) {
+      tip = String.join("\n", matchingIsotopes);
+    } else {
+      tip = SnF.doubleToString(mz, NF.D1C3);
+    }
+
+    return tip;
   }
 
 

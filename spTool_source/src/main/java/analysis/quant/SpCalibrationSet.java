@@ -17,10 +17,12 @@
 
 package analysis.quant;
 
-import dataModelNew.Sample;
-import dataModelNew.SampleImpl;
+import analysis.AnalysisUtils;
+import dataModelNew.mz.Channel;
+import dataModelNew.mz.CalChannel;
 import math.units.enums.QuantityUnit;
 import math.units.enums.SensitivityUnit;
+import org.checkerframework.checker.units.qual.A;
 import processing.options.CalibrationStrategy;
 import sandbox.montecarlo.Isotope;
 
@@ -40,11 +42,12 @@ public class SpCalibrationSet implements Serializable {
   Hence, we cannot prefill the isotopes or bind them to sample.listIsotopes() or sth. like that.
    */
 
+  // TODO: Change this to channel or ElementChannel
   private CalibrationStrategy calibrationStrategy;
-  private final LinkedHashMap<Isotope, Quantity> ionicResponse;
-  private final LinkedHashMap<Isotope, Quantity> npResponse;
-  private final LinkedHashMap<Isotope, Quantity> aerosolTE;
-  private final LinkedHashMap<Isotope, Quantity> particleNumberTE;
+  private final LinkedHashMap<CalChannel, Quantity> ionicResponse;
+  private final LinkedHashMap<CalChannel, Quantity> npResponse;
+  private final LinkedHashMap<CalChannel, Quantity> aerosolTE;
+  private final LinkedHashMap<CalChannel, Quantity> particleNumberTE;
   private boolean isValid;
 
   public SpCalibrationSet() {
@@ -58,10 +61,10 @@ public class SpCalibrationSet implements Serializable {
 
   // Copy: copy() on Quantity is done in the calling method "copy()" below
   public SpCalibrationSet(CalibrationStrategy calibrationStrategy,
-                          LinkedHashMap<Isotope, Quantity> ionicResponse,
-                          LinkedHashMap<Isotope, Quantity> npResponse,
-                          LinkedHashMap<Isotope, Quantity> aerosolTE,
-                          LinkedHashMap<Isotope, Quantity> particleNumberTE,
+                          LinkedHashMap<CalChannel, Quantity> ionicResponse,
+                          LinkedHashMap<CalChannel, Quantity> npResponse,
+                          LinkedHashMap<CalChannel, Quantity> aerosolTE,
+                          LinkedHashMap<CalChannel, Quantity> particleNumberTE,
                           boolean isValid) {
     this.ionicResponse = ionicResponse;
     this.npResponse = npResponse;
@@ -72,24 +75,24 @@ public class SpCalibrationSet implements Serializable {
   }
 
   public SpCalibrationSet copy() {
-    LinkedHashMap<Isotope, Quantity> ionicResponse = new LinkedHashMap<>();
-    LinkedHashMap<Isotope, Quantity> npResponse = new LinkedHashMap<>();
-    LinkedHashMap<Isotope, Quantity> aerosolTE = new LinkedHashMap<>();
-    LinkedHashMap<Isotope, Quantity> particleNumberTE = new LinkedHashMap<>();
+    LinkedHashMap<CalChannel, Quantity> ionicResponse = new LinkedHashMap<>();
+    LinkedHashMap<CalChannel, Quantity> npResponse = new LinkedHashMap<>();
+    LinkedHashMap<CalChannel, Quantity> aerosolTE = new LinkedHashMap<>();
+    LinkedHashMap<CalChannel, Quantity> particleNumberTE = new LinkedHashMap<>();
 
-    for (Isotope iso : this.ionicResponse.keySet()) {
+    for (CalChannel iso : this.ionicResponse.keySet()) {
       ionicResponse.put(iso, this.ionicResponse.get(iso).copy());
     }
 
-    for (Isotope iso : this.npResponse.keySet()) {
+    for (CalChannel iso : this.npResponse.keySet()) {
       npResponse.put(iso, this.npResponse.get(iso).copy());
     }
 
-    for (Isotope iso : this.aerosolTE.keySet()) {
+    for (CalChannel iso : this.aerosolTE.keySet()) {
       aerosolTE.put(iso, this.aerosolTE.get(iso).copy());
     }
 
-    for (Isotope iso : this.particleNumberTE.keySet()) {
+    for (CalChannel iso : this.particleNumberTE.keySet()) {
       particleNumberTE.put(iso, this.particleNumberTE.get(iso).copy());
     }
 
@@ -116,7 +119,7 @@ public class SpCalibrationSet implements Serializable {
   public void deriveAerosolTE() {
     SensitivityUnit targetunit = SensitivityUnit.CTS_PER_FEMTOGRAM;
 
-    for (Isotope iso : ionicResponse.keySet()) {
+    for (CalChannel iso : ionicResponse.keySet()) {
       if (npResponse.containsKey(iso)) {
         double npCtsFg = npResponse.get(iso).getUnit()
             .convert(npResponse.get(iso).getValue(), targetunit);
@@ -134,33 +137,33 @@ public class SpCalibrationSet implements Serializable {
     }
   }
 
-  public void populateWithIsotopes(List<Isotope> isotopes) {
-    for (Isotope isotope : isotopes) {
-      getOrCreateIonicResponse(isotope);
-      getOrCreateNpResponse(isotope);
-      getOrCreateAerosolTE(isotope);
-      getOrCreateParticleNumberTE(isotope);
+  public void populateWithChannels(List<CalChannel> calChannels) {
+    for (CalChannel calChannel : calChannels) {
+      getOrCreateIonicResponse(calChannel);
+      getOrCreateNpResponse(calChannel);
+      getOrCreateAerosolTE(calChannel);
+      getOrCreateParticleNumberTE(calChannel);
     }
   }
 
-  public List<Isotope> listIsotopes() {
-    HashSet<Isotope> uniqueIsotopes = new HashSet<>();
+  public List<CalChannel> listChannels() {
+    HashSet<CalChannel> uniqueIsotopes = new HashSet<>();
     uniqueIsotopes.addAll(ionicResponse.keySet());
     uniqueIsotopes.addAll(npResponse.keySet());
     uniqueIsotopes.addAll(aerosolTE.keySet());
     uniqueIsotopes.addAll(particleNumberTE.keySet());
-    List<Isotope> sortedList = new ArrayList<>(uniqueIsotopes);
+    List<CalChannel> sortedList = new ArrayList<>(uniqueIsotopes);
     // make sure the list exposed to the outside has defined order
-    sortedList.sort(Comparator.comparingDouble(Isotope::getIsotopicNumber));
+    sortedList.sort(Comparator.comparingDouble(CalChannel::getOrdinalNumber));
     return sortedList;
   }
 
-  public Quantity getOrCreateIonicResponse(Isotope isotope) {
-    if (ionicResponse.containsKey(isotope)) {
-      return ionicResponse.get(isotope);
+  public Quantity getOrCreateIonicResponse(CalChannel channel) {
+    if (ionicResponse.containsKey(channel)) {
+      return ionicResponse.get(channel);
     } else {
       Quantity quant = new Quantity(0d, SensitivityUnit.CTS_PER_FEMTOGRAM);
-      ionicResponse.put(isotope, quant);
+      ionicResponse.put(channel, quant);
       return quant;
     }
   }
@@ -169,16 +172,16 @@ public class SpCalibrationSet implements Serializable {
     ionicResponse.clear();
   }
 
-  public boolean hasIonicResponse(Isotope isotope) {
-    return ionicResponse.containsKey(isotope);
+  public boolean hasIonicResponse(CalChannel calChannel) {
+    return ionicResponse.containsKey(calChannel);
   }
 
-  public Quantity getOrCreateNpResponse(Isotope isotope) {
-    if (npResponse.containsKey(isotope)) {
-      return npResponse.get(isotope);
+  public Quantity getOrCreateNpResponse(CalChannel channel) {
+    if (npResponse.containsKey(channel)) {
+      return npResponse.get(channel);
     } else {
       Quantity quant = new Quantity(0d, SensitivityUnit.CTS_PER_FEMTOGRAM);
-      npResponse.put(isotope, quant);
+      npResponse.put(channel, quant);
       return quant;
     }
   }
@@ -187,16 +190,16 @@ public class SpCalibrationSet implements Serializable {
     npResponse.clear();
   }
 
-  public boolean hasNpResponse(Isotope isotope) {
-    return npResponse.containsKey(isotope);
+  public boolean hasNpResponse(CalChannel calChannel) {
+    return npResponse.containsKey(calChannel);
   }
 
-  public Quantity getOrCreateAerosolTE(Isotope isotope) {
-    if (aerosolTE.containsKey(isotope)) {
-      return aerosolTE.get(isotope);
+  public Quantity getOrCreateAerosolTE(CalChannel channel) {
+    if (aerosolTE.containsKey(channel)) {
+      return aerosolTE.get(channel);
     } else {
       Quantity quant = new Quantity(0d, QuantityUnit.PERCENT);
-      aerosolTE.put(isotope, quant);
+      aerosolTE.put(channel, quant);
       return quant;
     }
   }
@@ -205,16 +208,16 @@ public class SpCalibrationSet implements Serializable {
     aerosolTE.clear();
   }
 
-  public boolean hasAerosolTE(Isotope isotope) {
-    return aerosolTE.containsKey(isotope);
+  public boolean hasAerosolTE(CalChannel calChannel) {
+    return aerosolTE.containsKey(calChannel);
   }
 
-  public Quantity getOrCreateParticleNumberTE(Isotope isotope) {
-    if (particleNumberTE.containsKey(isotope)) {
-      return particleNumberTE.get(isotope);
+  public Quantity getOrCreateParticleNumberTE(CalChannel channel) {
+    if (particleNumberTE.containsKey(channel)) {
+      return particleNumberTE.get(channel);
     } else {
       Quantity quant = new Quantity(0d, QuantityUnit.PERCENT);
-      particleNumberTE.put(isotope, quant);
+      particleNumberTE.put(channel, quant);
       return quant;
     }
   }
@@ -223,8 +226,8 @@ public class SpCalibrationSet implements Serializable {
     particleNumberTE.clear();
   }
 
-  public boolean hasParticleNumberTE(Isotope isotope) {
-    return particleNumberTE.containsKey(isotope);
+  public boolean hasParticleNumberTE(CalChannel channel) {
+    return particleNumberTE.containsKey(channel);
   }
 
 

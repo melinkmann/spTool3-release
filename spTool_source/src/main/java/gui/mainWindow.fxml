@@ -63,7 +63,7 @@
                                         <BorderPane prefHeight="200.0" prefWidth="200.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
                                           <center>
                                             <AnchorPane fx:id="rightAnchor" prefHeight="200.0" prefWidth="133.0" BorderPane.alignment="CENTER">
-                                              <TableView fx:id="isotopeTableView" layoutX="-12.0" layoutY="58.0" prefHeight="235.0" prefWidth="661.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
+                                              <TableView fx:id="channelTableView" layoutX="-12.0" layoutY="58.0" prefHeight="235.0" prefWidth="661.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
                                                 <columns>
                                                 </columns>
                                               </TableView>

@@ -18,6 +18,7 @@
 package processing.parameterSets.uiParams;
 
 import core.SpTool3Main;
+import dataModelNew.mz.Channel;
 import dataModelNew.mz.MZValue;
 import gui.util.TextFormatterOption;
 import io.XmlUtil;
@@ -82,6 +83,8 @@ public class SpectrumViewerParameters extends AbstractParamSet implements ParamS
   private final Parameter<Boolean> filterSignal;
   // just normalize from 0-1 and cut all below 5%?
   private final Parameter<Double> minSignalNormalized;
+
+  private final Parameter<Double> stickWidth;
 
   private final Parameter<Boolean> limitAxes;
   private final Parameter<Double> lowerYLimit;
@@ -267,6 +270,16 @@ public class SpectrumViewerParameters extends AbstractParamSet implements ParamS
         false,
         "colorAlpha");
 
+
+    this.stickWidth = new DoubleParameter(
+        "Bar width",
+        "Set width of the bars/sticks",
+        0.5d,
+        NF.D1C2,
+        TextFormatterOption.ASSURE_POSITIVE_DOUBLE,
+        false,
+        "stickWidth");
+
     organize();
   }
 
@@ -284,6 +297,7 @@ public class SpectrumViewerParameters extends AbstractParamSet implements ParamS
     minAbundancePct = iclPeakViewer.minAbundancePct.copyWithoutChildren();
     minSignalNormalized = iclPeakViewer.minSignalNormalized.copyWithoutChildren();
     filterSignal = iclPeakViewer.filterSignal.copyWithoutChildren();
+    this.stickWidth = iclPeakViewer.stickWidth.copyWithoutChildren();
     limitAxes = iclPeakViewer.limitAxes.copyWithoutChildren();
     lowerYLimit = iclPeakViewer.lowerYLimit.copyWithoutChildren();
     upperYLimit = iclPeakViewer.upperYLimit.copyWithoutChildren();
@@ -322,6 +336,7 @@ public class SpectrumViewerParameters extends AbstractParamSet implements ParamS
         normalizeSignal,
         yLog,
         showLabels,
+        stickWidth,
         limitAxes,
         colorAlpha
     );
@@ -357,11 +372,14 @@ public class SpectrumViewerParameters extends AbstractParamSet implements ParamS
                 dataModelNew.mz.Element.getAllIsotopes(),   // all isotopes available
                 prevSel);                  // null or empty = open blank
 
-            List<MZValue> resultingMZ = dlg.showAndWait();
-            if (resultingMZ != null) {
+            List<Channel> resultingChannels = dlg.showAndWait();
+            if (resultingChannels != null) {
               List<Isotope> resultingIsotopes = new ArrayList<>();
-              for (MZValue mzValue : resultingMZ) {
-                resultingIsotopes.add(mzValue.getIsotope());
+              for (Channel channel : resultingChannels) {
+                Isotope isotope = channel.getIsotope();
+                if (isotope != null) {
+                  resultingIsotopes.add(isotope);
+                }
               }
               excludedIsotopes.setValue(NuInterpreterParams.isotopesToString(resultingIsotopes));
             }
@@ -396,6 +414,7 @@ public class SpectrumViewerParameters extends AbstractParamSet implements ParamS
           case "minAbundancePct" -> minAbundancePct;
           case "filterSignal" -> filterSignal;
           case "minSignalNormalized" -> minSignalNormalized;
+          case "stickWidth"->stickWidth;
           case "limitAxes" -> limitAxes;
           case "lowerYLimit" -> lowerYLimit;
           case "upperYLimit" -> upperYLimit;
@@ -473,6 +492,10 @@ public class SpectrumViewerParameters extends AbstractParamSet implements ParamS
 
   public Parameter<Double> getMinSignalNormalized() {
     return minSignalNormalized;
+  }
+
+  public Parameter<Double> getStickWidth() {
+    return stickWidth;
   }
 
   public Parameter<Boolean> getLimitAxes() {

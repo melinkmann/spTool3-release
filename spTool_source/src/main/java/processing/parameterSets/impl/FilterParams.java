@@ -302,7 +302,15 @@ public class FilterParams extends AbstractParamSet implements ParamSet {
 
     this.smoothWidth = new IntegerParameter("Width",
         """
-            Defines smoothing window width in histogram bars""",
+            Defines smoothing window width:
+            
+            Smoothing uses a sliding window to find the first histogram bar
+            where the right-side average exceeds the left-side average
+            (both including the center bar), returning that bar's x-position as the split point.
+            
+            If width = 5, the left-hand side will be 2 data points and the centre point,
+            and the right-hand side will be 2 data points including the centre point, too.
+            Hence, your input with must be odd. If even number is given, it will be incremented by 1""",
         3,
         TextFormatterOption.ASSURE_NONZERO_POSITIVE_INTEGER,
         false,
@@ -616,7 +624,7 @@ public class FilterParams extends AbstractParamSet implements ParamSet {
           case "listFalseNegatives" -> listFalseNegatives;
           ///
           case "alignFilterStartStop" -> alignFilterStartStop;
-          case "alignFilterID"->alignFilterID;
+          case "alignFilterID" -> alignFilterID;
 
           default -> null;
         };

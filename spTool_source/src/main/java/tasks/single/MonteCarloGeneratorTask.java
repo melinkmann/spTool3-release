@@ -25,6 +25,7 @@ import dataModelNew.TISeries;
 import dataModelNew.TISeriesHDD;
 import dataModelNew.TraceMC;
 import dataModelNew.mz.Element;
+import dataModelNew.mz.IsotopeChannel;
 import dataModelNew.mz.TOFmz;
 
 import java.util.ArrayList;
@@ -486,7 +487,7 @@ public class MonteCarloGeneratorTask extends AbstractWorkingTask implements Work
 
               // Check if another population had the same isotope, combine the index-based data in one buffer.
               for (Isotope isotope : peakData.keySet()) {
-                LOGGER.trace("Adding to indexed buffer " + isotope.getName() + ".");
+                LOGGER.trace("Adding to indexed buffer " + isotope.getNumberAndElement() + ".");
                 if (globalPeakData.containsKey(isotope)) {
                   IndexBufferCollection bufferedIndexData = peakData.get(isotope);
                   globalPeakData.get(isotope).addData(bufferedIndexData);
@@ -553,7 +554,7 @@ public class MonteCarloGeneratorTask extends AbstractWorkingTask implements Work
             HashMap<Integer, double[]> randomizedResolvedSignals = new HashMap<>();
             for (Isotope isotope : globalPeakData.keySet()) {
 
-              LOGGER.trace("Building global time frame for " + isotope.getName() + ".");
+              LOGGER.trace("Building global time frame for " + isotope.getNumberAndElement() + ".");
               /////////////////////////////////////////////////////////////////////////
               /////////////////////////////////////////////////////////////////////////
               /////////////////////////////////////////////////////////////////////////
@@ -601,13 +602,13 @@ public class MonteCarloGeneratorTask extends AbstractWorkingTask implements Work
                     deadTimeModel,
                     microDTSec);
 
-                LOGGER.trace(" ... global time frame for " + isotope.getName()
+                LOGGER.trace(" ... global time frame for " + isotope.getNumberAndElement()
                     + " applied dead time.");
 
                 // After dead time -> now we are in the regime of measurable ICP-MS (DT > 1 µs)
                 signal = MacroTimeFrameUtil.groupSignal(microDTSec, macroDTSec, signal);
 
-                LOGGER.trace(" ... global time frame for " + isotope.getName()
+                LOGGER.trace(" ... global time frame for " + isotope.getNumberAndElement()
                     + " grouped the signal.");
 
                 // Resample: Assume the data represent true expected values of ion flow, resampling
@@ -636,7 +637,8 @@ public class MonteCarloGeneratorTask extends AbstractWorkingTask implements Work
                     // keep as is
                   }
                 }
-                LOGGER.trace(" ... global frame for " + isotope.getName() + ": resampled Poisson.");
+                LOGGER.trace(" ... global frame for " + isotope.getNumberAndElement() + ": resampled " +
+                    "Poisson.");
 
                 // Switch 2: Check for Compound Poisson
                 switch (signalPdfModel) {
@@ -657,7 +659,8 @@ public class MonteCarloGeneratorTask extends AbstractWorkingTask implements Work
                     // keep as is
                   }
                 }
-                LOGGER.trace(" ... global frame for " + isotope.getName() + ": Compound Poisson.");
+                LOGGER.trace(" ... global frame for " + isotope.getNumberAndElement() + ": Compound Poisson" +
+                    ".");
 
                 // if this is a conflicting isotope, we must store its result to keep same randomization
                 // for its instances
@@ -676,14 +679,21 @@ public class MonteCarloGeneratorTask extends AbstractWorkingTask implements Work
               int blockSize = (int) (macroDTSec / microDTSec);
               double empiricalBG = values.getEmpiricalBG(signal, blockSize, 0.01);
 
-              LOGGER.trace(" ... global time frame for " + isotope.getName()
+              LOGGER.trace(" ... global time frame for " + isotope.getNumberAndElement()
                   + " estimated the background signal without NP.");
 
               // Create the actual " trace in the sample" for the UI.
               TISeries tiSeries = new TISeriesHDD(time, signal);
               // Estimate SIA for the giggles
               double empiricalShape = ShapeEstimator.computeShape(signal);
-              TraceMC trace = new TraceMC(sample, new TOFmz(isotope), tiSeries, macroDTSec,empiricalShape);
+
+              TraceMC trace = new TraceMC(
+                  sample,
+                  new IsotopeChannel(isotope),
+                  tiSeries,
+                  macroDTSec,
+                  empiricalShape);
+
               trace.setEmpiricalMeanBG(empiricalBG);
               trace.setExpectedMeanBG(macroBgLevel);
               sample.addTrace(trace);
@@ -742,7 +752,7 @@ public class MonteCarloGeneratorTask extends AbstractWorkingTask implements Work
       Background.addSteadyBackground(microBgLevel, signal);
     }
 
-    LOGGER.trace(" ... global time frame for " + isotope.getName()
+    LOGGER.trace(" ... global time frame for " + isotope.getNumberAndElement()
         + " processed background modulation.");
 
     return signal;
