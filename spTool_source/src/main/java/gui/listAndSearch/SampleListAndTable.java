@@ -767,58 +767,63 @@ public class SampleListAndTable {
   }
 
   public void updateChannelTableValues() {
-    List<Sample> selSamples = getSelSamples();
-    List<PopulationID> selPops = new ArrayList<>(populationListView.getSelectionModel()
-        .getSelectedItems());
-    List<FxChannel> allChannels = new ArrayList<>(channelTableView.getItems());
+
+    // Only take computation effort if table columns are actually shown
+    if (SpTool3Main.getRunTime().getConfParams().getExtendChannelTable().getValue()) {
+
+      List<Sample> selSamples = getSelSamples();
+      List<PopulationID> selPops = new ArrayList<>(populationListView.getSelectionModel()
+          .getSelectedItems());
+      List<FxChannel> allChannels = new ArrayList<>(channelTableView.getItems());
 //    List<Channel> selChannels = new ArrayList<>(channelTableView.getSelectionModel()
 //        .getSelectedItems().stream()
 //        .map(FxChannel::getChannel)
 //        .toList());
 
-    for (FxChannel fxChannel : allChannels) {
-      Channel channel = fxChannel.getChannel();
+      for (FxChannel fxChannel : allChannels) {
+        Channel channel = fxChannel.getChannel();
 
-      double meanNMP = 0;
-      double meanBG = 0;
-      double meanArea = 0;
-      double meanHeight = 0;
-      int counter = 0;
-      for (Sample sample : selSamples) {
-        Trace trace = sample.getTrace(channel);
-        if (trace != null) {
+        double meanNMP = 0;
+        double meanBG = 0;
+        double meanArea = 0;
+        double meanHeight = 0;
+        int counter = 0;
+        for (Sample sample : selSamples) {
+          Trace trace = sample.getTrace(channel);
+          if (trace != null) {
 
-          for (PopulationID selPop : selPops) {
+            for (PopulationID selPop : selPops) {
 
-            Population pop = trace.getPopulation(selPop);
-            if (pop != null) {
-              meanNMP += pop.getEvents().size();
-              meanArea += MeasureOfLocation.MEAN.
-                  calc(pop.getEvents().get(EventType.NP, EventParameter.NET_AREA));
-              meanHeight += MeasureOfLocation.MEAN.
-                  calc(pop.getEvents().get(EventType.NP, EventParameter.NET_HEIGHT));
-              meanBG += MeasureOfLocation.MEAN.
-                  calc(pop.getEvents().get(EventType.BG, EventParameter.AREA));
-              counter++;
+              Population pop = trace.getPopulation(selPop);
+              if (pop != null) {
+                meanNMP += pop.getEvents().size();
+                meanArea += MeasureOfLocation.MEAN.
+                    calc(pop.getEvents().get(EventType.NP, EventParameter.NET_AREA));
+                meanHeight += MeasureOfLocation.MEAN.
+                    calc(pop.getEvents().get(EventType.NP, EventParameter.NET_HEIGHT));
+                meanBG += MeasureOfLocation.MEAN.
+                    calc(pop.getEvents().get(EventType.BG, EventParameter.AREA));
+                counter++;
+              }
             }
           }
         }
-      }
 
-      if (counter > 0) {
-        meanNMP = meanNMP / counter;
-        meanArea = meanArea / counter;
-        meanBG = meanBG / counter;
-        fxChannel.getNmpCountProperty().set(SnF.doubleToString(meanNMP, NF.D1C1));
-        fxChannel.getMuBGProperty().set(SnF.doubleToString(meanBG, NF.D1C2));
-        fxChannel.getNetAreaProperty().set(SnF.doubleToString(meanArea, NF.D1C1));
-        fxChannel.getSignalToNoiseProperty().set(SnF.doubleToString(meanHeight / Math.max(1, meanBG),
-            NF.D1C1));
-      } else {
-        fxChannel.getNmpCountProperty().set(" ");
-        fxChannel.getMuBGProperty().set(" ");
-        fxChannel.getNetAreaProperty().set(" ");
-        fxChannel.getSignalToNoiseProperty().set(" ");
+        if (counter > 0) {
+          meanNMP = meanNMP / counter;
+          meanArea = meanArea / counter;
+          meanBG = meanBG / counter;
+          fxChannel.getNmpCountProperty().set(SnF.doubleToString(meanNMP, NF.D1C1));
+          fxChannel.getMuBGProperty().set(SnF.doubleToString(meanBG, NF.D1C2));
+          fxChannel.getNetAreaProperty().set(SnF.doubleToString(meanArea, NF.D1C1));
+          fxChannel.getSignalToNoiseProperty().set(SnF.doubleToString(meanHeight / Math.max(1, meanBG),
+              NF.D1C1));
+        } else {
+          fxChannel.getNmpCountProperty().set(" ");
+          fxChannel.getMuBGProperty().set(" ");
+          fxChannel.getNetAreaProperty().set(" ");
+          fxChannel.getSignalToNoiseProperty().set(" ");
+        }
       }
     }
   }

@@ -314,7 +314,7 @@ public interface Colors {
     float[] hsb = Color.RGBtoHSB(col.getRed(), col.getGreen(), col.getBlue(), null);
 
     // You can tweak these values to get smoother or stronger variation
-    float factor = 0.2f; // 15% brightness change per step
+    float factor = 0.25f; // 15% brightness change per step -> changed to 0.2
 
     // Start from current brightness
     float brightness = hsb[2];

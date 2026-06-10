@@ -27,9 +27,11 @@ import gui.dialog.FxStageButton;
 import gui.dialog.ListContainer;
 import gui.listAndSearch.ListAndSearchView;
 import gui.util.UiUtil;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
+
 import javafx.animation.PauseTransition;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -79,14 +81,14 @@ public abstract class AbstractListDialog<T> extends Dialog<List<T>> implements H
   private final boolean checkAlternateSelection;
 
   public AbstractListDialog(ListContainer<T> container,
-      FxEntryFactory<T> entryFactory,
-      SelectionMode selectionMode,
-      boolean useSelectionFromSelectable,
-      boolean checkAlternateSelection,
-      boolean doubleClickSelect,
-      boolean closeOnDoubleClick,
-      boolean isEditable,
-      FxStageButton primaryButtonType) {
+                            FxEntryFactory<T> entryFactory,
+                            SelectionMode selectionMode,
+                            boolean useSelectionFromSelectable,
+                            boolean checkAlternateSelection,
+                            boolean doubleClickSelect,
+                            boolean closeOnDoubleClick,
+                            boolean isEditable,
+                            FxStageButton primaryButtonType) {
 
     this(container.getList(entryFactory),
         entryFactory,
@@ -100,14 +102,14 @@ public abstract class AbstractListDialog<T> extends Dialog<List<T>> implements H
   }
 
   public AbstractListDialog(List<FxEntry<T>> optionList,
-      FxEntryFactory<T> entryFactory,
-      SelectionMode selectionMode,
-      boolean useSelectionFromSelectable,
-      boolean checkAlternateSelection,
-      boolean doubleClickSelect,
-      boolean closeOnDoubleClick,
-      boolean isEditable,
-      FxStageButton primaryButtonType) {
+                            FxEntryFactory<T> entryFactory,
+                            SelectionMode selectionMode,
+                            boolean useSelectionFromSelectable,
+                            boolean checkAlternateSelection,
+                            boolean doubleClickSelect,
+                            boolean closeOnDoubleClick,
+                            boolean isEditable,
+                            FxStageButton primaryButtonType) {
 
     // Functional
 
@@ -222,12 +224,15 @@ public abstract class AbstractListDialog<T> extends Dialog<List<T>> implements H
     // It is a bit annoying to always mark the files, hence,
     // why not allow "pass normal selection" when no selectable selection was made
     if (useSelectionFromSelectable) {
-      // Use selected options only
-      result = listSearchView.getListView().getItems().stream()
+      // Use selected options only: here we browse through all options. Why? We listen to selectable
+      // selection.
+      // Just b/c sth is not showing on the listview due to search options typed in does not mean that
+      // the prev selection choice goes away (The other options below do depend on listview and filtering!!)
+      result = listSearchView.getAllOptionsUnmodifiable().stream()
           .filter(FxEntry::isSelected)
           .map(FxEntry::unwrap)
-          .collect(Collectors.toList());
-    }else {
+          .toList();
+    } else {
       useAlternate = true;
       result = new ArrayList<>(); // make sure it is empty
     }
@@ -237,13 +242,14 @@ public abstract class AbstractListDialog<T> extends Dialog<List<T>> implements H
       // Use selection from list view
       result = listSearchView.getListView().getSelectionModel().getSelectedItems().stream()
           .map(FxEntry::unwrap)
-          .collect(Collectors.toList());
+          .toList();
 
-      // Still annoying having to mark sth if you just wanted to drop sth, hence, even continue at not selection
+      // Still annoying having to mark sth if you just wanted to drop sth, hence, even continue at not
+      // selection
       if (result.isEmpty()) {
-        result.addAll(listSearchView.getListView().getItems().stream()
-        .map(FxEntry::unwrap)
-        .collect(Collectors.toList()));
+        result = listSearchView.getListView().getItems().stream()
+            .map(FxEntry::unwrap)
+            .toList();
       }
     }
     return result;
@@ -253,7 +259,7 @@ public abstract class AbstractListDialog<T> extends Dialog<List<T>> implements H
     return listSearchView;
   }
 
-  //////////////////////////////////////////////////////////////////////////////////
+  /// ///////////////////////////////////////////////////////////////////////////////
 
 
   public void setCellFactory(Callback<ListView<FxEntry<T>>, ListCell<FxEntry<T>>> factory) {
@@ -291,7 +297,7 @@ public abstract class AbstractListDialog<T> extends Dialog<List<T>> implements H
     topToolbar.getItems().add(node);
   }
 
-  //////////////////////////////////////////////////////////////////////////////////
+  /// ///////////////////////////////////////////////////////////////////////////////
 
   // FxStage methods
   @Override
@@ -322,7 +328,7 @@ public abstract class AbstractListDialog<T> extends Dialog<List<T>> implements H
   }
 
 
-  //////////////////////////////////////////////////////////////////////////////////
+  /// ///////////////////////////////////////////////////////////////////////////////
 
 
   public void executeSave() {
@@ -335,7 +341,7 @@ public abstract class AbstractListDialog<T> extends Dialog<List<T>> implements H
     killScene();
   }
 
-  /////////////////////////////////////////
+  /// //////////////////////////////////////
 
 
   protected void killScene() {
@@ -346,7 +352,7 @@ public abstract class AbstractListDialog<T> extends Dialog<List<T>> implements H
     }
   }
 
-  //////////////////////////////////////////////////////////////////////////////////
+  /// ///////////////////////////////////////////////////////////////////////////////
 
   @Override
   public void activateHotkeys(Scene scene) {

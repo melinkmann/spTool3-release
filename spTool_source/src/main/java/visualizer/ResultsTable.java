@@ -48,6 +48,8 @@ import javafx.scene.image.ImageView;
 import javafx.util.Duration;
 import math.stat.MeasureOfLocation;
 import math.stat.MeasureOfSpread;
+import math.units.Unit;
+import math.units.enums.NMPUnit;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import processing.options.EventParameter;
@@ -127,7 +129,7 @@ public abstract class ResultsTable {
           }
         }
       });
-      paramCol.setPrefWidth(150);
+      paramCol.setPrefWidth(180);
 
       // Collect traces in the same order they will appear in the columns
       List<TraceCol> allTraces = new ArrayList<>();
@@ -380,7 +382,7 @@ public abstract class ResultsTable {
         double dtus = SnF.strToDoubleSilent(dtStr);
         if (dtus > 0) {
           return str(dtus / 1000, NF.D1C2);
-        }else {
+        } else {
           return EMPTY_CELL;
         }
       }
@@ -623,7 +625,8 @@ public abstract class ResultsTable {
       public String getValue(Sample s, Channel i, PopulationID p) {
         EventParameter par = SpTool3Main.getRunTime().getConfParams().getEventParameter().getValue();
         MathMod math = SpTool3Main.getRunTime().getConfParams().getEventMathModification().getValue();
-        return s.tabPopNpCustomParamMean(i, p, par, math);
+        Unit unit =  SpTool3Main.getRunTime().getConfParams().getCustomEventUnit();
+        return s.tabPopNpCustomParamMean(i, p, par, math, unit);
       }
     },
 
@@ -631,7 +634,8 @@ public abstract class ResultsTable {
       public String getValue(Sample s, Channel i, PopulationID p) {
         EventParameter par = SpTool3Main.getRunTime().getConfParams().getEventParameter().getValue();
         MathMod math = SpTool3Main.getRunTime().getConfParams().getEventMathModification().getValue();
-        return s.tabNpCustomParamSD(i, p, par, math);
+        Unit unit =  SpTool3Main.getRunTime().getConfParams().getCustomEventUnit();
+        return s.tabNpCustomParamSD(i, p, par, math, unit);
       }
     },
 
@@ -640,7 +644,8 @@ public abstract class ResultsTable {
       public String getValue(Sample s, Channel i, PopulationID p) {
         EventParameter par = SpTool3Main.getRunTime().getConfParams().getEventParameter().getValue();
         MathMod math = SpTool3Main.getRunTime().getConfParams().getEventMathModification().getValue();
-        return s.tabNpCustomParamMedian(i, p, par, math);
+        Unit unit =  SpTool3Main.getRunTime().getConfParams().getCustomEventUnit();
+        return s.tabNpCustomParamMedian(i, p, par, math, unit);
       }
     },
 
@@ -1027,18 +1032,33 @@ public abstract class ResultsTable {
         case NP_CUSTOM_MEAN -> {
           EventParameter p = SpTool3Main.getRunTime().getConfParams().getEventParameter().getValue();
           MathMod math = SpTool3Main.getRunTime().getConfParams().getEventMathModification().getValue();
-          yield "Custom NP mean " + math.toString() + " " + p.toString() + " [" + AxisLabel.getUnit(p).getUnit().getUiString() + "]";
+          Unit unit = SpTool3Main.getRunTime().getConfParams().getCustomEventUnit();
+          String mathStr = "";
+          if (!math.equals(MathMod.NONE)) {
+            mathStr = math.toString();
+          }
+          yield "Custom NP mean " + mathStr + " " + p.toString() + " [" + AxisLabel.getUnit(p, unit).getUnit().getUiString() + "]";
         }
         case NP_CUSTOM_MEDIAN -> {
           EventParameter p = SpTool3Main.getRunTime().getConfParams().getEventParameter().getValue();
           MathMod math = SpTool3Main.getRunTime().getConfParams().getEventMathModification().getValue();
-          yield "Custom NP median " + math.toString() + " " + p.toString() + " [" + AxisLabel.getUnit(p).getUnit().getUiString() +
+          Unit unit = SpTool3Main.getRunTime().getConfParams().getCustomEventUnit();
+          String mathStr = "";
+          if (!math.equals(MathMod.NONE)) {
+            mathStr = math.toString();
+          }
+          yield "Custom NP median " + mathStr + " " + p.toString() + " [" + AxisLabel.getUnit(p, unit).getUnit().getUiString() +
               "]";
         }
         case NP_CUSTOM_SD -> {
           EventParameter p = SpTool3Main.getRunTime().getConfParams().getEventParameter().getValue();
           MathMod math = SpTool3Main.getRunTime().getConfParams().getEventMathModification().getValue();
-          yield "Custom NP SD " + math.toString() + " " + p.toString() + " [" + AxisLabel.getUnit(p).getUnit().getUiString() + "]";
+          Unit unit = SpTool3Main.getRunTime().getConfParams().getCustomEventUnit();
+          String mathStr = "";
+          if (!math.equals(MathMod.NONE)) {
+            mathStr = math.toString();
+          }
+          yield "Custom NP SD " + mathStr + " " + p.toString() + " [" + AxisLabel.getUnit(p, unit).getUnit().getUiString() + "]";
         }
 
         case LOD_AG -> "LOD [ag/NP]";

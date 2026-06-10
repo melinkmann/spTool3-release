@@ -34,18 +34,27 @@ public class ChemistryUtils {
 
   private static final Logger LOGGER = LogManager.getLogger(ChemistryUtils.class);
 
+
+  public static double massFraction(String formula, String elementSymbol) {
+    if (formula.contains(".")) {
+      return massFractionGPT(formula, elementSymbol);
+    }else {
+      return massFractionCDK(formula, elementSymbol);
+    }
+  }
+
   /**
    * Literal code by chatGPT. Seems to work. Alternative below using cdk.
    */
-  public static double massFraction(String formula, String elementSymbol) {
-    Map<String, Integer> composition = ChemicalFormulaParser.parse(formula);
+  public static double massFractionGPT(String formula, String elementSymbol) {
+    Map<String, Double> composition = ChemicalFormulaParser.parse(formula);
 
     double totalMass = 0.0;
     double elementMass = 0.0;
 
-    for (Map.Entry<String, Integer> entry : composition.entrySet()) {
+    for (Map.Entry<String, Double> entry : composition.entrySet()) {
       String symbol = entry.getKey();
-      int count = entry.getValue();
+      double count = entry.getValue();
 
       Element element = Element.valueOf(symbol);
       double molarMass = element.calcMolarMass();

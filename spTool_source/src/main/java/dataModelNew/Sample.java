@@ -363,11 +363,11 @@ public interface Sample extends Serializable {
   String tabMedianMol(Channel channel, PopulationID populationID);
 
   String tabPopNpCustomParamMean(Channel channel, PopulationID populationID, EventParameter par,
-                                 MathMod math);
+                                 MathMod math, Unit unit);
 
-  String tabNpCustomParamSD(Channel channel, PopulationID populationID, EventParameter par, MathMod math);
+  String tabNpCustomParamSD(Channel channel, PopulationID populationID, EventParameter par, MathMod math, Unit unit);
 
-  String tabNpCustomParamMedian(Channel channel, PopulationID populationID, EventParameter par, MathMod math);
+  String tabNpCustomParamMedian(Channel channel, PopulationID populationID, EventParameter par, MathMod math, Unit unit);
 
   String tabPopBgMean(Channel channel, PopulationID populationID);
 

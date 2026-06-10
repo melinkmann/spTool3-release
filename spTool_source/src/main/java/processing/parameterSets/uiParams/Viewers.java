@@ -763,11 +763,11 @@ public abstract class Viewers {
               if (plainEleSet instanceof ExperimentalSubConditions) {
                 try {
                   ExperimentalSubConditions subPar = (ExperimentalSubConditions) plainEleSet;
-                  double fraction = ChemistryUtils.massFractionCDK(result.get(), element.getSymbol());
+                  double fraction = ChemistryUtils.massFraction(result.get(), element.getSymbol());
                   if (fraction > 0 && fraction <= 1) {
                     subPar.getNpMassFraction().setValue(Math.round(fraction * 1_000_000d) / 1_000_000d);
                   } else {
-                    // the other elements like are not present, thus set them 0; else: frac dont add up
+                    // the other elements like are not present, thus set them 0; else: frac do not add up
                     subPar.getNpMassFraction().setValue(0d);
                   }
                 } catch (Exception exception) {
@@ -4144,9 +4144,9 @@ public abstract class Viewers {
                 sampleLoop:
                 for (Sample sample : selSamples) {
 
-                  int counter = -1;
+                  int variationCounter = -1;
                   for (PopulationID popID : selPops) {
-                    counter++; // for the color
+
                     // update progress
                     progress.set((double) step / totalSteps);
                     step++;
@@ -4168,8 +4168,11 @@ public abstract class Viewers {
                     }
 
                     if (specMZ.length > 0 && specMZ.length == specInt.length) {
+                      // Avoid incrementing color for populations that do not exist
+                      variationCounter++; // for the color
                       Colors col = new SpColor(sample.getColor());
-                      col = Colors.variationHSB(col, new SpColor(Colors.paletteColor(counter)), counter);
+                      col = Colors.variationHSB(col, col, variationCounter);
+                      // col = Colors.variationHSB(col, new SpColor(Colors.paletteColor(counter)), counter);
 
                       if (normalizeY) {
                         if (type == NormalizationType.SUM) {
@@ -5162,29 +5165,66 @@ public abstract class Viewers {
                       selChannels.size());
                   Colors mainColor = new SpColor(color.get()); // root for the variations for populations
 
+                  int variationCounter = -1;
                   for (PopulationID populationID : selPops) {
-                    // calc LOD
-                    boolean isNet = plainSet.getEventParameter().equals(EventParameter.NET_AREA)
-                        || plainSet.getEventParameter().equals(EventParameter.NET_HEIGHT);
-                    double maxThrLOD = sample.getMaxThr(channel, populationID, isNet, qUnit);
-                    maxThrLOD = plainSet.getMathMod().calc(maxThrLOD);
+                    // Avoid incrementing color for populations that do not exist
+                    variationCounter++;
+                    if (sample.hasPopulation(populationID, channel)) {
+                      // update color: makes it brighter or darker for the next plot
+                      color = Colors.variationHSB(mainColor, mainColor, variationCounter);
+                      // calc LOD
+                      boolean isNet = plainSet.getEventParameter().equals(EventParameter.NET_AREA)
+                          || plainSet.getEventParameter().equals(EventParameter.NET_HEIGHT);
+                      double maxThrLOD = sample.getMaxThr(channel, populationID, isNet, qUnit);
+                      maxThrLOD = plainSet.getMathMod().calc(maxThrLOD);
 
-                    EventType eventType = plainSet.getEventType();
+                      EventType eventType = plainSet.getEventType();
 
-                    // Check if we have to extract both? Then add the BG first.
-                    if (eventType.equals(EventType.BG_NP)) {
+                      // Check if we have to extract both? Then add the BG first.
+                      if (eventType.equals(EventType.BG_NP)) {
 
-                      // Set event type to NP in order to plot NP outside if this if statement!
-                      eventType = EventType.NP;
+                        // Set event type to NP in order to plot NP outside if this if statement!
+                        eventType = EventType.NP;
 
-                      double[] data = sample.getData(channel, populationID, EventType.BG,
-                          plainSet.getEventParameter(), qUnit);
+                        double[] data = sample.getData(channel, populationID, EventType.BG,
+                            plainSet.getEventParameter(), qUnit);
 
-                      if (plainSet.isJitterBG()) {
-                        data = Statistics.quantileSampleWithMurmurHashedJitter(data,
-                            plainSet.getNumberOfBGEvents(),
-                            2);
+                        if (plainSet.isJitterBG()) {
+                          data = Statistics.quantileSampleWithMurmurHashedJitter(data,
+                              plainSet.getNumberOfBGEvents(),
+                              2);
+                        }
+
+                        // check if compute nonzero before applying math operations
+                        if (plainSet.isComputeNonzero()) {
+                          data = ArrUtils.strictlyGreaterThan(data, 0);
+                        }
+
+                        // check math operations
+                        data = plainSet.getMathMod().calc(data);
+
+                        // create component
+                        if (data.length > 1) {
+                          histoComponents.add(new ChartComponent(
+                              new HistogramChartData(AnalysisUtils.getLabelForPlots(sample,
+                                  channel,
+                                  populationID,
+                                  EventType.BG),
+                                  data,
+                                  xLabel, xUnit, plainSet.getMathMod(),
+                                  yLabel, yUnit, MathMod.NONE,
+                                  maxThrLOD),
+                              new HistoChartStyle(
+                                  plainSet.bgHighlight().getValue().getCol(EventType.BG, color),
+                                  Math.max(plainSet.getColorAlpha() - 0.075 * samples.indexOf(sample), 0.3),
+                                  plainSet.bgHighlight().getValue().getPattern(EventType.BG_NP)
+                              )));
+                        }
                       }
+
+                      // Default way to retrieve data.
+                      double[] data = sample.getData(channel, populationID, eventType,
+                          plainSet.getEventParameter(), qUnit);
 
                       // check if compute nonzero before applying math operations
                       if (plainSet.isComputeNonzero()) {
@@ -5195,72 +5235,39 @@ public abstract class Viewers {
                       data = plainSet.getMathMod().calc(data);
 
                       // create component
-                      if (data.length > 1) {
+                      if (data.length > 0) {
                         histoComponents.add(new ChartComponent(
                             new HistogramChartData(AnalysisUtils.getLabelForPlots(sample,
                                 channel,
                                 populationID,
-                                EventType.BG),
+                                EventType.NP),
                                 data,
                                 xLabel, xUnit, plainSet.getMathMod(),
                                 yLabel, yUnit, MathMod.NONE,
                                 maxThrLOD),
                             new HistoChartStyle(
-                                plainSet.bgHighlight().getValue().getCol(EventType.BG, color),
+                                plainSet.bgHighlight().getValue().getCol(EventType.NP, color),
                                 Math.max(plainSet.getColorAlpha() - 0.075 * samples.indexOf(sample), 0.3),
-                                plainSet.bgHighlight().getValue().getPattern(EventType.BG_NP)
+                                plainSet.bgHighlight().getValue().getPattern(EventType.NP)
                             )));
+
                       }
-                    }
 
-                    // Default way to retrieve data.
-                    double[] data = sample.getData(channel, populationID, eventType,
-                        plainSet.getEventParameter(), qUnit);
+                      // Calculate percentiles in case we need to set axis limits
+                      if (plainSet.isLimitAxes() && data.length > 0) {
+                        DescriptiveStatistics stats = new DescriptiveStatistics(data);
+                        double pctile = plainSet.getUpperXLimitPercentile();
+                        pctile = Math.max(0, pctile);
+                        pctile = Math.min(100, pctile);
+                        percentiles.add(stats.getPercentile(pctile));
+                      }
 
-                    // check if compute nonzero before applying math operations
-                    if (plainSet.isComputeNonzero()) {
-                      data = ArrUtils.strictlyGreaterThan(data, 0);
-                    }
-
-                    // check math operations
-                    data = plainSet.getMathMod().calc(data);
-
-                    // create component
-                    if (data.length > 0) {
-                      histoComponents.add(new ChartComponent(
-                          new HistogramChartData(AnalysisUtils.getLabelForPlots(sample,
-                              channel,
-                              populationID,
-                              EventType.NP),
-                              data,
-                              xLabel, xUnit, plainSet.getMathMod(),
-                              yLabel, yUnit, MathMod.NONE,
-                              maxThrLOD),
-                          new HistoChartStyle(
-                              plainSet.bgHighlight().getValue().getCol(EventType.NP, color),
-                              Math.max(plainSet.getColorAlpha() - 0.075 * samples.indexOf(sample), 0.3),
-                              plainSet.bgHighlight().getValue().getPattern(EventType.NP)
-                          )));
-
-                      // update color: makes it brighter or darker for the next plot
-                      color = Colors.variationHSB(mainColor, mainColor,
-                          selPops.indexOf(populationID) + 1);
-                    }
-
-                    // Calculate percentiles in case we need to set axis limits
-                    if (plainSet.isLimitAxes() && data.length > 0) {
-                      DescriptiveStatistics stats = new DescriptiveStatistics(data);
-                      double pctile = plainSet.getUpperXLimitPercentile();
-                      pctile = Math.max(0, pctile);
-                      pctile = Math.min(100, pctile);
-                      percentiles.add(stats.getPercentile(pctile));
-                    }
-
-                    // calculate ruler position (based on NP data...) with color
-                    if (plainSet.isShowRuler()) {
-                      if (!plainSet.getRulerPosition().equals(MeasureOfLocation.CUSTOM)) {
-                        double pos = plainSet.getRulerPosition().calc(data);
-                        rulerRoots.add(new Pair<>(pos, color));
+                      // calculate ruler position (based on NP data...) with color
+                      if (plainSet.isShowRuler()) {
+                        if (!plainSet.getRulerPosition().equals(MeasureOfLocation.CUSTOM)) {
+                          double pos = plainSet.getRulerPosition().calc(data);
+                          rulerRoots.add(new Pair<>(pos, color));
+                        }
                       }
                     }
                   }

@@ -22,7 +22,6 @@ import analysis.quant.Calibration;
 import analysis.quant.Cal;
 import core.SpTool3Main;
 import dataModelNew.mz.Channel;
-import dataModelNew.mz.MZValue;
 import io.export.ExportSimulationEventContainer;
 
 import java.awt.Color;
@@ -1153,7 +1152,7 @@ public class MergedSample implements Sample, Serializable {
 
   @Override
   public String tabPopNpCustomParamMean(Channel channel, PopulationID populationID, EventParameter par,
-                                        MathMod math) {
+                                        MathMod math, Unit unit) {
     String val = EMPTY_CELL;
     List<double[]> data = getAllSamples().stream()
         .map(s -> s.getTrace(channel))
@@ -1170,7 +1169,7 @@ public class MergedSample implements Sample, Serializable {
 
   @Override
   public String tabNpCustomParamMedian(Channel channel, PopulationID populationID, EventParameter par,
-                                       MathMod math) {
+                                       MathMod math, Unit unit) {
     String val = EMPTY_CELL;
     List<double[]> data = getAllSamples().stream()
         .map(s -> s.getTrace(channel))
@@ -1187,7 +1186,7 @@ public class MergedSample implements Sample, Serializable {
 
   @Override
   public String tabNpCustomParamSD(Channel channel, PopulationID populationID, EventParameter par,
-                                   MathMod math) {
+                                   MathMod math, Unit unit) {
     String val = EMPTY_CELL;
     List<double[]> data = getAllSamples().stream()
         .map(s -> s.getTrace(channel))

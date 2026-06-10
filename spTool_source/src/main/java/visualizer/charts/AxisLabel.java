@@ -148,6 +148,83 @@ public interface AxisLabel {
     return new PlainLabel(label, unit);
   }
 
+  static AxisLabel getUnit(EventParameter eventParameter, Unit quantUnit) {
+    String label = "Unknown";
+    Unit unit = ViewUnits.NONE;
+
+    // check if any of the samples suggest quant data
+    boolean sampleIndicatesQuantData = true;
+
+    if (IntensityUnit.CTS.equals(quantUnit) || !EventParameter.canQuantify(eventParameter)
+        || !sampleIndicatesQuantData) {
+      switch (eventParameter) {
+        case AREA:
+          label = "Gross area";
+          unit = IntensityUnit.CTS;
+          break;
+        case NET_AREA:
+          label = "Net area";
+          unit = IntensityUnit.CTS;
+          break;
+        case HEIGHT:
+          label = "Gross height";
+          unit = IntensityUnit.CTS;
+          break;
+        case NET_HEIGHT:
+          label = "Net height";
+          unit = IntensityUnit.CTS;
+          break;
+        case BACKGROUND_PER_NP:
+          label = "BG per NP";
+          unit = IntensityUnit.CTS;
+          break;
+        case DURATION:
+          label = "Duration";
+          unit = TimeUnit.MICROSECOND;
+          break;
+        case NO_OF_POINTS:
+          label = "Points";
+          unit = ViewUnits.NONE;
+          break;
+        case NO_OF_EVENTS:
+          label = "Events";
+          unit = ViewUnits.NP;
+          break;
+        case ASYMMETRY_FACTOR:
+          label = "Symmetry";
+          unit = ViewUnits.NONE;
+          break;
+        case START_INDEX:
+          label = "Start";
+          unit = ViewUnits.NONE;
+          break;
+        case END_INDEX:
+          label = "End";
+          unit = ViewUnits.NONE;
+          break;
+        case CENTER_TIME:
+          label = "Center time";
+          unit = TimeUnit.SECOND;
+          break;
+        default:
+          label = "Area";
+          unit = IntensityUnit.CTS;
+      }
+    } else {
+      if (quantUnit instanceof SizeUnit) {
+        label = "Particle size";
+        unit = quantUnit;
+      } else if (quantUnit instanceof MassUnit) {
+        label = "Elemental mass";
+        unit = quantUnit;
+      } else if (quantUnit instanceof MolarUnit) {
+        label = "Number of moles";
+        unit = quantUnit;
+      }
+    }
+    return new PlainLabel(label, unit);
+  }
+
   public static class PlainLabel implements AxisLabel {
 
     private final String label;

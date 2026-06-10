@@ -711,7 +711,7 @@ public class IncompleteSample implements Sample, Serializable {
 
   @Override
   public String tabPopNpCustomParamMean(Channel channel, PopulationID populationID, EventParameter par,
-                                        MathMod math) {
+                                        MathMod math, Unit unit) {
     String val = EMPTY_CELL;
     Trace t = getTrace(channel);
     if (t != null && t.hasType(populationID)) {
@@ -722,7 +722,7 @@ public class IncompleteSample implements Sample, Serializable {
 
   @Override
   public String tabNpCustomParamMedian(Channel channel, PopulationID populationID, EventParameter par,
-                                       MathMod math) {
+                                       MathMod math, Unit unit) {
     String val = EMPTY_CELL;
     Trace t = getTrace(channel);
     if (t != null && t.hasType(populationID)) {
@@ -733,7 +733,7 @@ public class IncompleteSample implements Sample, Serializable {
 
   @Override
   public String tabNpCustomParamSD(Channel channel, PopulationID populationID, EventParameter par,
-                                   MathMod math) {
+                                   MathMod math, Unit unit) {
     String val = EMPTY_CELL;
     Trace t = getTrace(channel);
     if (t != null && t.hasType(populationID)) {

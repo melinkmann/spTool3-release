@@ -32,9 +32,9 @@ public class ChemicalFormulaParser {
     this.formula = formula;
   }
 
-  public static Map<String, Integer> parse(String formula) {
+  public static Map<String, Double> parse(String formula) {
     ChemicalFormulaParser parser = new ChemicalFormulaParser(formula);
-    Map<String, Integer> result = parser.parseFormula();
+    Map<String, Double> result = parser.parseFormula();
     if (parser.pos != formula.length()) {
       throw new IllegalArgumentException(
           "Unexpected character at position " + parser.pos);
@@ -42,22 +42,22 @@ public class ChemicalFormulaParser {
     return result;
   }
 
-  private Map<String, Integer> parseFormula() {
-    Map<String, Integer> counts = new HashMap<>();
+  private Map<String, Double> parseFormula() {
+    Map<String, Double> counts = new HashMap<>();
 
     while (pos < formula.length()) {
       char c = formula.charAt(pos);
 
       if (c == '(') {
         pos++; // skip '('
-        Map<String, Integer> inner = parseFormula();
+        Map<String, Double> inner = parseFormula();
 
         if (pos >= formula.length() || formula.charAt(pos) != ')') {
           throw new IllegalArgumentException("Missing closing parenthesis at " + pos);
         }
         pos++; // skip ')'
 
-        int multiplier = parseNumber();
+        double multiplier = parseNumber();
         multiplyAndMerge(counts, inner, multiplier);
 
       } else if (c == ')') {
@@ -66,8 +66,8 @@ public class ChemicalFormulaParser {
 
       } else if (Character.isUpperCase(c)) {
         String element = parseElement();
-        int count = parseNumber();
-        counts.merge(element, count, Integer::sum);
+        double count = parseNumber();
+        counts.merge(element, count, Double::sum);
 
       } else {
         throw new IllegalArgumentException(
@@ -92,26 +92,26 @@ public class ChemicalFormulaParser {
     return sb.toString();
   }
 
-  private int parseNumber() {
+  private double parseNumber() {
     int start = pos;
 
-    while (pos < formula.length() && Character.isDigit(formula.charAt(pos))) {
+    while (pos < formula.length() && (Character.isDigit(formula.charAt(pos)) || formula.charAt(pos) == '.')) {
       pos++;
     }
 
     if (start == pos) {
-      return 1; // default multiplier
+      return 1.0;
     }
 
-    return Integer.parseInt(formula.substring(start, pos));
+    return Double.parseDouble(formula.substring(start, pos));
   }
 
-  private void multiplyAndMerge(Map<String, Integer> target,
-                                Map<String, Integer> source,
-                                int multiplier) {
-    for (Map.Entry<String, Integer> e : source.entrySet()) {
-      int value = e.getValue() * multiplier;
-      target.merge(e.getKey(), value, Integer::sum);
+  private void multiplyAndMerge(Map<String, Double> target,
+                                Map<String, Double> source,
+                                double multiplier) {
+    for (Map.Entry<String, Double> e : source.entrySet()) {
+      double value = e.getValue() * multiplier;
+      target.merge(e.getKey(), value, Double::sum);
     }
   }
 }

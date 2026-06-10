@@ -40,6 +40,9 @@ import javafx.stage.FileChooser.ExtensionFilter;
 import javax.annotation.Nullable;
 
 import javafx.stage.Window;
+import math.units.Unit;
+import math.units.enums.NMPUnit;
+import math.units.enums.QuantityUnit;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.w3c.dom.Element;
@@ -135,6 +138,7 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
 
   private final Parameter<EventParameter> eventParameter;
   private final Parameter<MathMod> eventMathModification;
+  private final Parameter<NMPUnit> eventUnit;
 
   private final Parameter<Double> default_D_mu;
   private final Parameter<Double> default_D_SD;
@@ -634,7 +638,7 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
 
     eventParameter = new ComboEnumParameter<>(
         "Table: Event parameter",
-        "Choose a custom event parameter that is shown in the results table",
+        "Choose a custom event parameter that is shown for the 'custom' entry in the results table",
         EventParameter.BACKGROUND_PER_NP,
         EventParameter.histo(),
         EventParameter.class,
@@ -644,12 +648,22 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
 
     eventMathModification = new ComboEnumParameter<>(
         "Table: Math",
-        "Choose a custom data transformation that is shown in the results table",
+        "Choose a custom data transformation that is shown for the 'custom' entry in the results table",
         MathMod.NONE,
         MathMod.values(),
         MathMod.class,
         false,
         "eventMathModification"
+    );
+
+    eventUnit = new ComboEnumParameter<>(
+        "Table: Unit",
+        "Choose a custom unit that is shown for the 'custom' entry in the results table",
+        NMPUnit.FEMTO_MOL,
+        NMPUnit.values(),
+        NMPUnit.class,
+        false,
+        "eventUnit"
     );
 
 
@@ -816,6 +830,7 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
 
     this.eventParameter = confParams.eventParameter.copyWithoutChildren();
     this.eventMathModification = confParams.eventMathModification.copyWithoutChildren();
+    this.eventUnit = confParams.eventUnit.copyWithoutChildren();
     this.default_D_mu = confParams.default_D_mu.copyWithoutChildren();
     this.default_D_SD = confParams.default_D_SD.copyWithoutChildren();
     this.default_v_mu = confParams.default_v_mu.copyWithoutChildren();
@@ -926,6 +941,7 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
           loadDockingSizes,
           eventParameter,
           eventMathModification,
+          eventUnit,
           new SeparatorParameter(),
           default_D_mu,
           default_D_SD,
@@ -974,6 +990,7 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
           loadDockingSizes,
           eventParameter,
           eventMathModification,
+          eventUnit,
           default_D_mu,
           default_D_SD,
           default_v_mu,
@@ -1158,6 +1175,7 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
 
           case "eventParameter" -> eventParameter;
           case "eventMathModification" -> eventMathModification;
+          case "eventUnit" -> eventUnit;
           case "default_D_mu" -> default_D_mu;
           case "default_D_SD" -> default_D_SD;
           case "default_v_mu" -> default_v_mu;
@@ -1644,6 +1662,10 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
 
   public Parameter<MathMod> getEventMathModification() {
     return eventMathModification;
+  }
+
+  public Unit getCustomEventUnit() {
+    return eventUnit.getValue().getUnit();
   }
 
   public Parameter<Double> getDefault_D_mu() {

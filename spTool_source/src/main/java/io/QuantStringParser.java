@@ -18,6 +18,7 @@
 package io;
 
 import dataModelNew.Sample;
+import dataModelNew.mz.Element;
 import math.units.enums.ConcentrationUnit;
 import math.units.enums.FlowUnit;
 import math.units.enums.SizeUnit;
@@ -25,6 +26,8 @@ import processing.options.CalibratorRole;
 import processing.options.SampleType;
 import processing.parameterSets.impl.ExperimentalSubConditions;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 
@@ -145,6 +148,14 @@ public class QuantStringParser {
       var quant = sample.getQuant();
       var conditions = quant.getExperimentalConditions();
       var subConditionsMap = conditions.getElementSpecificQuantParams();
+
+      // initialise in case user has not clicked on it yet
+      if (subConditionsMap.isEmpty()) {
+        List<Element> allElements = new ArrayList<>(sample.listElements());
+        for (Element element : allElements) {
+          conditions.getOrCreateElementSpecificQuantParams(element);
+        }
+      }
 
       // ---- PREFIX RULES ----
       switch (prefixLower) {

@@ -99,7 +99,7 @@ public class AlignTask extends AbstractWorkingTask implements WorkingTask {
               case ALL_LOADED -> {
               }
               case SELECTED -> {
-                traces.removeIf(t -> !selChannels.contains(t.getChannel().getIsotope()));
+                traces.removeIf(t -> !selChannels.contains(t.getChannel()));
               }
               case POSITIVE_LIST_SELECTION -> {
                 traces.removeIf(t -> !includedIsotopes.contains(t.getChannel().getIsotope()));
@@ -150,11 +150,14 @@ public class AlignTask extends AbstractWorkingTask implements WorkingTask {
 
               if (!mergedEvents.isEmpty()) {
 
+                // complete list first and iterate over traces
+                for (Trace trace : traces) {
+                  contributingChannels.add(trace.getChannel());
+                }
+
                 // put that into each trace as new population
                 for (Trace trace : traces) {
                   counter++;
-
-                  contributingChannels.add(trace.getChannel());
 
                   // only apply to leading population in the branch
                   PopulationID oldPopID = branch.getID(trace);

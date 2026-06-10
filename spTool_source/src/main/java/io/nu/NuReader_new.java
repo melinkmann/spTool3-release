@@ -40,6 +40,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.zip.GZIPInputStream;
 
 public class NuReader_new {
 
@@ -47,6 +48,10 @@ public class NuReader_new {
 
   private static final Map<Path, SoftReference<byte[]>> DATA_CACHE = new HashMap<>();
   private static final Map<Path, Path> FILE_CACHE = new HashMap<>();
+
+  /// Reads .integ file and checks if it is compressed
+  private static final int GZIP_MAGIC_1 = 0x1F;
+  private static final int GZIP_MAGIC_2 = 0x8B;
 
 
   public static ParsedNuData getFromCacheOrParse(Path directory,
@@ -730,7 +735,7 @@ public class NuReader_new {
         LOGGER.trace("Peeking/reading first .integ file to find all m/z...");
 
         try {
-          byte[] firstBytes = Files.readAllBytes(firstFile);
+          byte[] firstBytes = readIntegBytes(firstFile);
           ByteBuffer firstBuf = ByteBuffer.wrap(firstBytes).order(ByteOrder.LITTLE_ENDIAN);
 
           if (firstBuf.remaining() >= 16) {
@@ -802,7 +807,8 @@ public class NuReader_new {
 
             byte[] bytes;
             try {
-              bytes = Files.readAllBytes(filePath);
+              // bytes = Files.readAllBytes(filePath);
+              bytes = readIntegBytes(filePath);
             } catch (Exception e) {
               LOGGER.error("Cannot read bytes from file: " + filePath
                   + ". Message: " + e.getMessage()
@@ -934,7 +940,7 @@ public class NuReader_new {
         int firstExpectedAcq = firstIdx.get("FirstAcqNum").getAsInt();
 
         try {
-          byte[] firstBytes = Files.readAllBytes(firstFile);
+          byte[] firstBytes = readIntegBytes(firstFile);
           ByteBuffer firstBuf = ByteBuffer.wrap(firstBytes).order(ByteOrder.LITTLE_ENDIAN);
 
           if (firstBuf.remaining() >= 16) {
@@ -980,6 +986,23 @@ public class NuReader_new {
     }
 
     return mz;
+  }
+
+
+
+  private static byte[] readIntegBytes(Path filePath) throws IOException {
+    byte[] bytes = Files.readAllBytes(filePath);
+    if (bytes.length >= 2
+        && (bytes[0] & 0xFF) == GZIP_MAGIC_1
+        && (bytes[1] & 0xFF) == GZIP_MAGIC_2) {
+      // LOGGER.trace("readIntegBytes: decompressing GZIP file: " + filePath);
+      try (GZIPInputStream gzis = new GZIPInputStream(new ByteArrayInputStream(bytes))) {
+        bytes = gzis.readAllBytes();
+      }
+    } else {
+      // LOGGER.trace("readIntegBytes: file is uncompressed, reading raw bytes: " + filePath);
+    }
+    return bytes;
   }
 
 }

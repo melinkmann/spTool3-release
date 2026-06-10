@@ -45,20 +45,30 @@ public abstract class JFreeUtil {
     double mz = ds.getXValue(series, item);
     int nominalMZ = (int) Math.round(mz);
 
+    List<String> matchingAllowedIsotopes = new ArrayList<>();
     List<String> matchingIsotopes = new ArrayList<>();
+
 
     for (Element ele : Element.values()) {
       for (Isotope iso : ele.getIsotopes()) {
+
+        // check if sth was matched - if yes, we know that we do not have to show the generic
+        // tip = SnF.doubleToString(mz, NF.D1C3); label
+        if (iso.getIsotopicNumber() == nominalMZ) {
+          matchingIsotopes.add(iso.getNumberAndElement());
+        }
+
+        // Now check if the labels are supposed to be shown
         double relSignal = ds.getYValue(series, item) / maxYValue;
         if (iso.getIsotopicNumber() == nominalMZ
             && iso.getAbundance() > minAbundance
             && relSignal > minSignal
             && !excludedFromLabel.contains(iso)) {
           if (showAbundance) {
-            matchingIsotopes.add(iso.getNumberAndElement() + "(" + SnF.doubleToString(100 * iso.getAbundance(),
+            matchingAllowedIsotopes.add(iso.getNumberAndElement() + "(" + SnF.doubleToString(100 * iso.getAbundance(),
                 NF.D1C1) + "%)");
           } else {
-            matchingIsotopes.add(iso.getNumberAndElement());
+            matchingAllowedIsotopes.add(iso.getNumberAndElement());
           }
         }
       }
@@ -66,7 +76,7 @@ public abstract class JFreeUtil {
 
     String tip;
     if (!matchingIsotopes.isEmpty()) {
-      tip = String.join("\n", matchingIsotopes);
+      tip = String.join("\n", matchingAllowedIsotopes);
     } else {
       tip = SnF.doubleToString(mz, NF.D1C3);
     }

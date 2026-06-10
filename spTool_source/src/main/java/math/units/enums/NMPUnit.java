@@ -121,9 +121,7 @@ public enum NMPUnit implements Unit, Serializable {
 
 
   @Override
-  public abstract String
-
-  getLiteralString();
+  public abstract String getLiteralString();
 
   public abstract Unit getUnit();
 

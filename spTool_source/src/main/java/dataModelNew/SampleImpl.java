@@ -46,7 +46,6 @@ import math.units.enums.*;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.checkerframework.checker.units.qual.A;
 import org.jetbrains.annotations.Nullable;
 import processing.options.*;
 import processing.parameterSets.ListMethod;
@@ -1491,33 +1490,34 @@ public class SampleImpl implements Sample, Serializable {
 
   @Override
   public String tabPopNpCustomParamMean(Channel channel, PopulationID populationID, EventParameter par,
-                                        MathMod math) {
+                                        MathMod math, Unit unit) {
     String val = EMPTY_CELL;
     Trace t = getTrace(channel);
     if (t != null && t.hasType(populationID)) {
-      val = str(mu(math.calc(t.get(populationID, EventType.NP, par))), NF.D1C3);
+      // val = str(mu(math.calc(t.get(populationID, EventType.NP, par))), NF.D1C3);
+      val = str(mu(math.calc(getData(channel,populationID, EventType.NP, par, unit))), NF.D1C3);
     }
     return val;
   }
 
   @Override
   public String tabNpCustomParamMedian(Channel channel, PopulationID populationID, EventParameter par,
-                                       MathMod math) {
+                                       MathMod math, Unit unit) {
     String val = EMPTY_CELL;
     Trace t = getTrace(channel);
     if (t != null && t.hasType(populationID)) {
-      val = str(md(math.calc(t.get(populationID, EventType.NP, par))), NF.D1C3);
+      val = str(md(math.calc(getData(channel,populationID, EventType.NP, par, unit))), NF.D1C3);
     }
     return val;
   }
 
   @Override
   public String tabNpCustomParamSD(Channel channel, PopulationID populationID, EventParameter par,
-                                   MathMod math) {
+                                   MathMod math, Unit unit) {
     String val = EMPTY_CELL;
     Trace t = getTrace(channel);
     if (t != null && t.hasType(populationID)) {
-      val = str(sd(math.calc(t.get(populationID, EventType.NP, par))), NF.D1C3);
+      val = str(sd(math.calc(getData(channel,populationID, EventType.NP, par, unit))), NF.D1C3);
     }
     return val;
   }
