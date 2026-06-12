@@ -84,6 +84,9 @@ public class SampleImpl implements Sample, Serializable {
   private List<Channel> sampleDefaultIsotopes;
   private List<String> removedIsotopeInfo;
   private List<Channel> recordedTofRange;
+  // remember time limits for TOF data
+  private int inclusiveStartIndex = -1;
+  private int inclusiveEndIndex = -1;
 
   public SampleImpl() {
     this.traces = new LinkedHashMap<>();
@@ -182,7 +185,9 @@ public class SampleImpl implements Sample, Serializable {
                     Color color,
                     List<Channel> sampleDefaultIsotopes,
                     List<String> removedIsotopeInfo,
-                    List<Channel> recordedTofRange) {
+                    List<Channel> recordedTofRange,
+                    int inclusiveStartIndex,
+                    int inclusiveEndIndex) {
     this.nickName = nickName;
     this.matrices = new ArrayList<>();
     for (ParticlePopulationMatrix matrix : matrices) {
@@ -212,6 +217,8 @@ public class SampleImpl implements Sample, Serializable {
     this.sampleDefaultIsotopes = new ArrayList<>(sampleDefaultIsotopes);
     this.removedIsotopeInfo = new ArrayList<>(removedIsotopeInfo);
     this.recordedTofRange = new ArrayList<>(recordedTofRange);
+    this.inclusiveStartIndex = inclusiveStartIndex;
+    this.inclusiveEndIndex = inclusiveEndIndex;
   }
 
   public Sample copy() {
@@ -228,7 +235,9 @@ public class SampleImpl implements Sample, Serializable {
         color,
         sampleDefaultIsotopes,
         removedIsotopeInfo,
-        recordedTofRange);
+        recordedTofRange,
+        inclusiveStartIndex,
+        inclusiveEndIndex);
     return newSample;
   }
 
@@ -247,7 +256,9 @@ public class SampleImpl implements Sample, Serializable {
         color,
         sampleDefaultIsotopes,
         removedIsotopeInfo,
-        recordedTofRange);
+        recordedTofRange,
+        inclusiveStartIndex,
+        inclusiveEndIndex);
     return newSample;
   }
 
@@ -309,6 +320,13 @@ public class SampleImpl implements Sample, Serializable {
     if (recordedTofRange == null) {
       this.recordedTofRange = new ArrayList<>();
     }
+
+    if (inclusiveStartIndex == 0 && inclusiveEndIndex == 0) {
+      // indicate that both never have been set
+      inclusiveStartIndex = -1;
+      inclusiveEndIndex = -1;
+    }
+
 
     // Offload to HDD immediately after reading
     matricesToHDD();
@@ -392,6 +410,17 @@ public class SampleImpl implements Sample, Serializable {
         .mapToDouble(Double::doubleValue)
         .average().orElse(0);
     return sia;
+  }
+
+  @Override
+  public void setTimeLimitIndices(int inclusiveStart, int inclusiveEnd) {
+    this.inclusiveStartIndex = inclusiveStart;
+    this.inclusiveEndIndex = inclusiveEnd;
+  }
+
+  @Override
+  public int[] getTimeLimitsIndices() {
+    return new int[]{inclusiveStartIndex, inclusiveEndIndex};
   }
 
   @Override
@@ -490,6 +519,8 @@ public class SampleImpl implements Sample, Serializable {
     List<SpectralArray> result = spectra.get(popID);
     if (result == null) {
       result = new ArrayList<>();
+    } else {
+      result = new ArrayList<>(result);
     }
     return result;
   }
@@ -1495,7 +1526,7 @@ public class SampleImpl implements Sample, Serializable {
     Trace t = getTrace(channel);
     if (t != null && t.hasType(populationID)) {
       // val = str(mu(math.calc(t.get(populationID, EventType.NP, par))), NF.D1C3);
-      val = str(mu(math.calc(getData(channel,populationID, EventType.NP, par, unit))), NF.D1C3);
+      val = str(mu(math.calc(getData(channel, populationID, EventType.NP, par, unit))), NF.D1C3);
     }
     return val;
   }
@@ -1506,7 +1537,7 @@ public class SampleImpl implements Sample, Serializable {
     String val = EMPTY_CELL;
     Trace t = getTrace(channel);
     if (t != null && t.hasType(populationID)) {
-      val = str(md(math.calc(getData(channel,populationID, EventType.NP, par, unit))), NF.D1C3);
+      val = str(md(math.calc(getData(channel, populationID, EventType.NP, par, unit))), NF.D1C3);
     }
     return val;
   }
@@ -1517,7 +1548,7 @@ public class SampleImpl implements Sample, Serializable {
     String val = EMPTY_CELL;
     Trace t = getTrace(channel);
     if (t != null && t.hasType(populationID)) {
-      val = str(sd(math.calc(getData(channel,populationID, EventType.NP, par, unit))), NF.D1C3);
+      val = str(sd(math.calc(getData(channel, populationID, EventType.NP, par, unit))), NF.D1C3);
     }
     return val;
   }

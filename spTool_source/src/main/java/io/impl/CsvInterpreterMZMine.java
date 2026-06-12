@@ -159,7 +159,12 @@ public class CsvInterpreterMZMine implements CsvInterpreter {
         double globalNonzeroMinimum = 0; // mean value
         List<Double> globalNonzeroMinima = new ArrayList<>();
         for (List<Double> intensity : allIntensitySeries) {
-          double min = Collections.min(ArrUtils.nonzero(intensity));
+          double min = 0;
+          // else, empty list throws no such element exception
+          List<Double> nonzeros = ArrUtils.nonzero(intensity);
+          if (!nonzeros.isEmpty()) {
+            min = Collections.min(nonzeros);
+          }
           if (min > 0) {
             globalNonzeroMinima.add(min);
           }

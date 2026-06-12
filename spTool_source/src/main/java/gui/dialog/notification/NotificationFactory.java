@@ -20,6 +20,7 @@ package gui.dialog.notification;
 import core.SpTool3Main;
 import gui.dialog.DialogUtil;
 import gui.dialog.notification.TextNotification.NoteType;
+
 import java.util.Arrays;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -46,7 +47,7 @@ public class NotificationFactory {
   }
 
   public static void openYesCancel(String message, Functional yes, Functional cancel) {
-    Platform.runLater(()-> {
+    Platform.runLater(() -> {
 
       Alert alert = new Alert(
           AlertType.CONFIRMATION,
@@ -73,14 +74,20 @@ public class NotificationFactory {
       Button noButton = (Button) alert.getDialogPane().lookupButton(ButtonType.CANCEL);
       noButton.setDefaultButton(true);
 
+      yesButton.setText("Yes");  // force labels to stay correct
+      noButton.setText("Cancel");
+
       //
       Optional<ButtonType> result = alert.showAndWait();
 
-      if (result.isPresent() && result.get() == ButtonType.YES) {
-        yes.proceed();
-      } else if (result.isPresent() && result.get() == ButtonType.CANCEL) {
-        cancel.proceed();
-      }
+      result.ifPresent(bt -> {
+        if (bt.getText().equalsIgnoreCase("yes")) {
+          yes.proceed();
+        } else {
+          cancel.proceed();
+        }
+      });
+
     });
   }
 
@@ -88,6 +95,7 @@ public class NotificationFactory {
     // empty "No"
     return openYesNo(message, yes, Functional.empty());
   }
+
 
   public static AtomicBoolean openYesNo(String message, Functional yes, Functional no) {
     AtomicBoolean trueIfYes = new AtomicBoolean(false);
@@ -115,16 +123,22 @@ public class NotificationFactory {
     Button noButton = (Button) alert.getDialogPane().lookupButton(ButtonType.NO);
     noButton.setDefaultButton(true);
 
+    yesButton.setText("Yes");  // force labels to stay correct
+    noButton.setText("No");
+
     //
     Optional<ButtonType> result = alert.showAndWait();
 
-    if (result.isPresent() && result.get() == ButtonType.YES) {
-      yes.proceed();
-      trueIfYes.set(true);
-    } else if (result.isPresent() && result.get() == ButtonType.NO) {
-      no.proceed();
-      trueIfYes.set(false);
-    }
+    result.ifPresent(bt -> {
+      if (bt.getText().equalsIgnoreCase("yes")) {
+        yes.proceed();
+        trueIfYes.set(true);
+      } else {
+        no.proceed();
+        trueIfYes.set(false);
+      }
+    });
+
     return trueIfYes;
   }
 
@@ -134,7 +148,7 @@ public class NotificationFactory {
   }
 
   public static void openError(Exception exception) {
-    Platform.runLater(()-> {
+    Platform.runLater(() -> {
       StringBuilder builder = new StringBuilder();
       builder.append("Complete error message:").append("\n");
       Arrays.stream(exception.getStackTrace()).forEach(s -> builder.append(s).append("\n"));
@@ -148,7 +162,7 @@ public class NotificationFactory {
   }
 
   public static void openError(String message) {
-    Platform.runLater(()->{
+    Platform.runLater(() -> {
       TextNotification textNotification = new TextNotification(NoteType.ERROR, message);
       textNotification.show();
     });
@@ -156,14 +170,14 @@ public class NotificationFactory {
 
 
   public static void openInfo(String message) {
-    Platform.runLater(()-> {
+    Platform.runLater(() -> {
       TextNotification textNotification = new TextNotification(NoteType.NOTIFICATION, message);
       textNotification.show();
     });
   }
 
   public static void openAutocloseInfo(String message) {
-    Platform.runLater(()-> {
+    Platform.runLater(() -> {
       TextNotification textNotification = new TextNotification(NoteType.AUTOCLOSE_NOTIFICATION, message);
       textNotification.show();
     });
@@ -174,7 +188,7 @@ public class NotificationFactory {
   }
 
   public static void openOK(String message, Window parentWindow) {
-    Platform.runLater(()-> {
+    Platform.runLater(() -> {
       Alert alert = new Alert(
           AlertType.INFORMATION,
           message,

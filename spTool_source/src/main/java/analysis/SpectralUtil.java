@@ -17,7 +17,6 @@
 
 package analysis;
 
-import core.SpTool3Main;
 import dataModelNew.*;
 import dataModelNew.mz.Channel;
 import gui.dialog.notification.NotificationFactory;
@@ -25,9 +24,9 @@ import io.nu.NuReader_new;
 import io.nu.ParsedNuData;
 import javafx.application.Platform;
 import math.stat.MeasureOfLocation;
-import org.apache.log4j.LogManager;
-import org.apache.log4j.Logger;
-import sandbox.montecarlo.Isotope;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import util.ArrUtils;
 import util.Util;
 
 import java.nio.file.Path;
@@ -45,7 +44,7 @@ public abstract class SpectralUtil {
     } else {
 
       // check if we can compute spectra
-      boolean isAligned = AnalysisUtils.isAlignedOrPVal(popID);
+      boolean isAligned = AnalysisUtils.isAlignedOrPValOrSim(popID);
 
       if (isAligned) {
         for (Sample sample : mainSample.getAllSamples()) {
@@ -210,6 +209,16 @@ public abstract class SpectralUtil {
         ParsedNuData.ParsedNuDataArray parsedData = it.next();
         if (parsedData != null && parsedData.intensity().length > 0) {
           double[] intensityArr = parsedData.intensity();
+
+          // If time has been cut, we need to cut here, too.
+          int[] limitIndices = subSample.getTimeLimitsIndices();
+          if (limitIndices.length > 1
+              && limitIndices[0] != -1 && limitIndices[1] != -1
+              && limitIndices[1] > limitIndices[0]) {
+
+            int clampedEnd = Math.min(limitIndices[1], intensityArr.length - 1);
+            intensityArr = ArrUtils.getPortion(intensityArr, limitIndices[0], clampedEnd, LOGGER);
+          }
 
           // Find Mean BG
           int serSize = intensityArr.length;

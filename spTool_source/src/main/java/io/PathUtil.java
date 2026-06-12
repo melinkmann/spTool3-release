@@ -34,7 +34,8 @@ public abstract class PathUtil {
 
   // C:\Users\Matthias
   public static Path getUserDir() {
-    Path homeFolder = Path.of("C:\\");
+    // Path homeFolder = Path.of("C:\\");
+    Path homeFolder = Path.of(System.getProperty("user.home", System.getProperty("user.dir")));
     try {
       homeFolder = Path.of(SystemUtils.getUserHome().getAbsolutePath());
     } catch (Exception exception) {
@@ -48,7 +49,8 @@ public abstract class PathUtil {
   i.e. C:\SPB_Data\git\SpTool3_light
    */
   public static Path getCwd() {
-    Path homeFolder = Path.of("C:\\");
+    // Path homeFolder = Path.of("C:\\");
+    Path homeFolder = Path.of(System.getProperty("user.home", System.getProperty("user.dir")));
     try {
       homeFolder = Path.of(System.getProperty("user.dir"));
     } catch (Exception exception) {

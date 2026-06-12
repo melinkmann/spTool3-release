@@ -1629,7 +1629,7 @@ public abstract class Viewers {
         if (!selChannels.isEmpty()) {
 
           // Check if we are dealing with aligned population and multiple selected isotopes
-          boolean multiIsotopeMode = AnalysisUtils.isAlignedOrPVal(firstID) && selChannels.size() > 1;
+          boolean multiIsotopeMode = AnalysisUtils.isAlignedOrPValOrSim(firstID) && selChannels.size() > 1;
 
           if (multiIsotopeMode) {
 
@@ -3176,7 +3176,7 @@ public abstract class Viewers {
           // check if aligned version is present
           boolean isAligned = false;
           if (selChannels.size() == 1) {
-            isAligned = AnalysisUtils.isAnyAlignedOrPVal(selPop);
+            isAligned = AnalysisUtils.isAnyAlignedOrPValOrSim(selPop);
           }
 
           if (isAligned) {
@@ -3434,7 +3434,7 @@ public abstract class Viewers {
                 PopulationID populationID = selPop.get(i);
 
                 // check if aligned
-                boolean isAlignedOrP = AnalysisUtils.isAlignedOrPVal(populationID);
+                boolean isAlignedOrP = AnalysisUtils.isAlignedOrPValOrSim(populationID);
 
                 if (isAlignedOrP) {
 
@@ -3757,7 +3757,7 @@ public abstract class Viewers {
                       }
 
                       // check if aligned
-                      boolean isAlignedOrP = analysis.AnalysisUtils.isAlignedOrPVal(populationID);
+                      boolean isAlignedOrP = analysis.AnalysisUtils.isAlignedOrPValOrSim(populationID);
 
                       if (isAlignedOrP && xData.length > 0 && yData.length > 0) {
                         chartComponents.add(new ChartComponent(
@@ -4485,6 +4485,7 @@ public abstract class Viewers {
                   // try load again
                   spectralRegionsData = new ArrayList<>(sample.getSpectralData(popID));
                 }
+
 
                 // check for blacklisted elements
                 // enable exclusion of certain isotopes

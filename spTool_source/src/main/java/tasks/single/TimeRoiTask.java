@@ -101,7 +101,7 @@ public class TimeRoiTask extends AbstractWorkingTask implements WorkingTask {
             for (Trace trace : selSample.getTraces()) {
               // Applying this to monte carlo traces gets just messy
               //if (trace instanceof TraceImpl) {
-              trace.setTISeriesLimits(start, stop);
+              trace.setTISeriesLimits(start, stop, selSample);
               //}
             }
           }

@@ -73,6 +73,10 @@ public interface Sample extends Serializable {
 
   double getMeanSiaShape();
 
+  void setTimeLimitIndices(int inclusiveStart, int inclusiveEnd);
+
+  int[] getTimeLimitsIndices();
+
   /**
    * This method serves to create a list of channels present in this sample. In case of merged
    * samples, one channel may represent several traces. However, each of these traces returns the

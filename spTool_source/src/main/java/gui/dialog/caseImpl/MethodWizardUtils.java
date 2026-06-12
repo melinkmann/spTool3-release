@@ -103,22 +103,23 @@ public abstract class MethodWizardUtils {
 
     if (res.isPresent()) {
 
+      if (csvImport.selectedProperty().get()) {
+        if (Objects.equals(instrumentType.getSelectionModel().getSelectedItem(), "Time-of-flight (TOF)")) {
+          NuInterpreterParams nuParams = new NuInterpreterParams();
+          method.getSets().add(nuParams);
+        } else {
+          CsvInterpreterParams csvParams = new CsvInterpreterParams();
+          method.getSets().add(csvParams);
+        }
+      }
 
       if (addSimulation.selectedProperty().get()) {
         MCSimGeneralParams generalParams = new MCSimGeneralParams();
 
         if (Objects.equals(instrumentType.getSelectionModel().getSelectedItem(), "Time-of-flight (TOF)")) {
           generalParams.detectorDistribution.setValue(PDF.COMPOUND_POISSON);
-          if (csvImport.selectedProperty().get()) {
-            NuInterpreterParams nuParams = new NuInterpreterParams();
-            method.getSets().add(nuParams);
-          }
         } else {
           generalParams.detectorDistribution.setValue(PDF.POISSON);
-          if (csvImport.selectedProperty().get()) {
-            CsvInterpreterParams csvParams = new CsvInterpreterParams();
-            method.getSets().add(csvParams);
-          }
         }
 
         method.getSets().add(generalParams);

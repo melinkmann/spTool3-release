@@ -34,6 +34,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import processing.options.EventParameter;
 import processing.options.EventType;
+import processing.options.PopulationType;
 import processing.options.SearchAlgorithm;
 import sandbox.montecarlo.Isotope;
 import sandbox.montecarlo.ParticlePopulationMatrix;
@@ -332,16 +333,20 @@ public abstract class AnalysisUtils {
   /**
    * Check if we are dealing with aligned population by align or pValue
    */
-  public static boolean isAlignedOrPVal(PopulationID id) {
-    return isAligned(id) || isPVal(id);
+  public static boolean isAlignedOrPValOrSim(PopulationID id) {
+    return isAligned(id) || isPVal(id) || isSim(id);
   }
 
-  public static boolean isAnyAlignedOrPVal(List<PopulationID> ids) {
-    return ids.stream().anyMatch(id -> isAligned(id) || isPVal(id));
+  public static boolean isAnyAlignedOrPValOrSim(List<PopulationID> ids) {
+    return ids.stream().anyMatch(id -> isAligned(id) || isPVal(id) || isSim(id));
   }
 
-  public static boolean isAllAlignedOrPVal(List<PopulationID> ids) {
-    return ids.stream().allMatch(id -> isAligned(id) || isPVal(id));
+  public static boolean isAllAlignedOrPValOrSim(List<PopulationID> ids) {
+    return ids.stream().allMatch(id -> isAligned(id) || isPVal(id) || isSim(id));
+  }
+
+  public static boolean isSim(PopulationID id){
+    return id.getType().equals(PopulationType.SIMULATION);
   }
 
   public static boolean isAligned(PopulationID id) {

@@ -418,7 +418,7 @@ public class TraceImpl implements Trace, Serializable {
     xySeriesPlotCache.clear();
   }
 
-  public void setTISeriesLimits(double lower, double upper) {
+  public void setTISeriesLimits(double lower, double upper, Sample sampleRef) {
     /*
     IMPORTANT: initially, tiSeries and tiSeriesCopy are THE SAME OBJECT.
     The copy is always the "full & initial" series.
@@ -436,15 +436,21 @@ public class TraceImpl implements Trace, Serializable {
     if (tiSeries == tiSeriesCopy) {
       this.tiSeriesCopy = tiSeriesCopy.copy();
     }
-    this.tiSeries = RawProcessingUtils.cutTime(tiSeries, lower, upper);
+    this.tiSeries = RawProcessingUtils.cutTime(tiSeries, lower, upper,sampleRef);
     // when we do this, full reset has to occur!
     clearEvaluation();
+
+    // clear spectral data (so far we do not store a copy of these, too -> reloading will be triggered)
+    parentSample.clearSpectralData();
   }
 
   public void resetTISeriesLimits() {
     this.tiSeries = tiSeriesCopy;
     // when we do this, full reset has to occur!
     clearEvaluation();
+
+    // clear spectral data (so far we do not store a copy of these, too -> reloading will be triggered)
+    parentSample.clearSpectralData();
   }
 
   @Override

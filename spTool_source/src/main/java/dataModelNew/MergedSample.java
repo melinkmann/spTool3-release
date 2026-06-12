@@ -257,6 +257,17 @@ public class MergedSample implements Sample, Serializable {
     return sia;
   }
 
+  @Override
+  public void setTimeLimitIndices(int inclusiveStart, int inclusiveEnd) {
+    // so far not implemented for this type (only for sample impl)
+  }
+
+  @Override
+  public int[] getTimeLimitsIndices() {
+    // -1 indicates: not initialised
+    return new int[]{-1, -1};
+  }
+
   /**
    * Returns a list of channels that is unique, i.e., even if two traces contain the same channels,
    * we get a unique list of channels where no duplicates exist.
@@ -270,7 +281,7 @@ public class MergedSample implements Sample, Serializable {
     List<Channel> channels = samples.stream()
         .flatMap(sample -> sample.getTraces().stream())
         .map(Trace::getChannel)
-        .filter(c->c.getIsotope()!=null)
+        .filter(c -> c.getIsotope() != null)
         .distinct() // ensures uniqueness
         .collect(Collectors.toList());
     return channels;
@@ -419,7 +430,6 @@ public class MergedSample implements Sample, Serializable {
       sample.clearSpectralData();
     }
   }
-
 
   @Override
   public List<PopulationID> listAllPopulations() {

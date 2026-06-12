@@ -76,8 +76,7 @@ public class NuInterpreterParams extends AbstractParamSet implements Serializabl
 
     this.isotopeSelectionStrategy = new ComboEnumParameter<>("Isotope selection",
         """
-            Decide how to select isotopes
-            """,
+            Decide how to select isotopes""",
         TofIsotopeOption.THRESHOLD,
         TofIsotopeOption.values(),
         TofIsotopeOption.class,
@@ -90,8 +89,7 @@ public class NuInterpreterParams extends AbstractParamSet implements Serializabl
         """
             Use the button on the right to define default list of isotopes.
             The text field is just a dummy to show feedback and it is uneditable on purpose.
-            Use the button on the right to change selection.
-            """,
+            Use the button on the right to change selection""",
         "",
         TextFormatterOption.ALL_PASS,
         false,
@@ -125,8 +123,7 @@ public class NuInterpreterParams extends AbstractParamSet implements Serializabl
     preScreenAlpha = new DoubleParameter(
         "Alpha",
         """
-            Significance threshold for the isotope pre-screening
-            """,
+            Significance threshold for the isotope pre-screening""",
         1E-6,
         NF.D1C3Exp,
         TextFormatterOption.ASSURE_NONZERO_POS_EXP_DOUBLE,
@@ -136,8 +133,7 @@ public class NuInterpreterParams extends AbstractParamSet implements Serializabl
     preScreenSiaShape = new DoubleParameter(
         "SIA",
         """
-            SIA shape parameter for the isotope pre-screening
-            """,
+            SIA shape parameter for the isotope pre-screening""",
         0.47,
         NF.D1C3,
         TextFormatterOption.ASSURE_NONZERO_POSITIVE_DOUBLE,
@@ -147,7 +143,7 @@ public class NuInterpreterParams extends AbstractParamSet implements Serializabl
     preScreenDataPoints = new IntegerParameter(
         "Min points",
         """
-            There must be at least this number of data points above the threshold 
+            There must be at least this number of data points above the threshold
             to import the isotope""",
         50,
         TextFormatterOption.ASSURE_NONZERO_POSITIVE_INTEGER,
@@ -251,7 +247,7 @@ public class NuInterpreterParams extends AbstractParamSet implements Serializabl
               List<Isotope> resultingIsotopes = new ArrayList<>();
               for (Channel channel : resultingChannels) {
                 Isotope isotope = channel.getIsotope();
-                if (isotope != null){
+                if (isotope != null) {
                   resultingIsotopes.add(isotope);
                 }
               }

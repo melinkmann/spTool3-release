@@ -156,14 +156,14 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
     this.defaultProjectPath = new PathParameter(
         "Project path",
         "Default path for project data such as saving projects, exporting data",
-        "C:\\",
+        System.getProperty("user.home"),
         false,
         "defaultProjectPath");
 
     this.defaultImportPath = new PathParameter(
         "Import path",
         "Default path for data import",
-        "C:\\",
+        System.getProperty("user.home"),
         false,
         "defaultImportPath");
 

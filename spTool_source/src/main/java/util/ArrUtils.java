@@ -1044,10 +1044,16 @@ public abstract class ArrUtils {
       // note that Arrays.copy... defines "to" = "endIdx" exclusive (therefore endIdx+1)
       return Arrays.copyOfRange(arr, start, end + 1);
     } else {
-      // return array with all entries -1 and notify logger
-      logger.error("getSlice: requested start or end index out of bounds.");
+      double[] data;
+      // return array with all entries 0 and notify logger
       int dataLength = end - start + 1; //e.g. from 5-7 {5 6 7} = 7-5+1 = 3
-      double[] data = new double[dataLength];
+      if (dataLength > 0) {
+        logger.error("getSlice: requested start or end index out of bounds.");
+        data = new double[dataLength];
+      } else {
+        logger.error("getSlice: requested start or end index out of bounds and/or in wrong order.");
+        data = new double[0];
+      }
       // Arrays.fill(data, DEFAULT_FAIL_DOUBLE);
       return data;
     }
@@ -1058,10 +1064,17 @@ public abstract class ArrUtils {
       // note that Arrays.copy... defines "to" = "endIdx" exclusive (therefore endIdx+1)
       return Arrays.copyOfRange(arr, start, end + 1);
     } else {
-      // return array with all entries -1 and notify logger
+      int[] data;
+      // return array with all entries 0 and notify logger
       logger.error("getSlice: requested start or end index out of bounds.");
       int dataLength = end - start + 1; //e.g. from 5-7 {5 6 7} = 7-5+1 = 3
-      int[] data = new int[dataLength];
+      if (dataLength > 0) {
+        logger.error("getSlice: requested start or end index out of bounds.");
+        data = new int[dataLength];
+      } else {
+        logger.error("getSlice: requested start or end index out of bounds and/or in wrong order.");
+        data = new int[0];
+      }
       // Arrays.fill(data, DEFAULT_FAIL_INT);
       return data;
     }

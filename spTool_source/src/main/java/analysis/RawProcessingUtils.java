@@ -213,7 +213,9 @@ public class RawProcessingUtils {
               sample.getColor(),
               sample.getSampleDefaultChannels(),
               sample.getRemovedChannelInfo(),
-              sample.getRecordedTofRange());
+              sample.getRecordedTofRange(),
+              sample.getTimeLimitsIndices()[0],
+              sample.getTimeLimitsIndices()[1]);
           for (Trace ogTrace : groupCollection.keySet()) {
             List<TISeries> tiSeriesList = groupCollection.get(ogTrace);
             if (i < tiSeriesList.size()) {
@@ -298,7 +300,7 @@ public class RawProcessingUtils {
 
 
   public static TISeries cutTime(TISeries originalSeries, double inclusiveStart,
-                                 double inclusiveStop) {
+                                 double inclusiveStop, Sample sampleRef) {
     TISeries series = new TISeriesRAM();
 
     if (originalSeries.size() > 0 && inclusiveStart >= 0 && inclusiveStart < inclusiveStop) {
@@ -311,12 +313,26 @@ public class RawProcessingUtils {
           List<Double> x = new ArrayList<>();
           List<Double> y = new ArrayList<>();
 
+
+          // forward the indices to the sampleRef too!
+          int startIdx = -1;
+          int endIdx = -1;
+
           double[] intensity = originalSeries.getIntensity();
           for (int i = 0; i < time.length; i++) {
             if (inclusiveStart <= time[i] && time[i] <= inclusiveStop) {
+              // tracking
+              if (startIdx == -1) startIdx = i;
+              endIdx = i;
+              // data
               x.add(time[i]);
               y.add(intensity[i]);
             }
+          }
+
+          // store tracking
+          if (startIdx != -1) {
+            sampleRef.setTimeLimitIndices(startIdx, endIdx);
           }
 
           series = new TISeriesHDD(x, y);
@@ -328,13 +344,17 @@ public class RawProcessingUtils {
         double dt = originalSeries.getDT();
         int firstIndex = Math.max(0, (int) Math.round(inclusiveStart / dt) - 1);
         int lastIndex = Math.min(originalSeries.size() - 1, (int) Math.round(inclusiveStop / dt) - 1);
+
+        // forward the indices to the sampleRef too!
+        sampleRef.setTimeLimitIndices(firstIndex, lastIndex);
+
         List<int[]> selectedIndices = new ArrayList<>();
         selectedIndices.add(new int[]{firstIndex, lastIndex});
         if (originalSeries instanceof DTISeriesRAM) {
           ((DTISeriesRAM) originalSeries).setSelectedIndices(selectedIndices);
         } else if (originalSeries instanceof DTISeriesHDD) {
           ((DTISeriesHDD) originalSeries).setSelectedIndices(selectedIndices);
-        }else {
+        } else {
           LOGGER.error("Unexpected type of TISeries Cannot handle it.");
         }
         series = originalSeries;

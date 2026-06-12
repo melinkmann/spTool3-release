@@ -29,8 +29,6 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 import dataModelNew.mz.Channel;
-import dataModelNew.mz.IsotopeMZ;
-import dataModelNew.mz.MZValue;
 import math.HistogramFilters;
 import math.OtsuThreshold;
 import math.stat.Median;
@@ -112,7 +110,7 @@ public class FilterTask extends AbstractWorkingTask implements WorkingTask {
 
               for (Trace trace : sample.getTraces()) {
                 PopulationID popID = branch.getID(trace);
-                if (AnalysisUtils.isAlignedOrPVal(popID)) {
+                if (AnalysisUtils.isAlignedOrPValOrSim(popID)) {
                   alignedIDs.computeIfAbsent(popID, k -> new ArrayList<>())
                       .add(trace.getChannel());
                 }
@@ -340,7 +338,7 @@ public class FilterTask extends AbstractWorkingTask implements WorkingTask {
                 if (popID != null && trace.hasType(popID) && trace.getPopulation(popID) != null
                     && trace.getPopulation(popID).getEvents().size() > 0) {
 
-                  boolean isAlignedOrPValue = AnalysisUtils.isAlignedOrPVal(popID);
+                  boolean isAlignedOrPValue = AnalysisUtils.isAlignedOrPValOrSim(popID);
 
                   if (getIsStopped().get()) {
                     break;

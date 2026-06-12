@@ -220,6 +220,17 @@ public class IncompleteSample implements Sample, Serializable {
   }
 
   @Override
+  public void setTimeLimitIndices(int inclusiveStart, int inclusiveEnd) {
+    // so far not implemented for this type
+  }
+
+  @Override
+  public int[] getTimeLimitsIndices() {
+    // -1 indicates: not initialised
+    return new int[]{-1, -1};
+  }
+
+  @Override
   public List<Trace> getTraces() {
     return Collections.unmodifiableList(new ArrayList<>(traces.values()));
   }
@@ -287,6 +298,7 @@ public class IncompleteSample implements Sample, Serializable {
   public void clearSpectralData() {
     // do nothing
   }
+
 
   @Override
   public List<ParticlePopulationMatrix> getMatrices(Channel channel) {

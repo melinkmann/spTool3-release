@@ -31,9 +31,7 @@ import org.jfree.data.xy.XYSeries;
 import processing.options.DataFlag;
 import processing.options.EventParameter;
 import processing.options.EventType;
-import sandbox.montecarlo.Isotope;
 import visualizer.styles.Colors;
-import visualizer.styles.Colors.SpColor;
 
 public interface Trace extends Serializable {
 
@@ -76,7 +74,7 @@ public interface Trace extends Serializable {
 
   public double[] get(PopulationID id, EventType eventType, EventParameter parameter);
 
-  public void setTISeriesLimits(double lower, double upper);
+  public void setTISeriesLimits(double lower, double upper, Sample sampleRef);
 
   public void resetTISeriesLimits();
 
