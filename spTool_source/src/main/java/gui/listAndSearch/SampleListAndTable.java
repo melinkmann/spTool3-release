@@ -54,6 +54,8 @@ import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.image.ImageView;
+import javafx.scene.input.KeyCode;
+import javafx.scene.input.KeyEvent;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.StackPane;
 import javafx.scene.paint.Color;
@@ -102,7 +104,7 @@ public class SampleListAndTable {
 
   // Not editable!
   private final TableView<FxChannel> channelTableView;
-  private final TextField channelSearchField = new TextField();
+  private final TextField channelSearchField;
   private final List<FxChannel> prevSelFxChannels = new ArrayList<>();
 
   private final Text sampleSizeTxt = new Text("0 / 0");
@@ -126,6 +128,7 @@ public class SampleListAndTable {
       ListView<FxEntry<SampleSet>> view,
       TableView<FxSample> sampleTableView,
       TableView<FxChannel> channelTableView,
+      TextField channelSearchField,
       ListView<PopulationID> populationListView,
       SelectionMode sampleSetSelectionMode,
       boolean isEditable) {
@@ -135,6 +138,7 @@ public class SampleListAndTable {
     this.sampleTableView = sampleTableView;
 
     this.channelTableView = channelTableView;
+    this.channelSearchField = channelSearchField;
 
     this.populationListView = populationListView;
 
@@ -323,6 +327,31 @@ public class SampleListAndTable {
           }
         });
 
+    // enable search
+    channelSearchField.addEventFilter(KeyEvent.KEY_PRESSED, event -> {
+      if (event.getCode() == KeyCode.ENTER && event.isAltDown()) {
+        // Alt+Enter: clear selection, then select only matches
+        channelTableView.getSelectionModel().clearSelection();
+        for (FxChannel item : channelTableView.getItems()) {
+          if (item.getChannel().getMZStr().startsWith(channelSearchField.getText())) {
+            channelTableView.getSelectionModel().select(item);
+          }
+        }
+      } else if (event.getCode() == KeyCode.ENTER) {
+        // Enter: add matches to existing selection
+        for (FxChannel item : channelTableView.getItems()) {
+          if (item.getChannel().getMZStr().startsWith(channelSearchField.getText())) {
+            channelTableView.getSelectionModel().select(item);
+          }
+        }
+      }
+    });
+    UiUtil.tooltip(channelSearchField, """
+        Type search text and hit enter key.
+        Any mz that starts with the same characters as your text will be added to the selection.
+        
+        If you hit alt + enter, the previous selection will be discarded
+        and only those mz that start with the search text will be selected.""");
     // Layout AND empty list
     TableFactory.setupSampleTable(sampleTableView,
         this, sampleSearchField);

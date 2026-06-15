@@ -61,6 +61,7 @@ import javafx.collections.ObservableList;
 import javafx.event.EventHandler;
 import javafx.fxml.FXML;
 import javafx.geometry.Pos;
+import javafx.scene.CacheHint;
 import javafx.scene.Parent;
 import javafx.scene.control.*;
 import javafx.scene.control.SplitPane.Divider;
@@ -71,9 +72,7 @@ import javafx.scene.input.KeyCodeCombination;
 import javafx.scene.input.KeyCombination;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.input.TransferMode;
-import javafx.scene.layout.BorderPane;
-import javafx.scene.layout.Pane;
-import javafx.scene.layout.VBox;
+import javafx.scene.layout.*;
 import javafx.scene.text.Text;
 import javafx.stage.DirectoryChooser;
 
@@ -120,6 +119,7 @@ public class MainWindowController {
   public Spinner<Integer> repetitionSpinner;
   public MenuBar mainMenuBar;
   public ComboBox<NMPUnit> mainUnitComboBox;
+  public HBox channelBottomHBox;
   private Menu fileMenu = new Menu("File");
   private Menu importMenu = new Menu("Import");
   private Menu exportMenu = new Menu("Export");
@@ -243,10 +243,17 @@ public class MainWindowController {
       });
     });
 
+    TextField channelSearchField = new TextField();
+    channelSearchField.setPrefWidth(4000);
+    channelSearchField.setPromptText("Search for channel... ");
+    channelBottomHBox.getChildren().add(UiUtil.putOnAnchorWithoutInsets(channelSearchField));
+    HBox.setHgrow(channelSearchField, Priority.ALWAYS);
+
     this.combinedSampleListAndSearchView = new SampleListAndTable(
         sampleSetListView,
         sampleTableView,
         channelTableView,
+        channelSearchField,
         populationView,
         SelectionMode.SINGLE,
         true);

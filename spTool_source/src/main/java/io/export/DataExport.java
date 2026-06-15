@@ -1477,6 +1477,9 @@ public abstract class DataExport {
 
           if (!spectralArrays.isEmpty()) {
 
+            // Sort by MZ for MIA
+            spectralArrays.sort(Comparator.comparingDouble(SpectralArray::getMz));
+
             // Collect all feature keys from the first array that has any
             List<String> featureKeys = new ArrayList<>();
             for (SpectralArray sa : spectralArrays) {
@@ -1525,7 +1528,6 @@ public abstract class DataExport {
                 if (ch.getIsotope() != null) {
                   row.add(ch.getIsotope().getElement().getSymbol());
                 } else {
-                  row.add(mz);
                   row.add(mz);
                 }
 
