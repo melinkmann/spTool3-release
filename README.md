@@ -10,10 +10,12 @@ Single event ICP-MS including
 - Single cell ICP-MS (scICP-MS)
 - Laser ablation single particle ICP-MS (LA-spICP-MS)
 
-Check out the [wiki](https://github.com/melinkmann/spTool3-release/wiki) for more information.
+The [documentation](https://sptool3-release.readthedocs.io/en/latest/) is currently under development and is updated regularly.
+
+Check out the [list of publications](https://github.com/melinkmann/spTool3-release/wiki).
 
 ***
-**Content of this repository is constantly updated.**
+**The content of this repository is constantly updated.**
 ***
 Matthias Elinkmann
 <img width="1920" height="120" alt="Bild1" src="https://github.com/user-attachments/assets/9ee0553a-ed71-4b2c-aa71-99c006845925" />
