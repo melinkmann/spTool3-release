@@ -38,7 +38,6 @@ public class NpPopulation implements Population, Serializable {
 
   private final PopulationID id;
   private final EventCollection mainEventCollection;
-  private String name;
   private final PopParSummary inputSummary;
   private List<Channel> contributingChannels;
 
@@ -56,7 +55,6 @@ public class NpPopulation implements Population, Serializable {
   public NpPopulation() {
     this.id = new PopulationID();
     this.mainEventCollection = new MainEventCollection();
-    this.name = "Empty population";
     this.drift = DEFAULT_DRIFT;
     this.startInstructions = new ThresholdSupplierInstructions();
     this.stopInstructions = new ThresholdSupplierInstructions();
@@ -70,7 +68,6 @@ public class NpPopulation implements Population, Serializable {
   public NpPopulation(PopulationID id, EventCollection mainEventCollection) {
     this.id = id;
     this.mainEventCollection = mainEventCollection;
-    this.name = id.toString();
     this.drift = DEFAULT_DRIFT;
     this.startInstructions = new ThresholdSupplierInstructions();
     this.stopInstructions = new ThresholdSupplierInstructions();
@@ -84,7 +81,6 @@ public class NpPopulation implements Population, Serializable {
   public NpPopulation(PopulationID id, EventCollection mainEventCollection, PopParSummary popParSummary) {
     this.id = id;
     this.mainEventCollection = mainEventCollection;
-    this.name = id.toString();
     this.drift = DEFAULT_DRIFT;
     this.startInstructions = new ThresholdSupplierInstructions();
     this.stopInstructions = new ThresholdSupplierInstructions();
@@ -101,7 +97,6 @@ public class NpPopulation implements Population, Serializable {
                       ThresholdSupplierInstructions gatingInstr) {
     this.id = id;
     this.mainEventCollection = mainEventCollection;
-    this.name = newName;
     this.drift = DEFAULT_DRIFT;
     this.startInstructions = npPopulation.getStartInstructions();
     this.stopInstructions = npPopulation.getStopInstructions();
@@ -116,11 +111,9 @@ public class NpPopulation implements Population, Serializable {
   public NpPopulation(PopulationID id,
                       Population npPopulation,
                       EventCollection mainEventCollection,
-                      String newName,
                       List<Channel> contributingChannels) {
     this.id = id;
     this.mainEventCollection = mainEventCollection;
-    this.name = newName;
     this.drift = DEFAULT_DRIFT;
     this.startInstructions = npPopulation.getStartInstructions();
     this.stopInstructions = npPopulation.getStopInstructions();
@@ -138,11 +131,9 @@ public class NpPopulation implements Population, Serializable {
   // Filtering
   public NpPopulation(PopulationID id, Population npPopulation,
                       EventCollection mainEventCollection,
-                      String newName,
                       PopParSummary popParSummary) {
     this.id = id;
     this.mainEventCollection = mainEventCollection;
-    this.name = newName;
     this.drift = DEFAULT_DRIFT;
     this.startInstructions = npPopulation.getStartInstructions();
     this.stopInstructions = npPopulation.getStopInstructions();
@@ -155,14 +146,13 @@ public class NpPopulation implements Population, Serializable {
   }
 
   // Search, i.e., no gating
-  public NpPopulation(PopulationID id, EventCollection mainEventCollection, String name,
+  public NpPopulation(PopulationID id, EventCollection mainEventCollection,
                       ThresholdSupplierInstructions startInstructions,
                       ThresholdSupplierInstructions stopInstructions,
                       ThresholdSupplierInstructions heightInstructions,
                       PopParSummary popParSummary) {
     this.id = id;
     this.mainEventCollection = mainEventCollection;
-    this.name = name;
     this.drift = DEFAULT_DRIFT;
     this.startInstructions = startInstructions;
     this.stopInstructions = stopInstructions;
@@ -173,7 +163,7 @@ public class NpPopulation implements Population, Serializable {
   }
 
   // Deep copy
-  public NpPopulation(PopulationID id, EventCollection mainEventCollection, String name,
+  public NpPopulation(PopulationID id, EventCollection mainEventCollection,
                       double drift,
                       ThresholdSupplierInstructions startInstructions,
                       ThresholdSupplierInstructions stopInstructions,
@@ -184,7 +174,6 @@ public class NpPopulation implements Population, Serializable {
   ) {
     this.id = id;
     this.mainEventCollection = mainEventCollection;
-    this.name = name;
     this.drift = drift;
     this.startInstructions = startInstructions;
     this.stopInstructions = stopInstructions;
@@ -208,7 +197,6 @@ public class NpPopulation implements Population, Serializable {
 
     return new NpPopulation(id,
         mainEventCollection.copy(newTrace),
-        name,
         drift,
         startInstructions.copy(),
         stopInstructions.copy(),
@@ -225,7 +213,7 @@ public class NpPopulation implements Population, Serializable {
 
   @Override
   public String getName() {
-    return name;
+    return id.toString();
   }
 
   @Override
@@ -240,7 +228,7 @@ public class NpPopulation implements Population, Serializable {
 
   @Override
   public void setName(String name) {
-    this.name = name;
+    this.id.setLabel(name);
   }
 
   @Override

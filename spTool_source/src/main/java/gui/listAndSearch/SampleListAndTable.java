@@ -33,6 +33,7 @@ import gui.dialog.mainImpl.ViewListDialog;
 import gui.dialog.notification.NotificationFactory;
 import gui.table.TableFactory;
 import gui.util.UiUtil;
+import gui.viewerCells.PopulationListCell;
 import gui.viewerCells.SampleSetListCell;
 import io.SampleSet;
 
@@ -248,42 +249,43 @@ public class SampleListAndTable {
         });
 
     // Set a custom cell factory:
-    populationListView.setCellFactory(lv -> new ListCell<>() {
-      @Override
-      protected void updateItem(PopulationID item, boolean empty) {
-
-        // Can be reused, text is updated
-        // final Tooltip tooltip = UiUtil.getDefaultStyleTooltip();
-
-        super.updateItem(item, empty);
-        if (empty || item == null) {
-          setText(null);
-          setGraphic(null); // reset graphic if not locked, else random symbol appear
-          //setTooltip(null);
-        } else {
-          setText(item.toString());
-          //tooltip.setText(String.valueOf(getItem().getOrder()));
-          //setTooltip(tooltip);
-          if (lockedPopulations.contains(item)) {
-            ImageView view = UiUtil.getViewer("/img/lock.png");
-            this.setGraphic(view);
-          } else {
-            setGraphic(null); // reset graphic if not locked, else random symbol appear
-          }
-          // check if no sample contains
-          boolean anySampleContains;
-          List<Sample> selSamples = getSelSamples();
-          List<Channel> selIsotopes = getSelChannels();
-          List<PopulationID> availableIDs = AnalysisUtils.listPopulations(selSamples,
-              selIsotopes);
-          anySampleContains = availableIDs.contains(item);
-          if (!anySampleContains) {
-            ImageView view = UiUtil.getViewer("/img/softIssue.png");
-            setGraphic(view);
-          }
-        }
-      }
-    });
+    populationListView.setCellFactory(l -> new PopulationListCell(this,lockedPopulations));
+//    populationListView.setCellFactory(lv -> new ListCell<>() {
+//      @Override
+//      protected void updateItem(PopulationID item, boolean empty) {
+//
+//        // Can be reused, text is updated
+//        // final Tooltip tooltip = UiUtil.getDefaultStyleTooltip();
+//
+//        super.updateItem(item, empty);
+//        if (empty || item == null) {
+//          setText(null);
+//          setGraphic(null); // reset graphic if not locked, else random symbol appear
+//          //setTooltip(null);
+//        } else {
+//          setText(item.toString());
+//          //tooltip.setText(String.valueOf(getItem().getOrder()));
+//          //setTooltip(tooltip);
+//          if (lockedPopulations.contains(item)) {
+//            ImageView view = UiUtil.getViewer("/img/lock.png");
+//            this.setGraphic(view);
+//          } else {
+//            setGraphic(null); // reset graphic if not locked, else random symbol appear
+//          }
+//          // check if no sample contains
+//          boolean anySampleContains;
+//          List<Sample> selSamples = getSelSamples();
+//          List<Channel> selIsotopes = getSelChannels();
+//          List<PopulationID> availableIDs = AnalysisUtils.listPopulations(selSamples,
+//              selIsotopes);
+//          anySampleContains = availableIDs.contains(item);
+//          if (!anySampleContains) {
+//            ImageView view = UiUtil.getViewer("/img/softIssue.png");
+//            setGraphic(view);
+//          }
+//        }
+//      }
+//    });
 
     provideContextMenu(populationListView);
     UiUtil.installDoubleClickSelect(populationListView);
@@ -293,6 +295,7 @@ public class SampleListAndTable {
     addViewMZMenu();
 
     populationListView.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
+    populationListView.setEditable(true);
 
     // Change listener: what we do sits in the pause
     isotopePause.setOnFinished(e -> {

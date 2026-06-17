@@ -60,7 +60,7 @@ public class TraceMC extends TraceImpl implements Trace, Serializable {
     // always add simulation as population
     PopulationID id = new PopulationID(PopulationType.SIMULATION);
     super.addOverridePopulation(id,
-        new MCPopulation(id, id.toString(), new MCEventCollection(this)),false);
+        new MCPopulation(id, new MCEventCollection(this)),false);
   }
 
   // Deep copy: note that the populations are cloned in the super class, we may pass direct pointers

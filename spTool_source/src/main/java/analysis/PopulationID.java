@@ -17,13 +17,18 @@
 
 package analysis;
 
+import java.io.IOException;
+import java.io.ObjectInputStream;
 import java.io.Serial;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 
+import analysis.quant.Calibration;
 import processing.options.PopulationType;
+import processing.parameterSets.ListMethod;
 
 public class PopulationID implements Serializable {
 
@@ -41,21 +46,25 @@ public class PopulationID implements Serializable {
   @Serial
   private static final long serialVersionUID = 1_000_000L;
 
+  private String label;
   private final PopulationType seed;
   private final List<PopulationStep> history;
 
   // Dummy
   public PopulationID() {
+    this.label = "";
     this.history = new ArrayList<>();
     this.seed = PopulationType.UNDEFINED;
   }
 
   public PopulationID(PopulationType seed) {
+    this.label = "";
     this.history = new ArrayList<>();
     this.seed = seed;
   }
 
   public PopulationID(PopulationType seed, PopulationStep initializingStep) {
+    this.label = "";
     this.history = new ArrayList<>();
     history.add(initializingStep);
     this.seed = seed;
@@ -63,6 +72,7 @@ public class PopulationID implements Serializable {
 
   // Copy
   public PopulationID(PopulationID id) {
+    this.label = id.label;
     this.history = new ArrayList<>(id.history);
     this.seed = id.seed;
   }
@@ -84,8 +94,7 @@ public class PopulationID implements Serializable {
     return 10_000 * seed.getOrder() + history.size();
   }
 
-  @Override
-  public String toString() {
+  public String getString() {
     StringBuilder builder = new StringBuilder(seed.toString());
     if (!history.isEmpty()) {
       builder.append(": ");
@@ -101,11 +110,28 @@ public class PopulationID implements Serializable {
     return builder.toString();
   }
 
+  public void setLabel(String label) {
+    this.label = label;
+  }
+
+  @Override
+  public String toString() {
+    if (label != null && !label.isEmpty()) {
+      return label;
+    } else {
+      return getString();
+    }
+  }
+
   @Override
   public int hashCode() {
     int[] customStepHashes = history.stream()
         .mapToInt(PopulationStep::customHash)
         .toArray();
+
+    // treat label as "optional feature"
+    // DONT Objects.hashCode(label)
+    // Else: hash within hashmap changes after putting, leading to fail of get(key)
     int hash = 31 * seed.hashCode() + Arrays.hashCode(customStepHashes);
     return hash;
   }
@@ -121,6 +147,10 @@ public class PopulationID implements Serializable {
     // cast is safe
     PopulationID that = (PopulationID) o;
     boolean isEqual = false;
+
+    // treat label as "optional feature"
+    // DONT Objects.equals(label, that.label)
+    // Else: hash/equals contract is broken since we cannot have it in the hash() (see above)
     if (seed == that.seed && history.size() == that.history.size()) {
       isEqual = true;
       // only make sure each step is also equivalent
@@ -132,4 +162,14 @@ public class PopulationID implements Serializable {
     }
     return isEqual;
   }
+
+  @Serial
+  private void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException {
+    // Default deserialization
+    in.defaultReadObject();
+    if (label == null) {
+      label = "";
+    }
+  }
+
 }

@@ -3286,7 +3286,6 @@ public abstract class Viewers {
                                     idCopy,
                                     pop,
                                     newCollection,
-                                    idCopy.toString(),
                                     pop.getContributingChannels()
                                 ),
                                 true);
@@ -3400,7 +3399,6 @@ public abstract class Viewers {
                                       idCopy,
                                       pop,
                                       newCollection,
-                                      idCopy.toString(),
                                       pop.getContributingChannels()
                                   ),
                                   true);
@@ -3533,7 +3531,6 @@ public abstract class Viewers {
                                         idCopy,
                                         pop,
                                         coll,
-                                        idCopy.toString(),
                                         pop.getContributingChannels()
                                     ),
                                     true);
@@ -4829,7 +4826,6 @@ public abstract class Viewers {
                                     idCopy,
                                     pop,
                                     coll,
-                                    idCopy.toString(),
                                     new ArrayList<>(channels)
                                 ),
                                 true);

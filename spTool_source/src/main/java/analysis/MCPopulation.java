@@ -50,37 +50,33 @@ public class MCPopulation implements Population, Serializable {
   private static final Logger LOGGER = LogManager.getLogger(MCPopulation.class);
 
   private final PopulationID id;
-  private String name;
   private final EventCollection mainEventCollection;
   private List<Channel> contributingMZs; // always empty as this type of Pop is not "aligned"
 
   // Dummy
   public MCPopulation() {
     this.id = new PopulationID(PopulationType.SIMULATION);
-    this.name = "Empty population";
     this.mainEventCollection = new MCEventCollection();
     this.contributingMZs = new ArrayList<>();
   }
 
   // Main constructor
-  public MCPopulation(PopulationID id, String name, MCEventCollection mainEventCollection) {
+  public MCPopulation(PopulationID id,  MCEventCollection mainEventCollection) {
     this.id = id;
-    this.name = name;
     this.mainEventCollection = mainEventCollection;
     this.contributingMZs = new ArrayList<>();
   }
 
   // Deep copy
-  private MCPopulation(PopulationID id, String name, EventCollection mainEventCollection) {
+  private MCPopulation(PopulationID id,  EventCollection mainEventCollection) {
     this.id = id;
-    this.name = name;
     this.mainEventCollection = mainEventCollection;
     this.contributingMZs = new ArrayList<>();
   }
 
   @Override
   public Population copy(Trace newTrace) {
-    return new MCPopulation(id, name, mainEventCollection.copy(newTrace));
+    return new MCPopulation(id, mainEventCollection.copy(newTrace));
   }
 
   public PopulationID getId() {
@@ -89,7 +85,7 @@ public class MCPopulation implements Population, Serializable {
 
   @Override
   public String getName() {
-    return name;
+    return id.toString();
   }
 
   @Override
@@ -104,7 +100,7 @@ public class MCPopulation implements Population, Serializable {
 
   @Override
   public void setName(String name) {
-    this.name = name;
+    this.id.setLabel(name);
   }
 
   @Override

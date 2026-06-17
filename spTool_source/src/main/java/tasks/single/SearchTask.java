@@ -192,7 +192,6 @@ public class SearchTask extends AbstractWorkingTask implements WorkingTask {
                   Population population = new NpPopulation(
                       populationID,
                       coll,
-                      populationID.toString(),
                       startInstr,
                       stopInstr,
                       heightInstr,
@@ -762,7 +761,6 @@ public class SearchTask extends AbstractWorkingTask implements WorkingTask {
                       Population population = new NpPopulation(
                           populationID,
                           collection,
-                          populationID.toString(),
                           screenStartThrMap.get(trace) != null ? screenStartThrMap.get(trace) :
                               new ThresholdSupplierInstructions(),
                           preScreenStopThrMap.get(trace) != null ? preScreenStopThrMap.get(trace) :

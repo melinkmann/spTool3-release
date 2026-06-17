@@ -107,7 +107,6 @@ public class EventRangeRoiTask extends AbstractWorkingTask implements WorkingTas
                         idCopy,
                         oldPop,
                         new SubEventCollection(trace, inRoi, oldPop),
-                        idCopy.toString(),
                         oldPop.getInputSummary().copy()),
                     false);
                 // (4) Updating the branch: not necessary as it still has the pointer and ID was only

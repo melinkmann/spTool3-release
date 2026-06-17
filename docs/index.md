@@ -3,9 +3,9 @@
 spTool is a software with graphical user interface
 for advanced data analysis in **single particle** and **single cell ICP-MS**.
 ## Key features
-1) generate **in-silico data** of quadrupole and time-of-flight mass spectrometers (spICP-QMS, spICP-TOFMS)
+1. generate **in-silico data** of quadrupole and time-of-flight mass spectrometers (spICP-QMS, spICP-TOFMS)
 
-2) **analyze experimental** spICP-MS data including
+2. **analyze experimental** spICP-MS data including
     - importer for most commercial ICP-MS raw data formats
     - data-dependent thresholding and gating with Gaussian and Poisson statistics
     - multi-event peak filtering

@@ -255,7 +255,6 @@ public class FilterTask extends AbstractWorkingTask implements WorkingTask {
                                       filteredPopID,
                                       pop,
                                       filteredCollection,
-                                      filteredPopID.toString(),
                                       channels
                                   ),
                                   false);
@@ -412,7 +411,6 @@ public class FilterTask extends AbstractWorkingTask implements WorkingTask {
                                 idCopy,
                                 oldPop,
                                 new SubEventCollection(trace, multiEventsMap.get(1), oldPop),
-                                idCopy.toString(),
                                 inputPopSummary),
                             false);
 
@@ -439,7 +437,6 @@ public class FilterTask extends AbstractWorkingTask implements WorkingTask {
                                     idCopyTemp,
                                     oldPop,
                                     new SubEventCollection(trace, multiEventsMap.get(nEvents), oldPop),
-                                    idCopyTemp.toString(),
                                     inputPopSummary),
                                 false);
                             // (4) Updating the branch: when ID was not just "appended"
@@ -464,7 +461,6 @@ public class FilterTask extends AbstractWorkingTask implements WorkingTask {
                                 idCopy,
                                 oldPop,
                                 new SubEventCollection(trace, allGreaterThanOne, oldPop),
-                                idCopy.toString(),
                                 inputPopSummary),
                             false);
                         // (4) Updating the branch: when ID was not just "appended"
@@ -527,7 +523,6 @@ public class FilterTask extends AbstractWorkingTask implements WorkingTask {
                               idCopy,
                               oldPop,
                               new SubEventCollection(trace, eventsToKeep, oldPop),
-                              idCopy.toString(),
                               inputPopSummary),
                           false);
                       // (4) Make this new head of branch!
@@ -547,7 +542,6 @@ public class FilterTask extends AbstractWorkingTask implements WorkingTask {
                                 idCopy,
                                 oldPop,
                                 new SubEventCollection(trace, orEventToRemove, oldPop),
-                                idCopy.toString(),
                                 inputPopSummary),
                             false);
 
@@ -979,7 +973,6 @@ public class FilterTask extends AbstractWorkingTask implements WorkingTask {
                                   idCopy,
                                   oldPop,
                                   new SubEventCollection(trace, eventsToKeep, oldPop),
-                                  idCopy.toString(),
                                   inputPopSummary),
                               false);
                           // (4) Make this new head of branch!
@@ -998,7 +991,6 @@ public class FilterTask extends AbstractWorkingTask implements WorkingTask {
                                   idCopy,
                                   oldPop,
                                   new SubEventCollection(trace, eventsToKeep, oldPop),
-                                  idCopy.toString(),
                                   inputPopSummary),
                               false);
                           // (4) Updating the branch: not necessary as it still has the pointer and ID was
@@ -1061,7 +1053,6 @@ public class FilterTask extends AbstractWorkingTask implements WorkingTask {
                                 idCopyTemp,
                                 oldPop,
                                 new SubEventCollection(trace, matchFromEval, oldPop),
-                                idCopyTemp.toString(),
                                 inputPopSummary),
                             false);
                         // (4) Updating the branch: when ID was not just "appended"
@@ -1082,7 +1073,6 @@ public class FilterTask extends AbstractWorkingTask implements WorkingTask {
                                 idCopyTemp,
                                 oldPop,
                                 new SubEventCollection(trace, noMatchEval, oldPop),
-                                idCopyTemp.toString(),
                                 inputPopSummary),
                             false);
                         // (4) Updating the branch: when ID was not just "appended"
@@ -1101,7 +1091,6 @@ public class FilterTask extends AbstractWorkingTask implements WorkingTask {
                             idCopyTemp,
                             oldPop,
                             new SubEventCollection(trace, noMatchSim, oldPop),
-                            idCopyTemp.toString(),
                             inputPopSummary);
 
                         // After adding to new population to its (sub)collection:
@@ -1130,7 +1119,6 @@ public class FilterTask extends AbstractWorkingTask implements WorkingTask {
                               idCopyTemp,
                               oldPop,
                               new SubEventCollection(trace, falseNegCopy, oldPop),
-                              idCopyTemp.toString(),
                               inputPopSummary);
                         }
 

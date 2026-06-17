@@ -380,7 +380,6 @@ public class AlignTask extends AbstractWorkingTask implements WorkingTask {
                             idCopy,
                             oldPop,
                             coll,
-                            idCopy.toString(),
                             contributingChannels),
                         false);
                     // (4) Updating the branch:
