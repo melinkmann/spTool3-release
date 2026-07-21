@@ -87,23 +87,26 @@ For the full version including analysis capabilities select **analyser**.
         - Select an entry and press `F2` or **left-click** on it again, or **double-click** on an entry.
 
 
-- **1.3 Export**:
+- **1.3 Export**:  
+  In the centre, all export buttons that require further settings are shown together with these settings:
+
     - `Show dialog`: Opens the export dialog. A brief overview of its most important features:
         - `Format`: Decide if data is copied to clipboard or written as a csv file. Note: If your export would be
           written as several csv files, you should not use the clipboard option.
         - `Export path`: If 'csv file' is selected, you can set the folder where files are written. Use the
           **right-click menu** to open a file browser to set a directory.
-        - `Export raw data` button: Exports the raw data as time-resolved intensity data. You may add event markers (
-          symbols that indicate the peak), population markers (symbols at the bottom that indicate which (in-silico)
-          population an event belongs to) and tell spTool to only export the selected isotopes.
 
-      **On the right side, there is a list of buttons that do not need further settings:**
+    - `Export raw data` button: Exports the raw data as time-resolved intensity data. You may add event markers (
+      symbols that indicate the peak), population markers (symbols at the bottom that indicate which (in-silico)
+      population an event belongs to) and tell spTool to only export the selected isotopes.
+    - ... to be completed ...
 
-        - `Export event data`: Exports data for each event including peak area.
-        - `Export results table`: Exports the table from the `TAB` pane with key results and settings.
-        - `Export method as ...`: Exports the current method either as a human-readable '.csv' file or an '.spm' file
-          that can be loaded into spTool later.
-        - ... to be completed ...
+  On the right side, there is a list of buttons that do not need further settings:
+    - `Export event data`: Exports data for each event including peak area.
+    - `Export results table`: Exports the table from the `TAB` pane with key results and settings.
+    - `Export method as ...`: Exports the current method either as a human-readable '.csv' file or an '.spm' file
+      that can be loaded into spTool later.
+    - ... to be completed ...
 
 
 - **1.4 Edit**:
@@ -138,7 +141,7 @@ For the full version including analysis capabilities select **analyser**.
       The report looks like this:
 
       ![img](images/isotopeSearch.png){: width="500" }
-    
+
     - `Interference library`: Search the interference database by Madeleine C. Lomax-Vogt, Fang Liu, John W.
       Olesik at [https://doi.org/10.1016/j.sab.2021.106098](https://doi.org/10.1016/j.sab.2021.106098)
     - `List isobars`: Lists isobaric isotopes to plan in-silico experiments or interpret experimental data.
