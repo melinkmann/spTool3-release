@@ -442,26 +442,32 @@ in the submethod!
 
 - `Gating parameters`: This submethod includes options to remove events based on certain peak properties such as 'Number
   of points', 'Area', 'Height'.
+    - **Note: The peak height-based gating filter is somewhat redundant with the search height
+      specified in the search method. Why does spTool provide two options?** The idea is that the search submethod
+      assumes
+      *sane statistical conditions*, i.e., the background signal is well described by the statistical model, e.g., a
+      Gaussian or Poisson distribution. This assumption can, however, quickly be violated. Example: When there is small
+      particulate contamination, the baseline may not purely consist of 'ionic' species. Especially for the Poisson
+      distribution, which does not take the empirical standard deviation into account but only the mean ionic signal,
+      such
+      presence of 'unknown particulate dirt' will likely render the critical limit estimation rather unreliable. As
+      described in the 2023 JAAS paper [https://doi.org/10.1039/d3ja00292f](https://doi.org/10.1039/d3ja00292f), this
+      mismatch between statistical model and
+      reality often manifests in an excess of false-positive event detections. In response, researchers tend to increase
+      the
+      threshold by choosing extremely high z-values with z > 5 (z as in z·σ, i.e., 5·σ). However, these large z-values
+      are
+      not really justified from the statistical point of view: They rather indicate that the statistical model does not
+      match the experimental data very well. Instead, the 2023 JAAS paper proposes a different approach where the
+      detection
+      limit (according to Currie's formalisms) is multiplied with a factor (typically f=2) to avoid 'ridiculous'
+      z-factors
+      beyond z=5. The Gating submethod allows this procedure, which is not based on pure statistics but represents a
+      solid
+      numerical approximation.
+      **Keep in mind that this approach is rather a 'last resort' measure**:
 
-  **Note: The peak height-based gating filter is somewhat redundant with the search height
-  specified in the search method. Why does spTool provide two options?** The idea is that the search submethod assumes
-  *sane statistical conditions*, i.e., the background signal is well described by the statistical model, e.g., a
-  Gaussian or Poisson distribution. This assumption can, however, quickly be violated. Example: When there is small
-  particulate contamination, the baseline may not purely consist of 'ionic' species. Especially for the Poisson
-  distribution, which does not take the empirical standard deviation into account but only the mean ionic signal, such
-  presence of 'unknown particulate dirt' will likely render the critical limit estimation rather unreliable. As
-  described in the 2023 JAAS paper [https://doi.org/10.1039/d3ja00292f](https://doi.org/10.1039/d3ja00292f), this
-  mismatch between statistical model and
-  reality often manifests in an excess of false-positive event detections. In response, researchers tend to increase the
-  threshold by choosing extremely high z-values with z > 5 (z as in z·σ, i.e., 5·σ). However, these large z-values are
-  not really justified from the statistical point of view: They rather indicate that the statistical model does not
-  match the experimental data very well. Instead, the 2023 JAAS paper proposes a different approach where the detection
-  limit (according to Currie's formalisms) is multiplied with a factor (typically f=2) to avoid 'ridiculous' z-factors
-  beyond z=5. The Gating submethod allows this procedure, which is not based on pure statistics but represents a solid
-  numerical approximation.
-  **Keep in mind that this approach is rather a 'last resort' measure**:
-
-  ![img](images/gating2023JAAS.png){: width="650" }
+      ![img](images/gating2023JAAS.png){: width="650" }
 
 
 - `Filter parameters`: The filter submethod provides further options to remove events, e.g., peak coincidence as
