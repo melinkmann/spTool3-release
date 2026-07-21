@@ -1,17 +1,17 @@
-![img](images/readme.png)
+# Overview
 
-# 1. Start spTool
+## 1. Start spTool
 
 Upon startup, you may start a lightweight version as a **data generator** only.
 For the full version including analysis capabilities select **analyser**.
 
 ![img](images/startConfig.png){: width="150" }
 
-# 2. Overview: spTool main screen
+## 2. Overview: spTool main screen
 
 ![img](images/overview.png){: width="500" }
 
-## 1 Main menu bar
+### 1 Main menu bar
 
 - **1.1 File**:
     - `Save project as`: Saves all sample sets with their samples, including imported raw data, processed particle data,
@@ -151,7 +151,7 @@ For the full version including analysis capabilities select **analyser**.
 - **1.7 Help**:
     - `About`
 
-## 2 Start/stop section
+### 2 Start/stop section
 
 - `Create`: If your method contains in-silico data generator submethods to create synthetic data, this button will 1)
   execute the data generation and 2) run data analysis submethods (baseline, event search, ...) if available.
@@ -160,18 +160,18 @@ For the full version including analysis capabilities select **analyser**.
   search, ...). Use this button if you would like to reprocess synthetic data or for experimental data.
 - `Stop`: Tries to stop the current operation if possible.
 
-## 3 Panel selection
+### 3 Panel selection
 
 Decide which panel is shown. Use right-click to open multiple panels as popup windows. You can decide which panels to
 show in the configuration: `Edit` > `Configuration` > `Show ...`.
 
-## 4 Sample set list
+### 4 Sample set list
 
 Organise samples in sets. Use the **right-click menu** to `Create` or `Delete` sets. Populate sets by dragging/dropping
 selected samples from `panel 5` into sample sets. Hold control key to copy and shift key to cut. Use the text field at
 the top to filter the sets that are shown for a keyword.
 
-## 5 Sample table
+### 5 Sample table
 
 This table shows all samples within the currently selected set. Double click selects all samples. You can edit the
 nickname with the `F2` key or by left-clicking on the nickname cell of a selected sample. You can also edit the comment
@@ -215,7 +215,7 @@ channels (`panel 7`) and population (`panel 6`). The sample table has an extensi
 - `Group`/`Undo grouping`: Merge multiple sample files into a single combined sample. This feature serves to merge
   individual sample files into one combined sample.
 
-## 6 Population list
+### 6 Population list
 
 spTool structures events into populations. Typical populations are:
 
@@ -232,7 +232,7 @@ The **right-click menu** has additional options:
 - `Delete`: Deletes a population from all selected samples.
 - `View mz`: For aligned populations, this button opens a list with all contributing isotopes.
 
-## 7 Channel (Isotope) table
+### 7 Channel (Isotope) table
 
 Select channels (i.e., m/z or isotopes). At the top, the dropdown menu decides if histograms and other graphs show the
 raw intensity in counts (cts) or size and mass units if quantification is provided.
@@ -256,7 +256,7 @@ The **right-click menu** has additional options:
 
 ![img](images/isotopeContextMenu.png){: width="125" }
 
-## 8 Data view and legend panel
+### 8 Data view and legend panel
 
 Shows the `Start` page, the `MET` method editor and **all graphs**. Use `panel 3` to decide which type of graph is
 shown. Use the right click menu of the graph area to export the data as csv, copy data to clipboard, save the graphic as
@@ -285,7 +285,7 @@ written into 2 distinct files.
     - Certain text fields in the user interface accept values when double clicking on the text field while pressing the
       `Control` key
 
-## 9 Graph settings
+### 9 Graph settings
 
 Each graph has its own set of settings. **Most importantly**, histograms, box plots, scatter plots, ... allow you to
 select which **event parameter** you would like to visualise. Take a look at this example from the histogram panel:
@@ -316,7 +316,7 @@ select which **event parameter** you would like to visualise. Take a look at thi
 
 ---
 
-# 2. First step: *create a method*
+## 2. First step: *create a method*
 
 Data generation and analysis in spTool are structured into methods and submethods. Method files (.spm files) can be
 saved, shared and reloaded. You can also drag & drop an .spm file into spTool to load it. By default, method files are
@@ -371,7 +371,7 @@ below. For a quick start, click on the central `Quick start new method` button t
       to optimise a method and vary parameters frequently. Alternatively, you can use button **D** to reset the whole
       method to its 'last saved' settings.
 
-## 2.1 Available submethods:
+### 2.1 Available submethods:
 
 **To see all options in the submethods, make sure to activate the 'Expert mode' via `Edit` >
 `Configuration` > `Expert mode`.** Else, you will be shown the lightweight version that only lists the most important
