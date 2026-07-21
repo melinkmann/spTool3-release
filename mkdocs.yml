@@ -8,3 +8,6 @@ nav:
 
 theme:
   name: readthedocs
+
+#  markdown_extensions:
+#    - attr_list

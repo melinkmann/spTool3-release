@@ -574,6 +574,15 @@ public class MainWindowController {
                   if (runInfoFile.exists() && runInfoFile.isFile() && runInfoFile.canRead()) {
                     nuFolders.add(fileFromClipboard.toPath());
                   }
+                } else if (fileFromClipboard.isFile() && fileFromClipboard.canRead()) {
+                  Path path = fileFromClipboard.toPath();
+                  String fileName = path.getFileName().toString();
+                  boolean isRunInfo = fileName.equals("run.info")
+                      && fileFromClipboard.exists() && fileFromClipboard.isFile() && fileFromClipboard.canRead();
+                  // we found a run.info file and need to add the parent
+                  if (isRunInfo) {
+                    nuFolders.add(path.getParent());
+                  }
                 }
               }
 

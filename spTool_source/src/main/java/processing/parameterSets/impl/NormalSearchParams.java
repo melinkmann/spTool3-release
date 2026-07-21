@@ -608,7 +608,7 @@ public class NormalSearchParams extends AbstractParamSet implements ParamSet {
               List<Isotope> resultingIsotopes = new ArrayList<>();
               for (Channel channel : resultingChannels) {
                 Isotope isotope = channel.getIsotope();
-                if (isotope != null){
+                if (isotope != null) {
                   resultingIsotopes.add(isotope);
                 }
               }
@@ -641,7 +641,7 @@ public class NormalSearchParams extends AbstractParamSet implements ParamSet {
               List<Isotope> resultingIsotopes = new ArrayList<>();
               for (Channel channel : resultingChannels) {
                 Isotope isotope = channel.getIsotope();
-                if (isotope != null){
+                if (isotope != null) {
                   resultingIsotopes.add(isotope);
                 }
               }
@@ -984,7 +984,7 @@ public class NormalSearchParams extends AbstractParamSet implements ParamSet {
       this.alphaValue = new DoubleParameter(
           "Alpha",
           "False positive proportion [-] (Not in percent!)",
-          0.05, //0.00135
+          5.0E-4, //0.00135 // 0.05
           NF.D1C4Exp,
           TextFormatterOption.ASSURE_POS_EXP_DOUBLE,
           false,
@@ -994,7 +994,7 @@ public class NormalSearchParams extends AbstractParamSet implements ParamSet {
       this.factor = new DoubleParameter(
           "z-Factor",
           "Instead of an alpha value, the corresponding 'f·SD' = 'z·σ' as a critical factor f can be given",
-          1.645,
+          3.29,// 1.645
           NF.D1C3,
           TextFormatterOption.ASSURE_NONZERO_POSITIVE_DOUBLE,
           false,

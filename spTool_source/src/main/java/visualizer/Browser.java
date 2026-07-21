@@ -18,7 +18,11 @@
 package visualizer;
 
 import gui.util.UiUtil;
+
+import java.awt.*;
+import java.net.URI;
 import java.net.URL;
+
 import javafx.concurrent.Worker;
 import javafx.geometry.HPos;
 import javafx.geometry.VPos;
@@ -29,9 +33,14 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.StackPane;
 import javafx.scene.web.WebEngine;
 import javafx.scene.web.WebView;
+import org.apache.commons.lang3.exception.ExceptionUtils;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 // StackPane --> Resizing
 public class Browser extends StackPane {
+
+  private static final Logger LOGGER = LogManager.getLogger(Browser.class);
 
   final WebView browser = new WebView();
   final WebEngine webEngine = browser.getEngine();
@@ -67,10 +76,10 @@ public class Browser extends StackPane {
           --link-visited: #6b4eff;
           --accent: #0b5fff;
         }
-                        
+        
         html { scroll-behavior: smooth; }
         * { box-sizing: border-box; }
-
+        
         body{
           margin: 2.2rem auto;
           padding: 0 1rem;
@@ -86,7 +95,7 @@ public class Browser extends StackPane {
           -webkit-font-smoothing: antialiased;
           -moz-osx-font-smoothing: grayscale;
         }
-
+        
         /* Headings */
         h1, h2, h3, h4{
           line-height: 1.25;
@@ -98,12 +107,12 @@ public class Browser extends StackPane {
         h2{ font-size: 1.6rem; border-bottom: 1px solid var(--border); padding-bottom: .3rem; }
         h3{ font-size: 1.25rem; }
         h4{ font-size: 1.05rem; color: var(--muted); }
-
+        
         /* Paragraphs & lists */
         p{ margin: 0 0 1rem; }
         ul, ol{ margin: .5rem 0 1rem 1.4rem; }
         li{ margin: .25rem 0; }
-
+        
         /* Blockquotes */
         blockquote{
           margin: 1rem 0;
@@ -112,12 +121,12 @@ public class Browser extends StackPane {
           background: #f9fafb;
         }
         blockquote p{ margin: .3rem 0; }
-
+        
         /* Links */
         a{ color: var(--link); text-decoration: none; }
         a:hover{ text-decoration: underline; }
         a:visited{ color: var(--link-visited); }
-
+        
         /* Images */
         img{
           display: block;
@@ -126,7 +135,7 @@ public class Browser extends StackPane {
           height: auto;
           border-radius: 4px;
         }
-
+        
         /* Tables */
         table{
           border-collapse: collapse;
@@ -149,7 +158,7 @@ public class Browser extends StackPane {
         tbody tr:nth-child(even){
           background: #fbfbfc;
         }
-
+        
         /* Code (inline) */
         code{
           font-family: "DejaVu Sans Mono", "Liberation Mono", "Noto Sans Mono",
@@ -162,7 +171,7 @@ public class Browser extends StackPane {
           font-size: 0.95em;
           color: #0d3a33; /* dark teal for contrast on Linux */
         }
-
+        
         /* Code blocks */
         pre{
           margin: 1rem 0 1.2rem;
@@ -179,7 +188,7 @@ public class Browser extends StackPane {
           border: 0;
           padding: 0;
         }
-
+        
         /* Pandoc highlight (Skylighting) tweaks */
         code span.kw { color:#7c3aed; font-weight: 600; } /* keyword */
         code span.st { color:#065f46; }                   /* string */
@@ -187,19 +196,19 @@ public class Browser extends StackPane {
         code span.fu { color:#1d4ed8; }                   /* function */
         code span.op { color:#374151; }
         code span.bn, code span.dv, code span.fl { color:#b45309; } /* numbers */
-
+        
         /* Horizontal rule */
         hr{
           border: 0;
           border-top: 1px solid var(--border);
           margin: 1.6rem 0;
         }
-
+        
         /* Definition lists (Pandoc) */
         dl{ margin: 0 0 1rem; }
         dt{ font-weight: 600; }
         dd{ margin: 0 0 .8rem 1rem; }
-
+        
         /* Small UI bits */
         kbd{
           font-family: inherit;
@@ -210,11 +219,11 @@ public class Browser extends StackPane {
           border-radius:4px;
           font-size:.9em;
         }
-
+        
         /* MathJax sizing */
         .math.inline{ font-size: 0.98em; }
         .math.display{ font-size: 1.02em; }
-
+        
         /* Footnotes / anchors spacing so anchor links land nicely */
         [id]::before{
           content: "";
@@ -223,7 +232,7 @@ public class Browser extends StackPane {
           margin-top: 0;
           visibility: hidden;
         }
-
+        
         /* Print-friendly */
         @media print{
           body{
@@ -248,6 +257,17 @@ public class Browser extends StackPane {
             """.formatted(jsEscape(modernLightCss));
 
         webEngine.executeScript(script);
+      }
+    });
+
+    webEngine.locationProperty().addListener((obs, oldLoc, newLoc) -> {
+      if (newLoc.startsWith("http")) {
+        try {
+          Desktop.getDesktop().browse(URI.create(newLoc));
+        } catch (Exception e) {
+          LOGGER.error("{}. Stack trace: {}", e.getMessage(), ExceptionUtils.getStackTrace(e));
+        }
+        webEngine.load(resource.toExternalForm());
       }
     });
 

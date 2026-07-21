@@ -39,6 +39,7 @@ import tasks.TaskResult;
 import tasks.WorkingTask;
 import tasks.results.FunctionalTaskResult;
 import util.Functional;
+import util.NF;
 
 import javax.annotation.Nullable;
 import java.nio.file.Path;
@@ -61,8 +62,8 @@ public class NuImportTask extends AbstractWorkingTask implements WorkingTask {
     // pass a copy to avoid changes in UI trickling down into multi thread environment when running in the
     // background
     NuInterpreterParams p = ((NuInterpreterParams) params.getCopyWithPreviousDateFileAndID());
-    this.existingSample = null;
     this.params = p;
+    this.existingSample = null;
     this.directory = path;
     this.parentStage = parentStage;
   }
@@ -73,8 +74,8 @@ public class NuImportTask extends AbstractWorkingTask implements WorkingTask {
     // pass a copy to avoid changes in UI trickling down into multi thread environment when running in the
     // background
     NuInterpreterParams p = ((NuInterpreterParams) params.getCopyWithPreviousDateFileAndID());
-    this.existingSample = existingSample;
     this.params = p;
+    this.existingSample = existingSample;
     this.directory = path;
     this.parentStage = parentStage;
   }
@@ -184,23 +185,34 @@ public class NuImportTask extends AbstractWorkingTask implements WorkingTask {
                   sample.getTraces().forEach(Trace::toHDD);
                   SpTool3Main.getRunTime().getSampleReg().addNewSampleToWaitingList(sample);
                   // make sure the method is stored in the sample (esp. for isotope selection)
-                  if (!sample.getMethod().getSets().contains(params)) {
+                  // Here, simple .contains() call fails, since params is a copy and equals() is not
+                  // overridden
+                  if (sample.getMethod().getSets().stream()
+                      .noneMatch(ps -> Objects.equals(ps.getXmlType(), params.getXmlType()))) {
                     sample.getMethod().getSets().add(params);
                   }
                   // instanceof SampleImpl should be guaranteed but check anyway
                 } else if (existingSample instanceof SampleImpl) {
-                  HashSet<Trace> existingTraces = new HashSet<>(existingSample.getTraces());
-                  HashSet<Trace> newTraces = new HashSet<>(sample.getTraces());
+
+                  HashSet<Channel> existingTraces = new HashSet<>(existingSample.getTraces().stream()
+                      .map(Trace::getChannel)
+                      .toList());
+                  HashSet<Channel> newTraces = new HashSet<>(sample.getTraces().stream()
+                      .map(Trace::getChannel)
+                      .toList());
 
                   // existing sample: remove old traces
+                  // [this is not a bad 'remove from list' loop since getTraces() returns new list instance]
+                  List<Trace> toBeRemoved = new ArrayList<>();
                   for (Trace existingTrace : existingSample.getTraces()) {
-                    if (!newTraces.contains(existingTrace)) {
-                      existingSample.removeTraces(List.of(existingTrace));
+                    if (!newTraces.contains(existingTrace.getChannel())) {
+                      toBeRemoved.add(existingTrace);
                     }
                   }
+                  existingSample.removeTraces(toBeRemoved);
 
                   for (Trace newTrace : sample.getTraces()) {
-                    if (!existingTraces.contains(newTrace)) {
+                    if (!existingTraces.contains(newTrace.getChannel())) {
                       Trace newTraceHDD = newTrace.copy(existingSample);
                       newTraceHDD.toHDD();
                       existingSample.addTrace(newTraceHDD);
@@ -284,13 +296,17 @@ public class NuImportTask extends AbstractWorkingTask implements WorkingTask {
               List<Double> recordedMzList = new ArrayList<>();
               HashMap<Double, Channel> channelMap = new HashMap<>();
               for (Channel channel : selectedChannels) {
-                Isotope isotope = channel.getIsotope();
-                // Should be non-null here, but be safe
-                if (isotope != null) {
-                  double mzValue = isotope.getTheoreticalMass();
-                  recordedMzList.add(mzValue);
-                  channelMap.put(mzValue, channel);
-                }
+                double recordedMzValue = channel.getMZ();
+//                Isotope isotope = channel.getIsotope();
+//                // Should be non-null here, but be safe
+//                if (isotope != null) {
+//                  double theorMzValue = isotope.getTheoreticalMass();
+//                  recordedMzList.add(theorMzValue);
+//                  channelMap.put(theorMzValue, channel);
+//                }
+                // we need the TOF mz (not the theoretical!)
+                recordedMzList.add(recordedMzValue);
+                channelMap.put(recordedMzValue, channel);
               }
 
               setProgress(0.3);
@@ -327,7 +343,16 @@ public class NuImportTask extends AbstractWorkingTask implements WorkingTask {
                   if (channel != null) {
                     traces.add(new TraceImpl(sample, channel, ser, sia));
                   } else {
-                    LOGGER.error("Unexpected mismatch of m/z values.");
+                    // suspect mismatch between theoretical and TOF mz:
+                    channel = channelMap.get(parsedData.requestedMZ());
+                    if (channel != null) {
+                      LOGGER.info("Unexpected match of m/z values! Expected TOF mz but found theoretical mz" +
+                          ".");
+                      traces.add(new TraceImpl(sample, channel, ser, sia));
+                    } else {
+                      LOGGER.error("Unexpected mismatch of m/z values: " +
+                          "neither TOF mz nor theoretical mz match could be matched!");
+                    }
                   }
                 }
 
@@ -344,23 +369,33 @@ public class NuImportTask extends AbstractWorkingTask implements WorkingTask {
                     sample.getTraces().forEach(Trace::toHDD);
                     SpTool3Main.getRunTime().getSampleReg().addNewSampleToWaitingList(sample);
                     // make sure the method is stored in the sample (esp. for isotope selection)
-                    if (!sample.getMethod().getSets().contains(params)) {
+                    // Here, simple .contains() call fails, since params is a copy and equals() is not
+                    // overridden
+                    if (sample.getMethod().getSets().stream()
+                        .noneMatch(ps -> Objects.equals(ps.getXmlType(), params.getXmlType()))) {
                       sample.getMethod().getSets().add(params);
                     }
                     // Should be guaranteed but check anyway
                   } else if (existingSample instanceof SampleImpl) {
-                    HashSet<Trace> existingTraces = new HashSet<>(existingSample.getTraces());
-                    HashSet<Trace> newTraces = new HashSet<>(sample.getTraces());
+                    HashSet<Channel> existingTraces = new HashSet<>(existingSample.getTraces().stream()
+                        .map(Trace::getChannel)
+                        .toList());
+                    HashSet<Channel> newTraces = new HashSet<>(sample.getTraces().stream()
+                        .map(Trace::getChannel)
+                        .toList());
 
                     // existing sample: remove old traces
+                    // [this is not a bad 'remove from list' loop since getTraces() returns new list instance]
+                    List<Trace> toBeRemoved = new ArrayList<>();
                     for (Trace existingTrace : existingSample.getTraces()) {
-                      if (!newTraces.contains(existingTrace)) {
-                        existingSample.removeTraces(List.of(existingTrace));
+                      if (!newTraces.contains(existingTrace.getChannel())) {
+                        toBeRemoved.add(existingTrace);
                       }
                     }
+                    existingSample.removeTraces(toBeRemoved);
 
                     for (Trace newTrace : sample.getTraces()) {
-                      if (!existingTraces.contains(newTrace)) {
+                      if (!existingTraces.contains(newTrace.getChannel())) {
                         Trace newTraceHDD = newTrace.copy(existingSample);
                         newTraceHDD.toHDD();
                         existingSample.addTrace(newTraceHDD);
@@ -495,23 +530,32 @@ public class NuImportTask extends AbstractWorkingTask implements WorkingTask {
                 sample.getTraces().forEach(Trace::toHDD);
                 SpTool3Main.getRunTime().getSampleReg().addNewSampleToWaitingList(sample);
                 // make sure the method is stored in the sample (esp. for isotope selection)
-                if (!sample.getMethod().getSets().contains(params)) {
+                // Here, simple .contains() call fails, since params is a copy and equals() is not overridden
+                if (sample.getMethod().getSets().stream()
+                    .noneMatch(ps -> Objects.equals(ps.getXmlType(), params.getXmlType()))) {
                   sample.getMethod().getSets().add(params);
                 }
                 // Should be guaranteed but check anyway
               } else if (existingSample instanceof SampleImpl) {
-                HashSet<Trace> existingTraces = new HashSet<>(existingSample.getTraces());
-                HashSet<Trace> newTraces = new HashSet<>(sample.getTraces());
+                HashSet<Channel> existingTraces = new HashSet<>(existingSample.getTraces().stream()
+                    .map(Trace::getChannel)
+                    .toList());
+                HashSet<Channel> newTraces = new HashSet<>(sample.getTraces().stream()
+                    .map(Trace::getChannel)
+                    .toList());
 
                 // existing sample: remove old traces
+                // [this is not a bad 'remove from list' loop since getTraces() returns new list instance]
+                List<Trace> toBeRemoved = new ArrayList<>();
                 for (Trace existingTrace : existingSample.getTraces()) {
-                  if (!newTraces.contains(existingTrace)) {
-                    existingSample.removeTraces(List.of(existingTrace));
+                  if (!newTraces.contains(existingTrace.getChannel())) {
+                    toBeRemoved.add(existingTrace);
                   }
                 }
+                existingSample.removeTraces(toBeRemoved);
 
                 for (Trace newTrace : sample.getTraces()) {
-                  if (!existingTraces.contains(newTrace)) {
+                  if (!existingTraces.contains(newTrace.getChannel())) {
                     Trace newTraceHDD = newTrace.copy(existingSample);
                     newTraceHDD.toHDD();
                     existingSample.addTrace(newTraceHDD);
@@ -536,6 +580,105 @@ public class NuImportTask extends AbstractWorkingTask implements WorkingTask {
           }
 
         }
+
+        ///  READ ALL, NO ISOTOPE MATCHING — JUST RAW TOF CENTRES
+        case ALL_RAW_MZ -> {
+          if (getIsStopped().get()) {
+            break;
+          }
+
+          // Just read all mz double values, no threshold filtering and no isotope resolution
+          nuData = NuReader_new.getFromCacheOrParse(directory, progressTicker, progressValue,
+              getIsStopped());
+
+          if (getIsStopped().get()) {
+            break;
+          }
+
+          if (nuData != null && nuData.isValid()) {
+            Sample sample = new SampleImpl(directory.getFileName().toString(),
+                new SampleFile(directory, InstrumentID.NU_VITESSE), recordedToFRange);
+
+            List<ParsedNuData.ParsedNuDataResult> data = nuData.getIsotopeDataRAM();
+
+            List<ParsedNuData.ParsedNuDataResult> sortedData = new ArrayList<>(data);
+            sortedData.sort(Comparator.comparingDouble(ParsedNuData.ParsedNuDataResult::tofMZ));
+
+            for (int i = 0; i < sortedData.size(); i++) {
+              progressValue.set(0.8 + 0.19 * ((double) i) / sortedData.size());
+
+              ParsedNuData.ParsedNuDataResult parsedData = sortedData.get(i);
+
+              TISeries ser = parsedData.tiSeries();
+              List<int[]> blanks = parsedData.blanker();
+
+              if (ser == null) {
+                continue;   // channel was not loaded (should not happen, but guard anyway)
+              }
+
+              double sia = ShapeEstimator.computeShape(ser.getIntensity(), blanks);
+              if (!Double.isFinite(sia)) {
+                sia = 0;
+              }
+
+              // transfer to HDD
+              if (ser instanceof DTISeriesRAM) {
+                ser = new DTISeriesHDD((DTISeriesRAM) ser);
+              }
+
+              // No isotope matching: use MZChannel.
+              Channel channel = new MZChannel(new MSIDImpl(new MZImpl(parsedData.tofMZ(), NF.D1C4)));
+              sample.addTrace(new TraceImpl(sample, channel, ser, sia));
+            }
+
+            if (!sample.getTraces().isEmpty()) {
+              if (existingSample == null) {
+                sample.getTraces().forEach(Trace::toHDD);
+                SpTool3Main.getRunTime().getSampleReg().addNewSampleToWaitingList(sample);
+                // Here, simple .contains() call fails, since params is a copy and equals() is not overridden
+                if (sample.getMethod().getSets().stream()
+                    .noneMatch(ps -> Objects.equals(ps.getXmlType(), params.getXmlType()))) {
+                  sample.getMethod().getSets().add(params);
+                }
+              } else if (existingSample instanceof SampleImpl) {
+                HashSet<Channel> existingTraces = new HashSet<>(existingSample.getTraces().stream()
+                    .map(Trace::getChannel)
+                    .toList());
+                HashSet<Channel> newTraces = new HashSet<>(sample.getTraces().stream()
+                    .map(Trace::getChannel)
+                    .toList());
+
+                // existing sample: remove old traces
+                // [this is not a bad 'remove from list' loop since getTraces() returns new list instance]
+                List<Trace> toBeRemoved = new ArrayList<>();
+                for (Trace existingTrace : existingSample.getTraces()) {
+                  if (!newTraces.contains(existingTrace.getChannel())) {
+                    toBeRemoved.add(existingTrace);
+                  }
+                }
+                existingSample.removeTraces(toBeRemoved);
+
+                for (Trace newTrace : sample.getTraces()) {
+                  if (!existingTraces.contains(newTrace.getChannel())) {
+                    Trace newTraceHDD = newTrace.copy(existingSample);
+                    newTraceHDD.toHDD();
+                    existingSample.addTrace(newTraceHDD);
+                  }
+                }
+              }
+              // No validIsotopes to persist here — nothing was matched, so
+              // params.requestSavingIsotopes(...) is intentionally not called.
+            } else {
+              Platform.runLater(() -> {
+                NotificationFactory.openInfo("No channels could be loaded from the sample. " +
+                    "The sample was not loaded!");
+              });
+            }
+          }
+        }
+        // END OF SWITCH
+
+
       }
 
       LOGGER.info("Finished reading nu data from " + directory + ".");
@@ -549,7 +692,7 @@ public class NuImportTask extends AbstractWorkingTask implements WorkingTask {
       LOGGER.error(ExceptionUtils.getStackTrace(e));
     }
     return new FunctionalTaskResult(() -> {
-      // I believe this is done abve in each step // (todo check - seems to work like this so leave commented)
+      // I believe this is done above in each step // (seems to work like this so leave commented)
       // List<Sample> samples = new ArrayList<>(result);
       // SpTool3Main.getRunTime().getSampleReg().addNewSampleToWaitingList(samples);
       if (existingSample != null) {

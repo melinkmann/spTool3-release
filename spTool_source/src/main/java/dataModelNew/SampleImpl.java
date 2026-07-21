@@ -1343,7 +1343,7 @@ public class SampleImpl implements Sample, Serializable {
   @Override
   public String tabRawMean(Channel channel) {
     Trace trace = getTrace(channel);
-    String val = trace != null ? str(trace.getTISeries().getMeanIntensity(), NF.D1C2) : EMPTY_CELL;
+    String val = trace != null ? str(trace.getTISeries().getMeanIntensity(), NF.D1C2, NF.D1C2Exp) : EMPTY_CELL;
     return val;
   }
 
@@ -1363,7 +1363,7 @@ public class SampleImpl implements Sample, Serializable {
   @Override
   public String tabRawMedian(Channel channel) {
     Trace trace = getTrace(channel);
-    String val = trace != null ? str(trace.getTISeries().getMedianIntensity(), NF.D1C2) : EMPTY_CELL;
+    String val = trace != null ? str(trace.getTISeries().getMedianIntensity(), NF.D1C2, NF.D1C2Exp) : EMPTY_CELL;
     return val;
   }
 
@@ -1383,14 +1383,14 @@ public class SampleImpl implements Sample, Serializable {
   @Override
   public String tabRawSD(Channel channel) {
     Trace trace = getTrace(channel);
-    String val = trace != null ? str(trace.getTISeries().getSD(), NF.D1C2) : EMPTY_CELL;
+    String val = trace != null ? str(trace.getTISeries().getSD(), NF.D1C2, NF.D1C2Exp) : EMPTY_CELL;
     return val;
   }
 
   @Override
   public String tabRawMAD(Channel channel) {
     Trace trace = getTrace(channel);
-    String val = trace != null ? str(trace.getTISeries().getMadSD(), NF.D1C2) : EMPTY_CELL;
+    String val = trace != null ? str(trace.getTISeries().getMadSD(), NF.D1C2, NF.D1C2Exp) : EMPTY_CELL;
     return val;
   }
 

@@ -168,9 +168,9 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
         "defaultImportPath");
 
     this.useMethodsCsvReader = new BooleanParameter(
-        "CSV",
-        "Use csv instruction of method",
-        "When the current method has csv reader instructions, use these for import",
+        "Import submethod",
+        "Use csv/Nu submethod from method",
+        "When the current method has csv or Nu reader instructions, use these for import",
         true,
         false,
         "useMethodsCsvReader");
@@ -229,9 +229,9 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
         "numberOfThreads");
 
     this.dragDropImportFolderDepth = new IntegerParameter(
-        "Drop import depth",
+        "Subdirectory import depth",
         """
-            When drag/dropping a folder into the main window,
+            When drag/dropping a folder into the main window or the 'Select files' dialog,
             content of the folder will be browsed to find importable files.
             Here, specify how many folder levels you wish to traverse
             """,
@@ -264,8 +264,7 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
         "Graphs",
         "Make background white",
         """
-            Makes region around chart white
-            """,
+            Makes region around chart white""",
         false,
         false,
         "jfreePlotsWhiteOnly");
@@ -331,8 +330,7 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
             At one, resolution will be as is on screen.
             Larger numbers significantly increase quality,
             change plot area size,
-            and increase image file size
-            """,
+            and increase image file size""",
         10d,
         NF.D1C2,
         TextFormatterOption.ASSURE_NONZERO_POSITIVE_DOUBLE,

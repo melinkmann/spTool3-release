@@ -31,7 +31,7 @@ public enum NMPUnit implements Unit, Serializable {
 
     @Override
     public Unit getUnit() {
-      return IntensityUnit.CTS;
+      return IntensityUnit.JUST_CTS;
     }
   },
 

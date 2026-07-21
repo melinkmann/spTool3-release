@@ -249,7 +249,7 @@ public class SampleListAndTable {
         });
 
     // Set a custom cell factory:
-    populationListView.setCellFactory(l -> new PopulationListCell(this,lockedPopulations));
+    populationListView.setCellFactory(l -> new PopulationListCell(this, lockedPopulations));
 //    populationListView.setCellFactory(lv -> new ListCell<>() {
 //      @Override
 //      protected void updateItem(PopulationID item, boolean empty) {
@@ -368,11 +368,23 @@ public class SampleListAndTable {
         if (click.getClickCount() == 2) {
           if (click.isControlDown()) {
             channelTableView.getSelectionModel().clearSelection();
-            List<FxChannel> defaultChannels = new ArrayList<>();
-            getSampleDefaultChannels().forEach(c -> defaultChannels.add(new FxChannel(c)));
-            defaultChannels.forEach(channel -> {
-              channelTableView.getSelectionModel().select(channel);
-            });
+
+            // Note that, so far, default channels are only based on isotopes!
+            Map<Isotope, FxChannel> defaultChannels = new HashMap<>();
+            for (Channel defaultChannel : getSampleDefaultChannels()) {
+              Isotope iso = defaultChannel.getIsotope();
+              if (iso != null) {
+                defaultChannels.put(iso, new FxChannel(defaultChannel));
+              }
+            }
+
+            // Now select based on isotope identity
+            for (FxChannel fxCh : channelTableView.getItems()) {
+              Isotope isotope = fxCh.getChannel().getIsotope();
+              if (isotope != null && defaultChannels.containsKey(isotope)) {
+                channelTableView.getSelectionModel().select(fxCh);
+              }
+            }
           } else {
             selectDefaultIsotopes();
           }
@@ -972,7 +984,7 @@ public class SampleListAndTable {
         Collections.reverse(allIsoOfEle); // select MOST abundant not LEAST
         for (Isotope isotope : allIsoOfEle) {
           if (matchMap.containsKey(isotope)) {
-            defaultChannels.add(matchMap.get(defaultIsotope));
+            defaultChannels.add(matchMap.get(isotope));
             break;
           }
         }

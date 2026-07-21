@@ -26,6 +26,7 @@ import com.google.gson.JsonObject;
 import core.SpTool3Main;
 import gui.dialog.notification.NotificationFactory;
 import io.fair_acc.dataset.spi.fastutil.DoubleArrayList;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 import util.ArrUtils;
@@ -234,11 +235,8 @@ public class NuReader_new {
       // finalise
       LOGGER.info("Finished data import for file: " + fileName + ".  Full path: " + key);
 
-    } catch (IOException ioe) {
-      LOGGER.error("Message: " + ioe.getMessage() + ". Stack trace: " + Arrays.toString(ioe.getStackTrace()));
-    } catch (ClassNotFoundException e) {
+    } catch (Exception e) {
       LOGGER.error("Message: " + e.getMessage() + ". Stack trace: " + Arrays.toString(e.getStackTrace()));
-
     }
 
     return data;
@@ -711,22 +709,91 @@ public class NuReader_new {
         // (5) single pass over all .integ files
         // estimate capacity from index: stride between consecutive FirstAcqNum values divided by numAcc
         int recordsPerIntegFile;
+
+        // (5.1) read first record of first file to derive mass axis and numChannels.
+        //     We need this here to estimate required array length (# DPs) if only one integ file is given.
+        //     This also prepares step (6):
+
+        JsonObject firstIntegIdx = integratedIndex.get(0);
+        Path firstIntegFile = directory.resolve(firstIntegIdx.get("FileNum").getAsInt() + ".integ");
+        int firstExpectedCyc = firstIntegIdx.get("FirstCycNum").getAsInt();
+        int firstExpectedSeg = firstIntegIdx.get("FirstSegNum").getAsInt();
+        int firstExpectedAcq = firstIntegIdx.get("FirstAcqNum").getAsInt();
+
+        byte[] bytesOfFirstIntegFile;
+        try {
+          // The function handles whether bytes are wrapped or not!
+          bytesOfFirstIntegFile = readIntegBytes(firstIntegFile);
+        } catch (Exception e) {
+          bytesOfFirstIntegFile = new byte[0]; //dummy
+          LOGGER.error("Cannot read first integ file: " + firstIntegFile
+              + ". Message: " + e.getMessage()
+              + ". Stack trace: " + Arrays.toString(e.getStackTrace()));
+        }
+
+        // can only take number from first entry if size == 1
         if (integratedIndex.size() == 1) {
-          // can only take number from first entry if size == 1
-          recordsPerIntegFile = integratedIndex.get(0).get("FirstAcqNum").getAsInt();
+          if (bytesOfFirstIntegFile.length > 0) {
+            // NOTE: FirstAcqNum on a single entry is NOT a row count. It's the raw-acquisition
+            // counter value already reached once the *first* accumulated row was completed —
+            // for the first file of a run this is always == numAcc, regardless of how many
+            // rows the file actually contains. Using it directly (old code) collapsed
+            // estimatedPointsPerMz to 1 for every single-file run, causing rows to be dropped.
+            //
+            // Fix: derive a safe row-count estimate from the file's real record size instead.
+            // Each record is 16 bytes (cyc+seg+acq+numChannels header) + numChannels * 13 bytes
+            // (centre/signal/unused/unused per channel). We peek numChannels from the header of
+            // firstBytes (already read above) to get the *actual* record size, so the estimate
+            // is close to exact rather than wildly oversized.
+            // Byte assignment same as in loadIsotopesFromDisk() or (8) in this function!
+
+            int peekedNumChannels = 0;
+            if (bytesOfFirstIntegFile.length >= 16) {
+              peekedNumChannels = ByteBuffer.wrap(bytesOfFirstIntegFile, 12, 4)
+                  .order(ByteOrder.LITTLE_ENDIAN)
+                  .getInt();
+            } else {
+              LOGGER.error("First .integ file contained insufficient number of bytes!");
+            }
+            // How many bytes per time-resolved data point?
+            // header + 13 byte per record * number of channels
+            int recordBytes = 16 + Math.max(peekedNumChannels, 1) * 13;
+            int exactRecordsInFile;
+            if (recordBytes > 0) {
+              exactRecordsInFile = bytesOfFirstIntegFile.length / recordBytes;
+            } else {
+              LOGGER.error("Unable to determine byte size of single time-resolved data point!");
+              // just assume 1, not to later initialise the data array empty
+              exactRecordsInFile = 1;
+            }
+
+            // undo the /numAcc applied below to keep this branch uniform with the other
+            recordsPerIntegFile = exactRecordsInFile * numAcc;
+          } else {
+            // coarsely (over)estimate the file size and assume that in the 'worst case' we all that data
+            // in one mz (array length is trimmed later anyway to correct # of DPs)
+            long fileSize = 25L * 1024 * 1024; // fallback guess only if size lookup itself fails
+            int minRecordBytes = 16 + 13; // assumes numChannels == 1: header + 13 bytes for data
+            recordsPerIntegFile = (int) (fileSize / minRecordBytes) * numAcc;
+            LOGGER.warn("Could not obtain size of first .integ file. Defaulting back to assuming 25 MB. " +
+                "Affected file: " + firstIntegFile);
+          }
+
+          // Else, if we have more than one integ file, we can compute from the difference of Acq numbers:
         } else {
           recordsPerIntegFile = integratedIndex.get(1).get("FirstAcqNum").getAsInt()
               - integratedIndex.get(0).get("FirstAcqNum").getAsInt();
         }
+
+        // same branch for all
         int estimatedPointsPerMz = (recordsPerIntegFile / numAcc) * integratedIndex.size();
 
         // (6) read first record of first file to derive mass axis and numChannels
         //     this avoids the allMasses.length == 0 check inside the loop
-        JsonObject firstIdx = integratedIndex.get(0);
-        Path firstFile = directory.resolve(firstIdx.get("FileNum").getAsInt() + ".integ");
-        int firstExpectedCyc = firstIdx.get("FirstCycNum").getAsInt();
-        int firstExpectedSeg = firstIdx.get("FirstSegNum").getAsInt();
-        int firstExpectedAcq = firstIdx.get("FirstAcqNum").getAsInt();
+        //     Note that we retrieve data already at (5.1) above
+        //      ... firstExpectedCyc ...
+        //      ... firstExpectedSeg ...
+        //      ... firstExpectedAcq ...
 
 
         double[] allMasses = null;
@@ -734,38 +801,42 @@ public class NuReader_new {
 
         LOGGER.trace("Peeking/reading first .integ file to find all m/z...");
 
-        try {
-          byte[] firstBytes = readIntegBytes(firstFile);
-          ByteBuffer firstBuf = ByteBuffer.wrap(firstBytes).order(ByteOrder.LITTLE_ENDIAN);
+        if (bytesOfFirstIntegFile.length > 0) {
+          // wrap buffer operation in try catch in case of underflow/overflow/poor condition
+          try {
+            ByteBuffer firstIntegBuf = ByteBuffer.wrap(bytesOfFirstIntegFile).order(ByteOrder.LITTLE_ENDIAN);
+            if (firstIntegBuf.remaining() >= 16) {
+              int cyc = firstIntegBuf.getInt();
+              int seg = firstIntegBuf.getInt();
+              int acq = firstIntegBuf.getInt();
+              numChannels = firstIntegBuf.getInt();
 
-          if (firstBuf.remaining() >= 16) {
-            int cyc = firstBuf.getInt();
-            int seg = firstBuf.getInt();
-            int acq = firstBuf.getInt();
-            numChannels = firstBuf.getInt();
-
-            if (cyc != firstExpectedCyc || seg != firstExpectedSeg || acq != firstExpectedAcq) {
-              LOGGER.error("First integ file header mismatch: expected FirstCycNum/FirstSegNum/FirstAcqNum "
-                  + firstExpectedCyc + "/" + firstExpectedSeg + "/" + firstExpectedAcq
-                  + " but got " + cyc + "/" + seg + "/" + acq);
-            } else {
-              double[] centres = new double[numChannels];
-              for (int colIdx = 0; colIdx < numChannels; colIdx++) {
-                centres[colIdx] = firstBuf.getFloat();
-                firstBuf.getFloat(); // signal - skip
-                firstBuf.getFloat(); // unused
-                firstBuf.get();      // unused
-                // alternatively: skip in one go
-                // firstBuf.position(firstBuf.position() + 9); // skip 2 floats and 1 byte
+              if (cyc != firstExpectedCyc || seg != firstExpectedSeg || acq != firstExpectedAcq) {
+                LOGGER.error("First integ file header mismatch: expected FirstCycNum/FirstSegNum/FirstAcqNum "
+                    + firstExpectedCyc + "/" + firstExpectedSeg + "/" + firstExpectedAcq
+                    + " but got " + cyc + "/" + seg + "/" + acq);
+              } else {
+                double[] centres = new double[numChannels];
+                for (int colIdx = 0; colIdx < numChannels; colIdx++) {
+                  centres[colIdx] = firstIntegBuf.getFloat();
+                  firstIntegBuf.getFloat(); // signal - skip
+                  firstIntegBuf.getFloat(); // unused
+                  firstIntegBuf.get();      // unused
+                  // alternatively: skip in one go
+                  // firstBuf.position(firstBuf.position() + 9); // skip 2 floats and 1 byte
+                }
+                allMasses = convertCentresToMassesWithMassCal(seg, centres, runInfo.massCalCoefficients,
+                    segDelays);
               }
-              allMasses = convertCentresToMassesWithMassCal(seg, centres, runInfo.massCalCoefficients,
-                  segDelays);
             }
+          } catch (Exception e) {
+            LOGGER.error("Cannot parse first integ file: " + firstIntegFile
+                + ". Likely causes. Buffer has poor condition or run.info was read incorrectly"
+                + ". Message: " + e.getMessage()
+                + ". Stack trace: " + Arrays.toString(e.getStackTrace()));
           }
-        } catch (Exception e) {
-          LOGGER.error("Cannot read first integ file: " + firstFile
-              + ". Message: " + e.getMessage()
-              + ". Stack trace: " + Arrays.toString(e.getStackTrace()));
+        } else {
+          LOGGER.error("Byte array obtained from reading the first .integ file was empty!");
         }
 
         if (allMasses != null && numChannels > 0) {
@@ -776,7 +847,7 @@ public class NuReader_new {
 
           // (8) single pass over all .integ files
           // Each channel entry is 4 (centre) + 4 (signal) + 4 (unused float) + 1 (unused byte) = 13 bytes
-          int recordHeaderBytes = 16; // cyc + seg + acq + nc
+          // int recordHeaderBytes = 16; // cyc + seg + acq + nc
           int channelStride = 13;
 
           for (int i = 0; i < integratedIndex.size(); i++) {
@@ -989,7 +1060,7 @@ public class NuReader_new {
   }
 
 
-
+  // This handles whether bytes are wrapped or not
   private static byte[] readIntegBytes(Path filePath) throws IOException {
     byte[] bytes = Files.readAllBytes(filePath);
     if (bytes.length >= 2

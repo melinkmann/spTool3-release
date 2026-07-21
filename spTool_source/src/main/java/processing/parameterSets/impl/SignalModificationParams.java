@@ -46,7 +46,7 @@ public class SignalModificationParams extends AbstractParamSet implements ParamS
     super("Signal modification parameters", XML_ELEMENT_TAG);
 
     this.isotopeSumBoolean = new BooleanParameter("Calculate isotope sum",
-        "Calculate",
+        "Calculate isotope sum",
         "For each element, sum all isotopes",
         false,
         false,
@@ -61,7 +61,7 @@ public class SignalModificationParams extends AbstractParamSet implements ParamS
         "excludeIsobars"
     );
 
-    onlyUseSelectedIsotopesForSum= new BooleanParameter("Isotopes",
+    onlyUseSelectedIsotopesForSum = new BooleanParameter("Isotopes",
         "Only use selected",
         """
             For summation, all unselected isotopes will be ignored""",
@@ -110,8 +110,7 @@ public class SignalModificationParams extends AbstractParamSet implements ParamS
         isotopeSumBoolean
     );
 
-    isotopeSumBoolean.addConditionalChild(true, excludeIsobars,onlyUseSelectedIsotopesForSum);
-
+    isotopeSumBoolean.addConditionalChild(true, excludeIsobars, onlyUseSelectedIsotopesForSum);
 
 
   }

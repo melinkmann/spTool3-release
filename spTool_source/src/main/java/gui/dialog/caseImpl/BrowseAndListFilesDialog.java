@@ -36,6 +36,7 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
+import io.PathUtil;
 import javafx.animation.PauseTransition;
 import javafx.application.Platform;
 import javafx.beans.value.ChangeListener;
@@ -146,13 +147,21 @@ public class BrowseAndListFilesDialog extends AbstractListDialog<Path> {
       // DirectoryChooser: open dialogue
       DirectoryChooser chooser = new DirectoryChooser();
       try {
-        Path currentValue = Path.of(currentDirFld.getText());
-        if (Files.isDirectory(currentValue)) {
+        String currentValueStr = currentDirFld.getText();
+        if (currentValueStr != null) {
+          currentValueStr = currentValueStr.strip();
+        }
+        Path currentValue = Path.of(currentValueStr);
+        if (!currentValueStr.isEmpty() && Files.isDirectory(currentValue)) {
           chooser.setInitialDirectory(currentValue.toFile());
-        } else if (Files.isDirectory(currentValue.getParent())) {
+        } else if (!currentValueStr.isEmpty() && currentValue.getParent() != null
+            && Files.isDirectory(currentValue.getParent())) {
           chooser.setInitialDirectory(currentValue.getParent().toFile());
-        } else if (Files.isDirectory(importDefaults.getCurrentDir())) {
+        } else if (!importDefaults.getCurrentDir().toString().isEmpty()
+            && Files.isDirectory(importDefaults.getCurrentDir())) {
           chooser.setInitialDirectory(importDefaults.getCurrentDir().toFile());
+        } else {
+          chooser.setInitialDirectory(PathUtil.getUserDir().toFile());
         }
 
         File returnedDirectory = chooser.showDialog(dialogPane.getScene().getWindow());
@@ -170,7 +179,7 @@ public class BrowseAndListFilesDialog extends AbstractListDialog<Path> {
     currentDirFld.getContextMenu().getItems().add(menuBrowse);
 
     // Change of Field should also affect the storage
-    PauseTransition currentDirPause = new PauseTransition(Duration.seconds(0.1));
+    PauseTransition currentDirPause = new PauseTransition(Duration.seconds(2));
     AtomicReference<String> pendingOldDir = new AtomicReference<>("");
     AtomicReference<String> pendingNewDir = new AtomicReference<>("");
     currentDirPause.setOnFinished(event -> {
@@ -268,7 +277,7 @@ public class BrowseAndListFilesDialog extends AbstractListDialog<Path> {
             // Check how deep to look
             int levels;
             if (browseSubdirBox.isSelected()) {
-              levels = Integer.MAX_VALUE;
+              levels = SpTool3Main.getRunTime().getConfParams().getDragDropFolderDepth().getValue();
             } else {
               levels = 1;
             }

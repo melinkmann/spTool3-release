@@ -488,6 +488,7 @@ public class RerunMethodView implements ParameterView {
   }
 
 
+  // TODO: Make sure that the new list of mz is passed.
   public void process() {
     List<FxSample> placeholderList = new ArrayList<>();
     placeholderList.add(fxSample);

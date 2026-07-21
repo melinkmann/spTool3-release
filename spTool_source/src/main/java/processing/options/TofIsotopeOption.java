@@ -39,6 +39,13 @@ public enum TofIsotopeOption {
     public String toString() {
       return "Threshold";
     }
+  },
+
+  ALL_RAW_MZ{
+    @Override
+    public String toString() {
+      return "All mz";
+    }
   }
 
 
