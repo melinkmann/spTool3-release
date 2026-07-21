@@ -400,42 +400,41 @@ below. For a quick start, click on the central `Quick start new method` button t
 options. In the background, the non-expert options are applied during processing with the respective value that is set
 in the submethod!
 
-- `Csv import parameters`: Define how csv files are read. Note: spTool will use this submethod if you tell it to do so
+- #### `Csv import parameters`:
+  Define how csv files are read. Note: spTool will use this submethod if you tell it to do so
   in the configuration: `Edit` > `Configuration` > `Import submethod` or else it will prompt you to input the import
   parameters with each new import.
 
-
-- `Nu import parameters`: Define how Nu TOF data are read. Here you can also select which isotopes to load. Note: spTool
+- #### `Nu import parameters`:
+  Define how Nu TOF data are read. Here you can also select which isotopes to load. Note: spTool
   will use this submethod if you tell it to do so in the configuration: `Edit` > `Configuration` > `Import submethod` or
   else it will prompt you to input the import parameters with each new import.
 
-
-- `Data generator main parameters`: This submethod is required to generate in-silico data. It contains parameters that
+- #### `Data generator main parameters`:
+  This submethod is required to generate in-silico data. It contains parameters that
   describe the 'synthetic' sample (see *spTool: An interactive software to generate and navigate in-silico single
   particle data from ICP-QMS and ICP-TOFMS instruments*
   [https://doi.org/10.26434/chemrxiv.15004857/v1](https://doi.org/10.26434/chemrxiv.15004857/v1))
 
-
-- `Particle population parameters`: At least one instance of this submethod is required to generate in-silico data. It
+- #### `Particle population parameters`:
+  At least one instance of this submethod is required to generate in-silico data. It
   contains parameters that describe an in-silico particle population (see *spTool: An interactive software to
   generate and navigate in-silico single particle data from ICP-QMS and ICP-TOFMS
   instruments*  [https://doi.org/10.26434/chemrxiv.15004857/v1](https://doi.org/10.26434/chemrxiv.15004857/v1))
 
+- #### `Signal modification parameters`:
+  Submethod for mathematical modification of signal, e.g., sum the signal of all isotopes of an element.
 
-- `Signal modification parameters`: Submethod for mathematical modification of signal, e.g., sum the signal of all
-  isotopes of an element.
+- #### `Time region`:
+  Submethod to select a time region of the sample (or to reset the sample to its original full time range).
 
-
-- `Time region`: Submethod to select a time region of the sample (or to reset the sample to its original full time
-  range).
-
-
-- `Baseline parameters`: **This submethod is required for analysis**. It tells spTool how to estimate the baseline. The
+- #### `Baseline parameters`:
+  **This submethod is required for analysis**. It tells spTool how to estimate the baseline. The
   baseline is a statistical model of the background signal. Note: *This method does not set the threshold!* *The
   baseline must be calculated before starting an event search!*
 
-
-- `Search parameters`: This submethod tells spTool how to search for events. *This method controls the detection
+- #### `Search parameters`:
+  This submethod tells spTool how to search for events. *This method controls the detection
   threshold* (see `highlight box A` below). It uses the statistical model of the background provided by the baseline.
   For the detection threshold (i.e., the `Event height filter`), you can set the one-sided alpha error (Type I error
   probability) as α (`highlight box A`: typically 1E-6) or via the corresponding z-factor (as in z·σ, `highlight box B`:
@@ -448,13 +447,14 @@ in the submethod!
   not apply to the new branch (i.e., you have to add them).
   ![img](images/submethodAdvanced.png){: width="215" style="display: block; margin: 0.5em auto 0.5em auto;"}
 
-- `Align isotopes parameters`: For TOFMS data, this method is used to align events across multiple channels (mz,
+- #### `Align isotopes parameters`:
+  For TOFMS data, this method is used to align events across multiple channels (mz,
   isotopes). **Typically, this method is required for composition analysis unless the search handles alignment by
   itself!** **Note: Once the isotopes are aligned, you cannot use Gating or any Filter other than 'Aligned filtering'.
   Thus, it is recommended to filter the data properly first and then align.**
 
-
-- `Gating parameters`: This submethod includes options to remove events based on certain peak properties such as 'Number
+- #### `Gating parameters`:
+  This submethod includes options to remove events based on certain peak properties such as 'Number
   of points', 'Area', 'Height'.  
   **Note: The peak height-based gating filter is somewhat redundant with the search height
   specified in the search method. Why does spTool provide two options?**  
@@ -477,12 +477,14 @@ in the submethod!
   `Search parameters` submethod). **Keep in mind that this approach is rather a 'last resort' measure**:
   ![img](images/gating2023JAAS.png){: width="650" style="display: block; margin: 0.5em auto 2em auto;"}
 
-- `Filter parameters`: The filter submethod provides further options to remove events, e.g., peak coincidence as
+- #### `Filter parameters`: 
+  The filter submethod provides further options to remove events, e.g., peak coincidence as
   described in Elinkmann and Kronenberg et al.
   [https://doi.org/10.1016/j.talanta.2026.129835](https://doi.org/10.1016/j.talanta.2026.129835) or over-range
   events, and 'regions of interest' (ROI) in the intensity data.
 
-- `Remove isotopes parameters`: This submethod allows you to remove isotopes with too few or too many events or too
+- #### `Remove isotopes parameters`:
+  This submethod allows you to remove isotopes with too few or too many events or too
   little intensity. Consider putting this submethod before the `Align isotopes parameters` submethod to keep 'bad
   isotopes' out of subsequent cluster analyses.
 
