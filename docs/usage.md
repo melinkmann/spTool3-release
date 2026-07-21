@@ -5,11 +5,11 @@
 Upon startup, you may start a lightweight version as a **data generator** only.
 For the full version including analysis capabilities select **analyser**.
 
-<img src="images/startConfig.png" alt="img" width="150">
+![img](images/startConfig.png){: width="150" }
 
 # 2. Overview: spTool main screen
 
-<img src="images/overview.png" alt="img" width="500">
+![img](images/overview.png){: width="500" }
 
 ## 1 Main menu bar
 
@@ -31,8 +31,7 @@ For the full version including analysis capabilities select **analyser**.
     - `Reset appearance`: Resets settings affecting the user interface and plots (see `Save appearance`).
     - `Check sample files`: Starts a lookup whether the raw data files of the current samples can still be found on the
       computer. Else, it allows you to set a new drive location to search for the data and match them to the samples.
-      Why
-      are the raw data needed? For ICP-TOFMS data processing, some calculations require access to the raw data. This
+      Why are the raw data needed? For ICP-TOFMS data processing, some calculations require access to the raw data. This
       includes:
         - Showing the spectra of all m/z (isotopes)
         - Cluster analysis based on all m/z (isotopes)
@@ -42,7 +41,7 @@ For the full version including analysis capabilities select **analyser**.
     - `Select files`: Select files that are in the *default import path* which can be set in the configuration (`Edit` >
       `Configuration` > `Import path`). This opens the **'List files' dialog**:
 
-         <img src="images/selectFiles.png" alt="img" width="400">
+      ![img](images/selectFiles.png){: width="400" }
 
         - **A**: Enter a path (folder) where your data is. Use copy/paste or manually enter a
           valid path. Alternatively use the **right-click menu** to open a file browser to set a directory.
@@ -99,6 +98,7 @@ For the full version including analysis capabilities select **analyser**.
           population an event belongs to) and tell spTool to only export the selected isotopes.
 
       **On the right side, there is a list of buttons that do not need further settings:**
+
         - `Export event data`: Exports data for each event including peak area.
         - `Export results table`: Exports the table from the `TAB` pane with key results and settings.
         - `Export method as ...`: Exports the current method either as a human-readable '.csv' file or an '.spm' file
@@ -137,9 +137,9 @@ For the full version including analysis capabilities select **analyser**.
       enter an 'interfering mass shift' (such as 16 for oxides) and include 'Doubly charged' ions as well as 'Dimers'.
       The report looks like this:
 
-    - <img src="images/isotopeSearch.png" alt="img" width="500">
+    - ![img](images/isotopeSearch.png){: width="500" }
     - `Interference library`: Search the interference database by Madeleine C. Lomax-Vogt, Fang Liu, John W.
-      Olesik (citation: https://doi.org/10.1016/j.sab.2021.106098)
+      Olesik at [https://doi.org/10.1016/j.sab.2021.106098](https://doi.org/10.1016/j.sab.2021.106098)
     - `List isobars`: Lists isobaric isotopes to plan in-silico experiments or interpret experimental data.
     - `Significance test`: Quickly test results for statistical significance. Note: This feature is still under
       validation. It is recommended to verify results against established statistical libraries, such as those provided
@@ -178,7 +178,7 @@ nickname with the `F2` key or by left-clicking on the nickname cell of a selecte
 cell in the same way. `# NMP` gives the average number of nano/microparticles of the sample for the currently selected
 channels (`panel 7`) and population (`panel 6`). The sample table has an extensive **right-click menu**:
 
-<img src="images/sampleTableContextMenu.png" alt="img" width="150">
+![img](images/sampleTableContextMenu.png){: width="150" }
 
 - `Favorite`/`Undo`: Highlight selected samples as a favorite. The sample table `panel 5` can be sorted by the highlight
   property which is shown via a star symbol in the first column.
@@ -198,7 +198,7 @@ channels (`panel 7`) and population (`panel 6`). The sample table has an extensi
   comments, ... and only update the set of imported isotopes. Alternatively, you can import the raw data again as a new
   sample using `Import copy` or replace the sample entirely by re-loading the data using `Replace`.
 
-    <img src="images/reprocessPopup.png" alt="img" width="550">
+  ![img](images/reprocessPopup.png){: width="550" }
 
 - `Reprocess`: Reprocess the selected samples. When you process a sample, a copy of the method that was used for
   processing is stored in the sample. This button triggers reprocessing using the method that was previously stored with
@@ -206,7 +206,7 @@ channels (`panel 7`) and population (`panel 6`). The sample table has an extensi
   when the algorithms have received updates without changing the submethod parameters.
 - `Delete Samples Globally`: Deletes the selected samples from all sets. This is the 'delete' behaviour that will
   permanently remove a sample from the project.
-- Remove Samples from Set`: Removes the selected samples from the currently selected set in `panel 4`. If a sample
+- `Remove Samples from Set`: Removes the selected samples from the currently selected set in `panel 4`. If a sample
   exists in other sets, it will stay there.
 
 **Further features of the sample table**:
@@ -254,7 +254,7 @@ The **right-click menu** has additional options:
   using the right click `Reprocess` menu button from `panel 5` (use this if each sample has its own method parameters)
   or the main `Process` button in `panel 2` (use this if all samples share the same method parameters).
 
-<img src="images/isotopeContextMenu.png" alt="img" width="125">
+![img](images/isotopeContextMenu.png){: width="125" }
 
 ## 8 Data view and legend panel
 
@@ -290,7 +290,7 @@ written into 2 distinct files.
 Each graph has its own set of settings. **Most importantly**, histograms, box plots, scatter plots, ... allow you to
 select which **event parameter** you would like to visualise. Take a look at this example from the histogram panel:
 
-<img src="images/eventProperty.png" alt="img" width="225">
+![img](images/eventProperty.png){: width="225" }
 
 - `Area`: Shows the peak 'area' (actually the sum of all data points that form the event). No background subtraction is
   applied.
@@ -329,7 +329,7 @@ window. A method contains submethods with instructions for each processing step.
 provided
 below. For a quick start, click on the central `Quick start new method` button to create a new method.
 
-<img src="images/methodEditorCut.png" alt="img" width="600">
+![img](images/methodEditorCut.png){: width="600" }
 
 - **A**: Symbol indicates if the method has changed since the last time you saved it.
 - **B**: `Save`: Overwrites the file that the method has been saved as.
@@ -361,7 +361,7 @@ below. For a quick start, click on the central `Quick start new method` button t
 - **N**: Creates a new submethod.
 - **O**: Add an existing submethod from the submethod library (see `Edit` > `Submethod editor`).
 - Use the **right click menu** to further organise submethods:  
-  <img src="images/submethodContextMenu.png" alt="img" width="200">
+  ![img](images/submethodContextMenu.png){: width="200" }
     - `Add to library`: Adds the selected submethods to the submethod library (see `Edit` > `Submethod library`).
     - `Clone`: Creates and adds a copy of the selected submethod.
     - `Remove`: Removes the selected submethods from the method.
@@ -390,13 +390,14 @@ in the submethod!
 
 - `Data generator main parameters`: This submethod is required to generate in-silico data. It contains parameters that
   describe the 'synthetic' sample (see *spTool: An interactive software to generate and navigate in-silico single
-  particle data from ICP-QMS and ICP-TOFMS instruments* https://doi.org/10.26434/chemrxiv.15004857/v1)
+  particle data from ICP-QMS and ICP-TOFMS instruments*
+  [https://doi.org/10.26434/chemrxiv.15004857/v1](https://doi.org/10.26434/chemrxiv.15004857/v1))
 
 
 - `Particle population parameters`: At least one instance of this submethod is required to generate in-silico data. It
   contains parameters that describe an in-silico particle population (see *spTool: An interactive software to
   generate and navigate in-silico single particle data from ICP-QMS and ICP-TOFMS
-  instruments* https://doi.org/10.26434/chemrxiv.15004857/v1)
+  instruments*  [https://doi.org/10.26434/chemrxiv.15004857/v1](https://doi.org/10.26434/chemrxiv.15004857/v1))
 
 
 - `Signal modification parameters`: Submethod for mathematical modification of signal, e.g., sum the signal of all
@@ -418,7 +419,7 @@ in the submethod!
   probability) as α (`highlight box A`: typically 1E-6) or via the corresponding z-factor (as in z·σ, `highlight box B`:
   typically z = 3.29).
 
-  <img src="images/searchDefaults.png" alt="img" width="350">  
+  ![img](images/searchDefaults.png){: width="350" }
 
   Hint: Each search submethod creates a new population. You can add more than one search submethod with different
   parameters, e.g., optimised to get the best data on particle number and particle size. For that, each search
@@ -426,7 +427,7 @@ in the submethod!
   branch. When you add a new search submethod, you start a new branch and the previous Gating, Filter, ... submethods do
   not apply to the new branch (i.e., you have to add them).
 
-  <img src="images/submethodAdvanced.png" alt="img" width="215">
+  ![img](images/submethodAdvanced.png){: width="215" }
 
 
 - `Align isotopes parameters`: For TOFMS data, this method is used to align events across multiple channels (mz,
@@ -445,7 +446,8 @@ in the submethod!
   particulate contamination, the baseline may not purely consist of 'ionic' species. Especially for the Poisson
   distribution, which does not take the empirical standard deviation into account but only the mean ionic signal, such
   presence of 'unknown particulate dirt' will likely render the critical limit estimation rather unreliable. As
-  described in the 2023 JAAS paper (https://doi.org/10.1039/d3ja00292f), this mismatch between statistical model and
+  described in the 2023 JAAS paper [https://doi.org/10.1039/d3ja00292f](https://doi.org/10.1039/d3ja00292f), this
+  mismatch between statistical model and
   reality often manifests in an excess of false-positive event detections. In response, researchers tend to increase the
   threshold by choosing extremely high z-values with z > 5 (z as in z·σ, i.e., 5·σ). However, these large z-values are
   not really justified from the statistical point of view: They rather indicate that the statistical model does not
@@ -455,12 +457,13 @@ in the submethod!
   numerical approximation.
   **Keep in mind that this approach is rather a 'last resort' measure**:
 
-  <img src="images/gating2023JAAS.png" alt="img" width="650">
+  ![img](images/gating2023JAAS.png){: width="650" }
 
 
 - `Filter parameters`: The filter submethod provides further options to remove events, e.g., peak coincidence as
-  described in Elinkmann and Kronenberg et al. (https://doi.org/10.1016/j.talanta.2026.129835) or over-range events,
-  and 'regions of interest' (ROI) in the intensity data.
+  described in Elinkmann and Kronenberg et al.
+  [https://doi.org/10.1016/j.talanta.2026.129835](https://doi.org/10.1016/j.talanta.2026.129835) or over-range
+  events, and 'regions of interest' (ROI) in the intensity data.
 
 
 - `Remove isotopes parameters`: This submethod allows you to remove isotopes with too few or too many events or too

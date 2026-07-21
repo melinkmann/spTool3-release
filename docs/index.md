@@ -26,7 +26,7 @@ More information on installing spTool is provided [here](installation.md).
 
 ## Help on using spTool
 
-Take a [detailed tour](usage.md) through spTool.
+Take a [detailed overview tour](usage.md) through spTool.
 
 Read more on the [theory](theory.md) behind spTool.
 
