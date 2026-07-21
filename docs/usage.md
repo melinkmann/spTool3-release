@@ -4,80 +4,85 @@
 
 Upon startup, you may start a lightweight version as a **data generator** only.
 For the full version including analysis capabilities select **analyser**.
-
-![img](images/startConfig.png){: width="150" }
+![img](images/startConfig.png){: width="150" style="display: block; margin: 0.5em auto 0.5em auto;"}
 
 ## 2. Overview: spTool main screen
 
-![img](images/overview.png){: width="500" }
+![img](images/overview.png){: width="500" style="display: block; margin: 0.5em auto 0.5em auto;"}
 
-### 1 Main menu bar
+### 2.1 Main menu bar
 
-- **1.1 File**:
-    - `Save project as`: Saves all sample sets with their samples, including imported raw data, processed particle data,
-      quantification and method, to the drive.
-        - Note: For ICP-TOFMS data, this does not save those isotopes that have not
-          been loaded. If you move the raw data files, reprocessing of the data may cause issues (see
-          `Check sample files`).
-        - Note: The project does not save the current method in the method editor. Use the method editor to save and
-          organise your method files. Alternatively, each sample contains a copy of the method that it has been
-          processes with, and you can load the method from the sample after loading the project in the future with
-          `Open project`.
-    - `Open project`: Load a project.
-    - `Save appearance`: Saves all settings affecting the user interface and plots. This includes:
-        - All graph settings shown in `panel 9`
-        - Positions of dividers between user interface elements
-        - Positions of popup views of the data view and legend panels (`panel 8`)
-    - `Reset appearance`: Resets settings affecting the user interface and plots (see `Save appearance`).
-    - `Check sample files`: Starts a lookup whether the raw data files of the current samples can still be found on the
-      computer. Else, it allows you to set a new drive location to search for the data and match them to the samples.
-      Why are the raw data needed? For ICP-TOFMS data processing, some calculations require access to the raw data. This
-      includes:
-        - Showing the spectra of all m/z (isotopes)
-        - Cluster analysis based on all m/z (isotopes)
+#### 2.1.1 File:
 
+- `Save project as`: Saves all sample sets with their samples, including imported raw data, processed particle data,
+  quantification and method, to the drive.
+    - Note: For ICP-TOFMS data, this does not save those isotopes that have not
+      been loaded. If you move the raw data files, reprocessing of the data may cause issues (see
+      `Check sample files`).
+    - Note: The project does not save the current method in the method editor. Use the method editor to save and
+      organise your method files. Alternatively, each sample contains a copy of the method that it has been
+      processes with, and you can load the method from the sample after loading the project in the future with
+      `Open project`.
+- `Open project`: Load a project.
+- `Save appearance`: Saves all settings affecting the user interface and plots. This includes:
+    - All graph settings shown in `panel 9`
+    - Positions of dividers between user interface elements
+    - Positions of popup views of the data view and legend panels (`panel 8`)
+- `Reset appearance`: Resets settings affecting the user interface and plots (see `Save appearance`) to their initial
+  values.
+- `Check sample files`: Starts a lookup whether the raw data files of the current samples can still be found on the
+  computer. Else, it allows you to set a new drive location to search for the data and match them to the samples.
+  Why are the raw data needed? For ICP-TOFMS data processing, some calculations require access to the raw data. This
+  includes, e.g., the mass spectrum viewer and cluster analysis based on all m/z (isotopes).
 
-- **1.2 Import**:
+- #### 2.1.2 Import:
     - `Select files`: Select files that are in the *default import path* which can be set in the configuration (`Edit` >
-      `Configuration` > `Import path`). This opens the **'List files' dialog**:
+      `Configuration` > `Import path`). This opens the **'Select files' dialog**:
+      ![img](images/selectFiles.png){: width="400" style="display: block; margin: 0.5em auto 0.5em auto;"}
+    - **Select files panel A**: Enter a path (folder) where your data is. Use copy/paste or manually enter a
+      valid path. Alternatively use the **right-click menu** to open a file browser to set a directory.
+    - **Select files panel B**: Click this button to list the files in the directory.
+    - **Select files panel C**: Select this checkbox and specify a type (e.g., 'csv') if you only wish to be shown files
+      of a
+      certain
+      type. Note: This checkbox also affects the drag/drop import of files into the main window of spTool.
+    - **Select files panel D**: Select this checkbox if you want to browse subdirectories, too. You can set the depth,
+      i.e.,
+      how many
+      levels will be browsed in the configuration: `Edit` > `Configuration` > `Subdirectory import depth`. Note:
+      This checkbox also affects the drag/drop import of files into the main window of spTool.
+    - **Select files panel E**: Clear the list of files below.
+    - **Select files panel F**: Enter keywords to filter the list of files shown below in panel `'Select files G'`.
+    - **Select files panel G**: This is the list of files. When you enter a keyword in the search field in panel
+      `'Select files G'`, only a subset of the files is shown that matches the search. This list has special features:
 
-      ![img](images/selectFiles.png){: width="400" }
+        - You can drag/drop files and folders here from the file browser on your system, e.g., Windows
+          explorer. For drag/dropping directories, you can set the depth, i.e., how many levels will be browsed in
+          the configuration: `Edit` > `Configuration` > `Subdirectory import depth`.
+        - You can select files by clicking on them. Hold `Control` or `Shift` key to select individual files or a
+          series of files, respectively. Double click selects all files. **Special case:** If you want to use the
+          search function and select multiple files for different keywords, you can use the **right click menu** shown
+          in panel `'Select files H'`.
 
-        - **A**: Enter a path (folder) where your data is. Use copy/paste or manually enter a
-          valid path. Alternatively use the **right-click menu** to open a file browser to set a directory.
-        - **B**: Click this button to list the files in the directory.
-        - **C**: Select this checkbox and specify a type (e.g., 'csv') if you only wish to be shown files of a certain
-          type. Note: This checkbox also affects the drag/drop import of files into the main window of spTool.
-        - **D**: Select this checkbox if you want to browse subdirectories, too. You can set the depth, i.e., how many
-          levels will be browsed in the configuration: `Edit` > `Configuration` > `Subdirectory import depth`. Note:
-          This checkbox also affects the drag/drop import of files into the main window of spTool.
-        - **E**: Clear the list of files below.
-        - **F**: Enter keywords to filter the list of files shown below in `panel G`.
-        - **G**: This is the list of files. When you enter a keyword in the search field in `panel G`, only a subset of
-          the files is shown that matches the search. This list has special features:
-            - You can drag/drop files and folders here from the file browser on your system, e.g., Windows
-              explorer. For drag/dropping directories, you can set the depth, i.e., how many levels will be browsed in
-              the configuration: `Edit` > `Configuration` > `Subdirectory import depth`.
-            - You can select files by clicking on them. Hold `Control` or `Shift` key to select individual files or a
-              series of files, respectively. Double click selects all files. **Special case:** If you want to use the
-              search function and select multiple files for different keywords, you can use the right click menu shown
-              in `panel H`.
-        - **H**: Selection menu: You can mark files in the list as **selected** using this menu. Intended usage: You
-          browse a folder with multiple files but only want to import a subset. Enter a search keyword in `panel F`,
-          e.g., 'Au NP'. Next, right-click on the desired files in `panel G` and click 'Select' in the popup menu that
-          opens (`panel H`). Now you can change search key word and repeat the process.
-        - Finally, click the 'Continue' button or `Control` + `Enter` to continue.
+    - **Select files panel H**: Selection menu: You can mark files in the list as **selected** using this menu. Intended
+      usage: You
+      browse a folder with multiple files but only want to import a subset. Enter a search keyword in panel
+      `'Select files F'`,e.g., 'Au NP'. Next, right-click on the desired files in panel `'Select files G'` and click '
+      Select' in the
+      popup menu that opens (panel `'Select files H'`). Now you can change search key word and repeat the process.
+    - Finally, click the 'Continue' button or `Control` + `Enter` to continue.
+
     - `Browse`: Opens a file browser popup to select a folder for import. Next, the **'List files' dialog** is shown. (
       see above for `Select files`). Click the 'List files' button or use the options as described above for
       `Select files`.
     - `Recent folders`: This opens a popup list with locations (folders) that have been used for imports recently.
-        - Click the 'Continue' button or **double-click** on a folder to directly proceed to the
+        - Click the **'Continue' button** or **double-click** on a folder to directly proceed to the
           **'List files' dialog**.
-        - Right-click a folder to mark it as favorite or delete it.
+        - Right-click a directory to mark it as favorite or delete it.
         - Use the bin icon (top) to clear the list.
         - Use the save icon (top) to save changes (e.g., deletions or highlighting).
-        - If a warning symbol (yellow triangle with exclamation mark) is shown in front of a folder, the path does not
-          exist anymore on your system.
+        - If a warning symbol (yellow triangle with exclamation mark) is shown in front of a folder, the directory does
+          not exist anymore on your system.
     - `Recent files`: This opens a popup list with sets of files that have been imported recently.
         - Click the 'Continue' button proceed to the **'List files' dialog**.
         - **Right-click** on an entry to mark it as a favorite or delete it.
@@ -86,40 +91,41 @@ For the full version including analysis capabilities select **analyser**.
         - Use the **right-click** option **View content** to see which files the entry includes.
         - Select an entry and press `F2` or **left-click** on it again, or **double-click** on an entry.
 
-
-- **1.3 Export**:  
-  In the centre, all export buttons that require further settings are shown together with these settings:
-
-    - `Show dialog`: Opens the export dialog. A brief overview of its most important features:
+- #### 2.1.3 Export:
+  `Show dialog`: Opens the export dialog. **Note:** Most exports take into account your current selection of samples,
+  isotopes and populations. In case you do not get the expected data export, double-check if your selection is correct.
+  Here follows a brief overview of the most important export features:
+    - **In the centre**, all export buttons that require further settings are shown together with these settings:
         - `Format`: Decide if data is copied to clipboard or written as a csv file. Note: If your export would be
           written as several csv files, you should not use the clipboard option.
         - `Export path`: If 'csv file' is selected, you can set the folder where files are written. Use the
           **right-click menu** to open a file browser to set a directory.
+        - `Export raw data` button: Exports the raw data as time-resolved intensity data. You may add event markers (
+          symbols that indicate the peak), population markers (symbols at the bottom that indicate which (in-silico)
+          population an event belongs to) and tell spTool to only export the selected isotopes.
+        - `Export custom event data`: Exports data for each event in a customisable fashion: This button also lets you
+          decide if you also want to export the background (i.e., those data points that are not part of an event),
+          e.g., to create a histogram of background and events to emphasise separation of particles from the background
+          signal.
+    - **On the right side**, there are buttons that do not need further settings:
+        - `Export event data`: Exports data for each event including peak area. This export is comprehensive. Use
+          the `Export custom event data` for a customisable and more lightweight export.
+        - `Export results table`: Exports the table from the `TAB` pane with key results and settings.
+        - `Export method as ...`: Exports the current method either as a human-readable '.csv' file or an '.spm' file
+          that
+          can be loaded into spTool later.
+        - (... to be completed ...)
 
-    - `Export raw data` button: Exports the raw data as time-resolved intensity data. You may add event markers (
-      symbols that indicate the peak), population markers (symbols at the bottom that indicate which (in-silico)
-      population an event belongs to) and tell spTool to only export the selected isotopes.
-    - ... to be completed ...
-
-  On the right side, there is a list of buttons that do not need further settings:
-    - `Export event data`: Exports data for each event including peak area.
-    - `Export results table`: Exports the table from the `TAB` pane with key results and settings.
-    - `Export method as ...`: Exports the current method either as a human-readable '.csv' file or an '.spm' file
-      that can be loaded into spTool later.
-    - ... to be completed ...
-
-
-- **1.4 Edit**:
+- #### 2.1.4 Edit:
     - `Submethod editor`: Opens the editor to create, modify and organise submethods.
     - `Configuration`: Opens the configuration editor.
 
-
-- **1.5 Action**:
+- #### 2.1.5 Action:
     - `Increase dewll time`: Opens a submethod dialog to create a copy of each selected sample whose data is binned to
-      the specified dwell time. This allows a rapid what-if exploration to see what the data would look like at larger
+      the specified dwell time. This allows a rapid what-if exploration to see what the data would look like at longer
       dwell times.
     - `Cut time region`: Opens a submethod dialog to set limits on the time series, e.g., only use data from 20 s to 30
-      s.
+      s. You can also reset the sample to its original length with this action.
     - `Select event data range`: Opens a submethod dialog to set limits on the event data. This operation is the same as
       selecting a region-of-interest (ROI). This is a lightweight version of the ROI submethod.
     - `Compute isotope ratio`: Opens a submethod dialog to compute isotope ratios. For all selected samples, the ratio
@@ -127,32 +133,30 @@ For the full version including analysis capabilities select **analyser**.
       second selected isotope. Use the 'Invert' checkbox in the dialog to invert the order, i.e., divide second by first
       selected isotope.
 
-
-- **1.6 Tools**:
+- #### 2.1.6 Tools:
     - `z/alpha converter`: Opens a popup to convert between the one-sided alpha error (Type I error probability) and the
       corresponding z-factor (as in z·σ) used to calculate a critical limit. Example: z = 1.645 --> α = 5%.
-    - `Abundance calculator`: For the synthetic data generator: In the submethod, you have to enter the signal for each
-      element (not per isotope). This calculator helps you determine which 'total signal' to specify in the submethod in
-      order to achieve a certain isotope signal. For example: In the field 'Isotope', type 13C. For 'Isotope signal',
-      enter 100. The popup tells you that the 'Total signal' for C must be 9345.8 cts to obtain 100 cts for 13C.
+    - `Abundance calculator`: For the synthetic data generator. In the `Particle population parameters ` submethod, you
+      have to enter the signal for each element (not per isotope). This calculator helps you determine which 'total
+      signal' to specify in the submethod in order to achieve a certain isotope signal, assuming natural abundances. For
+      example: In the field 'Isotope', type 13C. For 'Isotope signal', enter 100.
+      The popup tells you that the 'Total signal' for C must be 9345.8 cts to obtain 100 cts for 13C.
     - `Isotope search`: A lightweight search window to find isotopes. Enter an element symbol (e.g., Gd) and get a list
       of all its isotopes. Enter a number (e.g., 156) and get a list of all elements with such isotope. You may also
       enter an 'interfering mass shift' (such as 16 for oxides) and include 'Doubly charged' ions as well as 'Dimers'.
-      The report looks like this:
-
-      ![img](images/isotopeSearch.png){: width="500" }
-
+      This tool helps to plan and inspire in-silico experiments with interferences, and can also help to better
+      understand interferences in experimental data. The report looks like this:
+      ![img](images/isotopeSearch.png){: width="500" style="display: block; margin: 0.5em auto 0.5em auto;"}
     - `Interference library`: Search the interference database by Madeleine C. Lomax-Vogt, Fang Liu, John W.
       Olesik at [https://doi.org/10.1016/j.sab.2021.106098](https://doi.org/10.1016/j.sab.2021.106098)
     - `List isobars`: Lists isobaric isotopes to plan in-silico experiments or interpret experimental data.
     - `Significance test`: Quickly test results for statistical significance. Note: This feature is still under
-      validation. It is recommended to verify results against established statistical libraries, such as those provided
-      in the R environment.
+      validation. *It is recommended to verify results against established statistical libraries, such as those provided
+      in the R environment.*
     - `Estimate a- and b-error`: Compare in-silico data with data processing results to benchmark the data processing
       algorithm and settings.
 
-
-- **1.7 Help**:
+- #### 2.1.7 Help:
     - `About`
 
 ### 2 Start/stop section
@@ -161,7 +165,7 @@ For the full version including analysis capabilities select **analyser**.
   execute the data generation and 2) run data analysis submethods (baseline, event search, ...) if available.
 - Use the n = ... field to create replicates by executing the same method multiple times.
 - `Process`: This button skips all data generator submethods and only executes the analysis submethods (baseline, event
-  search, ...). Use this button if you would like to reprocess synthetic data or for experimental data.
+  search, ...). Use this button to reprocess synthetic data or to analyse experimental data.
 - `Stop`: Tries to stop the current operation if possible.
 
 ### 3 Panel selection
@@ -182,7 +186,7 @@ nickname with the `F2` key or by left-clicking on the nickname cell of a selecte
 cell in the same way. `# NMP` gives the average number of nano/microparticles of the sample for the currently selected
 channels (`panel 7`) and population (`panel 6`). The sample table has an extensive **right-click menu**:
 
-![img](images/sampleTableContextMenu.png){: width="150" }
+![img](images/sampleTableContextMenu.png){: width="150" style="display: block; margin: 0 auto;"}
 
 - `Favorite`/`Undo`: Highlight selected samples as a favorite. The sample table `panel 5` can be sorted by the highlight
   property which is shown via a star symbol in the first column.
@@ -202,7 +206,7 @@ channels (`panel 7`) and population (`panel 6`). The sample table has an extensi
   comments, ... and only update the set of imported isotopes. Alternatively, you can import the raw data again as a new
   sample using `Import copy` or replace the sample entirely by re-loading the data using `Replace`.
 
-  ![img](images/reprocessPopup.png){: width="550" }
+  ![img](images/reprocessPopup.png){: width="550" style="display: block; margin: 0.5em auto 0.5em auto;"}
 
 - `Reprocess`: Reprocess the selected samples. When you process a sample, a copy of the method that was used for
   processing is stored in the sample. This button triggers reprocessing using the method that was previously stored with
@@ -258,7 +262,7 @@ The **right-click menu** has additional options:
   using the right click `Reprocess` menu button from `panel 5` (use this if each sample has its own method parameters)
   or the main `Process` button in `panel 2` (use this if all samples share the same method parameters).
 
-![img](images/isotopeContextMenu.png){: width="125" }
+![img](images/isotopeContextMenu.png){: width="125" style="display: block; margin: 0 auto;"}
 
 ### 8 Data view and legend panel
 
@@ -294,7 +298,7 @@ written into 2 distinct files.
 Each graph has its own set of settings. **Most importantly**, histograms, box plots, scatter plots, ... allow you to
 select which **event parameter** you would like to visualise. Take a look at this example from the histogram panel:
 
-![img](images/eventProperty.png){: width="225" }
+![img](images/eventProperty.png){: width="225" style="display: block; margin: 0 auto;"}
 
 - `Area`: Shows the peak 'area' (actually the sum of all data points that form the event). No background subtraction is
   applied.
@@ -318,6 +322,20 @@ select which **event parameter** you would like to visualise. Take a look at thi
   distance from apex to end. It is equal to `1` when `a = b`, and increases as `b` becomes more pronounced relative to
   `a`.
 
+### 10 Status panel
+
+This panel shows the name of the current method and important system performance parameters:
+
+- `Temp`: spTool uses temporary files to reduce memory (RAM) usage. These files are stored on your machine, typically in
+  temporary directory on the main drive of the operating system. The text below shows how many GB of temporary files
+  spTool has created so far.
+  **Note**: To delete these temporary files, close and then restart spTool once!** Otherwise, the files will
+  likely remain in the temporary directory and continue to occupy disk space until the next time spTool is started.
+- `Memory`: Shows an estimate of the current RAM usage of the session. spTool automatically decides when to release
+  memory, so high RAM usage is not necessarily a cause for concern.
+- `Progress`: Estimates progress of the current operation. **Note: Saving and loading projects do not update the
+  progress bar. Although it may appear to be stuck, the operation is still running**.
+
 ---
 
 ## 2. First step: *create a method*
@@ -333,7 +351,7 @@ window. A method contains submethods with instructions for each processing step.
 provided
 below. For a quick start, click on the central `Quick start new method` button to create a new method.
 
-![img](images/methodEditorCut.png){: width="600" }
+![img](images/methodEditorCut.png){: width="600" style="display: block; margin: 0 auto;"}
 
 - **A**: Symbol indicates if the method has changed since the last time you saved it.
 - **B**: `Save`: Overwrites the file that the method has been saved as.
@@ -365,7 +383,7 @@ below. For a quick start, click on the central `Quick start new method` button t
 - **N**: Creates a new submethod.
 - **O**: Add an existing submethod from the submethod library (see `Edit` > `Submethod editor`).
 - Use the **right click menu** to further organise submethods:  
-  ![img](images/submethodContextMenu.png){: width="200" }
+  ![img](images/submethodContextMenu.png){: width="200" style="display: block; margin: 0.5em auto 0.5em auto;"}
     - `Add to library`: Adds the selected submethods to the submethod library (see `Edit` > `Submethod library`).
     - `Clone`: Creates and adds a copy of the selected submethod.
     - `Remove`: Removes the selected submethods from the method.
@@ -422,17 +440,13 @@ in the submethod!
   For the detection threshold (i.e., the `Event height filter`), you can set the one-sided alpha error (Type I error
   probability) as α (`highlight box A`: typically 1E-6) or via the corresponding z-factor (as in z·σ, `highlight box B`:
   typically z = 3.29).
-
-  ![img](images/searchDefaults.png){: width="350" }
-
-  Hint: Each search submethod creates a new population. You can add more than one search submethod with different
+  ![img](images/searchDefaults.png){: width="350" style="display: block; margin: 0.5em auto 0.5em auto;"}
+  **Hint**: Each search submethod creates a new population. You can add more than one search submethod with different
   parameters, e.g., optimised to get the best data on particle number and particle size. For that, each search
   submethod creates a new branch. All subsequent operations, e.g., Gating, Filters and Align, are applied to that
   branch. When you add a new search submethod, you start a new branch and the previous Gating, Filter, ... submethods do
   not apply to the new branch (i.e., you have to add them).
-
-  ![img](images/submethodAdvanced.png){: width="215" }
-
+  ![img](images/submethodAdvanced.png){: width="215" style="display: block; margin: 0.5em auto 0.5em auto;"}
 
 - `Align isotopes parameters`: For TOFMS data, this method is used to align events across multiple channels (mz,
   isotopes). **Typically, this method is required for composition analysis unless the search handles alignment by
@@ -444,9 +458,9 @@ in the submethod!
   of points', 'Area', 'Height'.
     - **Note: The peak height-based gating filter is somewhat redundant with the search height
       specified in the search method. Why does spTool provide two options?** The idea is that the search submethod
-      assumes
-      *sane statistical conditions*, i.e., the background signal is well described by the statistical model, e.g., a
-      Gaussian or Poisson distribution. This assumption can, however, quickly be violated. Example: When there is small
+      assumes *sane statistical conditions*, i.e., the background signal is well described by the statistical
+      model, e.g., a Gaussian or Poisson distribution. This assumption can, however, quickly be violated. Example: When
+      there is small
       particulate contamination, the baseline may not purely consist of 'ionic' species. Especially for the Poisson
       distribution, which does not take the empirical standard deviation into account but only the mean ionic signal,
       such
@@ -460,14 +474,14 @@ in the submethod!
       not really justified from the statistical point of view: They rather indicate that the statistical model does not
       match the experimental data very well. Instead, the 2023 JAAS paper proposes a different approach where the
       detection
-      limit (according to Currie's formalisms) is multiplied with a factor (typically f=2) to avoid 'ridiculous'
+      limit (according to Currie's formalisms) is multiplied with a factor (typically f=2) to avoid implausible
       z-factors
       beyond z=5. The Gating submethod allows this procedure, which is not based on pure statistics but represents a
       solid
       numerical approximation.
       **Keep in mind that this approach is rather a 'last resort' measure**:
 
-      ![img](images/gating2023JAAS.png){: width="650" }
+      ![img](images/gating2023JAAS.png){: width="650" style="display: block; margin: 0.5em auto 0.5em auto;"}
 
 
 - `Filter parameters`: The filter submethod provides further options to remove events, e.g., peak coincidence as

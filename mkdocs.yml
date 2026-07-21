@@ -7,8 +7,20 @@ nav:
   - Installation: installation.md
   - Overview: usage.md
 
+#theme:
+#  name: readthedocs
+#  navigation_depth: 4
+#  collapse_navigation: false
+
 theme:
-  name: readthedocs
+  name: material
+  features:
+    - navigation.expand
+    - search.suggest      # autocomplete-style suggestions as you type
+    - search.highlight    # highlights matched terms on the result page
 
 markdown_extensions:
   - attr_list
+
+extra_css:
+  - extra.css
