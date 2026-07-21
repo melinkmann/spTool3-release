@@ -230,7 +230,7 @@ public interface Sample extends Serializable {
 
   default double[] getData(@Nullable Channel channel, PopulationID populationID, EventType eventType,
                            EventParameter param) {
-    return getData(channel, populationID, eventType, param, IntensityUnit.CTS);
+    return getData(channel, populationID, eventType, param, IntensityUnit.JUST_CTS);
   }
 
   /**

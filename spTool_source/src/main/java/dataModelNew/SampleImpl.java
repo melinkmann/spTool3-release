@@ -687,7 +687,7 @@ public class SampleImpl implements Sample, Serializable {
 
       // quant data is empty if unable to quantify
       if (quantData.length < data.length) {
-        if (IntensityUnit.CTS.equals(unit)) {
+        if (IntensityUnit.CTS.equals(unit) || IntensityUnit.JUST_CTS.equals(unit)) {
           data = data; // indicates that we request cts and return these
         } else {
           // indicate that data is not quantified by passing empty list
@@ -726,7 +726,7 @@ public class SampleImpl implements Sample, Serializable {
     // Check: request = cts || EventParameter is duration,...  || EventParameter is not what was used to
     // quantify?  --> do nothing and return cts
     if (calChannel == null
-        || IntensityUnit.CTS.equals(unit)
+        || (IntensityUnit.CTS.equals(unit) || IntensityUnit.JUST_CTS.equals(unit))
         || !EventParameter.canQuantify(param)
         || !quant.getExperimentalConditions().getEventPar().equals(param)) {
       //------ do nothing: return the copy of the data-------
@@ -880,7 +880,7 @@ public class SampleImpl implements Sample, Serializable {
 
     // Same early exit logic as applyQuant
     if (calChannel == null
-        || IntensityUnit.CTS.equals(unit)
+        || (IntensityUnit.CTS.equals(unit) || IntensityUnit.JUST_CTS.equals(unit))
         || !EventParameter.canQuantify(param)
         || !quant.getExperimentalConditions().getEventPar().equals(param)) {
       return result;
@@ -1343,7 +1343,8 @@ public class SampleImpl implements Sample, Serializable {
   @Override
   public String tabRawMean(Channel channel) {
     Trace trace = getTrace(channel);
-    String val = trace != null ? str(trace.getTISeries().getMeanIntensity(), NF.D1C2, NF.D1C2Exp) : EMPTY_CELL;
+    String val = trace != null ? str(trace.getTISeries().getMeanIntensity(), NF.D1C2, NF.D1C2Exp) :
+        EMPTY_CELL;
     return val;
   }
 
@@ -1363,7 +1364,8 @@ public class SampleImpl implements Sample, Serializable {
   @Override
   public String tabRawMedian(Channel channel) {
     Trace trace = getTrace(channel);
-    String val = trace != null ? str(trace.getTISeries().getMedianIntensity(), NF.D1C2, NF.D1C2Exp) : EMPTY_CELL;
+    String val = trace != null ? str(trace.getTISeries().getMedianIntensity(), NF.D1C2, NF.D1C2Exp) :
+        EMPTY_CELL;
     return val;
   }
 

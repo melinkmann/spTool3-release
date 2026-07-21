@@ -630,7 +630,7 @@ public class FilterTask extends AbstractWorkingTask implements WorkingTask {
                             applyRoi = true;
                           } else {
                             // we can quantify BUT is quant unit requested at all? If not, just go ahead!
-                            if (IntensityUnit.CTS.equals(unit)) {
+                            if (IntensityUnit.CTS.equals(unit) || IntensityUnit.JUST_CTS.equals(unit)) {
                               applyRoi = true;
                             } else {
                               // unit allows quant (i.e, net height or net are) and user wants quant unit (i

@@ -117,7 +117,7 @@ public class RawProcessingUtils {
     } else if (conversion.equals(SignalConversionOption.AUTOMATIC)) {
       if (unit.equals(IntensityUnit.CPS)) {
         convertToCts = true;
-      } else if (unit.equals(IntensityUnit.CTS)) {
+      } else if (unit.equals(IntensityUnit.CTS) || unit.equals(IntensityUnit.JUST_CTS)) {
         convertToCts = false;
         // Likely "N/A"
       } else {

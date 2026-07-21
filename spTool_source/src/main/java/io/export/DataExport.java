@@ -191,9 +191,9 @@ public abstract class DataExport {
     hBlock.addColumn(elementLabel,
         "Peak time [s]", peakTime);
     hBlock.addColumn(elementLabel,
-        "Gross area [" + IntensityUnit.CTS.getLiteralString() + "]", grossArea);
+        "Gross area [" + IntensityUnit.JUST_CTS.getLiteralString() + "]", grossArea);
     hBlock.addColumn(elementLabel,
-        "Net area [" + IntensityUnit.CTS.getLiteralString() + "]", netArea);
+        "Net area [" + IntensityUnit.JUST_CTS.getLiteralString() + "]", netArea);
     hBlock.addColumn(elementLabel,
         "Gross height [" + IntensityUnit.CTS.getLiteralString() + "]", grossHeight);
     hBlock.addColumn(elementLabel,
@@ -311,18 +311,18 @@ public abstract class DataExport {
         for (Isotope isotope : isotopes) {
 
           hBlock.addColumn(Arrays.asList(element.getSymbol(), isotope.getNumberAndElement()),
-              "Initial net signal [" + IntensityUnit.CTS.getLiteralString() + "]",
+              "Initial net signal [" + IntensityUnit.JUST_CTS.getLiteralString() + "]",
               SnF.doubleToStrArr(cont.getRandNetSignal().get(isotope), NF.D1C6));
 
           if (cont.getDataMap().containsKey(isotope)) {
             hBlock.addColumn(Arrays.asList(element.getSymbol(), isotope.getNumberAndElement()),
-                "Gross area (integrated at >1cts & calculated) [" + IntensityUnit.CTS.getLiteralString() +
+                "Gross area (integrated at >1cts & calculated) [" + IntensityUnit.JUST_CTS.getLiteralString() +
                     "]",
                 SnF.doubleToStrArr(cont.getDataMap().get(isotope).get(EventParameter.AREA),
                     NF.D1C6));
 
             hBlock.addColumn(Arrays.asList(element.getSymbol(), isotope.getNumberAndElement()),
-                "Net area (integrated at >1cts) [" + IntensityUnit.CTS.getLiteralString() + "]",
+                "Net area (integrated at >1cts) [" + IntensityUnit.JUST_CTS.getLiteralString() + "]",
                 SnF.doubleToStrArr(cont.getDataMap().get(isotope).get(EventParameter.NET_AREA),
                     NF.D1C6));
 
@@ -347,7 +347,7 @@ public abstract class DataExport {
                     NF.D1C6));
 
             hBlock.addColumn(Arrays.asList(element.getSymbol(), isotope.getNumberAndElement()),
-                "BG per NP (summed at >1cts) [" + IntensityUnit.CTS.getLiteralString() + "]",
+                "BG per NP (summed at >1cts) [" + IntensityUnit.JUST_CTS.getLiteralString() + "]",
                 SnF.doubleToStrArr(
                     cont.getDataMap().get(isotope).get(EventParameter.BACKGROUND_PER_NP),
                     NF.D1C6));

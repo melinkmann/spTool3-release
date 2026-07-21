@@ -62,7 +62,7 @@ public interface AxisLabel {
   }
 
   static AxisLabel getUnit(EventParameter eventParameter) {
-    return getUnit(eventParameter, IntensityUnit.CTS, new ArrayList<>());
+    return getUnit(eventParameter, IntensityUnit.JUST_CTS, new ArrayList<>());
   }
 
   static AxisLabel getUnit(EventParameter eventParameter, Unit quantUnit, List<Sample> samples) {
@@ -78,16 +78,16 @@ public interface AxisLabel {
       if (sampleIndicatesQuantData) break;
     }
 
-    if (IntensityUnit.CTS.equals(quantUnit) || !EventParameter.canQuantify(eventParameter)
+    if ((IntensityUnit.CTS.equals(quantUnit) || IntensityUnit.JUST_CTS.equals(quantUnit)) || !EventParameter.canQuantify(eventParameter)
         || !sampleIndicatesQuantData) {
       switch (eventParameter) {
         case AREA:
           label = "Gross area";
-          unit = IntensityUnit.CTS;
+          unit = IntensityUnit.JUST_CTS;
           break;
         case NET_AREA:
           label = "Net area";
-          unit = IntensityUnit.CTS;
+          unit = IntensityUnit.JUST_CTS;
           break;
         case HEIGHT:
           label = "Gross height";
@@ -99,7 +99,7 @@ public interface AxisLabel {
           break;
         case BACKGROUND_PER_NP:
           label = "BG per NP";
-          unit = IntensityUnit.CTS;
+          unit = IntensityUnit.JUST_CTS;
           break;
         case DURATION:
           label = "Duration";
@@ -131,7 +131,7 @@ public interface AxisLabel {
           break;
         default:
           label = "Area";
-          unit = IntensityUnit.CTS;
+          unit = IntensityUnit.JUST_CTS;
       }
     } else {
       if (quantUnit instanceof SizeUnit) {
@@ -155,16 +155,16 @@ public interface AxisLabel {
     // check if any of the samples suggest quant data
     boolean sampleIndicatesQuantData = true;
 
-    if (IntensityUnit.CTS.equals(quantUnit) || !EventParameter.canQuantify(eventParameter)
+    if ((IntensityUnit.CTS.equals(quantUnit) || IntensityUnit.JUST_CTS.equals(quantUnit)) || !EventParameter.canQuantify(eventParameter)
         || !sampleIndicatesQuantData) {
       switch (eventParameter) {
         case AREA:
           label = "Gross area";
-          unit = IntensityUnit.CTS;
+          unit = IntensityUnit.JUST_CTS;
           break;
         case NET_AREA:
           label = "Net area";
-          unit = IntensityUnit.CTS;
+          unit = IntensityUnit.JUST_CTS;
           break;
         case HEIGHT:
           label = "Gross height";
@@ -176,7 +176,7 @@ public interface AxisLabel {
           break;
         case BACKGROUND_PER_NP:
           label = "BG per NP";
-          unit = IntensityUnit.CTS;
+          unit = IntensityUnit.JUST_CTS;
           break;
         case DURATION:
           label = "Duration";
@@ -208,7 +208,7 @@ public interface AxisLabel {
           break;
         default:
           label = "Area";
-          unit = IntensityUnit.CTS;
+          unit = IntensityUnit.JUST_CTS;
       }
     } else {
       if (quantUnit instanceof SizeUnit) {
