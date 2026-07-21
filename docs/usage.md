@@ -137,7 +137,8 @@ For the full version including analysis capabilities select **analyser**.
       enter an 'interfering mass shift' (such as 16 for oxides) and include 'Doubly charged' ions as well as 'Dimers'.
       The report looks like this:
 
-    - ![img](images/isotopeSearch.png){: width="500" }
+      ![img](images/isotopeSearch.png){: width="500" }
+    
     - `Interference library`: Search the interference database by Madeleine C. Lomax-Vogt, Fang Liu, John W.
       Olesik at [https://doi.org/10.1016/j.sab.2021.106098](https://doi.org/10.1016/j.sab.2021.106098)
     - `List isobars`: Lists isobaric isotopes to plan in-silico experiments or interpret experimental data.
