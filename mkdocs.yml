@@ -6,6 +6,7 @@ nav:
   - Home: index.md
   - Installation: installation.md
   - Overview: usage.md
+  - Methods: methods.md
 
 #theme:
 #  name: readthedocs
@@ -21,6 +22,9 @@ theme:
 
 markdown_extensions:
   - attr_list
+  - admonition
+  - pymdownx.details      # enables collapsible ??? blocks (optional but handy)
+  - pymdownx.superfences  # improves code block handling, commonly paired with admonition
 
 extra_css:
   - extra.css
