@@ -26,11 +26,10 @@ More information on installing spTool is provided [here](installation.md).
 
 ## Help on using spTool
 
-Take a [detailed overview tour](usage.md) through spTool.
-
-Read more on the [theory](theory.md) behind spTool.
-
-Take a look at the [examples](examples.md) that show how to use spTool.
+- Take a [detailed overview tour](usage.md) through spTool.
+- Find out how to [create methods and submethods](methods.md).
+- Read more on the [theory](theory.md) behind spTool.
+- Take a look at the [examples](examples.md) that show how to use spTool.
 
 ****
 ***Find the latest release on [github](https://github.com/melinkmann/spTool3-release/releases/latest)!***
