@@ -11,14 +11,22 @@
 ## 1. Create a method: Method editor
 
 To create a method, open the method editor by selecting `MET` in the graph selection section of the main window. This
-puts the method editor in the centre view of the window:
-
-![img](images/methodEditorCut.png){: width="600" style="display: block; margin: 0 auto;"}
+puts the method editor in the centre view of the window.  
 
 A method contains submethods with instructions for each processing step. A detailed list of these steps is
 provided below. For a quick start, click on the central `Quick start new method` button to create a new method.
 
-You can also drag & drop an .spm file into spTool to load it. For exmample, uses these files.
+**Here are two example method files from the spTool data generator preprint**
+([https://doi.org/10.26434/chemrxiv.15004857/v1](https://doi.org/10.26434/chemrxiv.15004857/v1)).  
+
+[:material-download: AuNP_example.spm](resources/AuNP_example.spm)  
+[:material-download: UCNP_example.spm](resources/UCNP_example.spm)  
+  
+Download the `.spm` file and drag/drop it into spTool:
+![img](images/dragDropMethod.png){: width="300" style="display: block; margin: 0.5em auto 2.5em auto;"}
+
+**Now let us explore the structure of the method editor:**
+![img](images/methodEditorCut.png){: width="600" style="display: block; margin: 0.5em auto 0.5em auto;"}
 
 - **A**: Symbol indicates if the method has changed since the last time you saved it.
 - **B**: `Save`: Overwrites the file that the method has been saved as.

@@ -1,0 +1,186 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<spTool3 version="3.2.4">
+    <method commentForSet="https://chemrxiv.org/doi/full/10.26434/chemrxiv.15004857/v1" dateCreated="23-Jul-2026 12:51:17" isFavouriteSet="false" labelOfSet="AuNP">
+        <NuInterpreterParams>
+            <parameter defaultValue="Nu import parameters" expert="false" label="Label" value="Nu import parameters" xmlID="labelOfSet"/>
+            <parameter defaultValue="DEFAULTS" expert="false" label="Isotope selection" value="DEFAULTS" xmlID="isotopeSelectionStrategy"/>
+            <parameter defaultValue="ISOTOPE[m=190,e=Pt];ISOTOPE[m=192,e=Pt];ISOTOPE[m=194,e=Pt];ISOTOPE[m=195,e=Pt];ISOTOPE[m=196,e=Pt];ISOTOPE[m=198,e=Pt];ISOTOPE[m=197,e=Au]" expert="false" label="Default isotopes" value="ISOTOPE[m=190,e=Pt];ISOTOPE[m=192,e=Pt];ISOTOPE[m=194,e=Pt];ISOTOPE[m=195,e=Pt];ISOTOPE[m=196,e=Pt];ISOTOPE[m=198,e=Pt];ISOTOPE[m=197,e=Au]" xmlID="selectedIsotopes"/>
+            <parameter defaultValue="500" expert="false" label="Min points" value="500" xmlID="preScreenDataPoints"/>
+            <parameter defaultValue="MEAN" expert="false" label="Measure of location" value="MEAN" xmlID="preScreenMeasureOfLocation"/>
+            <parameter defaultValue="1.0E-6" expert="false" label="Alpha" value="1.0E-6" xmlID="preScreenAlpha"/>
+            <parameter defaultValue="0.47" expert="false" label="SIA" value="0.47" xmlID="preScreenSiaShape"/>
+            <parameter defaultValue="ALL" expert="false" label="Isobaric" value="ALL" xmlID="preScreenConflictResolution"/>
+            <parameter defaultValue="false" expert="false" label="Result" value="false" xmlID="savePreScreenResultToMethod"/>
+            <parameter defaultValue="" expert="false" label="Comment" value="" xmlID="commentForSet"/>
+            <parameter defaultValue="10-Apr-2026 11:55:01" expert="false" label="Created" value="23-Jul-2026 13:18:02" xmlID="dateCreated"/>
+            <parameter defaultValue="NU TOF import" expert="false" label="Sub method category" value="NU TOF import" xmlID="subMethodCategory"/>
+            <parameter defaultValue="485f81b8-dc2b-44f1-a4c6-8a327717614c" expert="false" label="ID" value="7c0a6379-57e8-4b4b-a59a-8397fe539b53" xmlID="universallyUniqueIdentifier"/>
+        </NuInterpreterParams>
+        <MCSimGeneralParams>
+            <parameter defaultValue="Data generator main parameters" expert="false" label="Label" value="Data generator main parameters" xmlID="labelOfSet"/>
+            <parameter defaultValue="Synthetic AuNP" expert="false" label="Sample name" value="Synthetic AuNP" xmlID="sampleName"/>
+            <parameter defaultValue="1.0" expert="false" label="Grid time (GT) [µs]" value="1.0" xmlID="microDT"/>
+            <parameter defaultValue="76.9" expert="false" label="Temporal resolution (TR) [µs]" value="76.9" xmlID="macroDT"/>
+            <parameter defaultValue="49.8" expert="false" label="Duration [s]" value="49.8" xmlID="duration"/>
+            <parameter defaultValue="COMBINE" expert="false" label="Isotope conflict" value="COMBINE" xmlID="isotopeConflictOption"/>
+            <parameter defaultValue="NONE" expert="true" label="Dead time model" value="NONE" xmlID="deadTimeModel"/>
+            <parameter defaultValue="40.0" expert="true" label="Dead time [ns]" value="40.0" xmlID="deadTime"/>
+            <parameter defaultValue="COMPOUND_POISSON" expert="false" label="Signal randomization" value="COMPOUND_POISSON" xmlID="detectorDistribution"/>
+            <parameter defaultValue="0.49" expert="false" label="Default SIA shape" value="0.49" xmlID="defaultSiaShapeParameter"/>
+            <parameter defaultValue="0" expert="true" label="Specific SIA shapes" value="0" xmlID="siaExceptions"/>
+            <parameter defaultValue="1.0" expert="true" label="Shot noise (s)" value="1.0" xmlID="shotNoiseCoefficient"/>
+            <parameter defaultValue="0.18" expert="true" label="Flicker noise" value="0.18" xmlID="flickerNoiseCoefficient"/>
+            <parameter defaultValue="STEADY" expert="true" label="Fluctuation (BG)" value="STEADY" xmlID="oscillation"/>
+            <parameter defaultValue="5.0" expert="true" label="Oscillation period [s]" value="5.0" xmlID="oscillationPeriod"/>
+            <parameter defaultValue="0.025" expert="true" label="Oscillation amplitude [-]" value="0.025" xmlID="oscillationAmplitude"/>
+            <parameter defaultValue="2.0" expert="true" label="Ramp factor [-]" value="2.0" xmlID="expRampFactor"/>
+            <parameter defaultValue="false" expert="true" label="Peak spacing" value="false" xmlID="evenPeakSpacing"/>
+            <parameter defaultValue="10.0" expert="true" label="Distance [ms]" value="10.0" xmlID="estimatedPeakWidth"/>
+            <parameter defaultValue="false" expert="true" label="Dilution" value="false" xmlID="applyDilution"/>
+            <parameter defaultValue="1.0" expert="true" label="Dilution factor" value="1.0" xmlID="dilutionFactor"/>
+            <parameter defaultValue="" expert="false" label="Comment" value="" xmlID="commentForSet"/>
+            <parameter defaultValue="10-Apr-2026 11:55:01" expert="false" label="Created" value="23-Jul-2026 13:18:02" xmlID="dateCreated"/>
+            <parameter defaultValue="Data generator general parameters" expert="false" label="Sub method category" value="Data generator general parameters" xmlID="subMethodCategory"/>
+            <parameter defaultValue="4ee7fc85-58bb-4409-855f-99c5d3cc25ba" expert="false" label="ID" value="1b01dab5-f983-420a-bb97-ae4a38e6aecb" xmlID="universallyUniqueIdentifier"/>
+        </MCSimGeneralParams>
+        <MCSimParticleParams>
+            <parameter defaultValue="Population 1" expert="false" label="Label" value="Population 1" xmlID="labelOfSet"/>
+            <parameter defaultValue="15.4" expert="false" label="Event rate [NP/s]" value="15.4" xmlID="eventRate"/>
+            <parameter defaultValue="LOGNORMAL" expert="false" label="Particle mass distribution" value="LOGNORMAL" xmlID="particleMassDistribution"/>
+            <parameter defaultValue="163.8" expert="false" label="Particle signal [cts/NP]" value="163.8" xmlID="meanEventSignal"/>
+            <parameter defaultValue="76.14" expert="false" label="Particle signal SD [cts/NP]" value="76.14" xmlID="eventSignalSD"/>
+            <parameter defaultValue="5.0" expert="false" label="Signal cutoff [cts/NP]" value="5.0" xmlID="minimumEventSignal"/>
+            <parameter defaultValue="5.0" expert="false" label="Scale parameter (k) [cts/NP]" value="5.0" xmlID="paretoScale"/>
+            <parameter defaultValue="2.0" expert="false" label="Shape parameter (a) [-]" value="2.0" xmlID="paretoShape"/>
+            <parameter defaultValue="1" expert="false" label="Particle composition" value="1" xmlID="numberOfParticlePopulations">
+                <parameterBundle bundleID="elementBundle">
+                    <parameter defaultValue="Au (Gold)" expert="false" label="Element" value="Au (Gold)" xmlID="elementHeaderParameter_in_elementBundle"/>
+                    <parameter defaultValue="0.002" expert="false" label="Background [cts/DT]" value="0.002" xmlID="backgroundSignalIntensity_in_elementBundle"/>
+                    <parameter defaultValue="1.0" expert="false" label="Intensity fraction [0-1]" value="1.0" xmlID="massFraction_in_elementBundle"/>
+                    <parameter defaultValue="0.0" expert="true" label="Peak delay [µs]" value="0.0" xmlID="peakDelay_in_elementBundle"/>
+                    <parameter defaultValue="CUSTOM" expert="true" label="Peak shape (D)" value="CUSTOM" xmlID="peakShape_in_elementBundle"/>
+                    <parameter defaultValue="21.0" expert="true" label="Diffusion coefficient (D) [cm2/s]" value="21.0" xmlID="d_mu_in_elementBundle"/>
+                    <parameter defaultValue="4.0" expert="true" label="Diffusion coefficient (±SD)" value="4.0" xmlID="d_SD_in_elementBundle"/>
+                    <parameter defaultValue="" expert="false" label="" value="" xmlID="sepPar"/>
+                </parameterBundle>
+                <parameterBundleDefaults bundleID="elementBundle">
+                    <parameter defaultValue="Au (Gold)" expert="false" label="Element" value="Au (Gold)" xmlID="elementHeaderParameter_in_elementBundle"/>
+                    <parameter defaultValue="0.002" expert="false" label="Background [cts/DT]" value="0.002" xmlID="backgroundSignalIntensity_in_elementBundle"/>
+                    <parameter defaultValue="1.0" expert="false" label="Intensity fraction [0-1]" value="1.0" xmlID="massFraction_in_elementBundle"/>
+                    <parameter defaultValue="0.0" expert="true" label="Peak delay [µs]" value="0.0" xmlID="peakDelay_in_elementBundle"/>
+                    <parameter defaultValue="CUSTOM" expert="true" label="Peak shape (D)" value="CUSTOM" xmlID="peakShape_in_elementBundle"/>
+                    <parameter defaultValue="21.0" expert="true" label="Diffusion coefficient (D) [cm2/s]" value="21.0" xmlID="d_mu_in_elementBundle"/>
+                    <parameter defaultValue="4.0" expert="true" label="Diffusion coefficient (±SD)" value="4.0" xmlID="d_SD_in_elementBundle"/>
+                    <parameter defaultValue="" expert="false" label="" value="" xmlID="sepPar"/>
+                </parameterBundleDefaults>
+            </parameter>
+            <parameter defaultValue="CUSTOM" expert="false" label="Peak shape (v, y)" value="CUSTOM" xmlID="peakShape"/>
+            <parameter defaultValue="15.0" expert="false" label="Plasma velocity (v) [m/s]" value="15.0" xmlID="v_mu"/>
+            <parameter defaultValue="5.0" expert="false" label="Plasma velocity (±SD) [m/s]" value="5.0" xmlID="v_SD"/>
+            <parameter defaultValue="9.5" expert="false" label="Distance of vaporization (y) [mm]" value="9.5" xmlID="y_mu"/>
+            <parameter defaultValue="3.0" expert="false" label="Distance of vaporization (±SD) [mm]" value="3.0" xmlID="y_SD"/>
+            <parameter defaultValue="LOGNORMAL" expert="false" label="Probability for distance of vaporization" value="LOGNORMAL" xmlID="y_Distribution"/>
+            <parameter defaultValue="0.05" expert="true" label="Intensity fraction uncertainty" value="0.05" xmlID="elementFractionUncertainty"/>
+            <parameter defaultValue="0.01" expert="true" label="Isotopic uncertainty" value="0.01" xmlID="isotopicFractionUncertainty"/>
+            <parameter defaultValue="" expert="false" label="Comment" value="" xmlID="commentForSet"/>
+            <parameter defaultValue="10-Apr-2026 11:55:01" expert="false" label="Created" value="23-Jul-2026 13:18:02" xmlID="dateCreated"/>
+            <parameter defaultValue="Synthetic particle population" expert="false" label="Sub method category" value="Synthetic particle population" xmlID="subMethodCategory"/>
+            <parameter defaultValue="3f171b46-193b-4ebe-8c14-f289bb33b3de" expert="false" label="ID" value="1fc60edd-f1f1-4489-bb3c-d21070ea9d4b" xmlID="universallyUniqueIdentifier"/>
+        </MCSimParticleParams>
+        <BaselineParams>
+            <parameter defaultValue="Baseline parameters" expert="false" label="Label" value="Baseline parameters" xmlID="labelOfSet"/>
+            <parameter defaultValue="CONSTANT" expert="false" label="Baseline" value="CONSTANT" xmlID="baselineDynamics"/>
+            <parameter defaultValue="100.0" expert="false" label="Segment width [ms]" value="500.0" xmlID="baselineWidthPerSegment"/>
+            <parameter defaultValue="THRESHOLD" expert="false" label="Select model" value="THRESHOLD" xmlID="generalDistributionApproach"/>
+            <parameter defaultValue="10.0" expert="false" label="Poisson cutoff [cts/DT]" value="10.0" xmlID="poissonNormalCutoff"/>
+            <parameter defaultValue="" expert="false" label="" value="" xmlID="sepPar"/>
+            <parameter defaultValue="POISSON_COMPOUND" expert="false" label="Poisson model" value="POISSON_COMPOUND" xmlID="poissonChoice"/>
+            <parameter defaultValue="MEAN" expert="true" label="Measure of location" value="MEAN" xmlID="measureOfLocationPoisson"/>
+            <parameter defaultValue="ITERATE_TO_CONVERGENCE" expert="false" label="Outlier procedure" value="ITERATE_TO_CONVERGENCE" xmlID="outlierTestTypePoisson"/>
+            <parameter defaultValue="MEAN" expert="true" label="Measure of location (outlier)" value="MEAN" xmlID="outlierMeasureOfLocationPoisson"/>
+            <parameter defaultValue="3.0" expert="false" label="Outlier factor" value="3.0" xmlID="outlierFactorPoissonStart"/>
+            <parameter defaultValue="true" expert="false" label="Apply constant offset" value="true" xmlID="outlierPoissonOffsetBoolean"/>
+            <parameter defaultValue="2.71" expert="false" label="Constant offset [cts/DT]" value="2.71" xmlID="outlierPoissonOffsetValue"/>
+            <parameter defaultValue="5" expert="false" label="Fixed iterating number n" value="5" xmlID="outlierPoissonMaxNonSmartIncrements"/>
+            <parameter defaultValue="LOOKUP_TABLE" expert="true" label="Compound P. algorithm" value="LOOKUP_TABLE" xmlID="compoundPoissonModel"/>
+            <parameter defaultValue="0.49" expert="false" label="SIA shape" value="0.49" xmlID="siaShape"/>
+            <parameter defaultValue="false" expert="false" label="SIA" value="false" xmlID="preferEmpiricalSIA"/>
+            <parameter defaultValue="true" expert="false" label="Epsilon" value="true" xmlID="applyPoissonContinuityCorrection"/>
+            <parameter defaultValue="0.5" expert="false" label="Epsilon" value="0.5" xmlID="poissonContinuityCorrection"/>
+            <parameter defaultValue="" expert="false" label="" value="" xmlID="sepPar"/>
+            <parameter defaultValue="GAUSSIAN" expert="false" label="Gaussian model" value="GAUSSIAN" xmlID="gaussianChoice"/>
+            <parameter defaultValue="MEAN" expert="true" label="Measure of location" value="MEAN" xmlID="measureOfLocationGauss"/>
+            <parameter defaultValue="SD" expert="true" label="Measure of spread" value="SD" xmlID="measureOfSpreadGauss"/>
+            <parameter defaultValue="SMART_INCREMENT_ITERATION" expert="false" label="Outlier procedure" value="SMART_INCREMENT_ITERATION" xmlID="outlierTestTypeGauss"/>
+            <parameter defaultValue="1.0" expert="false" label="Outlier factor" value="1.0" xmlID="outlierFactorGaussStart"/>
+            <parameter defaultValue="5" expert="false" label="Fixed iterating number n" value="5" xmlID="outlierGaussMaxNonSmartIncrements"/>
+            <parameter defaultValue="10.0" expert="true" label="Max. factor f (f·σ)" value="10.0" xmlID="outlierFactorMax"/>
+            <parameter defaultValue="0.1" expert="true" label="Fine increment" value="0.1" xmlID="outlierFineIncrements"/>
+            <parameter defaultValue="0.1" expert="true" label="Default µ" value="0.1" xmlID="outlierDefaultMeanLowerCap"/>
+            <parameter defaultValue="1.5" expert="true" label="(StdDev/Mean) &amp;lt;" value="1.5" xmlID="outlierStdDevByMeanSmallerThan"/>
+            <parameter defaultValue="0.05" expert="false" label="Rosner alpha" value="0.05" xmlID="outlierRosnerAlpha"/>
+            <parameter defaultValue="0.2" expert="false" label="Rosner max outliers" value="0.2" xmlID="outlierRosnerMaxPercent"/>
+            <parameter defaultValue="" expert="false" label="Comment" value="" xmlID="commentForSet"/>
+            <parameter defaultValue="10-Apr-2026 11:55:01" expert="false" label="Created" value="23-Jul-2026 13:18:02" xmlID="dateCreated"/>
+            <parameter defaultValue="Baseline" expert="false" label="Sub method category" value="Baseline" xmlID="subMethodCategory"/>
+            <parameter defaultValue="cac4f1de-8a05-4c75-ae94-b5ccde44b06e" expert="false" label="ID" value="7e8c3fc1-8928-4fc7-8b69-1a821f591fa2" xmlID="universallyUniqueIdentifier"/>
+        </BaselineParams>
+        <SearchParams>
+            <parameter defaultValue="Search parameters" expert="false" label="Label" value="Search parameters" xmlID="labelOfSet"/>
+            <parameter defaultValue="true" expert="false" label="On/Off" value="true" xmlID="enableBoolean"/>
+            <parameter defaultValue="SIZE" expert="false" label="Population" value="SIZE" xmlID="targetPopulation"/>
+            <parameter defaultValue="SPLIT_CORRECTION" expert="false" label="Search algorithm" value="SPLIT_CORRECTION" xmlID="searchAlgorithm"/>
+            <parameter defaultValue="ALPHA" expert="false" label="Event height filter" value="ALPHA" xmlID="heightFilter"/>
+            <parameter defaultValue="5.0E-7" expert="false" label="Alpha" value="5.0E-7" xmlID="heightFilterAlphaValue"/>
+            <parameter defaultValue="1.645" expert="false" label="z-Factor" value="1.645" xmlID="heightFilterFactorValue"/>
+            <parameter defaultValue="10.0" expert="false" label="Custom" value="10.0" xmlID="heightFilterCustomValue"/>
+            <parameter defaultValue="MEAN" expert="false" label="Start threshold" value="MEAN" xmlID="startCriterium"/>
+            <parameter defaultValue="5.0E-2" expert="false" label="Alpha" value="5.0E-2" xmlID="startCriteriumAlphaValue"/>
+            <parameter defaultValue="1.645" expert="false" label="z-Factor" value="1.645" xmlID="startCriteriumFactorValue"/>
+            <parameter defaultValue="10.0" expert="false" label="Custom" value="10.0" xmlID="startCriteriumCustomValue"/>
+            <parameter defaultValue="MEAN" expert="false" label="Stop threshold" value="MEAN" xmlID="stopCriterium"/>
+            <parameter defaultValue="5.0E-2" expert="false" label="Alpha" value="5.0E-2" xmlID="stopCriteriumAlphaValue"/>
+            <parameter defaultValue="1.645" expert="false" label="z-Factor" value="1.645" xmlID="stopCriteriumFactorValue"/>
+            <parameter defaultValue="10.0" expert="false" label="Custom" value="10.0" xmlID="stopCriteriumCustomValue"/>
+            <parameter defaultValue="0.5" expert="true" label="Start/stop offset" value="0.5" xmlID="startStopOffset"/>
+            <parameter defaultValue="20.0" expert="false" label="Window [µs]" value="20.0" xmlID="windowWidth"/>
+            <parameter defaultValue="20.0" expert="false" label="Bonus points [µs]" value="20.0" xmlID="windowBonusWidth"/>
+            <parameter defaultValue="MOAV" expert="false" label="Smooth type" value="MOAV" xmlID="rawSmoothType"/>
+            <parameter defaultValue="150.0" expert="false" label="Peak width [µs]" value="150.0" xmlID="smoothGaussianWidth"/>
+            <parameter defaultValue="CHI_SQUARE" expert="false" label="Statistics" value="CHI_SQUARE" xmlID="pStatistics"/>
+            <parameter defaultValue="ALL_LOADED" expert="false" label="Rules" value="ALL_LOADED" xmlID="isotopeSelection"/>
+            <parameter defaultValue="ISOTOPE[m=19,e=F];ISOTOPE[m=20,e=Ne];ISOTOPE[m=21,e=Ne];ISOTOPE[m=22,e=Ne];ISOTOPE[m=78,e=Kr];ISOTOPE[m=80,e=Kr];ISOTOPE[m=82,e=Kr];ISOTOPE[m=83,e=Kr];ISOTOPE[m=84,e=Kr];ISOTOPE[m=86,e=Kr];ISOTOPE[m=124,e=Xe];ISOTOPE[m=126,e=Xe];ISOTOPE[m=128,e=Xe];ISOTOPE[m=129,e=Xe];ISOTOPE[m=130,e=Xe];ISOTOPE[m=131,e=Xe];ISOTOPE[m=132,e=Xe];ISOTOPE[m=134,e=Xe];ISOTOPE[m=136,e=Xe];ISOTOPE[m=209,e=Po];ISOTOPE[m=210,e=At];ISOTOPE[m=222,e=Rn];ISOTOPE[m=223,e=Fr];ISOTOPE[m=263,e=Rf];ISOTOPE[m=262,e=Db];ISOTOPE[m=266,e=Sg];ISOTOPE[m=264,e=Bh];ISOTOPE[m=269,e=Hs];ISOTOPE[m=268,e=Mt];ISOTOPE[m=281,e=Ds];ISOTOPE[m=280,e=Rg];ISOTOPE[m=285,e=Cn];ISOTOPE[m=284,e=Nh];ISOTOPE[m=289,e=Fl];ISOTOPE[m=288,e=Mc];ISOTOPE[m=293,e=Lv];ISOTOPE[m=294,e=Ts];ISOTOPE[m=294,e=Og];ISOTOPE[m=147,e=Pm];ISOTOPE[m=247,e=Cm];ISOTOPE[m=247,e=Bk];ISOTOPE[m=251,e=Cf];ISOTOPE[m=252,e=Es];ISOTOPE[m=257,e=Fm];ISOTOPE[m=258,e=Md];ISOTOPE[m=259,e=No];ISOTOPE[m=262,e=Lr];ISOTOPE[m=98,e=Tc]" expert="false" label="Excluded" value="ISOTOPE[m=19,e=F];ISOTOPE[m=20,e=Ne];ISOTOPE[m=21,e=Ne];ISOTOPE[m=22,e=Ne];ISOTOPE[m=78,e=Kr];ISOTOPE[m=80,e=Kr];ISOTOPE[m=82,e=Kr];ISOTOPE[m=83,e=Kr];ISOTOPE[m=84,e=Kr];ISOTOPE[m=86,e=Kr];ISOTOPE[m=124,e=Xe];ISOTOPE[m=126,e=Xe];ISOTOPE[m=128,e=Xe];ISOTOPE[m=129,e=Xe];ISOTOPE[m=130,e=Xe];ISOTOPE[m=131,e=Xe];ISOTOPE[m=132,e=Xe];ISOTOPE[m=134,e=Xe];ISOTOPE[m=136,e=Xe];ISOTOPE[m=209,e=Po];ISOTOPE[m=210,e=At];ISOTOPE[m=222,e=Rn];ISOTOPE[m=223,e=Fr];ISOTOPE[m=263,e=Rf];ISOTOPE[m=262,e=Db];ISOTOPE[m=266,e=Sg];ISOTOPE[m=264,e=Bh];ISOTOPE[m=269,e=Hs];ISOTOPE[m=268,e=Mt];ISOTOPE[m=281,e=Ds];ISOTOPE[m=280,e=Rg];ISOTOPE[m=285,e=Cn];ISOTOPE[m=284,e=Nh];ISOTOPE[m=289,e=Fl];ISOTOPE[m=288,e=Mc];ISOTOPE[m=293,e=Lv];ISOTOPE[m=294,e=Ts];ISOTOPE[m=294,e=Og];ISOTOPE[m=147,e=Pm];ISOTOPE[m=247,e=Cm];ISOTOPE[m=247,e=Bk];ISOTOPE[m=251,e=Cf];ISOTOPE[m=252,e=Es];ISOTOPE[m=257,e=Fm];ISOTOPE[m=258,e=Md];ISOTOPE[m=259,e=No];ISOTOPE[m=262,e=Lr];ISOTOPE[m=98,e=Tc]" xmlID="excludedIsotopes"/>
+            <parameter defaultValue="" expert="false" label="Selection list" value="" xmlID="includedIsotopes"/>
+            <parameter defaultValue="MEAN" expert="false" label="Prescreen start/stop" value="MEAN" xmlID="prescreenStartStopCriterium"/>
+            <parameter defaultValue="5.0E-2" expert="false" label="Alpha" value="5.0E-2" xmlID="prescreenStartStopCriteriumAlphaValue"/>
+            <parameter defaultValue="1.645" expert="false" label="z-Factor" value="1.645" xmlID="prescreenStartStopCriteriumFactorValue"/>
+            <parameter defaultValue="10.0" expert="false" label="Custom" value="10.0" xmlID="prescreenStartStopCriteriumCustomValue"/>
+            <parameter defaultValue="ALPHA" expert="false" label="Prescreen height" value="ALPHA" xmlID="prescreenHeightCriterium"/>
+            <parameter defaultValue="5.0E-2" expert="false" label="Alpha" value="1.0E-2" xmlID="prescreenHeightCriteriumAlphaValue"/>
+            <parameter defaultValue="1.645" expert="false" label="z-Factor" value="1.645" xmlID="prescreenHeightCriteriumFactorValue"/>
+            <parameter defaultValue="10.0" expert="false" label="Custom" value="10.0" xmlID="prescreenHeightCriteriumCustomValue"/>
+            <parameter defaultValue="100" expert="false" label="Prescreen events [#]" value="100" xmlID="prescreenMinEvents"/>
+            <parameter defaultValue="ALPHA" expert="false" label="Comb. sig. start/stop" value="ALPHA" xmlID="pValueStartStop"/>
+            <parameter defaultValue="5.0E-2" expert="false" label="Alpha" value="5.0E-1" xmlID="pValueStartStopAlphaValue"/>
+            <parameter defaultValue="1.645" expert="false" label="z-Factor" value="0.0" xmlID="pValueStartStopFactorValue"/>
+            <parameter defaultValue="10.0" expert="false" label="Custom" value="10.0" xmlID="pValueStartStopCustomValue"/>
+            <parameter defaultValue="ALPHA" expert="false" label="Combined significance" value="ALPHA" xmlID="pValueThreshold"/>
+            <parameter defaultValue="5.0E-2" expert="false" label="Alpha" value="5.0E-4" xmlID="pValueThresholdAlphaValue"/>
+            <parameter defaultValue="1.645" expert="false" label="z-Factor" value="3.29" xmlID="pValueThresholdFactorValue"/>
+            <parameter defaultValue="10.0" expert="false" label="Custom" value="10.0" xmlID="pValueThresholdCustomValue"/>
+            <parameter defaultValue="false" expert="false" label="Single significance" value="false" xmlID="enableSingleComponentPValueThreshold"/>
+            <parameter defaultValue="ALPHA" expert="false" label="Single component" value="ALPHA" xmlID="singleComponentPValueThreshold"/>
+            <parameter defaultValue="5.0E-2" expert="false" label="Alpha" value="5.0E-4" xmlID="singleComponentPValueThresholdAlphaValue"/>
+            <parameter defaultValue="1.645" expert="false" label="z-Factor" value="3.29" xmlID="singleComponentPValueThresholdFactorValue"/>
+            <parameter defaultValue="10.0" expert="false" label="Custom" value="10.0" xmlID="singleComponentPValueThresholdCustomValue"/>
+            <parameter defaultValue="BLN_MEAN" expert="true" label="Net correction" value="BLN_MEAN" xmlID="netCorrectionOption"/>
+            <parameter defaultValue="false" expert="true" label="Negative value handling" value="false" xmlID="suppressNegativeValues"/>
+            <parameter defaultValue="0.5" expert="true" label="Time window [s]" value="0.5" xmlID="netTimeWindow"/>
+            <parameter defaultValue="MEAN" expert="true" label="Measure of location" value="MEAN" xmlID="netTimeWindowLocation"/>
+            <parameter defaultValue="" expert="false" label="Comment" value="" xmlID="commentForSet"/>
+            <parameter defaultValue="10-Apr-2026 11:55:01" expert="false" label="Created" value="23-Jul-2026 13:18:02" xmlID="dateCreated"/>
+            <parameter defaultValue="Event search" expert="false" label="Sub method category" value="Event search" xmlID="subMethodCategory"/>
+            <parameter defaultValue="f547e065-541d-4f11-9e4a-d403d539a2da" expert="false" label="ID" value="505f885f-cc3d-4a14-aec5-a1f5f15d7922" xmlID="universallyUniqueIdentifier"/>
+        </SearchParams>
+    </method>
+</spTool3>
