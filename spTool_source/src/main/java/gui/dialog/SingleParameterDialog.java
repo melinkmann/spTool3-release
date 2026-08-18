@@ -37,29 +37,29 @@ import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.text.Font;
+import javafx.scene.text.Text;
+import javafx.scene.text.TextFlow;
 import javafx.stage.Stage;
 import processing.parameters.FxParameter;
 import processing.parameters.Parameter;
 
 public class SingleParameterDialog<T extends Serializable> extends Dialog<T> implements Hotkeyable {
 
-  protected static final double PREF_WIDTH = 250;
-  protected static final double PREF_HEIGHT = 150;
+  protected static final double PREF_WIDTH = 400;
+  protected static final double PREF_HEIGHT = 250;
 
   protected final BorderPane mainBorderPane;
 
   protected final Parameter<T> doubleParameter;
   protected final FxParameter<T> doubleFxParameter;
-  private final String explanationText;
 
   protected final ButtonBar buttonBar;
   protected final Button primaryButton;
   protected final Button cancelButton;
 
-  public SingleParameterDialog(String explanationText, Parameter<T> parameter) {
+  public SingleParameterDialog(TextFlow explanationText, Parameter<T> parameter) {
     this.doubleParameter = parameter;
     this.doubleFxParameter = parameter.getObservableInstance();
-    this.explanationText = explanationText;
 
     this.mainBorderPane = new BorderPane();
 
@@ -73,7 +73,7 @@ public class SingleParameterDialog<T extends Serializable> extends Dialog<T> imp
 
     // Styling
     final DialogPane dialogPane = getDialogPane();
-    dialogPane.setPrefSize(PREF_WIDTH, PREF_HEIGHT);
+    // dialogPane.setPrefSize(PREF_WIDTH, PREF_HEIGHT);
 
     dialogPane.getButtonTypes().clear();
 
@@ -92,16 +92,13 @@ public class SingleParameterDialog<T extends Serializable> extends Dialog<T> imp
     Stage dialogStage = (Stage) getDialogPane().getScene().getWindow();
     dialogStage.getIcons().add(UiUtil.getImage("/img/20240418_symbol.png"));
     dialogStage.setResizable(true);
+    javafx.application.Platform.runLater(dialogStage::sizeToScene);
 
     VBox centerBox = new VBox(5);
     centerBox.setAlignment(Pos.CENTER_RIGHT);
 
-    Label explanationLabel = new Label(explanationText);
-    explanationLabel.setFont(new Font(12));
-    explanationLabel.setMinHeight(30);
-
     Node valueNode = doubleFxParameter.getValueNode();
-    centerBox.getChildren().addAll(valueNode, explanationLabel);
+    centerBox.getChildren().addAll(valueNode, explanationText);
 
     // continue when pressing enter
     centerBox.addEventFilter(KeyEvent.KEY_PRESSED, event -> {

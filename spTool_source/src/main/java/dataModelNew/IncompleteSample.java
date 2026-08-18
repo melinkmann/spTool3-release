@@ -272,6 +272,7 @@ public class IncompleteSample implements Sample, Serializable {
     return new ArrayList<>();
   }
 
+
   @Override
   public @Nullable List<SpectralArray> getSpectralData(PopulationID popID) {
     return new ArrayList<>();
@@ -407,6 +408,24 @@ public class IncompleteSample implements Sample, Serializable {
   public IncompleteParticleMatrix getMatrix() {
     return matrix;
   }
+
+  @Nullable
+  public IncompleteParticleMatrix getMatrix(PopulationID populationID) {
+    IncompleteParticleMatrix result = matrix;
+    List<Trace> traceList = new ArrayList<>(traces.values());
+    if (!traceList.isEmpty()) {
+      Trace first = traceList.get(0);
+      Population pop = first.getPopulation(populationID);
+      if (pop != null){
+        EventCollection evtColl = pop.getEvents();
+        if (evtColl instanceof IncompleteEventCollection){
+          result = ((IncompleteEventCollection) evtColl).getIncompleteMatrix();
+        }
+      }
+    }
+    return result;
+  }
+
 
   // only has one MZ
   public Channel getChannel() {

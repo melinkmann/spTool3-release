@@ -26,6 +26,10 @@ import gui.dialog.FxEntry;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.text.ParseException;
@@ -52,6 +56,7 @@ import processing.parameterSets.ParamSet;
 import processing.parameterSets.impl.CsvInterpreterParams;
 import processing.parameterSets.impl.NuInterpreterParams;
 
+import static core.SpTool3Main.VERSION_ID;
 import static gui.dialog.notification.NotificationFactory.openYesNo;
 
 public abstract class Util {
@@ -59,6 +64,63 @@ public abstract class Util {
   private static final Logger LOGGER = LogManager.getLogger(Util.class);
 
   private static final double LOG_2 = Math.log(2);
+
+  public record VersionCheckResult(String onlineVersion, boolean needsUpdate, boolean wasChecked,
+                                   String url) {
+  }
+
+  public static VersionCheckResult checkVersion() {
+    String onlineVersion = "";
+    boolean wasChecked = false;
+    boolean needsUpdates = false;
+
+    // Resolved the redirect on "latest" and get version from tag:
+    String url = "https://github.com/melinkmann/spTool3-release/releases/latest";
+    try {
+
+      HttpClient client = HttpClient.newBuilder()
+          .followRedirects(HttpClient.Redirect.NEVER)
+          .build();
+
+      HttpRequest request = HttpRequest.newBuilder()
+          .uri(URI.create(url))
+          .header("User-Agent", "my-app")
+          .method("HEAD", HttpRequest.BodyPublishers.noBody())
+          .build();
+
+      HttpResponse<Void> response = client.send(request, HttpResponse.BodyHandlers.discarding());
+
+      int status = response.statusCode();
+      if (status >= 300 && status < 400) {
+        // "https://github.com/melinkmann/spTool3-release/releases/tag/v3.2.4"
+        String location = response.headers().firstValue("Location").orElse(null);
+
+        // Extract version ID from tag (3.2.4 from v3.2.4)
+        if (location != null) {
+          // "v3.2.4"
+          String latestVersion = location.substring(location.lastIndexOf('/') + 1);
+          if (latestVersion.startsWith("v")) {
+            latestVersion = latestVersion.substring(1);
+          }
+          onlineVersion = latestVersion;
+
+          wasChecked = true;
+          if (!Objects.equals(latestVersion, VERSION_ID)) {
+            needsUpdates = true;
+          }
+        } else {
+          LOGGER.info("Redirect status received but no Location header found.");
+        }
+      } else {
+        LOGGER.info("No redirect encountered, status: " + status);
+      }
+
+    } catch (Exception e) {
+      LOGGER.info("Failed to resolve latest release: " + e.getMessage());
+    }
+
+    return new VersionCheckResult(onlineVersion, needsUpdates, wasChecked, url);
+  }
 
   public static SimpleDateFormat getStandardDateFormat() {
     // You need to set Locale to US, else you get "Nov." instead of "Nov" (note the dot ".")

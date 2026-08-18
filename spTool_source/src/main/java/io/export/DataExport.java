@@ -23,7 +23,6 @@ import dataModelNew.*;
 import dataModelNew.mz.Channel;
 import dataModelNew.mz.ComputedChannel;
 import dataModelNew.mz.Element;
-import dataModelNew.mz.IsotopeMZ;
 import gui.table.TableUtils;
 import io.GlobalIO;
 import io.PathUtil;
@@ -1392,73 +1391,70 @@ public abstract class DataExport {
         blacklistKeys.add("centroid_row");
         blacklistKeys.add("centroid_col");
 
-        // output dir
-        Path subDir = dir.resolve(GlobalIO.cleanupWindowsFileName("LPC_" + mainSample.getNickName()));
-        PathUtil.createDir(subDir);
+        for (PopulationID popID : pops) {
+          IncompleteParticleMatrix matrix = ((IncompleteSample) mainSample).getMatrix(popID);
 
-        String label = "LPC";
-        Path filePath = subDir.resolve(label + ".csv");
-        ExportWriter writer = new CsvExportWriter(filePath.toFile());
+          // output dir
+          Path subDir = dir.resolve(GlobalIO.cleanupWindowsFileName("LPC_" + mainSample.getNickName()));
+          PathUtil.createDir(subDir);
 
-        // Data
-        IncompleteParticleMatrix matrix = ((IncompleteSample) mainSample).getMatrix();
-        int validKeyCounter = 0;
-        List<Character> alphabet = new ArrayList<>();
-        for (char c = 'a'; c <= 'z'; c++) {
-          alphabet.add(c);
-        }
+          String label = GlobalIO.cleanupWindowsFileName("LPC_" + popID.getString());
+          Path filePath = subDir.resolve(label + ".csv");
+          ExportWriter writer = new CsvExportWriter(filePath.toFile());
 
-        if (matrix instanceof LPCParticleMatrix) {
-          HashMap<String, List<Double>> allData = ((LPCParticleMatrix) matrix).getAllData();
+          // Data
+          int validKeyCounter = 0;
 
-          int size = Integer.MAX_VALUE;
-          for (String key : allData.keySet()) {
-            if (!blacklistKeys.contains(key)) {
-              List<Double> data = allData.get(key);
-              size = Math.min(size, data.size());
-            }
-          }
+          if (matrix instanceof LPCParticleMatrix) {
+            HashMap<String, List<Double>> allData = ((LPCParticleMatrix) matrix).getAllData();
 
-
-          // WRITE META DATA AND KEYWORD
-          writer.writeLine(DataExport.getShortMeta(mainSample));
-          writer.writeLine(List.of("SP_COMPOSITION_MATRIX_SPTOOL"));
-          writer.writeLine(List.of("feature=" + label));
-
-          // WRITE Header row
-          List<String> header = new ArrayList<>();
-          header.add("Feature");
-          header.add("Feature");
-          header.add("Feature");
-          for (int r = 0; r < size; r++) {
-            header.add("Particle " + (r + 1));
-          }
-          writer.writeLine(header);
-
-          for (String key : allData.keySet()) {
-            // filter keys
-            if (!blacklistKeys.contains(key)) {
-              List<Double> data = allData.get(key);
-              // trims data just in case3
-              if (data.size() > size) {
-                data.subList(size, data.size()).clear();
+            int size = Integer.MAX_VALUE;
+            for (String key : allData.keySet()) {
+              if (!blacklistKeys.contains(key)) {
+                List<Double> data = allData.get(key);
+                size = Math.min(size, data.size());
               }
-              validKeyCounter++;
-
-              // WRITE data line
-              List<String> row = new ArrayList<>();
-              row.add(String.valueOf(validKeyCounter));
-              // row.add(String.valueOf(validKeyCounter) + alphabet.get(validKeyCounter));
-              row.add(key);
-              row.add(key);
-              row.addAll(SnF.doubleToStrList(data, NF.D1C6));
-              writer.writeLine(row);
-
             }
-          }
-          writer.close();
-        }
 
+
+            // WRITE META DATA AND KEYWORD
+            writer.writeLine(DataExport.getShortMeta(mainSample));
+            writer.writeLine(List.of("SP_COMPOSITION_MATRIX_SPTOOL"));
+            writer.writeLine(List.of("feature=" + label));
+
+            // WRITE Header row
+            List<String> header = new ArrayList<>();
+            header.add("Feature");
+            header.add("Feature");
+            header.add("Feature");
+            for (int r = 0; r < size; r++) {
+              header.add("Particle " + (r + 1));
+            }
+            writer.writeLine(header);
+
+            for (String key : allData.keySet()) {
+              // filter keys
+              if (!blacklistKeys.contains(key)) {
+                List<Double> data = allData.get(key);
+                // trims data just in case3
+                if (data.size() > size) {
+                  data.subList(size, data.size()).clear();
+                }
+                validKeyCounter++;
+
+                // WRITE data line
+                List<String> row = new ArrayList<>();
+                row.add(String.valueOf(validKeyCounter));
+                row.add(key);
+                row.add(key);
+                row.addAll(SnF.doubleToStrList(data, NF.D1C6));
+                writer.writeLine(row);
+
+              }
+            }
+            writer.close();
+          }
+        }
       } else {
 
         for (PopulationID popID : pops) {
@@ -1550,104 +1546,262 @@ public abstract class DataExport {
     }
   }
 
-  public static void exportLpcAsLines(List<Sample> samples, Path dir) {
+  public static void exportLpcMerged(List<Sample> samples, List<PopulationID> pops, Path dir) {
 
     if (Files.isDirectory(dir)) {
 
-      double x = 0;
-      double y = 0;
-      double stepSize = 20;
-      double dt = 0.001;
+      for (PopulationID popID : pops) {
 
-      for (int i = 0; i < samples.size(); i++) {
-        Sample sample = samples.get(i);
-        if (sample instanceof IncompleteSample) {
-          x += stepSize;
-          y = 0;
+        // output dir
+        Path subDir = dir.resolve(GlobalIO.cleanupWindowsFileName("LPC-Merged_" + popID.getString()));
+        PathUtil.createDir(subDir);
 
-          // blacklist string that we do not need for UMAP
-          List<String> blacklistKeys = new ArrayList<>();
-          blacklistKeys.add("TARGET");
-          //blacklistKeys.add("id");
-          blacklistKeys.add("frame");
-          blacklistKeys.add("x");
-          blacklistKeys.add("y");
+        String label = "LPC";
+        Path filePath = subDir.resolve(label + ".csv");
+        ExportWriter writer = new CsvExportWriter(filePath.toFile());
 
-          //blacklistKeys.add("particle_id");
-          blacklistKeys.add("detection_time");
-          blacklistKeys.add("frame_id");
-          blacklistKeys.add("centroid_row");
-          blacklistKeys.add("centroid_col");
-
-          // Output dir and writer
-          Path filePath = dir.resolve("line_" + (i + 1) + ".csv");
-          ExportWriter writer = new CsvExportWriter(filePath.toFile());
-
-          // Data
-          IncompleteParticleMatrix matrix = ((IncompleteSample) sample).getMatrix();
-
-          if (matrix instanceof LPCParticleMatrix) {
-            HashMap<String, List<Double>> allData = ((LPCParticleMatrix) matrix).getAllData();
-
-            // Determine size
-            int size = Integer.MAX_VALUE;
-            for (String key : allData.keySet()) {
-              if (!blacklistKeys.contains(key)) {
-                List<Double> data = allData.get(key);
-                size = Math.min(size, data.size());
-              }
-            }
-
-            // Write metadata
-            writer.writeLine(List.of("Timestamp:", "2024-05-28T17:09:13.063096"));
-            writer.writeLine(List.of("Laser line number:", "1"));
-            writer.writeLine(List.of("Sample name:", sample.getNickName()));
-            writer.writeLine(List.of("Laser image name:", ""));
-            writer.writeLine(List.of("Starting X:", String.valueOf(0)));
-            writer.writeLine(List.of("Starting Y:", String.valueOf(0)));
-            writer.writeLine(List.of("Starting Z:", String.valueOf(0)));
-            writer.writeLine(List.of("Spot size:", String.valueOf(20)));
-            writer.writeLine(List.of("Spot spacing:", String.valueOf(20)));
-            writer.writeLine(List.of("Number of shots:", String.valueOf(size)));
-            writer.writeLine(List.of("Direction of ablation:", "0", "Left to Right"));
-
-            List<String> headerList = new ArrayList<>(List.of("Cycle time (ms)", "x [um]", "y [um]"));
-            List<String> validKeys = new ArrayList<>(allData.keySet());
-            validKeys.removeIf(blacklistKeys::contains);
-            for (int p = 0; p < validKeys.size(); p++) {
-              String vk = validKeys.get(p);
-              headerList.add(p + vk);
-            }
-            writer.writeLine(headerList);
-
-            for (int r = 0; r < size; r++) {
-              y += stepSize;
-              dt += dt;
-              List<String> line = new ArrayList<>();
-              line.add(SnF.doubleToString(dt, NF.D1C6));
-              line.add(String.valueOf(x));
-              line.add(String.valueOf(y));
-
-              for (String validKey : validKeys) {
-                List<Double> data = allData.get(validKey);
-                if (data != null) {
-                  // trims data just in case
-                  if (data.size() > size) {
-                    data.subList(size, data.size()).clear();
-                  }
-                  line.add(String.valueOf(data.get(r)));
-
-                  // WRITE data line
-                }
-              }
-              writer.writeLine(line);
+        // find all keys across samples
+        HashSet<String> allKeys = new LinkedHashSet<>();
+        HashMap<Sample, Integer> dataSize = new HashMap<>();
+        HashMap<String, List<Double>> globalData = new LinkedHashMap<>(); // data for all samples
+        for (Sample sample : samples) {
+          if (sample instanceof IncompleteSample) {
+            IncompleteParticleMatrix matrix = ((IncompleteSample) sample).getMatrix(popID);
+            if (matrix instanceof LPCParticleMatrix) {
+              HashMap<String, List<Double>> allData = ((LPCParticleMatrix) matrix).getAllData();
+              allKeys.addAll(allData.keySet());
+              dataSize.put(sample, matrix.size());
             }
           }
-          writer.close();
         }
+
+        // blacklist string that we do not need for UMAP
+        List<String> blacklistKeys = new ArrayList<>();
+        blacklistKeys.add("TARGET");
+        //blacklistKeys.add("id");
+        blacklistKeys.add("frame");
+        blacklistKeys.add("x");
+        blacklistKeys.add("y");
+
+        //blacklistKeys.add("particle_id");
+        blacklistKeys.add("detection_time");
+        blacklistKeys.add("frame_id");
+        blacklistKeys.add("centroid_row");
+        blacklistKeys.add("centroid_col");
+
+        // iterate over samples
+        int size = 0;
+        int validKeyCounter = 0;
+        List<String> sampleAsKey = new ArrayList<>();
+        sampleAsKey.add("0");
+        sampleAsKey.add("Sample ID");
+        sampleAsKey.add("Sample ID");
+
+        for (int sampleIndex = 0; sampleIndex < samples.size(); sampleIndex++) {
+          Sample sample = samples.get(sampleIndex);
+
+          int sampleSize = Integer.MAX_VALUE;
+
+          if (sample instanceof IncompleteSample) {
+            // Data
+            IncompleteParticleMatrix matrix = ((IncompleteSample) sample).getMatrix(popID);
+
+            if (matrix instanceof LPCParticleMatrix) {
+              HashMap<String, List<Double>> allData = ((LPCParticleMatrix) matrix).getAllData();
+
+              for (String key : allKeys) {
+                if (!blacklistKeys.contains(key)) {
+
+                  List<Double> existingData = new ArrayList<>();
+                  if (globalData.containsKey(key)) {
+                    existingData = globalData.get(key);
+                  } else {
+                    globalData.put(key, existingData);
+                  }
+
+                  List<Double> data;
+                  if (allData.containsKey(key)) {
+                    data = allData.get(key);
+                    sampleSize = Math.min(sampleSize, data.size());
+                  } else {
+                    Integer localSize = dataSize.get(sample);
+                    if (localSize != null) {
+                      sampleSize = Math.min(sampleSize, localSize);
+                      data = new ArrayList<>(localSize);
+                      for (int i = 0; i < localSize; i++) {
+                        data.add(0d);
+                      }
+                    } else {
+                      data = new ArrayList<>();
+                      sampleSize = 0;
+                    }
+                  }
+                  existingData.addAll(data);
+                }
+              }
+              size += sampleSize;
+              // fill sample ID
+              for (int i = 0; i < sampleSize; i++) {
+                sampleAsKey.add(String.valueOf(sampleIndex));
+              }
+            }
+          }
+        }
+
+        // write header
+        // WRITE META DATA AND KEYWORD
+        writer.writeLine(DataExport.getShortMeta(null));
+        writer.writeLine(List.of("SP_COMPOSITION_MATRIX_SPTOOL"));
+        writer.writeLine(List.of("feature=" + label));
+
+        // WRITE Header row
+        List<String> header = new ArrayList<>();
+        header.add("Feature");
+        header.add("Feature");
+        header.add("Feature");
+        for (int r = 0; r < size; r++) {
+          header.add("Particle " + (r + 1));
+        }
+        writer.writeLine(header);
+
+        // write sample ID line
+        writer.writeLine(sampleAsKey);
+
+        for (String key : allKeys) {
+          // filter keys
+          if (!blacklistKeys.contains(key)) {
+            List<Double> data = globalData.get(key);
+            // trims data just in case3
+            if (data.size() > size) {
+              data.subList(size, data.size()).clear();
+            }
+            validKeyCounter++;
+
+            // WRITE data line
+            List<String> row = new ArrayList<>();
+            row.add(String.valueOf(validKeyCounter));
+            // row.add(String.valueOf(validKeyCounter) + alphabet.get(validKeyCounter));
+            row.add(key);
+            row.add(key);
+            row.addAll(SnF.doubleToStrList(data, NF.D1C6));
+            writer.writeLine(row);
+
+          }
+        }
+
+
+        writer.close();
       }
+    }
+  }
+
+  public static void exportLpcAsLines(List<Sample> samples, List<PopulationID> pops, Path directory) {
+
+    String time = Util.getYearMonthDateDayHourMinuteSecond();
+    Path mainDir = PathUtil.addDir(directory, "Data", time + "_LPC-Lines");
+    PathUtil.createDir(mainDir);
+
+    if (Files.isDirectory(mainDir)) {
+
+      for (PopulationID popID : pops) {
+        Path dir = PathUtil.addDir(mainDir, GlobalIO.cleanupWindowsFileName(popID.getString()));
+        PathUtil.createDir(dir);
+
+        double x = 0;
+        double y = 0;
+        double stepSize = 20;
+        double dt = 0.001;
+
+        for (int i = 0; i < samples.size(); i++) {
+          Sample sample = samples.get(i);
+          if (sample instanceof IncompleteSample) {
+            x += stepSize;
+            y = 0;
+
+            // blacklist string that we do not need for UMAP
+            List<String> blacklistKeys = new ArrayList<>();
+            blacklistKeys.add("TARGET");
+            //blacklistKeys.add("id");
+            blacklistKeys.add("frame");
+            blacklistKeys.add("x");
+            blacklistKeys.add("y");
+
+            //blacklistKeys.add("particle_id");
+            blacklistKeys.add("detection_time");
+            blacklistKeys.add("frame_id");
+            blacklistKeys.add("centroid_row");
+            blacklistKeys.add("centroid_col");
+
+            // Output dir and writer
+            Path filePath = dir.resolve("line_" + (i + 1) + ".csv");
+            ExportWriter writer = new CsvExportWriter(filePath.toFile());
+
+            // Data
+            IncompleteParticleMatrix matrix = ((IncompleteSample) sample).getMatrix(popID);
+
+            if (matrix instanceof LPCParticleMatrix) {
+              HashMap<String, List<Double>> allData = ((LPCParticleMatrix) matrix).getAllData();
+
+              // Determine size
+              int size = Integer.MAX_VALUE;
+              for (String key : allData.keySet()) {
+                if (!blacklistKeys.contains(key)) {
+                  List<Double> data = allData.get(key);
+                  size = Math.min(size, data.size());
+                }
+              }
+
+              // Write metadata
+              writer.writeLine(List.of("Timestamp:", "2024-05-28T17:09:13.063096"));
+              writer.writeLine(List.of("Laser line number:", "1"));
+              writer.writeLine(List.of("Sample name:", sample.getNickName()));
+              writer.writeLine(List.of("Laser image name:", ""));
+              writer.writeLine(List.of("Starting X:", String.valueOf(0)));
+              writer.writeLine(List.of("Starting Y:", String.valueOf(0)));
+              writer.writeLine(List.of("Starting Z:", String.valueOf(0)));
+              writer.writeLine(List.of("Spot size:", String.valueOf(20)));
+              writer.writeLine(List.of("Spot spacing:", String.valueOf(20)));
+              writer.writeLine(List.of("Number of shots:", String.valueOf(size)));
+              writer.writeLine(List.of("Direction of ablation:", "0", "Left to Right"));
+
+              List<String> headerList = new ArrayList<>(List.of("Cycle time (ms)", "x [um]", "y [um]"));
+              List<String> validKeys = new ArrayList<>(allData.keySet());
+              validKeys.removeIf(blacklistKeys::contains);
+              for (int p = 0; p < validKeys.size(); p++) {
+                String vk = validKeys.get(p);
+                headerList.add(p + vk);
+              }
+              writer.writeLine(headerList);
+
+              for (int r = 0; r < size; r++) {
+                y += stepSize;
+                dt += dt;
+                List<String> line = new ArrayList<>();
+                line.add(SnF.doubleToString(dt, NF.D1C6));
+                line.add(String.valueOf(x));
+                line.add(String.valueOf(y));
+
+                for (String validKey : validKeys) {
+                  List<Double> data = allData.get(validKey);
+                  if (data != null) {
+                    // trims data just in case
+                    if (data.size() > size) {
+                      data.subList(size, data.size()).clear();
+                    }
+                    line.add(String.valueOf(data.get(r)));
+
+                    // WRITE data line
+                  }
+                }
+                writer.writeLine(line);
+              }
+            }
+            writer.close();
+          }
+        }
 
 
+      }
     }
   }
 

@@ -137,4 +137,8 @@ public class IncompleteEventCollection implements EventCollection, Serializable 
     return new double[0];
   }
 
+
+  public IncompleteParticleMatrix getIncompleteMatrix() {
+    return incompleteMatrix;
+  }
 }

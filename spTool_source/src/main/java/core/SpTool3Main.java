@@ -65,7 +65,7 @@ public class SpTool3Main extends Application {
   public static final Boolean SHOW_PVALUE_EXPORT = true;
   public static final Boolean SHOW_PRECISION_RECALL_EXPORT = true;
 
-  public static final String VERSION_ID = "3.2.4";
+  public static final String VERSION_ID = "3.2.5";
 
   public static final String AUTHOR_STATEMENT =
       """     
@@ -88,7 +88,9 @@ public class SpTool3Main extends Application {
           Applications: single particle ICP-MS (spICP-MS), single cell ICP-MS (scICP-MS)
           and further single event ICP-MS applications.
           
-          Literature: https://doi.org/10.1039/D3JA00292F
+          Literature:
+          https://doi.org/10.1039/D3JA00292F
+          https://doi.org/10.26434/chemrxiv.15004857/v1
           """;
 
 
@@ -98,7 +100,7 @@ public class SpTool3Main extends Application {
           User feedback was greatly appreciated (alphabetical order):
           David Ahlers, Dr. Lisa Balke, Dr. Niklas Bendieck, Dr. Julia Dressler, Helena Friedrich,
           Dr. Joshua Fuchs, Dr. Steffen Heuckeroth, Joakim Kauhanen, Dr. Alexander Köhrer
-          Dr. Katharina Kronenberg, Dr. Ilona Nordhorn, Dr. Robin Schmid,
+          Dr. Katharina Kronenberg, Dr. Thomas Lockwood, Dr. Ilona Nordhorn, Dr. Robin Schmid,
           Dr. Svenja Berit Seiffert, Dr. Karolin Sommer, Dr. Tim Steinwachs.
           
           Density data base and compound Poisson quantile look-up tables from SPCal (Dr. Thomas Lockwood)

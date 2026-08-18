@@ -310,14 +310,18 @@ public class CsvInterpreterParams extends AbstractParamSet implements Serializab
 
     this.lpcImportParameter = new ComboEnumParameter<>(
         "Quantity",
-        "What data shall be imported as 'height' from the single particle data file? Area will always be " +
-            "loaded as area. This is just an additional parameter to load",
+        """
+            What data shall be imported as 'Net height' option in spTool?
+            Diameter will always be loaded as 'Net area'.
+            This option just offers an additional parameter to load""",
         LpcDimension.CIRCLE_EQUIVALENT_DIAMETER,
         LpcDimension.values(),
         LpcDimension.class,
         true,
         "lpcImportParameter"
     );
+
+
 
     this.digitsPrecision = new IntegerParameter(
         "MZ digits",

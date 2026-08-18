@@ -17,6 +17,7 @@
 
 package math;
 
+import javafx.util.Pair;
 import math.stat.MeasureOfLocation;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -56,8 +57,9 @@ public class HistogramFilters {
     return value;
   }
 
-  public static double findSplitPoint(HistogramDataset histogramDataset, int windowWidth) {
+  public static Pair<Boolean, Double> findSplitPoint(HistogramDataset histogramDataset, int windowWidth) {
     double val = 0;
+    Pair<Boolean, Double>  result = new Pair<>(false, val);
 
     // ensure uneven width
     if (windowWidth % 2 == 0) {
@@ -91,6 +93,7 @@ public class HistogramFilters {
       int halfWindow = clampedWindow / 2;
 
       if (barMeasure.length > clampedWindow) {
+        boolean sawDecline = false;
         for (int i = halfWindow; i < barMeasure.length - halfWindow; i++) {
           double prev = 0, past = 0;
           for (int j = 0; j < halfWindow; j++) {
@@ -99,14 +102,18 @@ public class HistogramFilters {
           }
           prev = (barHeights[i] + prev) / (double) (halfWindow + 1);
           past = (barHeights[i] + past) / (double) (halfWindow + 1);
-          if (past > prev) {
+
+          if (past <= prev) {
+            sawDecline = true;
+          } else if (sawDecline) {
             val = barMeasure[i];
+            result = new Pair<>(true, val);
             break;
           }
         }
       }
     }
-    return val;
+    return result;
   }
 
 

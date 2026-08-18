@@ -29,6 +29,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 import dataModelNew.mz.Channel;
+import javafx.util.Pair;
 import math.HistogramFilters;
 import math.OtsuThreshold;
 import math.stat.Median;
@@ -909,22 +910,42 @@ public class FilterTask extends AbstractWorkingTask implements WorkingTask {
                               );
 
                           if (!histoDataSets.isEmpty()) {
-                            HistogramDataset histogramDataset = histoDataSets.get(0).getHistogramDataset();
+                            HistogramDataset histData = histoDataSets.get(0).getHistogramDataset();
                             OtsuRegion otsuRegion = params.getOtsuRegion().getValue();
                             int width = params.getSmoothWidth().getValue();
-                            double lowerThr;
-                            double upperThr;
+                            double lowerThr = Double.MIN_VALUE;
+                            double upperThr = Double.MAX_VALUE;
+                            boolean foundValidThr = true;
+
+                            // Note: The checks do not prevent creation of population with the idea,
+                            // that we simply proceed to create the desired ROI even if no bimodality
+                            // is found. Why? Then analysis can proceed with the same population for all
+                            // samples.
+
                             if (otsuRegion.equals(OtsuRegion.UPPER)) {
-                              lowerThr = HistogramFilters.findSplitPoint(histogramDataset, width);
+                              Pair<Boolean, Double> result = HistogramFilters.findSplitPoint(histData, width);
+                              foundValidThr = foundValidThr && result.getKey();
+                              if (foundValidThr) {
+                                lowerThr = result.getValue();
+                              } else {
+                                lowerThr = ArrUtils.getMin(data) - 1; // make sure we are smaller than min
+                              }
                               upperThr = ArrUtils.getMax(data) + 1; // make sure we are larger than max
                             } else {
+                              Pair<Boolean, Double> result = HistogramFilters.findSplitPoint(histData, width);
+                              foundValidThr = foundValidThr && result.getKey();
+                              if (foundValidThr) {
+                                upperThr = result.getValue();
+                              } else {
+                                upperThr = ArrUtils.getMax(data) + 1; // make sure we are larger than max
+                              }
                               lowerThr = ArrUtils.getMin(data) - 1; // make sure we are smaller than min
-                              upperThr = HistogramFilters.findSplitPoint(histogramDataset, width);
                             }
 
                             // include computed threshold bounds
                             inputPopSummary.add("start", null, SnF.doubleToString(lowerThr, NF.D1C3));
                             inputPopSummary.add("end", null, SnF.doubleToString(upperThr, NF.D1C3));
+                            inputPopSummary.add("bimodal", null, Boolean.toString(foundValidThr));
 
                             if (lowerThr < upperThr) {
                               // Problem: histogram and events are not from the same list so we have to

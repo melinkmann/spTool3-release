@@ -3406,6 +3406,67 @@ public abstract class Viewers {
                             }
                           }
                         }
+                        // INCOMPLETE POPULATION: check COLLECTION size() not the event LIST size()
+                      } else if (collection instanceof IncompleteEventCollection &&
+                          xData.length > 0 && yData.length > 0
+                          && xData.length == yData.length && collection.size() == xData.length) {
+                        List<Integer> polygonIndices = new ArrayList<>();
+                        for (int i = 0; i < polygons.size(); i++) {
+
+                          Pair<PolygonOverlay, AtomicBoolean> polygon = polygons.get(i);
+                          List<Event> eventsInPolygon = new ArrayList<>();
+
+                          // construct double precision path from the polygon points
+                          List<Point2D> pts = polygon.getKey().getPoints();
+                          if (pts.size() >= 3) {
+
+                            // keep for the population
+                            double[] xVertices = new double[pts.size()];
+                            double[] yVertices = new double[pts.size()];
+
+                            // construct path
+                            java.awt.geom.Path2D.Double path = new java.awt.geom.Path2D.Double();
+                            path.moveTo(pts.get(0).getX(), pts.get(0).getY());
+                            xVertices[0] = pts.get(0).getX();
+                            yVertices[0] = pts.get(0).getY();
+
+                            for (int j = 1; j < pts.size(); j++) {
+                              xVertices[j] = pts.get(j).getX();
+                              yVertices[j] = pts.get(j).getY();
+                              path.lineTo(xVertices[j], yVertices[j]);
+                            }
+                            path.closePath();
+
+
+                            for (int n = 0; n < xData.length; n++) {
+                              if (path.contains(xData[n], yData[n])) {
+                                polygonIndices.add(n);
+                              }
+                            }
+
+                            // create population
+                            if (!polygonIndices.isEmpty()) {
+
+                              IncompleteParticleMatrix newMatrix = ((IncompleteEventCollection) collection).getIncompleteMatrix().roi(polygonIndices);
+
+                              EventCollection newCollection = new IncompleteEventCollection(trace, newMatrix);
+
+                              PopulationID idCopy = new PopulationID(populationID);
+                              idCopy.append((new PopulationStep.PolygonSubtype(
+                                  "PLGN_" + i, xVertices, yVertices)));
+
+                              trace.addOverridePopulation(idCopy,
+                                  new NpPopulation(
+                                      idCopy,
+                                      pop,
+                                      newCollection,
+                                      pop.getContributingChannels()
+                                  ),
+                                  true);
+
+                            }
+                          }
+                        }
                       }
                     }
                   }

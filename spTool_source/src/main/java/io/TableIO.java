@@ -70,6 +70,7 @@ public class TableIO {
       activeParameters.add(TablePar.POPULATION_NAME);
       activeParameters.add(TablePar.PNC);
       activeParameters.add(TablePar.NP_RATE);
+      activeParameters.add(TablePar.NP_COUNT);
       activeParameters.add(TablePar.NP_MEAN);
       activeParameters.add(TablePar.NP_MEAN_MASS);
       activeParameters.add(TablePar.NP_MEAN_SIZE);

@@ -141,10 +141,10 @@ public class MCSimGeneralParams extends AbstractParamSet implements ParamSet {
     this.deadTimeModel = new ComboEnumParameter<>(
         "Dead time model",
         "Choose the model that you would like to use to simulate detector dead time effects",
-        DeadTimeModel.NON_PARALYZING,
+        DeadTimeModel.NONE,
         DeadTimeModel.values(),
         DeadTimeModel.class,
-        true,
+        false,
         "deadTimeModel"
     );
 
@@ -154,7 +154,7 @@ public class MCSimGeneralParams extends AbstractParamSet implements ParamSet {
         40d,
         NF.D1C1,
         TextFormatterOption.ASSURE_NONZERO_POSITIVE_DOUBLE,
-        true,
+        false,
         "deadTime"
     );
 

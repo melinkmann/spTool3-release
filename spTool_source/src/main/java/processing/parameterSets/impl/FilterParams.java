@@ -223,11 +223,14 @@ public class FilterParams extends AbstractParamSet implements ParamSet {
             Else, the method is prone to splitting at values where it feels counterintuitive.
             
             Change point: Based on the histogram of the population!
-            Finds a threshold automatically from a histogram, looking for the point where the data distribution changes slope.
+            Finds a threshold automatically from a histogram,
+            looking for the point where the data distribution can be split into two groups, e.g.,
+            undesired particulate background and event signals.
+            How? Find first bar where average of last 5 bars is smaller than average of following 5 bars.
             This is meant for cases where some particulate background is present at the left side
             of a histogram and needs to be removed to obtain the unbiased mean of the right-hand side mode.
             Split point is placed in the valley between the two modes by identifying the position
-            where histogram bar height starts to rise""",
+            where histogram bar height associated with the event signals starts to rise.""",
         RoiCategory.ABSOLUTE_VALUES,
         RoiCategory.values(),
         RoiCategory.class,

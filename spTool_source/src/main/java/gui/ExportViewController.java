@@ -75,7 +75,6 @@ import processing.parameterSets.impl.ExporterParams;
 import processing.parameterSets.impl.ExporterParams.ExportTarget;
 import processing.parameterSets.impl.NormalSearchParams;
 import processing.parameters.FxParameter;
-import sandbox.montecarlo.Isotope;
 import tasks.BatchTask;
 import tasks.batch.SimpleLinearBatch;
 import tasks.results.EmptyTaskResult;
@@ -489,10 +488,9 @@ public class ExportViewController implements ParameterView, FxStage, Hotkeyable 
               if (exportParamSet.getExportFormat().getValue().equals(ExportTarget.CSV)) {
                 String pathStr = exportParamSet.getCurrentExportPath().getValue();
                 Path path = Paths.get(pathStr);
-                String time = Util.getYearMonthDateDayHourMinuteSecond();
-                path = PathUtil.addDir(path, "Data", time + "_LPC");
                 PathUtil.createDir(path);
-                DataExport.exportLpcAsLines(lpcSamples, path);
+                DataExport.exportLpcAsLines(lpcSamples,selPops, path);
+                // DataExport.exportLpcMerged(lpcSamples, selPops, path);
               }
             }
 

@@ -37,14 +37,11 @@ import javafx.beans.property.SimpleDoubleProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.StringProperty;
 import javafx.collections.FXCollections;
-import javafx.scene.control.ContextMenu;
-import javafx.scene.control.MenuItem;
-import javafx.scene.control.SelectionMode;
-import javafx.scene.control.TableCell;
-import javafx.scene.control.TableColumn;
-import javafx.scene.control.TableView;
-import javafx.scene.control.Tooltip;
+import javafx.geometry.Pos;
+import javafx.geometry.Side;
+import javafx.scene.control.*;
 import javafx.scene.image.ImageView;
+import javafx.scene.layout.HBox;
 import javafx.util.Duration;
 import math.stat.MeasureOfLocation;
 import math.stat.MeasureOfSpread;
@@ -104,6 +101,17 @@ public abstract class ResultsTable {
       // === First column: Parameter ===
       TableColumn<TableRowData, String> paramCol = new TableColumn<>("Parameter");
       paramCol.setCellValueFactory(data -> data.getValue().labelProperty());
+      // --- Custom header with button ---
+      Label headerLabel = new Label("Parameter");
+      Button showMenuButton = UiUtil.getImageButton( "", "/img/edit.png",
+          "Show context menu to edit the table and select parameters to show.");
+      showMenuButton.setPrefWidth(32);
+
+      HBox headerBox = new HBox(5, headerLabel, showMenuButton);
+      headerBox.setAlignment(Pos.CENTER_LEFT);
+      paramCol.setGraphic(headerBox);
+      paramCol.setText(null); // avoid showing text twice since graphic replaces it
+
       tableView.getColumns().add(paramCol);
 
       paramCol.setCellFactory(col -> new TableCell<>() {
@@ -215,7 +223,17 @@ public abstract class ResultsTable {
       tableView.getSelectionModel().setCellSelectionEnabled(true);
 
       // Context menu
-      tableView.setContextMenu(new ContextMenu());
+      ContextMenu tableContextMenu = new ContextMenu();
+      tableView.setContextMenu(tableContextMenu);
+
+      // hook the header button to the context menu
+      showMenuButton.setOnAction(e -> {
+        if (tableContextMenu.isShowing()) {
+          tableContextMenu.hide();
+        } else {
+          tableContextMenu.show(showMenuButton, Side.BOTTOM, 0, 0);
+        }
+      });
 
       MenuItem selectMenu = UiUtil.getImageMenuItem("Select", "/img/method.png");
       selectMenu.setOnAction(e -> {
@@ -625,7 +643,7 @@ public abstract class ResultsTable {
       public String getValue(Sample s, Channel i, PopulationID p) {
         EventParameter par = SpTool3Main.getRunTime().getConfParams().getEventParameter().getValue();
         MathMod math = SpTool3Main.getRunTime().getConfParams().getEventMathModification().getValue();
-        Unit unit =  SpTool3Main.getRunTime().getConfParams().getCustomEventUnit();
+        Unit unit = SpTool3Main.getRunTime().getConfParams().getCustomEventUnit();
         return s.tabPopNpCustomParamMean(i, p, par, math, unit);
       }
     },
@@ -634,7 +652,7 @@ public abstract class ResultsTable {
       public String getValue(Sample s, Channel i, PopulationID p) {
         EventParameter par = SpTool3Main.getRunTime().getConfParams().getEventParameter().getValue();
         MathMod math = SpTool3Main.getRunTime().getConfParams().getEventMathModification().getValue();
-        Unit unit =  SpTool3Main.getRunTime().getConfParams().getCustomEventUnit();
+        Unit unit = SpTool3Main.getRunTime().getConfParams().getCustomEventUnit();
         return s.tabNpCustomParamSD(i, p, par, math, unit);
       }
     },
@@ -644,7 +662,7 @@ public abstract class ResultsTable {
       public String getValue(Sample s, Channel i, PopulationID p) {
         EventParameter par = SpTool3Main.getRunTime().getConfParams().getEventParameter().getValue();
         MathMod math = SpTool3Main.getRunTime().getConfParams().getEventMathModification().getValue();
-        Unit unit =  SpTool3Main.getRunTime().getConfParams().getCustomEventUnit();
+        Unit unit = SpTool3Main.getRunTime().getConfParams().getCustomEventUnit();
         return s.tabNpCustomParamMedian(i, p, par, math, unit);
       }
     },

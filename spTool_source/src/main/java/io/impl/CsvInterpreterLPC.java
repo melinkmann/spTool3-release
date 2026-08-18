@@ -57,12 +57,12 @@ public class CsvInterpreterLPC implements CsvInterpreter {
   //   2  smallest feret diameters [µm]
   //   3  largest legendre diameters [µm]
   //   4  smallest legendre diameters [µm]
-  //   5  circle-equivalent diameters [µm]   → mapped to values[1]
+  //   5  circle-equivalent diameters [µm]
   //   6  circularity [1]
   //   7  convexity [1]
   //   8  solidity [1]
   //   9  particle diameter aspect ratios [1]
-  //  10  detection time [sec.]               → mapped to values[0]
+  //  10  detection time [sec.]
   //  11  frame id
   //  12  centroid position row [pix]
   //  13  centroid position column [pix]
@@ -184,12 +184,12 @@ public class CsvInterpreterLPC implements CsvInterpreter {
 
       int targetColIdx = params.getLpcImportParameter().getValue().getCol(isRafa, isTom);
       if (targetColIdx < 0) {
-        targetColIdx = Integer.MAX_VALUE; // gets rectified below
+        targetColIdx = Integer.MAX_VALUE; // is recognised below
       }
 
       if (isRafa) {
 
-        if (targetColIdx > 14) {
+        if (targetColIdx >= 14) {
           targetColIdx = 5;
         }
 
@@ -228,7 +228,7 @@ public class CsvInterpreterLPC implements CsvInterpreter {
         }
       } else if (isTom) {
 
-        if (targetColIdx > 16) {
+        if (targetColIdx >= 16) {
           targetColIdx = 5;
         }
 

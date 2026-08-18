@@ -138,7 +138,7 @@ public interface PopulationStep extends Serializable {
     public boolean isEquivalent(PopulationStep other) {
       boolean isEquiv = false;
       if (other instanceof ManualRoiSubtype) {
-        isEquiv = isEquiv && Objects.equals(paramSetLabel, ((ManualRoiSubtype) other).paramSetLabel);
+        isEquiv = Objects.equals(paramSetLabel, ((ManualRoiSubtype) other).paramSetLabel);
         isEquiv = isEquiv && Objects.equals(start, ((ManualRoiSubtype) other).start);
         isEquiv = isEquiv && Objects.equals(end, ((ManualRoiSubtype) other).end);
       }

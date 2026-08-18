@@ -95,7 +95,6 @@ public class LPCParticleMatrix extends IncompleteParticleMatrix implements Seria
   public LPCParticleMatrix roi(List<Integer> indices) {
     HashMap<String, List<Double>> allRoiData = new LinkedHashMap<>();
 
-
     for (String key : this.allData.keySet()) {
       List<Double> data = this.allData.get(key);
       List<Double> roiData = new ArrayList<>();
@@ -152,7 +151,11 @@ public class LPCParticleMatrix extends IncompleteParticleMatrix implements Seria
   }
 
   public List<Double> getPoints() {
-    return new ArrayList<>();
+    List<Double> data = new ArrayList<>();
+    if (allData.containsKey("frame_count")) {
+      data = allData.get("frame_count");
+    }
+    return data;
   }
 
   public int size() {
@@ -165,6 +168,6 @@ public class LPCParticleMatrix extends IncompleteParticleMatrix implements Seria
   }
 
   public HashMap<String, List<Double>> getAllData() {
-    return allData;
+    return new LinkedHashMap(allData);
   }
 }

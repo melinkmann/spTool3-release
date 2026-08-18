@@ -367,7 +367,7 @@ public class HACViewerParameters extends AbstractParamSet implements ParamSet {
               List<Isotope> resultingIsotopes = new ArrayList<>();
               for (Channel channel : resultingCh) {
                 Isotope isotope = channel.getIsotope();
-                if (isotope != null){
+                if (isotope != null) {
                   resultingIsotopes.add(isotope);
                 }
               }
@@ -400,7 +400,7 @@ public class HACViewerParameters extends AbstractParamSet implements ParamSet {
               List<Isotope> resultingIsotopes = new ArrayList<>();
               for (Channel channel : resultingCh) {
                 Isotope isotope = channel.getIsotope();
-                if (isotope != null){
+                if (isotope != null) {
                   resultingIsotopes.add(isotope);
                 }
               }

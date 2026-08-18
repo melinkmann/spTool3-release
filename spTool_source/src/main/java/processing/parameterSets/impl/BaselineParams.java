@@ -110,11 +110,12 @@ public class BaselineParams extends AbstractParamSet implements ParamSet {
     // Parameter: Only decide what model is to be used. Actual significance is chosen later at search.
     this.generalDistributionApproach = new ComboEnumParameter<>(
         "Select model",
-        "Specify how spTool decides which model it will use:" +
-            "1) Automatic: Use Poisson model if mean BG µ < 10" +
-            "2) Highest: Calculate Poisson and Gaussian model. Pick the one with the higher threshold" +
-            "3) Gaussian: Force using Gaussian model." +
-            "4) Poisson: Force using Poisson model",
+        """
+            Specify how spTool decides which model it will use:
+            1) Automatic: Use Poisson model if mean BG µ < 10
+            2) Highest: Calculate Poisson and Gaussian model. Pick the one with the higher threshold
+            3) Gaussian: Force using Gaussian model.
+            4) Poisson: Force using Poisson model""",
         DistributionModel.THRESHOLD,
         DistributionModel.listGeneralOptions(),
         DistributionModel.class,

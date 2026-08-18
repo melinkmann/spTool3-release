@@ -24,12 +24,19 @@ import gui.MainWindowController;
 import gui.dialog.SingleParameterDialog;
 import io.*;
 
+import java.awt.*;
+import java.net.URI;
 import java.nio.file.Path;
 import java.util.*;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import javafx.application.Platform;
 import javafx.scene.control.Dialog;
+import javafx.scene.control.Hyperlink;
+import javafx.scene.text.Font;
+import javafx.scene.text.Text;
+import javafx.scene.text.TextFlow;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -41,10 +48,13 @@ import processing.parameterSets.impl.*;
 import processing.parameterSets.uiParams.GuiParameterManager;
 import processing.parameters.ComboEnumParameter;
 import tasks.TaskManager;
+import util.Util;
 import util.storage.MemoryMapStorage;
 import visualizer.styles.Colors;
 
 import javax.annotation.Nullable;
+
+import static core.SpTool3Main.VERSION_ID;
 
 public class RunTimeInstance {
   private static final Logger LOGGER = LogManager.getLogger(RunTimeInstance.class);
@@ -66,7 +76,7 @@ public class RunTimeInstance {
   private static final MemoryMapStorage BACKGROUND_BUFFER_STORAGE = new MemoryMapStorage();
   private static final MemoryMapStorage SPECTRA_BUFFER_STORAGE = new MemoryMapStorage();
   private static final Iterator<Colors> SAMPLE_COLOR_ITERATOR
-      = Colors.getDefaultIterator().iterator ();
+      = Colors.getDefaultIterator().iterator();
   private Path lastProjectFile = Path.of("");
 
   public final TimeRoiParams timeRoiParams = new TimeRoiParams();
@@ -81,10 +91,46 @@ public class RunTimeInstance {
 
     // Loading config: this surprisingly works; we can open the Dialog when constructing this class
     // as a static field inside class SpTool3Main
+    Util.VersionCheckResult versionCheck = Util.checkVersion();
+    /*
+                feedback = "You are not using the latest version! " +
+                "\nYour version: " + VERSION_ID + ", latest version online: " + latestVersion + "." +
+                "\nCheck for updates: \n" + location;
+     */
     try {
 
+      Text subHeader = new Text("*Analyser includes generator capability");
+      subHeader.setFont(new Font(12));
+
+      TextFlow feedbackText;
+      if (versionCheck.wasChecked() && !versionCheck.needsUpdate()) {
+        Text versionFeedback = new Text("\n\nYou are using the latest version (" + VERSION_ID + ").");
+        subHeader.setFont(new Font(12));
+        feedbackText = new TextFlow(subHeader, versionFeedback);
+
+      } else if (versionCheck.wasChecked() && versionCheck.needsUpdate()) {
+        Text versionFeedback = new Text("\n\nYour version (" + VERSION_ID + ") is not up-to-date!" +
+            "\nThe latest version on github is " + versionCheck.onlineVersion() + "." +
+            "\nConsider downloading the latest version at\n");
+        subHeader.setFont(new Font(12));
+
+        Hyperlink hyperlink = new Hyperlink(versionCheck.url());
+        hyperlink.setFont(new Font(12));
+        hyperlink.setOnAction(e -> {
+          try {
+            Desktop.getDesktop().browse(new URI(versionCheck.url()));
+          } catch (Exception ex) {
+            LOGGER.info("Failed to open browser: " + ex.getMessage());
+          }
+        });
+
+        feedbackText = new TextFlow(subHeader, versionFeedback, hyperlink);
+      } else {
+        feedbackText = new TextFlow(subHeader);
+      }
+
       Dialog<StartupConfiguration> d = new SingleParameterDialog<>(
-          "*Analyser includes generator capability",
+          feedbackText,
           new ComboEnumParameter<>(
               "Configuration",
               """
@@ -160,7 +206,7 @@ public class RunTimeInstance {
 
   public void setLastProjectFile(Path currentProjectFile) {
     Platform.runLater(() -> {
-      SpTool3Main.getMainStage().setTitle("spTool " + SpTool3Main.VERSION_ID + " - "
+      SpTool3Main.getMainStage().setTitle("spTool " + VERSION_ID + " - "
           + currentProjectFile.toString());
     });
 
