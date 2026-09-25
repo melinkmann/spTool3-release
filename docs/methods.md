@@ -19,8 +19,9 @@ provided below. For a quick start, click on the central `Quick start new method`
 **Here are two example method files from the spTool data generator preprint**
 ([https://doi.org/10.26434/chemrxiv.15004857/v1](https://doi.org/10.26434/chemrxiv.15004857/v1)).  
 
-[:material-download: AuNP_example.spm](resources/AuNP_example.spm)  
-[:material-download: UCNP_example.spm](resources/UCNP_example.spm)  
+[:material-download: AuNP_example.spm](resources/AuNP_example.spm) (for ICP-TOFMS)  
+[:material-download: UCNP_example.spm](resources/AuNP_example_QMS.spm) (for ICP-QMS)  
+[:material-download: UCNP_example.spm](resources/UCNP_example.spm) 
   
 Download the `.spm` file and drag/drop it into spTool:
 ![img](images/dragDropMethod.png){: width="300" style="display: block; margin: 0.5em auto 2.5em auto;"}
