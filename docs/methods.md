@@ -16,7 +16,7 @@ puts the method editor in the centre view of the window.
 A method contains submethods with instructions for each processing step. A detailed list of these steps is
 provided below. For a quick start, click on the central `Quick start new method` button to create a new method.
 
-**Here are two example method files from the spTool data generator preprint**
+**Here are three example method files from the spTool data generator preprint**
 ([https://doi.org/10.26434/chemrxiv.15004857/v1](https://doi.org/10.26434/chemrxiv.15004857/v1)).  
 
 [:material-download: AuNP_example.spm](resources/AuNP_example.spm) (for ICP-TOFMS)  
