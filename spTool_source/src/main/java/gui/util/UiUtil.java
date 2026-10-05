@@ -88,6 +88,7 @@ import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.stage.Screen;
 import javafx.stage.Stage;
+import javafx.stage.Window;
 import javafx.util.Duration;
 import javafx.util.converter.IntegerStringConverter;
 import org.apache.logging.log4j.LogManager;
@@ -109,6 +110,15 @@ import visualizer.styles.UiColors;
 public abstract class UiUtil {
 
   private static final Logger LOGGER = LogManager.getLogger(UiUtil.class);
+
+  @Nullable
+  public static Window getOwner(Node node) {
+    Window owner = null;
+    if (node != null && node.getScene() != null) {
+      owner = node.getScene().getWindow();
+    }
+    return owner;
+  }
 
   // #############################################################################################
 

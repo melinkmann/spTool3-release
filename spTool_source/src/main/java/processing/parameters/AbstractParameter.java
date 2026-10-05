@@ -18,6 +18,7 @@
 package processing.parameters;
 
 import io.XmlUtil;
+
 import java.io.Serial;
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -26,6 +27,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
+
 import org.apache.commons.text.StringEscapeUtils;
 import org.w3c.dom.Element;
 import processing.parameterSets.ParamBundle;
@@ -59,10 +61,10 @@ public abstract class AbstractParameter<T extends Serializable> implements Seria
   private transient Decoration<T> decoration = null;
 
   public AbstractParameter(String label,
-      String explanation,
-      T defaultValue,
-      boolean isLimitedToExperts,
-      String xmlID) {
+                           String explanation,
+                           T defaultValue,
+                           boolean isLimitedToExperts,
+                           String xmlID) {
     this.label = label;
     this.secondaryLabel = label;
     this.explanation = explanation;
@@ -73,11 +75,11 @@ public abstract class AbstractParameter<T extends Serializable> implements Seria
   }
 
   public AbstractParameter(String label,
-      String secondaryLabel,
-      String explanation,
-      T defaultValue,
-      boolean isLimitedToExperts,
-      String xmlID) {
+                           String secondaryLabel,
+                           String explanation,
+                           T defaultValue,
+                           boolean isLimitedToExperts,
+                           String xmlID) {
     this.label = label;
     this.secondaryLabel = secondaryLabel;
     this.explanation = explanation;
@@ -138,7 +140,9 @@ public abstract class AbstractParameter<T extends Serializable> implements Seria
 
   @Override
   public void setDefaultValue(T initialValue) {
-    this.defaultValue = initialValue;
+    if (initialValue != null) {
+      this.defaultValue = initialValue;
+    }
   }
 
   @Override
@@ -238,7 +242,8 @@ public abstract class AbstractParameter<T extends Serializable> implements Seria
     return new ArrayList<>(unconditionalChildren);
   }
 
-  // Returns children that comply with the chosen condition and DOES NOT call getChildren() on these parameters.
+  // Returns children that comply with the chosen condition and DOES NOT call getChildren() on these
+  // parameters.
   @Override
   public List<Parameter<?>> getActiveChildrenFirstGen() {
     return new ArrayList<>(unconditionalChildren);
@@ -295,7 +300,7 @@ public abstract class AbstractParameter<T extends Serializable> implements Seria
   }
 
   @Override
-  public  void addUnconditionalChild(Parameter<?> ... unconditionalParameters){
+  public void addUnconditionalChild(Parameter<?>... unconditionalParameters) {
     for (int i = 0; i < unconditionalParameters.length; i++) {
       Parameter<?> par = unconditionalParameters[i];
       par.setIsChild(true);

@@ -19,6 +19,7 @@ package analysis;
 
 import dataModelNew.*;
 import dataModelNew.mz.Channel;
+import dataModelNew.mz.StaticChannelCategory;
 import gui.dialog.notification.NotificationFactory;
 import io.nu.NuReader_new;
 import io.nu.ParsedNuData;
@@ -55,6 +56,7 @@ public abstract class SpectralUtil {
           for (Channel channel : channels) {
             Trace trace = sample.getTrace(channel);
             List<Event> npEvents = sample.getNPEvents(channel, popID);
+            // no spectrum of TIC should be shown or clustered
             if (!npEvents.isEmpty() && trace != null) {
 
               // for the background: identify bg indices once
@@ -65,6 +67,7 @@ public abstract class SpectralUtil {
                 npIndices.addAll(indices);
               }
 
+              // for average BG signal, use subset of BG
               int skip;
               if (totalDP > 1E6) {
                 skip = 10;
@@ -101,6 +104,10 @@ public abstract class SpectralUtil {
     }
   }
 
+  /*
+  force to zero?
+  use BG of particle events if present?
+   */
 
   public static List<SpectralArray> getSpectralData(Sample subSample,
                                                     List<Channel> channels,
@@ -116,8 +123,10 @@ public abstract class SpectralUtil {
     // first find mean BG
     for (Channel channel : channels) {
       Trace trace = subSample.getTrace(channel);
-      if (trace == null) {
-        continue;   // trace is not present (should not happen, but guard anyway)
+      if (trace == null || channel.getCategory().equals(StaticChannelCategory.TIC)) {
+        continue;
+        // trace is not present (should not happen, but guard anyway)
+        // or channel is TIC: don't use TIC for clustering or spectral view
       }
       List<Double> bgData = new ArrayList<>(bgIndices.size());
       double[] intensity = trace.getTISeries().getIntensity();
@@ -141,7 +150,6 @@ public abstract class SpectralUtil {
       extraFeatures.put("Symmetry", symmetryArr);
       extraFeatures.put("heightToBackground", heightToBGArr);
       extraFeatures.put("numberOfPoints", nPoints);
-
 
       for (int i = 0; i < specArr.length; i++) {
         Event npEvent = npEvents.get(i);

@@ -41,6 +41,7 @@ public class SignalModificationParams extends AbstractParamSet implements ParamS
   private Parameter<Boolean> isotopeSumBoolean;
   private Parameter<Boolean> excludeIsobars;
   private Parameter<Boolean> onlyUseSelectedIsotopesForSum;
+  private Parameter<Boolean> ticBoolean;
 
   public SignalModificationParams() {
     super("Signal modification parameters", XML_ELEMENT_TAG);
@@ -71,6 +72,14 @@ public class SignalModificationParams extends AbstractParamSet implements ParamS
 
     //
 
+    this.ticBoolean = new BooleanParameter("Calculate TIC",
+        "Calculate sum of all channels",
+        "Calculates the total ion current (TIC)",
+        false,
+        false,
+        "ticBoolean"
+    );
+
     organize();
   }
 
@@ -80,6 +89,7 @@ public class SignalModificationParams extends AbstractParamSet implements ParamS
     this.isotopeSumBoolean = params.isotopeSumBoolean.copyWithoutChildren();
     this.excludeIsobars = params.excludeIsobars.copyWithoutChildren();
     this.onlyUseSelectedIsotopesForSum = params.onlyUseSelectedIsotopesForSum.copyWithoutChildren();
+    this.ticBoolean = params.ticBoolean.copyWithoutChildren();
 
     organize();
   }
@@ -107,7 +117,8 @@ public class SignalModificationParams extends AbstractParamSet implements ParamS
   private void organize() {
     // Parent parameters
     super.setParentParameters(
-        isotopeSumBoolean
+        isotopeSumBoolean,
+        ticBoolean
     );
 
     isotopeSumBoolean.addConditionalChild(true, excludeIsobars, onlyUseSelectedIsotopesForSum);
@@ -135,6 +146,7 @@ public class SignalModificationParams extends AbstractParamSet implements ParamS
           case "isotopeSumBoolean" -> isotopeSumBoolean;
           case "excludeIsobars" -> excludeIsobars;
           case "onlyUseSelectedIsotopesForSum" -> onlyUseSelectedIsotopesForSum;
+          case "ticBoolean" -> ticBoolean;
 
           default -> null;
         };
@@ -171,6 +183,10 @@ public class SignalModificationParams extends AbstractParamSet implements ParamS
     return onlyUseSelectedIsotopesForSum;
   }
 
+  public Parameter<Boolean> getTicBoolean() {
+    return ticBoolean;
+  }
+
   //------------------------------------------------------------------------------------------
 
 
@@ -188,6 +204,10 @@ public class SignalModificationParams extends AbstractParamSet implements ParamS
 
     if (onlyUseSelectedIsotopesForSum == null) {
       onlyUseSelectedIsotopesForSum = defaults.onlyUseSelectedIsotopesForSum;
+    }
+
+    if (ticBoolean == null) {
+      ticBoolean = defaults.ticBoolean;
     }
 
   }

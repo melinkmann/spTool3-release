@@ -36,13 +36,16 @@ import processing.parameters.*;
 import sandbox.montecarlo.Isotope;
 import util.Functional;
 import util.NF;
+import util.SnF;
 
 import java.io.IOException;
 import java.io.Serial;
 import java.io.Serializable;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class AlignerParams extends AbstractParamSet implements ParamSet {
 
@@ -55,8 +58,11 @@ public class AlignerParams extends AbstractParamSet implements ParamSet {
 
   private final Parameter<AlignAlgorithm> alignAlgorithm;
   private Parameter<IsotopeSelection> isotopeSelection;
+  private Parameter<Boolean> addAlignedPopulationToAllTraces;
   private final Parameter<String> excludedIsotopes;
   private Parameter<String> includedIsotopes;
+  private Parameter<String> includeChannelsList;
+  private Parameter<Double> includeChannelsPrecision;
 
   private final Parameter<NetCorrectionOption> netCorrectionOption;
   private final Parameter<Double> netTimeWindow;
@@ -101,18 +107,35 @@ public class AlignerParams extends AbstractParamSet implements ParamSet {
     this.isotopeSelection = new ComboEnumParameter<>(
         "Rules",
         """
-            You may decide which isotopes are considered for the align operation:
+            You may decide which isotopes are used as the template for the align operation:
             a) use all loaded isotopes (table on the right-hand side of the screen),
             b) use the selected isotopes (in table on the right-hand side of the screen),
             c) 'Set list': create a selection in the submethod that is not affected by
             selecting different isotopes in table on the right-hand side of the screen,
             d) 'Exclude': create a 'blacklist' of isotopes that shall not be included
-             (besides these, all loaded isotopes will be used)""",
+             (besides these, all loaded isotopes will be used)
+            e) Use the total ion current (TIC). This only works if TIC has been computed via
+             the 'Signal modification parameters'. If no TIC is present, all loaded isotopes
+             will be used instead, see 'option a)'
+            f) 'Set channel list': create a selection in the submethod that is not affected by
+             selecting different channels in table on the right-hand side of the screen.
+             This option works for numeric mz channels,too""",
         IsotopeSelection.ALL_LOADED,
-        IsotopeSelection.getUI(),
+        IsotopeSelection.getAlign(),
         IsotopeSelection.class,
         false,
         "isotopeSelection");
+
+    addAlignedPopulationToAllTraces = new BooleanParameter("Scope",
+        "Add alignment result to all channels",
+        """
+            Alignment is done based on on the rules set here in the method.
+            This checkbox defines if the resulting events are added to all channels
+            or only those that were used as the template for the align operation""",
+        false,
+        false,
+        "addAlignedPopulationToAllTraces"
+    );
 
     excludedIsotopes = new FeedbackStringParameter(
         "Excluded",
@@ -143,6 +166,31 @@ public class AlignerParams extends AbstractParamSet implements ParamSet {
         false,
         "includedIsotopes"
     );
+
+    includeChannelsList = new TextAreaParameter(
+        "Channel list",
+        """
+            Enter channels to select for alignment. The pattern is:
+            
+            528.4561,
+            279.352,
+            896.1234,
+            """,
+        "",
+        false,
+        "includeChannelsList");
+
+    includeChannelsPrecision = new DoubleParameter(
+        "Precision [ppm]",
+        """
+            When comparing the existing channel mz values
+            with those specified by the user,
+            spTool computes the tolerance as a ppm (parts per million) of the existing channel""",
+        5d,
+        NF.D1C3,
+        TextFormatterOption.ASSURE_POSITIVE_DOUBLE,
+        false,
+        "includeChannelsPrecision");
 
     this.netCorrectionOption = new ComboEnumParameter<>(
         "Net correction",
@@ -212,8 +260,11 @@ public class AlignerParams extends AbstractParamSet implements ParamSet {
 
     this.alignAlgorithm = params.alignAlgorithm.copyWithoutChildren();
     this.isotopeSelection = params.isotopeSelection.copyWithoutChildren();
+    this.addAlignedPopulationToAllTraces = params.addAlignedPopulationToAllTraces.copyWithoutChildren();
     this.excludedIsotopes = params.excludedIsotopes.copyWithoutChildren();
     this.includedIsotopes = params.includedIsotopes.copyWithoutChildren();
+    this.includeChannelsList = params.includeChannelsList.copyWithoutChildren();
+    this.includeChannelsPrecision = params.includeChannelsPrecision.copyWithoutChildren();
     this.netCorrectionOption = params.netCorrectionOption.copyWithoutChildren();
     this.netTimeWindow = params.netTimeWindow.copyWithoutChildren();
     this.netTimeWindowLocation = params.netTimeWindowLocation.copyWithoutChildren();
@@ -249,6 +300,8 @@ public class AlignerParams extends AbstractParamSet implements ParamSet {
 
     enableBoolean.addConditionalChild(true, alignAlgorithm, isotopeSelection, netCorrectionOption);
 
+    isotopeSelection.addUnconditionalChild(addAlignedPopulationToAllTraces);
+
     isotopeSelection.addConditionalChild(IsotopeSelection.NEGATIVE_LIST_EXCLUSION, excludedIsotopes);
     excludedIsotopes.setDecoration(new ParamSetterButtonDecoration<>("Select isotopes", "/img/tableTrace.png",
         new Functional() {
@@ -273,7 +326,7 @@ public class AlignerParams extends AbstractParamSet implements ParamSet {
               List<Isotope> resultingIsotopes = new ArrayList<>();
               for (Channel channel : resultingChannels) {
                 Isotope isotope = channel.getIsotope();
-                if (isotope != null){
+                if (isotope != null) {
                   resultingIsotopes.add(isotope);
                 }
               }
@@ -306,7 +359,7 @@ public class AlignerParams extends AbstractParamSet implements ParamSet {
               List<Isotope> resultingIsotopes = new ArrayList<>();
               for (Channel channel : resultingChannels) {
                 Isotope isotope = channel.getIsotope();
-                if (isotope != null){
+                if (isotope != null) {
                   resultingIsotopes.add(isotope);
                 }
               }
@@ -314,6 +367,35 @@ public class AlignerParams extends AbstractParamSet implements ParamSet {
             }
           }
         }));
+
+
+    isotopeSelection.addConditionalChild(IsotopeSelection.POSITIVE_LIST_CHANNEL_SELECTION,
+        includeChannelsList, includeChannelsPrecision);
+    includeChannelsList.setDecoration(new ParamSetterButtonDecoration<>(
+        "Add selected channels from the channel table",
+        "/img/load.png",
+        new Functional() {
+
+          @Override
+          public void proceed() {
+            proceed(null);
+          }
+
+          @Override
+          public void proceed(Window window) {
+            List<Channel> selChannels = SpTool3Main.getRunTime().getMainWindowCtl().getSelChannels();
+
+            String currentString = includeChannelsList.getValue();
+
+            StringBuilder sb = new StringBuilder(currentString);
+            for (Channel selChannel : selChannels) {
+              String mzStr = selChannel.getMZStr();
+              sb.append(mzStr).append(",").append(System.lineSeparator());
+            }
+            includeChannelsList.setValue(sb.toString());
+          }
+        }));
+
 
     netCorrectionOption.addConditionalChild(NetCorrectionOption.INDEX_APPROXIMATION, netTimeWindow,
         netTimeWindowLocation);
@@ -344,10 +426,13 @@ public class AlignerParams extends AbstractParamSet implements ParamSet {
 
           case "alignAlgorithm" -> alignAlgorithm;
           case "isotopeSelection" -> isotopeSelection;
+          case "addAlignedPopulationToAllTraces" -> addAlignedPopulationToAllTraces;
           case "excludedIsotopes" -> excludedIsotopes;
           case "includedIsotopes" -> includedIsotopes;
+          case "includeChannelsList" -> includeChannelsList;
+          case "includeChannelsPrecision" -> includeChannelsPrecision;
 
-          case "timeWindow" -> netTimeWindow;
+          case "netTimeWindow" -> netTimeWindow;
           case "netCorrectionOption" -> netCorrectionOption;
           case "netTimeWindowLocation" -> netTimeWindowLocation;
           case "suppressNegativeValues" -> suppressNegativeValues;
@@ -403,6 +488,10 @@ public class AlignerParams extends AbstractParamSet implements ParamSet {
     return isotopeSelection;
   }
 
+  public Parameter<Boolean> getAddAlignedPopulationToAllTraces() {
+    return addAlignedPopulationToAllTraces;
+  }
+
   public List<Isotope> listExcludedIsotopes() {
     return NuInterpreterParams.isotopeFromString(excludedIsotopes.getValue());
   }
@@ -411,25 +500,68 @@ public class AlignerParams extends AbstractParamSet implements ParamSet {
     return NuInterpreterParams.isotopeFromString(includedIsotopes.getValue());
   }
 
+  public Parameter<String> getIncludeChannelsList() {
+    return includeChannelsList;
+  }
+
+  public List<Double> getIncludedChannels() {
+    List<String> validNums = Arrays.stream(includeChannelsList.getValue().split("[,\\r\\n]+"))
+        .map(String::trim)
+        .filter(s -> !s.isEmpty() && SnF.isValidDoubleSilent(s))
+        .toList();
+
+    return validNums.stream()
+        .map(SnF::strToDouble)
+        .toList();
+  }
+
+  public Parameter<Double> getIncludeChannelsPrecision() {
+    return includeChannelsPrecision;
+  }
+
   //------------------------------------------------------------------------------------------
 
 
   @Serial
-  private void readObject(java.io.ObjectInputStream in) throws IOException, ClassNotFoundException {
+  private void readObject(java.io.ObjectInputStream in)
+      throws IOException, ClassNotFoundException {
 
     in.defaultReadObject();
 
     // default supplier
     final AlignerParams defaults = new AlignerParams();
 
+    if (enableBoolean == null) {
+      enableBoolean = defaults.enableBoolean;
+    }
+
     if (isotopeSelection == null) {
       isotopeSelection = defaults.isotopeSelection;
+    }
+
+    if (addAlignedPopulationToAllTraces == null) {
+      addAlignedPopulationToAllTraces = defaults.addAlignedPopulationToAllTraces;
     }
 
     if (includedIsotopes == null) {
       includedIsotopes = defaults.includedIsotopes;
     }
 
+    if (includeChannelsList == null) {
+      includeChannelsList = defaults.includeChannelsList;
+    }
+
+    if (includeChannelsPrecision == null) {
+      includeChannelsPrecision = defaults.includeChannelsPrecision;
+    }
+
+    if (netTimeWindowLocation == null) {
+      netTimeWindowLocation = defaults.netTimeWindowLocation;
+    }
+
+    if (suppressNegativeValues == null) {
+      suppressNegativeValues = defaults.suppressNegativeValues;
+    }
   }
 
 }

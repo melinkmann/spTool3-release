@@ -17,8 +17,11 @@
 
 package gui;
 
-import com.opencsv.bean.CsvRecurse;
+import analysis.AnalysisUtils;
+import analysis.PopulationID;
 import core.SpTool3Main;
+import dataModelNew.Sample;
+import dataModelNew.mz.Channel;
 import gui.dialog.FxEntry;
 import gui.dialog.FxEntryFactory;
 import gui.dialog.FxEntryFactory.MethodDateFileEntryFactory;
@@ -26,6 +29,7 @@ import gui.dialog.FxEntryFactory.ParamSetWithDateEntryFactory;
 import gui.dialog.FxEntryFactory.SimpleEntryFactory;
 import gui.dialog.FxStageButton;
 import gui.dialog.caseImpl.CreateMultipleSubMethodDialog;
+import gui.dialog.caseImpl.ExecuteSubmethod;
 import gui.dialog.caseImpl.MethodWizardUtils;
 import gui.dialog.caseImpl.SubmethodViewer;
 import gui.dialog.mainImpl.ChooseMultipleFromListDialog;
@@ -62,7 +66,6 @@ import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
-import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
@@ -72,18 +75,18 @@ import javafx.util.Callback;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import processing.options.SearchThresholdOption;
 import processing.parameterSets.AvailableParameterSets;
 import processing.parameterSets.FxMethod;
 import processing.parameterSets.FxParamSet;
 import processing.parameterSets.ListMethod;
 import processing.parameterSets.Method;
 import processing.parameterSets.ParamSet;
-import processing.parameterSets.impl.*;
+import processing.parameterSets.impl.LoadMethodWizardParams;
+import processing.parameterSets.impl.MethodDoeParams;
 import processing.parameters.ButtonFxParameter;
 import processing.parameters.FxParameter;
+import sandbox.montecarlo.AutofillGenerator;
 import util.ClipboardUtils;
-import visualizer.styles.Colors;
 import visualizer.styles.SpV2Colors;
 
 public class MethodView implements ParameterView {
@@ -457,12 +460,102 @@ public class MethodView implements ParameterView {
 
     });
 
+    final Button wizardParameterBtn = UiUtil.getToolbarBtn("/img/wizard.png",
+        "Try to load data generator parameters from the selected sample");
+
+    wizardParameterBtn.setOnAction(e -> {
+      List<Sample> selSamples = SpTool3Main.getRunTime().getMainWindowCtl().getSelSamples();
+      List<Channel> selChannels = SpTool3Main.getRunTime().getMainWindowCtl().getSelChannels();
+      List<PopulationID> selPops = SpTool3Main.getRunTime().getMainWindowCtl().getSelPops();
+
+      if (!selSamples.isEmpty() && !selChannels.isEmpty() && !selPops.isEmpty()) {
+        AutofillGenerator.autofill(currentMethod, selSamples.get(0), selChannels, selPops);
+
+        subMethodsListView.getItems().clear();
+        List<FxEntry<FxParamSet>> newEntries =
+            currentMethod.getSets().stream().map(this::getFromMapOrCreate).toList();
+        // List's change listener (selection change) will trigger the update of the viewers
+        subMethodsListView.getItems().addAll(newEntries);
+        subMethodsListView.getSelectionModel().clearSelection();
+        newEntries.forEach(entry -> {
+          subMethodsListView.getSelectionModel().select(entry);
+        });
+
+      }
+    });
+
+    final Button wizardMethodBtn = UiUtil.getToolbarBtn("/img/wizardLoad.png",
+        "Try to load method best matching sample");
+
+    wizardMethodBtn.setOnAction(e -> {
+      List<Sample> selSamples = SpTool3Main.getRunTime().getMainWindowCtl().getSelSamples();
+      List<Channel> selChannels = SpTool3Main.getRunTime().getMainWindowCtl().getSelChannels();
+      List<PopulationID> selPops = SpTool3Main.getRunTime().getMainWindowCtl().getSelPops();
+
+      if (selSamples.size() > 1 && !selChannels.isEmpty() && !selPops.isEmpty()) {
+
+        ExecuteSubmethod executeSubmethod = new ExecuteSubmethod(
+            null,
+            SpTool3Main.getRunTime().loadMethodWizardParams,
+            AvailableParameterSets.getOptionAsList(AvailableParameterSets.LOAD_METHOD_WIZARD),
+            "Load best match.",
+            FxStageButton.RUN,
+            500d,
+            300d,
+            UiUtil.getImage("/img/wizardLoad.png")
+        );
+
+        // Automatically size to fit content
+        executeSubmethod.getDialogPane().getScene().getWindow().sizeToScene();
+        Optional<ParamSet> exe = executeSubmethod.showAndWait();
+        LoadMethodWizardParams params = null;
+        if (exe.isPresent()) {
+          ParamSet result = exe.get();
+          if (result instanceof LoadMethodWizardParams) {
+            SpTool3Main.getRunTime().saveParameterSets();
+            params = (LoadMethodWizardParams) result;
+          }
+        }
+
+        // execute
+        if (params != null) {
+          Sample realSample = null;
+          for (Sample selSample : selSamples) {
+            if (selSample.listAllPopulations().stream().noneMatch(AnalysisUtils::isSim)) {
+              realSample = selSample;
+              break;
+            }
+          }
+
+          if (realSample != null) {
+            List<Sample> simSamples = new ArrayList<>();
+            for (Sample selSample : selSamples) {
+              if (selSample.listAllPopulations().stream().anyMatch(AnalysisUtils::isSim)) {
+                simSamples.add(selSample);
+              }
+            }
+
+            if (!simSamples.isEmpty()) {
+              double[] weights = params.getWeights();
+              Method winner = AutofillGenerator.bestMatch(selSamples.get(0), simSamples,
+                  selChannels.get(0),
+                  selPops.get(0), weights);
+              if (winner != null) {
+                setMethod(winner);
+              }
+            }
+          }
+        }
+      }
+    });
+
     topToolbar.getItems().addAll(methodLbl, new Separator(Orientation.VERTICAL), statusImage,
         new Separator(Orientation.VERTICAL), save, saveAs, UiUtil.createSeparator(20),
         undo, lastSavedMethodBtn,
         new Separator(Orientation.VERTICAL), deleteMethod, UiUtil.createSeparator(20),
         openMethodBtn, browseMethodBtn, new Separator(Orientation.VERTICAL),
         newMethodBtn, UiUtil.createSeparator(20),
+        wizardParameterBtn, wizardMethodBtn, UiUtil.createSeparator(20),
         saveAsProject, openMethodFromProjectBtn);
 
     // ############################################################################################

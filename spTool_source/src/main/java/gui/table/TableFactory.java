@@ -35,6 +35,7 @@ import io.SampleSet;
 
 import java.awt.MouseInfo;
 import java.awt.Point;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -111,6 +112,7 @@ public class TableFactory {
     addLikeDislikeMenu(table);
     addSeparator(table);
     addCloneMenu(table);
+    addReloadFromFileMenu(table);
     addViewCommentField(table);
     addColorPicker(table);
     addSeparator(table);
@@ -662,20 +664,23 @@ public class TableFactory {
     table.getContextMenu().getItems().add(view);
 
     view.setOnAction(e -> {
-      FxSample fxSample = table.getSelectionModel().getSelectedItem();
-      if (fxSample != null) {
-        Sample sample = fxSample.getPlainSample();
-        if (sample != null) {
-          sample = sample.getPrincipleSample();
+      List<FxSample> fxSamples = table.getSelectionModel().getSelectedItems();
+      for (FxSample fxSample : fxSamples) {
 
-          Method method = sample.getMethod();
-          // otherwise a change would affect the method stored in the sample file (it is referenced by the
-          // pointer)
-          if (method != null) {
-            Method copyOfMethod = method.getCopyWithoutFile();
-            List<FxSample> placeholderList = new ArrayList<>();
-            placeholderList.add(fxSample);
-            Actions.reprocess(copyOfMethod, placeholderList);
+        if (fxSample != null) {
+          Sample sample = fxSample.getPlainSample();
+          if (sample != null) {
+            sample = sample.getPrincipleSample();
+
+            Method method = sample.getMethod();
+            // otherwise a change would affect the method stored in the sample file (it is referenced by the
+            // pointer)
+            if (method != null) {
+              Method copyOfMethod = method.getCopyWithoutFile();
+              List<FxSample> placeholderList = new ArrayList<>();
+              placeholderList.add(fxSample);
+              Actions.reprocess(copyOfMethod, placeholderList);
+            }
           }
         }
       }
@@ -697,6 +702,58 @@ public class TableFactory {
           SpTool3Main.getRunTime().getSampleReg().addNewSampleToWaitingList(copy);
         }
         SpTool3Main.getRunTime().getSampleReg().flushWaitingList();
+      }
+    });
+  }
+
+  public static void addReloadFromFileMenu(TableView<FxSample> table) {
+    MenuItem view = UiUtil.getImageMenuItem("Reload from file", "/img/refresh.png");
+    table.getContextMenu().getItems().add(view);
+
+    view.setOnAction(e -> {
+      List<Sample> selSamples = SpTool3Main.getRunTime().getMainWindowCtl().getSelSamples();
+
+      List<Sample> samples = new ArrayList<>();
+      List<Path> paths = new ArrayList<>();
+      List<Method> methods = new ArrayList<>();
+      for (Sample sample : selSamples) {
+        if (sample != null) {
+          sample = sample.getPrincipleSample();
+          samples.add(sample);
+          methods.add(sample.getMethod());
+          //
+          Path path = sample.getSampleFile().getFilePath();
+          if (!path.toString().trim().isEmpty() && !path.toString().equals("N/A")) {
+            paths.add(path);
+          }
+        }
+      }
+
+      if (!samples.isEmpty() && !paths.isEmpty()) {
+        // needed for the PTOE popup
+        Scene scene = table.getScene();
+        Stage parent = null;
+        if (scene != null) {
+          parent = (Stage) scene.getWindow();
+        }
+
+        List<Boolean> successes = SpTool3Main.getRunTime().getMainWindowCtl().startImportLoadAgain(paths,
+            methods, parent);
+
+        // Only remove if reimport is possible at all (i.e, if success was returned).
+        if (!successes.isEmpty()) {
+          for (int i = 0; i < successes.size(); i++) {
+            boolean success = successes.get(i);
+            if (success) {
+              if (i < samples.size()) {
+                Sample sample = samples.get(i);
+                SpTool3Main.getRunTime().getSampleReg().removeSamplesEntirely(List.of(sample));
+              }
+            }
+          }
+          // refresh UI
+          SpTool3Main.getRunTime().getMainWindowCtl().updateSampleSets();
+        }
       }
     });
   }

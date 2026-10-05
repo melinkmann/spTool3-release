@@ -82,6 +82,7 @@ public class BaselineParams extends AbstractParamSet implements ParamSet {
   private final Parameter<Double> outlierPoissonOffsetValue;
   private Parameter<Boolean> applyPoissonContinuityCorrection;
   private Parameter<Double> poissonContinuityCorrection;
+  private Parameter<Boolean> lowerPoissonLimitZeroBoolean;
 
 
   public BaselineParams() {
@@ -112,7 +113,7 @@ public class BaselineParams extends AbstractParamSet implements ParamSet {
         "Select model",
         """
             Specify how spTool decides which model it will use:
-            1) Automatic: Use Poisson model if mean BG µ < 10
+            1) Automatic: Use Poisson model if median BG 'µ' < 10
             2) Highest: Calculate Poisson and Gaussian model. Pick the one with the higher threshold
             3) Gaussian: Force using Gaussian model.
             4) Poisson: Force using Poisson model""",
@@ -395,7 +396,7 @@ public class BaselineParams extends AbstractParamSet implements ParamSet {
         "Outliers are recognized using a factor f as a 'z-value'-like measure of significance (f·σ)."
             + "\nImportant note: For the smart-increment test, this value represents the initial factor " +
             "(f·σ)",
-        3D,
+        3d,
         NF.D1C2,
         TextFormatterOption.ASSURE_NONZERO_POSITIVE_DOUBLE,
         false,
@@ -436,6 +437,27 @@ public class BaselineParams extends AbstractParamSet implements ParamSet {
         TextFormatterOption.ASSURE_NONZERO_POSITIVE_DOUBLE,
         false,
         "poissonContinuityCorrection"
+    );
+
+    lowerPoissonLimitZeroBoolean = new BooleanParameter(
+        "Outlier side",
+        "Set lower limit to zero",
+        """
+            Instead of calculating the lower outlier limit (LOL) as
+            LOL = Yc -  offset,
+            LOL is set to LOL = 0.
+            
+            Essentially, the outlier test becomes a one-sided test that only removes values above the mean.
+            
+            This option helps to force the outlier test to produce lower mean baseline values.
+            Why? Sometimes, the outlier removal would otherwise remove too many of the small data points,
+            which overestimates the mean. This seems to be a problem that affects Poisson distributions
+            at low mean background values.
+            
+            Only applies to 'Poisson', 'Currie Poisson' and 'Poisson-Normal approximation'""",
+        true,
+        false,
+        "lowerPoissonLimitZeroBoolean"
     );
 
     organize();
@@ -489,6 +511,8 @@ public class BaselineParams extends AbstractParamSet implements ParamSet {
     this.applyPoissonContinuityCorrection =
         baselineParams.applyPoissonContinuityCorrection.copyWithoutChildren();
     this.poissonContinuityCorrection = baselineParams.poissonContinuityCorrection.copyWithoutChildren();
+
+    this.lowerPoissonLimitZeroBoolean = baselineParams.lowerPoissonLimitZeroBoolean.copyWithoutChildren();
     organize();
   }
 
@@ -578,12 +602,14 @@ public class BaselineParams extends AbstractParamSet implements ParamSet {
     outlierTestTypePoisson.addConditionalChild(OutlierModel.listIterativeTests(),
         outlierMeasureOfLocationPoisson,
         outlierFactorPoissonStart,
-        outlierPoissonOffsetBoolean);
+        outlierPoissonOffsetBoolean,
+        lowerPoissonLimitZeroBoolean);
 
     outlierTestTypePoisson.addConditionalChild(
         OutlierModel.FIXED_NUMBER_ITERATION,
         outlierMeasureOfLocationPoisson,
-        outlierPoissonMaxNonSmartIncrements);
+        outlierPoissonMaxNonSmartIncrements,
+        lowerPoissonLimitZeroBoolean);
 
     outlierPoissonOffsetBoolean.addConditionalChild(true, outlierPoissonOffsetValue);
   }
@@ -641,6 +667,7 @@ public class BaselineParams extends AbstractParamSet implements ParamSet {
           case "outlierFactorPoissonStart" -> outlierFactorPoissonStart;
           case "outlierPoissonOffsetBoolean" -> outlierPoissonOffsetBoolean;
           case "outlierPoissonOffsetValue" -> outlierPoissonOffsetValue;
+          case "lowerPoissonLimitZeroBoolean" -> lowerPoissonLimitZeroBoolean;
 
           default -> null;
         };
@@ -786,6 +813,9 @@ public class BaselineParams extends AbstractParamSet implements ParamSet {
     return poissonContinuityCorrection;
   }
 
+  public Parameter<Boolean> getLowerPoissonLimitZeroBoolean() {
+    return lowerPoissonLimitZeroBoolean;
+  }
 
   @Serial
   private void readObject(java.io.ObjectInputStream in) throws IOException, ClassNotFoundException {
@@ -812,5 +842,10 @@ public class BaselineParams extends AbstractParamSet implements ParamSet {
     if (preferEmpiricalSIA == null) {
       this.preferEmpiricalSIA = defaults.preferEmpiricalSIA;
     }
+
+    if (lowerPoissonLimitZeroBoolean == null) {
+      this.lowerPoissonLimitZeroBoolean = defaults.lowerPoissonLimitZeroBoolean;
+    }
+
   }
 }

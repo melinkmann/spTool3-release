@@ -63,10 +63,21 @@
                                                                                 <BorderPane prefHeight="200.0" prefWidth="200.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
                                                                                     <center>
                                                                                         <AnchorPane fx:id="rightAnchor" prefHeight="200.0" prefWidth="133.0" BorderPane.alignment="CENTER">
-                                                                                            <TableView fx:id="channelTableView" layoutX="-12.0" layoutY="58.0" prefHeight="235.0" prefWidth="661.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
-                                                                                                <columns>
-                                                                                                </columns>
-                                                                                            </TableView>
+                                                                                            <StackPane alignment="BOTTOM_RIGHT" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
+                                                                                                <TableView fx:id="channelTableView" layoutX="-12.0" layoutY="58.0" prefHeight="235.0" prefWidth="661.0">
+                                                                                                    <columns>
+                                                                                                    </columns>
+                                                                                                </TableView>
+                                                                                                <Text fx:id="channelTableViewFeedbackText" text="0 / 0">
+                                                                                                    <StackPane.margin>
+                                                                                                        <Insets bottom="5.0" right="30.0" />
+                                                                                                    </StackPane.margin>
+                                                                           <font>
+                                                                              <Font size="10.0" />
+                                                                           </font>
+                                                                                                </Text>
+                                                                                            </StackPane>
+
                                                                                         </AnchorPane>
                                                                                     </center>
                                                                                     <bottom>
@@ -143,112 +154,112 @@
                                     </items>
                                 </SplitPane>
                             </center>
-                     <left>
-                                      <VBox fx:id="tabLikeBtnVbox" prefHeight="400.0" spacing="5.0" BorderPane.alignment="CENTER">
-                                          <BorderPane.margin>
-                                              <Insets bottom="1.5" left="1.0" right="1.0" top="1.2" />
-                                          </BorderPane.margin>
-                                          <padding>
-                                              <Insets bottom="2.0" left="2.0" right="2.0" top="2.0" />
-                                          </padding>
-                                          <children>
-                                              <Button fx:id="executeMethodBtn" minWidth="69.0" mnemonicParsing="false" prefHeight="26.0" prefWidth="85.0" text="Create">
-                                                  <font>
-                                                      <Font name="System Bold Italic" size="12.0" />
-                                                  </font>
-                                                  <effect>
-                                                      <InnerShadow choke="0.2" height="10.0" radius="4.5" width="10.0" />
-                                                  </effect>
-                                                  <textFill>
-                                                      <LinearGradient endX="1.0" endY="0.46946565431492926" startY="0.6221374482598924">
-                                                          <stops>
-                                                              <Stop>
-                                                                  <color>
-                                                                      <Color />
-                                                                  </color>
-                                                              </Stop>
-                                                              <Stop offset="0.007633587786259542">
-                                                                  <color>
-                                                                      <Color />
-                                                                  </color>
-                                                              </Stop>
-                                                              <Stop offset="0.24572309944578052">
-                                                                  <color>
-                                                                      <Color red="0.25599780678749084" green="0.19960525631904602" blue="0.8763157725334167" />
-                                                                  </color>
-                                                              </Stop>
-                                                              <Stop offset="0.6026194708773397">
-                                                                  <color>
-                                                                      <Color red="0.8342105150222778" green="0.1467592567205429" blue="0.1467592567205429" />
-                                                                  </color>
-                                                              </Stop>
-                                                              <Stop offset="1.0">
-                                                                  <color>
-                                                                      <Color red="0.24883431196212769" green="0.8657894730567932" blue="0.0945955142378807" />
-                                                                  </color>
-                                                              </Stop>
-                                                          </stops>
-                                                      </LinearGradient>
-                                                  </textFill>
-                                              </Button>
+                            <left>
+                                <VBox fx:id="tabLikeBtnVbox" prefHeight="400.0" spacing="5.0" BorderPane.alignment="CENTER">
+                                    <BorderPane.margin>
+                                        <Insets bottom="1.5" left="1.0" right="1.0" top="1.2" />
+                                    </BorderPane.margin>
+                                    <padding>
+                                        <Insets bottom="2.0" left="2.0" right="2.0" top="2.0" />
+                                    </padding>
+                                    <children>
+                                        <Button fx:id="executeMethodBtn" minWidth="69.0" mnemonicParsing="false" prefHeight="26.0" prefWidth="85.0" text="Create">
+                                            <font>
+                                                <Font name="System Bold Italic" size="12.0" />
+                                            </font>
+                                            <effect>
+                                                <InnerShadow choke="0.2" height="10.0" radius="4.5" width="10.0" />
+                                            </effect>
+                                            <textFill>
+                                                <LinearGradient endX="1.0" endY="0.46946565431492926" startY="0.6221374482598924">
+                                                    <stops>
+                                                        <Stop>
+                                                            <color>
+                                                                <Color />
+                                                            </color>
+                                                        </Stop>
+                                                        <Stop offset="0.007633587786259542">
+                                                            <color>
+                                                                <Color />
+                                                            </color>
+                                                        </Stop>
+                                                        <Stop offset="0.24572309944578052">
+                                                            <color>
+                                                                <Color red="0.25599780678749084" green="0.19960525631904602" blue="0.8763157725334167" />
+                                                            </color>
+                                                        </Stop>
+                                                        <Stop offset="0.6026194708773397">
+                                                            <color>
+                                                                <Color red="0.8342105150222778" green="0.1467592567205429" blue="0.1467592567205429" />
+                                                            </color>
+                                                        </Stop>
+                                                        <Stop offset="1.0">
+                                                            <color>
+                                                                <Color red="0.24883431196212769" green="0.8657894730567932" blue="0.0945955142378807" />
+                                                            </color>
+                                                        </Stop>
+                                                    </stops>
+                                                </LinearGradient>
+                                            </textFill>
+                                        </Button>
 
-                                              <HBox alignment="CENTER_LEFT" maxWidth="85.0" prefWidth="85.0" spacing="2.0">
-                                                  <children>
-                                                      <Label minWidth="15.0" text="n=" />
-                                                      <Spinner fx:id="repetitionSpinner" prefHeight="26.0" prefWidth="85.0" />
-                                                  </children>
-                                                  <padding>
-                                                      <Insets bottom="2.0" left="2.0" right="2.0" top="2.0" />
-                                                  </padding>
-                                              </HBox>
-                                              <Separator prefWidth="20.0" />
+                                        <HBox alignment="CENTER_LEFT" maxWidth="85.0" prefWidth="85.0" spacing="2.0">
+                                            <children>
+                                                <Label minWidth="15.0" text="n=" />
+                                                <Spinner fx:id="repetitionSpinner" prefHeight="26.0" prefWidth="85.0" />
+                                            </children>
+                                            <padding>
+                                                <Insets bottom="2.0" left="2.0" right="2.0" top="2.0" />
+                                            </padding>
+                                        </HBox>
+                                        <Separator prefWidth="20.0" />
 
 
-                                              <Button fx:id="reprocessSamplesBtn" layoutX="12.0" layoutY="12.0" minWidth="69.0" mnemonicParsing="false" prefHeight="26.0" prefWidth="85.0" text="Reprocess">
-                                                  <font>
-                                                      <Font name="System Bold Italic" size="12.0" />
-                                                  </font>
-                                                  <effect>
-                                                      <InnerShadow choke="0.2" height="10.0" radius="4.5" width="10.0" />
-                                                  </effect>
-                                                  <textFill>
-                                                      <LinearGradient endX="1.0" endY="0.46946565431492926" startY="0.6221374482598924">
-                                                          <stops>
-                                                              <Stop>
-                                                                  <color>
-                                                                      <Color />
-                                                                  </color>
-                                                              </Stop>
-                                                              <Stop offset="0.0076335877862595365">
-                                                                  <color>
-                                                                      <Color red="0.24476000666618347" green="0.20010000467300415" blue="0.8700000047683716" />
-                                                                  </color>
-                                                              </Stop>
-                                                              <Stop offset="0.2457230994457805">
-                                                                  <color>
-                                                                      <Color red="0.2549019753932953" green="0.20000000298023224" blue="0.8745098114013672" />
-                                                                  </color>
-                                                              </Stop>
-                                                              <Stop offset="0.6026194708773397">
-                                                                  <color>
-                                                                      <Color red="0.8342105150222778" green="0.1467592567205429" blue="0.1467592567205429" />
-                                                                  </color>
-                                                              </Stop>
-                                                              <Stop offset="1.0">
-                                                                  <color>
-                                                                      <Color red="0.24883431196212769" green="0.8657894730567932" blue="0.0945955142378807" />
-                                                                  </color>
-                                                              </Stop>
-                                                          </stops>
-                                                      </LinearGradient>
-                                                  </textFill>
-                                              </Button>
+                                        <Button fx:id="reprocessSamplesBtn" layoutX="12.0" layoutY="12.0" minWidth="69.0" mnemonicParsing="false" prefHeight="26.0" prefWidth="85.0" text="Reprocess">
+                                            <font>
+                                                <Font name="System Bold Italic" size="12.0" />
+                                            </font>
+                                            <effect>
+                                                <InnerShadow choke="0.2" height="10.0" radius="4.5" width="10.0" />
+                                            </effect>
+                                            <textFill>
+                                                <LinearGradient endX="1.0" endY="0.46946565431492926" startY="0.6221374482598924">
+                                                    <stops>
+                                                        <Stop>
+                                                            <color>
+                                                                <Color />
+                                                            </color>
+                                                        </Stop>
+                                                        <Stop offset="0.0076335877862595365">
+                                                            <color>
+                                                                <Color red="0.24476000666618347" green="0.20010000467300415" blue="0.8700000047683716" />
+                                                            </color>
+                                                        </Stop>
+                                                        <Stop offset="0.2457230994457805">
+                                                            <color>
+                                                                <Color red="0.2549019753932953" green="0.20000000298023224" blue="0.8745098114013672" />
+                                                            </color>
+                                                        </Stop>
+                                                        <Stop offset="0.6026194708773397">
+                                                            <color>
+                                                                <Color red="0.8342105150222778" green="0.1467592567205429" blue="0.1467592567205429" />
+                                                            </color>
+                                                        </Stop>
+                                                        <Stop offset="1.0">
+                                                            <color>
+                                                                <Color red="0.24883431196212769" green="0.8657894730567932" blue="0.0945955142378807" />
+                                                            </color>
+                                                        </Stop>
+                                                    </stops>
+                                                </LinearGradient>
+                                            </textFill>
+                                        </Button>
 
-                                              <Button fx:id="stopBtn" maxHeight="26.0" mnemonicParsing="false" prefHeight="26.0" prefWidth="52.0" text="Stop" />
+                                        <Button fx:id="stopBtn" maxHeight="26.0" mnemonicParsing="false" prefHeight="26.0" prefWidth="52.0" text="Stop" />
 
-                                          </children>
-                                      </VBox>
-                     </left>
+                                    </children>
+                                </VBox>
+                            </left>
                         </BorderPane>
                     </children>
                 </AnchorPane>

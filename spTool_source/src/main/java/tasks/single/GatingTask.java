@@ -265,6 +265,11 @@ public class GatingTask extends AbstractWorkingTask implements WorkingTask {
                         }
                       }
 
+                      // update background (?)
+                      if (forceNewBGDefinition){
+
+                      }
+
                       // (1) Remove existing population from the Trace to avoid pile up of Populations)
                       trace.removePopulation(popID);
                       // (2) Update the ID with the latest step

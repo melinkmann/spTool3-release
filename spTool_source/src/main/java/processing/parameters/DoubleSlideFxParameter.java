@@ -22,8 +22,7 @@ import gui.util.TextFormatterOption;
 import gui.util.TextFormatterSupplier;
 import gui.util.UiUtil;
 
-import java.awt.MouseInfo;
-import java.awt.Point;
+import java.awt.*;
 import java.util.concurrent.atomic.AtomicReference;
 
 import javafx.animation.PauseTransition;
@@ -39,6 +38,8 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.Popup;
+import javafx.stage.Stage;
+import javafx.stage.Window;
 import javafx.util.Duration;
 import javafx.util.StringConverter;
 import util.NF;
@@ -207,7 +208,8 @@ public class DoubleSlideFxParameter extends AbstractFxParameter<Double> implemen
           double mouseY = mouseLocation.getY();
 
           // Show popup near the mouse location -> // Adjust offset as needed
-          popup.show(SpTool3Main.getMainStage(), mouseX + 10, mouseY + 10);
+          Window sliderStage = slider.getScene().getWindow();
+          popup.show(sliderStage, mouseX + 10, mouseY + 10);
         }
       }
     });

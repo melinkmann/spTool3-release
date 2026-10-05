@@ -29,7 +29,7 @@ public class WLS implements LinReg, Serializable {
   @Serial
   private static final long serialVersionUID = 1L;
 
-  private static final Logger LOGGER = LogManager.getLogger(OLS.class);
+  private static final Logger LOGGER = LogManager.getLogger(WLS.class);
 
   private final WeightedLinearRegressionSpTool regression = new WeightedLinearRegressionSpTool();
   private boolean isValidInput;

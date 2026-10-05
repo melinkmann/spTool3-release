@@ -143,25 +143,34 @@ public class MZChannel implements Channel, Serializable {
   }
 
 
+
   @Override
   public boolean equals(Object o) {
     if (this == o) {
       return true;
     }
-    if (o == null || getClass() != o.getClass()) {
+    if (o == null) {
       return false;
     }
-    MZChannel channel = (MZChannel) o;
-    return Objects.equals(category, channel.category)
-        && Objects.equals(msId, channel.msId)
-        // true if both null:
-        && Objects.equals(isotope, channel.isotope);
+
+    // Extract isotope from either IsotopeChannel or MZChannel
+    Isotope otherIsotope = null;
+    if (o instanceof IsotopeChannel) {
+      otherIsotope = ((IsotopeChannel) o).getIsotope();
+    } else if (o instanceof MZChannel) {
+      otherIsotope = ((MZChannel) o).getIsotope();
+    } else {
+      return false;
+    }
+
+    // Compare by isotope only
+    return Objects.equals(isotope, otherIsotope);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(category, msId, isotope);
+    return Objects.hash(isotope);
   }
-
-
 }
+
+

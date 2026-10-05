@@ -36,9 +36,11 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 import gui.dialog.mainImpl.ViewListDialog;
+import gui.util.UiUtil;
 import io.export.ClipboardWriter;
 import io.export.DataExport;
 import io.export.ExportWriter;
@@ -57,6 +59,7 @@ import processing.parameterSets.ListMethod;
 import processing.parameterSets.Method;
 import processing.parameterSets.ParamSet;
 import processing.parameterSets.impl.*;
+import sandbox.montecarlo.AutofillGenerator;
 import sandbox.montecarlo.Isotope;
 import tasks.BatchTask;
 import tasks.Task;
@@ -65,6 +68,7 @@ import tasks.batch.SimpleLinearBatch;
 import tasks.batch.SimpleParallelBatch;
 import tasks.results.EmptyTaskResult;
 import tasks.single.*;
+import util.ArrUtils;
 import util.NF;
 import util.SnF;
 
@@ -110,21 +114,81 @@ public abstract class Actions {
 
     List<Task> tasks = new ArrayList<>();
     for (int i = 0; i < n; i++) {
+      List<Task> sampleTasks = new ArrayList<>();
       // each iteration gives one sample
       AtomicReference<Sample> sampleRef = new AtomicReference<>(null);
       Task synthesizer = new MonteCarloGeneratorTask(
-          "Data synthesizer " + i + 1 + " of " + n,
+          "Data synthesizer " + Integer.toString(i + 1) + " of " + n,
           method, sampleRef);
-      tasks.add(synthesizer);
+      sampleTasks.add(synthesizer);
+      sampleTasks.addAll(getProcessingSteps(method, sampleRef));
 
-      tasks.addAll(getProcessingSteps(method, sampleRef));
+      BatchTask sampleBatchTask = new SimpleLinearBatch<>("Sample batch " + i + " of " + n,
+          sampleTasks, false, new EmptyTaskResult());
+      tasks.add(sampleBatchTask);
     }
 
-
-    // Cannot parallelize due to lack of RAM in case of Monte Carlo. --> SimpleLinearBatch
-    // SimpleParallelBatch
-    BatchTask task = new SimpleLinearBatch<>("Data synthesizer batch", tasks, false,
+    // Should not parallelize due to lack of RAM in case of Monte Carlo.
+    // --> SimpleLinearBatch vs SimpleParallelBatch
+    BatchTask task = new SimpleParallelBatch("Data synthesizer batch", tasks, false,
         () -> SpTool3Main.getRunTime().getSampleReg().flushWaitingList());
+    SpTool3Main.getRunTime().getTaskManager().queueToHousekeepingPool(task);
+  }
+
+  public static void executeMethodCreateBtn(List<Method> allMethods, int n) {
+
+    List<List<Method>> subMethodLists = ArrUtils.split(allMethods, 10);
+
+    List<Task> subsetBatchList = new ArrayList<>();
+    for (List<Method> subMethodList : subMethodLists) {
+
+      // All samples of all methods in this subset. Each of them is one linear batch.
+      List<Task> sampleBatchTasks = new ArrayList<>();
+      for (Method method : subMethodList) {
+        // Copy to make sure that concurrent changes in the UI do not affect processing.
+        method = method.getCopyWithoutFile();
+
+      /*
+      Design: We wrap a sample in an atomic reference which is either initialized as null
+      (in that case the method has to provide a sample, e.g., via Monte Carlo)
+      or as a selected sample.
+
+      Now, the work must be executed in a linear Batch to ensure "one task after the other" progression.
+      Then, however, there should be no issue of having to return/pass the samples between Tasks.
+       */
+
+        for (int i = 0; i < n; i++) {
+          // each iteration gives one sample
+          List<Task> sampleSubmethodTasks = new ArrayList<>();
+          AtomicReference<Sample> sampleRef = new AtomicReference<>(null);
+          Task synthesizer = new MonteCarloGeneratorTask(
+              "Data synthesizer " + Integer.toString(i + 1) + " of " + n,
+              method, sampleRef);
+          sampleSubmethodTasks.add(synthesizer);
+          sampleSubmethodTasks.addAll(getProcessingSteps(method, sampleRef));
+
+          // Strictly one task after the other for this sample.
+          BatchTask sampleBatchTask = new SimpleLinearBatch<>("Sample batch " + (i + 1) + " of " + n,
+              sampleSubmethodTasks, false, new EmptyTaskResult());
+          sampleBatchTasks.add(sampleBatchTask);
+        }
+      }
+
+      // The samples of this subset run in parallel. Flush once the whole subset is done.
+      BatchTask subsetBatchTask = new SimpleParallelBatch("Data synthesizer subset batch",
+          sampleBatchTasks, false,
+          () -> SpTool3Main.getRunTime().getSampleReg().flushWaitingList());
+      subsetBatchList.add(subsetBatchTask);
+    }
+
+    if (subsetBatchList.isEmpty()) {
+      return;
+    }
+
+    // The subsets themselves are called one after the other.
+    BatchTask task = new SimpleLinearBatch<>("Data synthesizer main batch", subsetBatchList, false,
+        new EmptyTaskResult());
+
     SpTool3Main.getRunTime().getTaskManager().queueToHousekeepingPool(task);
   }
 
@@ -246,6 +310,7 @@ public abstract class Actions {
   private static List<Task> getProcessingSteps(Method method, AtomicReference<Sample> sample) {
 
     boolean hasActiveSearchBlock = false;
+    NormalSearchParams activeSearchParams = null;
 
     List<Task> tasks = new ArrayList<>();
     List<ParamSet> subMethods = method.getSets();
@@ -273,14 +338,23 @@ public abstract class Actions {
       if (set instanceof NormalSearchParams) {
         branch.clear(); // resets branch track
         boolean isActive = ((NormalSearchParams) set).getEnableBoolean().getValue();
-        hasActiveSearchBlock = isActive;
         if (isActive) {
-          tasks.add(new SearchTask("Search", branch, (NormalSearchParams) set, sample,selChannels));
+          tasks.add(new SearchTask("Search", branch, (NormalSearchParams) set, sample, selChannels));
+          hasActiveSearchBlock = true;
+          activeSearchParams = (NormalSearchParams) set;
         }
       }
 
       if (set instanceof GatingParams && hasActiveSearchBlock) {
         tasks.add(new GatingTask("Gating", branch, (GatingParams) set, sample));
+
+        // check if need to recompute NP background
+        GatingParams gatingParams = ((GatingParams) set);
+        if (activeSearchParams != null && gatingParams.getForceNewBGDefinition().getValue()) {
+          tasks.add(new ComputeBgPerNpTask("Background computation after gating",
+              branch, activeSearchParams, sample));
+
+        }
       }
 
       if (set instanceof IsotopeRemoverParams && hasActiveSearchBlock) {
@@ -323,7 +397,7 @@ public abstract class Actions {
     item.setOnAction(e -> {
       lastRef.set(item);
       ExecuteSubmethod executeSubmethod = new ExecuteSubmethod(
-          null,
+          SpTool3Main.getRunTime().dtGroupParams,
           SpTool3Main.getRunTime().dtGroupParams,
           AvailableParameterSets.getOptionAsList(AvailableParameterSets.DT_GROUPING),
           "Group data points to increase dwell time.",
@@ -331,6 +405,19 @@ public abstract class Actions {
           600d,
           350d
       );
+
+      // tell it to reset the parameters to default
+      executeSubmethod.setResetMethodLatch(new Consumer<>() {
+        @Override
+        public void accept(ParamSet paramSet) {
+          if (paramSet instanceof DTGroupParams) {
+            LOGGER.info("Rejected parameter change due to cancel operation.");
+            SpTool3Main.getRunTime().dtGroupParams = (DTGroupParams) paramSet;
+          } else {
+            LOGGER.error("Cannot cast {} to {}", paramSet.getClass(), DTGroupParams.class);
+          }
+        }
+      });
 
       // Automatically size to fit content
       executeSubmethod.getDialogPane().getScene().getWindow().sizeToScene();
@@ -365,7 +452,7 @@ public abstract class Actions {
       lastRef.set(item);
 
       ExecuteSubmethod executeSubmethod = new ExecuteSubmethod(
-          null,
+          new IsotopeCalculatorParams(),
           new IsotopeCalculatorParams(),
           AvailableParameterSets.getOptionAsList(AvailableParameterSets.ISOTOPE_CALCULATOR),
           "Export isotope ratios to clipboard.",
@@ -373,6 +460,7 @@ public abstract class Actions {
           600d,
           350d
       );
+
 
       // Automatically size to fit content
       executeSubmethod.getDialogPane().getScene().getWindow().sizeToScene();
@@ -420,7 +508,7 @@ public abstract class Actions {
       lastRef.set(item);
 
       ExecuteSubmethod executeSubmethod = new ExecuteSubmethod(
-          null,
+          SpTool3Main.getRunTime().isotopeCalculatorParams,
           SpTool3Main.getRunTime().isotopeCalculatorParams,
           AvailableParameterSets.getOptionAsList(AvailableParameterSets.ISOTOPE_CALCULATOR),
           "Compute isotope ratio.",
@@ -428,6 +516,19 @@ public abstract class Actions {
           600d,
           350d
       );
+
+      // tell it to reset the parameters to default
+      executeSubmethod.setResetMethodLatch(new Consumer<>() {
+        @Override
+        public void accept(ParamSet paramSet) {
+          if (paramSet instanceof IsotopeCalculatorParams) {
+            LOGGER.info("Rejected parameter change due to cancel operation.");
+            SpTool3Main.getRunTime().isotopeCalculatorParams = (IsotopeCalculatorParams) paramSet;
+          } else {
+            LOGGER.error("Cannot cast {} to {}", paramSet.getClass(), IsotopeCalculatorParams.class);
+          }
+        }
+      });
 
       // Automatically size to fit content
       executeSubmethod.getDialogPane().getScene().getWindow().sizeToScene();
@@ -538,7 +639,7 @@ public abstract class Actions {
     item.setOnAction(e -> {
       lastRef.set(item);
       ExecuteSubmethod executeSubmethod = new ExecuteSubmethod(
-          null,
+          SpTool3Main.getRunTime().timeRoiParams,
           SpTool3Main.getRunTime().timeRoiParams,
           AvailableParameterSets.getOptionAsList(AvailableParameterSets.TIME_ROI),
           "Cut time region.",
@@ -546,6 +647,19 @@ public abstract class Actions {
           600d,
           350d
       );
+
+      // tell it to reset the parameters to default
+      executeSubmethod.setResetMethodLatch(new Consumer<>() {
+        @Override
+        public void accept(ParamSet paramSet) {
+          if (paramSet instanceof TimeRoiParams) {
+            LOGGER.info("Rejected parameter change due to cancel operation.");
+            SpTool3Main.getRunTime().timeRoiParams = (TimeRoiParams) paramSet;
+          } else {
+            LOGGER.error("Cannot cast {} to {}", paramSet.getClass(), TimeRoiParams.class);
+          }
+        }
+      });
 
       // Automatically size to fit content
       executeSubmethod.getDialogPane().getScene().getWindow().sizeToScene();
@@ -572,13 +686,64 @@ public abstract class Actions {
     });
   }
 
+  public static void makeMethodDOEMenuItem(Menu menu, AtomicReference<MenuItem> lastRef) {
+    MenuItem item = new MenuItem("Run method DOE");
+    menu.getItems().add(item);
+    item.setOnAction(e -> {
+
+      lastRef.set(item);
+      ExecuteSubmethod executeSubmethod = new ExecuteSubmethod(
+          SpTool3Main.getRunTime().methodDoeParams,
+          SpTool3Main.getRunTime().methodDoeParams,
+          AvailableParameterSets.getOptionAsList(AvailableParameterSets.METHOD_DOE),
+          "Run method design of experiment (DOE) for D, y, v.",
+          FxStageButton.RUN,
+          600d,
+          650d,
+          UiUtil.getImage("/img/wizardDOE.png")
+      );
+
+      // tell it to reset the parameters to default
+      executeSubmethod.setResetMethodLatch(new Consumer<>() {
+        @Override
+        public void accept(ParamSet paramSet) {
+          if (paramSet instanceof MethodDoeParams) {
+            LOGGER.info("Rejected parameter change due to cancel operation.");
+            SpTool3Main.getRunTime().methodDoeParams = (MethodDoeParams) paramSet;
+          } else {
+            LOGGER.error("Cannot cast {} to {}", paramSet.getClass(), MethodDoeParams.class);
+          }
+        }
+      });
+
+      // Automatically size to fit content
+      executeSubmethod.getDialogPane().getScene().getWindow().sizeToScene();
+      Optional<ParamSet> exe = executeSubmethod.showAndWait();
+      MethodDoeParams method = null;
+      if (exe.isPresent()) {
+        ParamSet params = exe.get();
+        if (params instanceof MethodDoeParams) {
+          SpTool3Main.getRunTime().saveParameterSets();
+          method = (MethodDoeParams) params;
+        }
+      }
+
+      if (method != null) {
+        Method current = SpTool3Main.getRunTime().getMainWindowCtl().getMethodView().getCurrentMethod();
+        if (current != null) {
+          AutofillGenerator.scheduleDOE(current, method);
+        }
+      }
+    });
+  }
+
   public static void makeBasicRoiMenuItem(Menu menu, AtomicReference<MenuItem> lastRef) {
     MenuItem item = new MenuItem("Select event data range");
     menu.getItems().add(item);
     item.setOnAction(e -> {
       lastRef.set(item);
       ExecuteSubmethod executeSubmethod = new ExecuteSubmethod(
-          null,
+          SpTool3Main.getRunTime().eventDataRangeParams,
           SpTool3Main.getRunTime().eventDataRangeParams,
           AvailableParameterSets.getOptionAsList(AvailableParameterSets.EVENT_DATA_ROI),
           "Select event data range.",
@@ -586,6 +751,19 @@ public abstract class Actions {
           600d,
           350d
       );
+
+      // tell it to reset the parameters to default
+      executeSubmethod.setResetMethodLatch(new Consumer<>() {
+        @Override
+        public void accept(ParamSet paramSet) {
+          if (paramSet instanceof EventDataRangeParams) {
+            LOGGER.info("Rejected parameter change due to cancel operation.");
+            SpTool3Main.getRunTime().eventDataRangeParams = (EventDataRangeParams) paramSet;
+          } else {
+            LOGGER.error("Cannot cast {} to {}", paramSet.getClass(), EventDataRangeParams.class);
+          }
+        }
+      });
 
       // Automatically size to fit content
       executeSubmethod.getDialogPane().getScene().getWindow().sizeToScene();

@@ -45,6 +45,7 @@ public class StatCollectionHDD implements StatCollection, Serializable {
   private final int lastSliceLength;
   private final double siaShape;
   private final double continuityEpsilon;
+  private final boolean lowerPoissonLimitToZero;
   //
   private transient SoftReference<double[]> locationCache;
   private transient SoftReference<double[]> spreadCache;
@@ -60,6 +61,7 @@ public class StatCollectionHDD implements StatCollection, Serializable {
     this.lastSliceLength = dist.getLastSliceLength();
     this.siaShape = dist.getSiaShape();
     this.continuityEpsilon = dist.getContinuityEpsilon();
+    this.lowerPoissonLimitToZero = dist.getLowerPoissonLimitToZero();
     //
     this.locationCache = new SoftReference<>(null);
     this.spreadCache = new SoftReference<>(null);
@@ -69,7 +71,7 @@ public class StatCollectionHDD implements StatCollection, Serializable {
 
 
   public StatCollectionHDD(List<StatDataSet> list, int sliceLength, int lastSliceLength,
-                           double siaShape, double continuityEpsilon) {
+                           double siaShape, double continuityEpsilon, boolean lowerPoissonLimitToZero) {
     double[] locationArr = new double[list.size()];
     double[] spreadArr = new double[list.size()];
     double[] outlierArr = new double[list.size()];
@@ -89,6 +91,7 @@ public class StatCollectionHDD implements StatCollection, Serializable {
     this.lastSliceLength = lastSliceLength;
     this.siaShape = siaShape;
     this.continuityEpsilon = continuityEpsilon;
+    this.lowerPoissonLimitToZero = lowerPoissonLimitToZero;
     //
     this.locationCache = new SoftReference<>(ArrUtils.copy(locationArr));
     this.spreadCache = new SoftReference<>(ArrUtils.copy(spreadArr));
@@ -101,7 +104,8 @@ public class StatCollectionHDD implements StatCollection, Serializable {
                            double[] spread,
                            double[] outlierFactor,
                            int[] distrKey,
-                           int sliceLength, int lastSliceLength, double siaShape, double continuityEpsilon) {
+                           int sliceLength, int lastSliceLength, double siaShape, double continuityEpsilon,
+                           boolean lowerPoissonLimitToZero) {
     this.location = StorageUtils.storeToDoubleBuffer(getStorage(), location);
     this.spread = StorageUtils.storeToDoubleBuffer(getStorage(), spread);
     this.outlierFactor = StorageUtils.storeToDoubleBuffer(getStorage(), outlierFactor);
@@ -110,6 +114,7 @@ public class StatCollectionHDD implements StatCollection, Serializable {
     this.lastSliceLength = lastSliceLength;
     this.siaShape = siaShape;
     this.continuityEpsilon = continuityEpsilon;
+    this.lowerPoissonLimitToZero = lowerPoissonLimitToZero;
     //
     this.locationCache = new SoftReference<>(null);
     this.spreadCache = new SoftReference<>(null);
@@ -120,13 +125,13 @@ public class StatCollectionHDD implements StatCollection, Serializable {
   @Override
   public StatCollection copy() {
     return new StatCollectionHDD(getLocation(), getSpread(), getOutlierFactor(), getDistrKey(),
-        sliceLength, lastSliceLength, siaShape, continuityEpsilon);
+        sliceLength, lastSliceLength, siaShape, continuityEpsilon,lowerPoissonLimitToZero);
   }
 
   @Override
   public StatDataSet getSlice(int sliceIndex) {
     return new FixedStatDataSet(getLocation()[sliceIndex], getSpread()[sliceIndex], siaShape,
-        continuityEpsilon,
+        continuityEpsilon,lowerPoissonLimitToZero,
         getDistrKey()[sliceIndex]);
   }
 
@@ -211,6 +216,12 @@ public class StatCollectionHDD implements StatCollection, Serializable {
     return continuityEpsilon;
   }
 
+
+  @Override
+  public boolean getLowerPoissonLimitToZero() {
+    return false;
+  }
+
   public double[] getOutlierFactor() {
     double[] arr;
     if (outlierFactorCache != null) {
@@ -242,7 +253,7 @@ public class StatCollectionHDD implements StatCollection, Serializable {
     // Trivial case: just one slice -> always return the same set
     if (noOfSlices == 1) {
       interpolatedDataSet = new FixedStatDataSet(getLocation()[0], getSpread()[0], siaShape,
-          continuityEpsilon,
+          continuityEpsilon,lowerPoissonLimitToZero,
           getDistrKey()[0]);
     } else {
       // How many regular slices?
@@ -269,7 +280,7 @@ public class StatCollectionHDD implements StatCollection, Serializable {
         // are we in the first slice? --> Cannot interpolate
         if (sliceIdx == 0) {
           interpolatedDataSet = new FixedStatDataSet(getLocation()[0], getSpread()[0], siaShape,
-              continuityEpsilon,
+              continuityEpsilon,lowerPoissonLimitToZero,
               getDistrKey()[0]);
         } else {
           // get slice to the left
@@ -282,7 +293,8 @@ public class StatCollectionHDD implements StatCollection, Serializable {
           double intpSpread = Statistics.interpolate_1D(leftCenterIdx, centerIdx, getSpread()[leftSliceIdx],
               getSpread()[sliceIdx], dpIdx);
           // use the distribution type from the slice we are in currently @sliceIdx
-          interpolatedDataSet = new FixedStatDataSet(intpLocation, intpSpread, siaShape,continuityEpsilon,
+          interpolatedDataSet = new FixedStatDataSet(intpLocation, intpSpread, siaShape, continuityEpsilon,
+              lowerPoissonLimitToZero,
               getDistrKey()[sliceIdx]);
         }
       } else if (dpIdx > centerIdx) {
@@ -290,7 +302,7 @@ public class StatCollectionHDD implements StatCollection, Serializable {
         if (sliceIdx == noOfSlices - 1) {
           interpolatedDataSet = new FixedStatDataSet(getLocation()[noOfSlices - 1],
               getSpread()[noOfSlices - 1],
-              siaShape, continuityEpsilon,getDistrKey()[noOfSlices - 1]);
+              siaShape, continuityEpsilon, lowerPoissonLimitToZero, getDistrKey()[noOfSlices - 1]);
         } else {
           int rightSliceIdx = sliceIdx + 1;
           int rightCenterIdx;
@@ -308,13 +320,14 @@ public class StatCollectionHDD implements StatCollection, Serializable {
           double intpSpread = Statistics.interpolate_1D(rightCenterIdx, centerIdx, getSpread()[sliceIdx],
               getSpread()[rightSliceIdx], dpIdx);
           // use the distribution type from the slice we are in currently @sliceIdx
-          interpolatedDataSet = new FixedStatDataSet(intpLocation, intpSpread, siaShape,continuityEpsilon,
+          interpolatedDataSet = new FixedStatDataSet(intpLocation, intpSpread, siaShape, continuityEpsilon,
+              lowerPoissonLimitToZero,
               getDistrKey()[sliceIdx]);
         }
       } else {
         // we hit the center!
         interpolatedDataSet = new FixedStatDataSet(getLocation()[sliceIdx], getSpread()[sliceIdx], siaShape,
-            continuityEpsilon, getDistrKey()[sliceIdx]);
+            continuityEpsilon, lowerPoissonLimitToZero,getDistrKey()[sliceIdx]);
       }
     }
 

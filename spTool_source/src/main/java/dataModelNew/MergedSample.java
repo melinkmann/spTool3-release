@@ -35,10 +35,7 @@ import java.util.stream.Collectors;
 
 import math.stat.DriftFactor;
 import math.units.Unit;
-import math.units.enums.FlowUnit;
-import math.units.enums.MassUnit;
-import math.units.enums.MolarUnit;
-import math.units.enums.SizeUnit;
+import math.units.enums.*;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -65,6 +62,8 @@ public class MergedSample implements Sample, Serializable {
   private String nickName;
   private boolean highlighted;
   private String comment;
+  @Nullable
+  private Double doeMatchScore;
   private final List<Sample> samples;
   private Sample principleSample;
   private Cal quant;
@@ -151,6 +150,7 @@ public class MergedSample implements Sample, Serializable {
         quant.copy(),
         sampleDefaultChannels,
         removedChannelInfo);
+    newSample.setDoeMatchScore(doeMatchScore);
     return newSample;
   }
 
@@ -174,6 +174,7 @@ public class MergedSample implements Sample, Serializable {
         new Calibration(),
         sampleDefaultChannels,
         removedChannelInfo);
+    newSample.setDoeMatchScore(doeMatchScore);
     return newSample;
   }
 
@@ -203,7 +204,11 @@ public class MergedSample implements Sample, Serializable {
 
   @Override
   public String getNickName() {
-    return nickName;
+    if (doeMatchScore == null) {
+      return nickName;
+    } else {
+      return "rank-" + SnF.doubleToString(doeMatchScore, NF.D1C0) + "_" + nickName;
+    }
   }
 
   @Override
@@ -227,6 +232,16 @@ public class MergedSample implements Sample, Serializable {
   }
 
   @Override
+  public @Nullable Double getDoeMatchScore() {
+    return doeMatchScore;
+  }
+
+  @Override
+  public void setDoeMatchScore(@Nullable Double score) {
+    doeMatchScore = score;
+  }
+
+  @Override
   public void setComment(String comment) {
     this.comment = comment;
   }
@@ -245,13 +260,23 @@ public class MergedSample implements Sample, Serializable {
   }
 
   @Override
-  public double getMeanSiaShape() {
+  public double getFilteredMeanSiaShape() {
     double lowerLimit = SpTool3Main.getRunTime().getConfParams().getSiaLowerLimit().getValue();
     double upperLimit = SpTool3Main.getRunTime().getConfParams().getSiaUpperLimit().getValue();
     double sia = samples.stream()
-        .map(Sample::getMeanSiaShape)
+        .map(Sample::getFilteredMeanSiaShape)
         .filter(d -> d > lowerLimit)
         .filter(d -> d < upperLimit)
+        .mapToDouble(Double::doubleValue)
+        .average().orElse(0);
+    return sia;
+  }
+
+  @Override
+  public double getMeanSiaShape() {
+    double sia = samples.stream()
+        .map(Sample::getFilteredMeanSiaShape)
+        .filter(Double::isFinite)
         .mapToDouble(Double::doubleValue)
         .average().orElse(0);
     return sia;
@@ -577,6 +602,22 @@ public class MergedSample implements Sample, Serializable {
     return data;
   }
 
+
+  // TODO: reconsider if returning data in an array like this here is a good idea...
+  // we might get {roiStartSample1, roiEndSample1,roiStartSample2, roiEndSample2,...}
+  @Override
+  public double[] revertData(double[] quantifiedInput, Channel channel, EventParameter param, Unit unit) {
+    List<double[]> dataList = new ArrayList<>();
+
+    for (Sample sample : samples) {
+      dataList.add(sample.revertData(quantifiedInput, channel, param, unit));
+    }
+
+    double[] data = ArrUtils.merge(dataList);
+
+    return data;
+  }
+
   @Override
   public double getAerosolTEConvention(Channel channel) {
     double te = 0;
@@ -613,10 +654,14 @@ public class MergedSample implements Sample, Serializable {
     for (Sample sample : samples) {
       if (sample instanceof SampleImpl) {
         double thr = sample.getMaxThr(channel, populationID, netSignal);
-        double[] qThr = ((SampleImpl) sample).applyQuant(new double[]{thr}, channel,
-            EventParameter.NET_AREA, unit);
-        if (qThr.length > 0) {
-          maxThrQ = Math.max(maxThrQ, qThr[0]);
+        if (unit.equals(IntensityUnit.CTS) || unit.equals(IntensityUnit.JUST_CTS)) {
+          maxThrQ = Math.max(maxThrQ, thr);
+        } else {
+          double[] qThr = ((SampleImpl) sample).applyQuant(new double[]{thr}, channel,
+              EventParameter.NET_AREA, unit);
+          if (qThr.length > 0) {
+            maxThrQ = Math.max(maxThrQ, qThr[0]);
+          }
         }
       }
     }
@@ -949,14 +994,27 @@ public class MergedSample implements Sample, Serializable {
   }
 
   @Override
-  public String tabMeanSIAShape(Channel channel) {
+  public String tabMeanSIAShape() {
     return str(getMeanSiaShape(), NF.D1C4);
+  }
+
+  @Override
+  public String tabMeanFilteredSIAShape() {
+    return str(getFilteredMeanSiaShape(), NF.D1C4);
   }
 
   @Override
   public String tabPopName(Channel channel, PopulationID populationID) {
     return getAllSamples().stream()
         .map(s -> s.tabPopName(channel, populationID))
+        .distinct()
+        .collect(Collectors.joining(" --- "));
+  }
+
+  @Override
+  public String tabPopHistory(Channel channel, PopulationID populationID) {
+    return getAllSamples().stream()
+        .map(s -> s.tabPopHistory(channel, populationID))
         .distinct()
         .collect(Collectors.joining(" --- "));
   }

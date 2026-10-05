@@ -349,9 +349,9 @@ public class NormalSearchParams extends AbstractParamSet implements ParamSet {
             You may decide which isotopes are considered for the pValue computation.
             a) use all loaded isotopes (table on the right-hand side of the screen),
             b) use the selected isotopes (in table on the right-hand side of the screen),
-            c) 'Set list': create a selection in the submethod that is not affected by
+            c) 'Set isotope list': create a selection in the submethod that is not affected by
             selecting different isotopes in table on the right-hand side of the screen,
-            d) 'Exclude': create a 'blacklist' of isotopes that shall not be included
+            d) 'Exclude isotopes': create a 'blacklist' of isotopes that shall not be included
              (besides these, all loaded isotopes will be used)""",
         IsotopeSelection.ALL_LOADED,
         IsotopeSelection.getUI(),

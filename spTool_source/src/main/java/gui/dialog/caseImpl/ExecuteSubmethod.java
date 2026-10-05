@@ -22,33 +22,39 @@ import gui.MethodView;
 import gui.ParameterView;
 import gui.StageFactory;
 import gui.dialog.DialogUtil;
+import gui.dialog.FxEntry;
 import gui.dialog.FxEntryFactory.ParamSetWithDateEntryFactory;
 import gui.dialog.FxEntryFactory.SimpleEntryFactory;
 import gui.dialog.FxStage;
 import gui.dialog.FxStageButton;
+import gui.dialog.notification.NotificationFactory;
 import gui.util.UiUtil;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Consumer;
+
 import javafx.geometry.Insets;
 import javafx.geometry.Orientation;
 import javafx.geometry.Pos;
+import javafx.scene.Node;
 import javafx.scene.Scene;
-import javafx.scene.control.Button;
-import javafx.scene.control.ButtonBar;
-import javafx.scene.control.Dialog;
-import javafx.scene.control.DialogPane;
-import javafx.scene.control.Label;
-import javafx.scene.control.ListView;
-import javafx.scene.control.ToolBar;
+import javafx.scene.control.*;
+import javafx.scene.image.Image;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.text.Font;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
+
 import javax.annotation.Nullable;
+import javax.swing.text.html.ImageView;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import processing.parameterSets.AvailableParameterSets;
 import processing.parameterSets.FxParamSet;
 import processing.parameterSets.ParamSet;
@@ -57,6 +63,8 @@ import util.Functional;
 
 public class ExecuteSubmethod extends Dialog<ParamSet> implements ParameterView, Hotkeyable,
     FxStage {
+
+  private static final Logger LOGGER = LogManager.getLogger(ExecuteSubmethod.class);
 
   protected static final double PREF_WIDTH = 1200;
   protected static final double PREF_HEIGHT = 750;
@@ -69,6 +77,7 @@ public class ExecuteSubmethod extends Dialog<ParamSet> implements ParameterView,
 
   private final double user_width;
   private final double user_height;
+  private final Image graphic;
 
   // Restrict the type of submethod to show
   private final List<AvailableParameterSets> exclusiveTypes;
@@ -76,6 +85,17 @@ public class ExecuteSubmethod extends Dialog<ParamSet> implements ParameterView,
   // Keep pointer to current method
   private ParamSet currentMethod;
   private FxParamSet currentFxInstance;
+
+  // Keep copy of original method to reset in case of cancel
+  private ParamSet backupCopyMethod;
+  private Consumer<ParamSet> resetMethodLatch = new Consumer<ParamSet>() {
+    @Override
+    public void accept(ParamSet paramSet) {
+      // do nothing
+      LOGGER.trace("Reset of method was requested but not reset latch was provided. " +
+          "Proceeded without any action.");
+    }
+  };
 
   // Ui Grid
   protected final BorderPane mainBorderPane;
@@ -92,12 +112,33 @@ public class ExecuteSubmethod extends Dialog<ParamSet> implements ParameterView,
   private final Button subMethodFromListBtn = UiUtil.getToolbarBtn(
       "/img/searchList.png",
       "Add existing sub-method");
+  private final Button subMethodToDefaultsBtn = UiUtil.getToolbarBtn(
+      "/img/ignorechange.png",
+      "Reset to default");
 
   // at the bottom
   protected final ButtonBar buttonBar;
   protected final FxStageButton primaryButtonType;
   protected final Button primaryButton;
   protected final Button cancelButton;
+
+  public ExecuteSubmethod(
+      @Nullable ParamSet exclusiveParamSet,
+      @Nullable ParamSet initialParamSet,
+      List<AvailableParameterSets> exclusiveTypes,
+      @Nullable String title,
+      FxStageButton primaryButtonType,
+      @Nullable Double width,
+      @Nullable Double height) {
+    this(exclusiveParamSet,
+        initialParamSet,
+        exclusiveTypes,
+        title,
+        primaryButtonType,
+        width,
+        height,
+        null);
+  }
 
   /**
    * @param exclusiveParamSet If this parameter is null, we allow loading/creating new method
@@ -117,11 +158,13 @@ public class ExecuteSubmethod extends Dialog<ParamSet> implements ParameterView,
       @Nullable String title,
       FxStageButton primaryButtonType,
       @Nullable Double width,
-      @Nullable Double height
+      @Nullable Double height,
+      @Nullable Image graphic
   ) {
 
     this.user_width = width == null ? PREF_WIDTH : width;
     this.user_height = height == null ? PREF_HEIGHT : height;
+    this.graphic = graphic;
 
     this.primaryButtonType = primaryButtonType;
     this.exclusiveTypes = exclusiveTypes;
@@ -144,8 +187,10 @@ public class ExecuteSubmethod extends Dialog<ParamSet> implements ParameterView,
     // TOP TOOLBAR & METHOD PANE
     topToolbar.setOrientation(Orientation.VERTICAL);
     if (exclusiveParamSet == null) {
-      topToolbar.getItems().addAll(newSubMethodBtn, subMethodFromListBtn);
+      topToolbar.getItems().addAll(newSubMethodBtn, subMethodFromListBtn, subMethodToDefaultsBtn);
       methodPane.setLeft(UiUtil.putOnAnchorWithoutInsets(topToolbar));
+    } else {
+      topToolbar.getItems().addAll(subMethodToDefaultsBtn);
     }
     methodPane.setCenter(UiUtil.putOnAnchorWithoutInsets(paramViewerPane));
 
@@ -164,7 +209,9 @@ public class ExecuteSubmethod extends Dialog<ParamSet> implements ParameterView,
         List<FxParamSet> results = result.get();
         if (!results.isEmpty()) {
 
-          this.currentMethod = results.get(0).getPlainSet(); // the fx instance is uneditable!
+          // When loading from library, do copy!!!
+          this.currentMethod = results.get(0).getPlainSet().getCopyWithNewDate(); // the fx instance is
+          // uneditable!
           this.currentFxInstance = currentMethod.getObservableInstance();
           this.currentFxInstance.setController(this);
         }
@@ -199,9 +246,19 @@ public class ExecuteSubmethod extends Dialog<ParamSet> implements ParameterView,
       // Check results and set
       if (set != null) {
         this.currentMethod = set;
+        this.backupCopyMethod = currentMethod.getCopyWithNewDate();
         this.currentFxInstance = fxSet;
       }
       updateParameterPane(currentFxInstance);
+    });
+
+    subMethodToDefaultsBtn.setOnAction(e -> {
+      NotificationFactory.openYesCancel("Restore default state and override current settings. This is " +
+              "irreversible.", () -> {
+            currentMethod.resetToDefault();
+            notifyChangeInPlain();
+          },
+          UiUtil.getOwner(subMethodToDefaultsBtn));
     });
 
     // BOTTOM TOOLBAR
@@ -216,13 +273,15 @@ public class ExecuteSubmethod extends Dialog<ParamSet> implements ParameterView,
 
     // initialize with method
     if (exclusiveParamSet != null) {
-      this.currentMethod = exclusiveParamSet.getCopyWithNewDate();
+      this.currentMethod = exclusiveParamSet;
+      this.backupCopyMethod = currentMethod.getCopyWithNewDate();
       this.currentFxInstance = currentMethod.getObservableInstance();
       this.currentFxInstance.setController(this);
       updateParameterPane(currentFxInstance); // dont forget this to show stuff...
     } else {
       if (initialParamSet != null) {
         this.currentMethod = initialParamSet;
+        this.backupCopyMethod = currentMethod.getCopyWithNewDate();
         this.currentFxInstance = initialParamSet.getObservableInstance();
         this.currentFxInstance.setController(this);
         updateParameterPane(currentFxInstance);
@@ -260,7 +319,8 @@ public class ExecuteSubmethod extends Dialog<ParamSet> implements ParameterView,
         viewMap.clear();
       }
 
-      // Note that this map serves the purpose to maintain focus and scroll position when updating the pane :-)
+      // Note that this map serves the purpose to maintain focus and scroll position when updating the pane
+      // :-)
       ListView<FxParameter<?>> view;
       if (viewMap.containsKey(selSet)) {
         view = viewMap.get(selSet);
@@ -283,7 +343,7 @@ public class ExecuteSubmethod extends Dialog<ParamSet> implements ParameterView,
     }
 
     // now call the daughters
-    calls.forEach(f->f.proceed(getOwner()));
+    calls.forEach(f -> f.proceed(getOwner()));
   }
 
   protected void makeStyles() {
@@ -299,7 +359,13 @@ public class ExecuteSubmethod extends Dialog<ParamSet> implements ParameterView,
     Stage dialogStage = (Stage) getDialogPane().getScene().getWindow();
     dialogStage.initModality(Modality.NONE); // Make it non-modal
     dialogStage.setAlwaysOnTop(true);
-    dialogStage.getIcons().add(UiUtil.getImage("/img/start.png"));
+
+
+    if (graphic != null) {
+      dialogStage.getIcons().add(graphic);
+    } else {
+      dialogStage.getIcons().add(UiUtil.getImage("/img/start.png"));
+    }
     dialogStage.setResizable(true);
     // TODO: Manage whether this is used or the automatic fit
     dialogPane.setPrefSize(user_width, user_height);
@@ -343,6 +409,7 @@ public class ExecuteSubmethod extends Dialog<ParamSet> implements ParameterView,
   @Override
   public void closeAndCancelChanges() {
     super.setResult(null);
+    resetMethodLatch.accept(backupCopyMethod);
     killScene();
   }
 
@@ -360,7 +427,11 @@ public class ExecuteSubmethod extends Dialog<ParamSet> implements ParameterView,
     // call it by overriding this method in the respective dialog instance.
   }
 
-  //////////////////////////////////////////////////////////////////////////////////
+  public void setResetMethodLatch(Consumer<ParamSet> resetMethodLatch) {
+    this.resetMethodLatch = resetMethodLatch;
+  }
+
+  /// ///////////////////////////////////////////////////////////////////////////////
 
   protected void killScene() {
     Scene scene = getDialogPane().getScene();
@@ -370,7 +441,7 @@ public class ExecuteSubmethod extends Dialog<ParamSet> implements ParameterView,
     }
   }
 
-  //////////////////////////////////////////////////////////////////////////////////
+  /// ///////////////////////////////////////////////////////////////////////////////
 
   @Override
   public void activateHotkeys(Scene scene) {
@@ -390,7 +461,7 @@ public class ExecuteSubmethod extends Dialog<ParamSet> implements ParameterView,
   }
 
 
-  ////////////////////////////////
+  /// /////////////////////////////
   public ParamSet getCurrentMethod() {
     return currentMethod;
   }

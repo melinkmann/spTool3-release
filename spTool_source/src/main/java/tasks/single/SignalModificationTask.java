@@ -18,7 +18,9 @@
 package tasks.single;
 
 import analysis.*;
+import core.SpTool3Main;
 import dataModelNew.Sample;
+import dataModelNew.mz.Channel;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -27,6 +29,7 @@ import tasks.TaskResult;
 import tasks.WorkingTask;
 import tasks.results.EmptyTaskResult;
 
+import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class SignalModificationTask extends AbstractWorkingTask implements WorkingTask {
@@ -36,6 +39,8 @@ public class SignalModificationTask extends AbstractWorkingTask implements Worki
   private final PopulationBranch branch;
   private final SignalModificationParams params;
   private final AtomicReference<Sample> sampleRef;
+  private final List<Channel> allChannels = SpTool3Main.getRunTime().getMainWindowCtl().getAllChannels();
+  private final List<Channel> selChannels = SpTool3Main.getRunTime().getMainWindowCtl().getSelChannels();
 
   public SignalModificationTask(String taskName, PopulationBranch branch, SignalModificationParams params,
                                 AtomicReference<Sample> sampleRef) {
@@ -63,8 +68,15 @@ public class SignalModificationTask extends AbstractWorkingTask implements Worki
         while (!getIsStopped().get()) {
 
           if (params.getIsotopeSumBoolean().getValue()) {
-            SignalModificationUtil.addIsotopeSum(sampleRef.get(), params.getExcludeIsobars().getValue(),
+            SignalModificationUtil.addIsotopeSum(sampleRef.get(),
+                allChannels,
+                selChannels,
+                params.getExcludeIsobars().getValue(),
                 params.getOnlyUseSelectedIsotopesForSum().getValue());
+          }
+
+          if (params.getTicBoolean().getValue()){
+            SignalModificationUtil.addTIC(sampleRef.get());
           }
 
           setProgress(1);

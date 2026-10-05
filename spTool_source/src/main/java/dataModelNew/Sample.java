@@ -65,11 +65,17 @@ public interface Sample extends Serializable {
 
   void setComment(String comment);
 
+  @Nullable Double getDoeMatchScore();
+
+  void setDoeMatchScore(@Nullable Double score);
+
   Cal getQuant();
 
   public void setCalibration(Cal quant);
 
   List<String> getRemovedChannelInfo();
+
+  double getFilteredMeanSiaShape();
 
   double getMeanSiaShape();
 
@@ -224,6 +230,8 @@ public interface Sample extends Serializable {
   double[] getData(@Nullable Channel channel, PopulationID populationID, EventType eventType,
                    EventParameter param, Unit unit);
 
+  double[] revertData(double[] quantifiedInput, Channel channel, EventParameter param, Unit unit);
+
   double getAerosolTEConvention(Channel channel);
 
   double getPncTEConvention(Channel channel);
@@ -232,6 +240,7 @@ public interface Sample extends Serializable {
                            EventParameter param) {
     return getData(channel, populationID, eventType, param, IntensityUnit.JUST_CTS);
   }
+
 
   /**
    * Returns the highest intensity height threshold used to mark a peak height LD.
@@ -314,9 +323,13 @@ public interface Sample extends Serializable {
 
   String tabSIAShape(Channel channel);
 
-  String tabMeanSIAShape(Channel channel);
+  String tabMeanSIAShape();
+
+  String tabMeanFilteredSIAShape();
 
   String tabPopName(Channel channel, PopulationID populationID);
+
+  String tabPopHistory(Channel channel, PopulationID populationID);
 
   String tabPopAdditional(Channel channel, PopulationID populationID);
 

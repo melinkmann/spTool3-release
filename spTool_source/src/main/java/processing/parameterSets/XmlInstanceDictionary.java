@@ -54,6 +54,10 @@ public abstract class XmlInstanceDictionary {
       case IsotopeCalculatorParams.XML_ELEMENT_TAG -> new IsotopeCalculatorParams();
 
       case SignificanceTestParams.XML_ELEMENT_TAG -> new SignificanceTestParams();
+      case MethodWatcherParams.XML_ELEMENT_TAG -> new MethodWatcherParams();
+      case MethodDoeParams.XML_ELEMENT_TAG -> new MethodDoeParams();
+      case LoadMethodWizardParams.XML_ELEMENT_TAG -> new LoadMethodWizardParams();
+
 
       case ConfParams.XML_ELEMENT_TAG -> new ConfParams();
       case ExporterParams.XML_ELEMENT_TAG -> new ExporterParams();
@@ -65,9 +69,11 @@ public abstract class XmlInstanceDictionary {
       case BoxPlotParameters.XML_ELEMENT_TAG -> new BoxPlotParameters();
 
       case SpectrumViewerParameters.XML_ELEMENT_TAG -> new SpectrumViewerParameters();
-      case HACViewerParameters.XML_ELEMENT_TAG ->  new HACViewerParameters();
+      case HACViewerParameters.XML_ELEMENT_TAG -> new HACViewerParameters();
       case MonteCarloRawDataParameters.XML_ELEMENT_TAG -> new MonteCarloRawDataParameters();
       case MonteCarloScatterPlotParameters.XML_ELEMENT_TAG -> new MonteCarloScatterPlotParameters();
+      case TernaryPlotParameters.XML_ELEMENT_TAG -> new TernaryPlotParameters();
+
       case SingleEventViewerParameters.XML_ELEMENT_TAG -> new SingleEventViewerParameters();
       case CompareHistoParams.XML_ELEMENT_TAG -> new CompareHistoParams();
       case ExperimentalConditions.XML_ELEMENT_TAG -> new ExperimentalConditions();

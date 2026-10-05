@@ -26,10 +26,10 @@ import io.*;
 
 import java.awt.*;
 import java.net.URI;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import javafx.application.Platform;
 import javafx.scene.control.Dialog;
@@ -38,11 +38,13 @@ import javafx.scene.text.Font;
 import javafx.scene.text.Text;
 import javafx.scene.text.TextFlow;
 import org.apache.commons.lang3.exception.ExceptionUtils;
+import org.apache.commons.logging.Log;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import processing.objectSerials.ImportDefaults;
 import processing.objectSerials.SettingsSerializer;
 import processing.options.StartupConfiguration;
+import processing.parameterSets.FxParamSet;
 import processing.parameterSets.ParamSet;
 import processing.parameterSets.impl.*;
 import processing.parameterSets.uiParams.GuiParameterManager;
@@ -79,10 +81,13 @@ public class RunTimeInstance {
       = Colors.getDefaultIterator().iterator();
   private Path lastProjectFile = Path.of("");
 
-  public final TimeRoiParams timeRoiParams = new TimeRoiParams();
-  public final EventDataRangeParams eventDataRangeParams = new EventDataRangeParams();
-  public final IsotopeCalculatorParams isotopeCalculatorParams = new IsotopeCalculatorParams();
-  public final DTGroupParams dtGroupParams = new DTGroupParams();
+  public TimeRoiParams timeRoiParams = new TimeRoiParams();
+  public MethodWatcherParams methodWatcherParams = new MethodWatcherParams();
+  public MethodDoeParams methodDoeParams = new MethodDoeParams();
+  public LoadMethodWizardParams loadMethodWizardParams = new LoadMethodWizardParams();
+  public EventDataRangeParams eventDataRangeParams = new EventDataRangeParams();
+  public IsotopeCalculatorParams isotopeCalculatorParams = new IsotopeCalculatorParams();
+  public DTGroupParams dtGroupParams = new DTGroupParams();
 
   private final AtomicDouble xPosition = new AtomicDouble(0);
   private final AtomicDouble yPosition = new AtomicDouble(0);
@@ -93,9 +98,9 @@ public class RunTimeInstance {
     // as a static field inside class SpTool3Main
     Util.VersionCheckResult versionCheck = Util.checkVersion();
     /*
-                feedback = "You are not using the latest version! " +
-                "\nYour version: " + VERSION_ID + ", latest version online: " + latestVersion + "." +
-                "\nCheck for updates: \n" + location;
+       feedback = "You are not using the latest version! " +
+       "\nYour version: " + VERSION_ID + ", latest version online: " + latestVersion + "." +
+       "\nCheck for updates: \n" + location;
      */
     try {
 
@@ -196,6 +201,9 @@ public class RunTimeInstance {
 
     importDefaults = SettingsSerializer.loadImportDefaults();
 
+    // load run time parameter sets
+    loadParameterSets();
+
     this.interferenceDatabase.addAll(InterferenceDatabase.loadFromCSV());
   }
 
@@ -211,6 +219,18 @@ public class RunTimeInstance {
     });
 
     this.lastProjectFile = currentProjectFile;
+
+    // This is less annoying: consider saving it, too, via force save config
+
+    if (Files.exists(currentProjectFile)) {
+      Path projectDir;
+      if (Files.isDirectory(currentProjectFile)) {
+        projectDir = currentProjectFile;
+      } else {
+        projectDir = currentProjectFile.getParent();
+      }
+      confParams.setDefaultProjectPath(projectDir);
+    }
   }
 
   @Nullable
@@ -220,6 +240,58 @@ public class RunTimeInstance {
     } else {
       return lastProjectFile;
     }
+  }
+
+  public void saveParameterSets() {
+    Path methodFile = GlobalIO.makeRuntimeSubmethodFile();
+    List<ParamSet> paramSets = new ArrayList<>();
+    // Parameters
+    paramSets.add(timeRoiParams);
+    paramSets.add(methodWatcherParams);
+    paramSets.add(methodDoeParams);
+    paramSets.add(loadMethodWizardParams);
+    paramSets.add(eventDataRangeParams);
+    paramSets.add(isotopeCalculatorParams);
+    paramSets.add(dtGroupParams);
+    XmlUtil.writeSubMethodsToFile(paramSets, "Runtime parameter collection", methodFile);
+  }
+
+  public void loadParameterSets() {
+    try {
+      Path methodFile = GlobalIO.makeRuntimeSubmethodFile();
+      List<FxParamSet> sets = XmlUtil.getSubMethodsFromFile(methodFile);
+      for (FxParamSet set : sets) {
+        switch (set.getPlainSet().getXmlType()) {
+          case TimeRoiParams.XML_ELEMENT_TAG:
+            timeRoiParams = (TimeRoiParams) set.getPlainSet();
+            break;
+          case MethodWatcherParams.XML_ELEMENT_TAG:
+            methodWatcherParams = (MethodWatcherParams) set.getPlainSet();
+            break;
+          case MethodDoeParams.XML_ELEMENT_TAG:
+            methodDoeParams = (MethodDoeParams) set.getPlainSet();
+            break;
+          case LoadMethodWizardParams.XML_ELEMENT_TAG:
+            loadMethodWizardParams = (LoadMethodWizardParams) set.getPlainSet();
+            break;
+          case EventDataRangeParams.XML_ELEMENT_TAG:
+            eventDataRangeParams = (EventDataRangeParams) set.getPlainSet();
+            break;
+          case IsotopeCalculatorParams.XML_ELEMENT_TAG:
+            isotopeCalculatorParams = (IsotopeCalculatorParams) set.getPlainSet();
+            break;
+          case DTGroupParams.XML_ELEMENT_TAG:
+            dtGroupParams = (DTGroupParams) set.getPlainSet();
+            break;
+          default:
+            break;
+        }
+      }
+    } catch (Exception e) {
+      LOGGER.error("Message: " + e.getMessage()
+          + ". Stack trace: " + ExceptionUtils.getStackTrace(e));
+    }
+    LOGGER.info("Loaded run time action parameters.");
   }
 
   // Getter because field is not final (declaration above) and thus private

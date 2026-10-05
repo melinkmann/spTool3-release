@@ -106,6 +106,7 @@ public class SampleListAndTable {
   // Not editable!
   private final TableView<FxChannel> channelTableView;
   private final TextField channelSearchField;
+  private final Text channelTableViewFeedbackText;
   private final List<FxChannel> prevSelFxChannels = new ArrayList<>();
 
   private final Text sampleSizeTxt = new Text("0 / 0");
@@ -129,6 +130,7 @@ public class SampleListAndTable {
       ListView<FxEntry<SampleSet>> view,
       TableView<FxSample> sampleTableView,
       TableView<FxChannel> channelTableView,
+      Text channelTableViewFeedbackText,
       TextField channelSearchField,
       ListView<PopulationID> populationListView,
       SelectionMode sampleSetSelectionMode,
@@ -140,6 +142,7 @@ public class SampleListAndTable {
 
     this.channelTableView = channelTableView;
     this.channelSearchField = channelSearchField;
+    this.channelTableViewFeedbackText = channelTableViewFeedbackText;
 
     this.populationListView = populationListView;
 
@@ -309,6 +312,8 @@ public class SampleListAndTable {
         prevSelFxChannels.addAll(channelTableView.getSelectionModel().getSelectedItems());
       }
 
+      updateChannelFeedbackText();
+
       // These are obsolete if population reselect triggers,
       // but make sure that sth was reselected at all. If not, likely no Pop found yet.
       // In that case refresh the UI -> tell the manager that change occurred
@@ -389,6 +394,9 @@ public class SampleListAndTable {
             selectDefaultIsotopes();
           }
         }
+
+        // use this to update the feedback text and make sure it is accurate
+        updateChannelFeedbackText();
       }
     });
 
@@ -812,6 +820,9 @@ public class SampleListAndTable {
 
   public void updateChannelTableValues() {
 
+    // use this call to also update the selection feedback
+    updateChannelFeedbackText();
+
     // Only take computation effort if table columns are actually shown
     if (SpTool3Main.getRunTime().getConfParams().getExtendChannelTable().getValue()) {
 
@@ -1077,6 +1088,12 @@ public class SampleListAndTable {
     if (populationListView.getSelectionModel().getSelectedItems().isEmpty()) {
       populationListView.getSelectionModel().selectFirst();
     }
+  }
+
+  private void updateChannelFeedbackText(){
+    int selCount = channelTableView.getSelectionModel().getSelectedItems().size();
+    int allCount = channelTableView.getItems().size();
+    channelTableViewFeedbackText.setText(selCount + " / " + allCount);
   }
 
   public void incrementSelectedSample() {

@@ -368,7 +368,8 @@ public class ParticlePopulationMatrixRAM implements ParticlePopulationMatrix, Se
         }
       } else {
         if (startIdx >= 0) {
-          endIdx = dp.getX();
+          // endIdx = dp.getX(); // exclusive: end is the first non-Event index after event
+          endIdx = dp.getX() - 1;   // last above-threshold point (inclusive)
           break;
         }
       }

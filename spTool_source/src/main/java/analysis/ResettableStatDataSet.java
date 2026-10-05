@@ -56,18 +56,21 @@ public class ResettableStatDataSet implements StatDataSet, Serializable {
   private double alpha = 0.5;
 
   private double continuityEpsilon = 0;
+  private final boolean lowerPoissonLimitZero;
 
 
   public ResettableStatDataSet(MeasureOfLocation positionMeasure,
                                @Nullable MeasureOfSpread spreadMeasure,
                                double siaShape,
                                double continuityEpsilon,
+                               boolean lowerPoissonLimitZero,
                                int distrID) {
     this.locationMeasure = positionMeasure;
     this.spreadMeasure = spreadMeasure;
     this.siaShape = siaShape;
     this.continuityEpsilon = continuityEpsilon;
     this.distrID = distrID;
+    this.lowerPoissonLimitZero = lowerPoissonLimitZero;
   }
 
   public ResettableStatDataSet(ResettableStatDataSet stat) {
@@ -79,6 +82,7 @@ public class ResettableStatDataSet implements StatDataSet, Serializable {
     this.spread = stat.spread;
     this.siaShape = stat.siaShape;
     this.continuityEpsilon = stat.continuityEpsilon;
+    this.lowerPoissonLimitZero = stat.lowerPoissonLimitZero;
     //
     this.z = stat.z;
     this.alpha = stat.alpha;
@@ -178,7 +182,7 @@ public class ResettableStatDataSet implements StatDataSet, Serializable {
   public double calcCriticalLimit() {
     double lim = 0;
     if (distrID == Poisson.getID()) {
-      lim = Poisson.poissonCriticalLimit(alpha, location+ continuityEpsilon);
+      lim = Poisson.poissonCriticalLimit(alpha, location + continuityEpsilon);
     }
     if (distrID == Gaussian.getID()) {
       lim = Gaussian.gaussianCriticalLimit(z, location, spread);
@@ -203,16 +207,16 @@ public class ResettableStatDataSet implements StatDataSet, Serializable {
   public double calcDetectionLimit() {
     double lim = 0;
     if (distrID == Poisson.getID()) {
-      lim = Poisson.poissonDetectionLimit(alpha, location+ continuityEpsilon);
+      lim = Poisson.poissonDetectionLimit(alpha, location + continuityEpsilon);
     }
     if (distrID == Gaussian.getID()) {
       lim = Gaussian.gaussianDetectionLimit(z, location, spread);
     }
     if (distrID == PoissonNormal.getID()) {
-      lim = PoissonNormal.normalApproximationDetectionLimit(z, location+ continuityEpsilon);
+      lim = PoissonNormal.normalApproximationDetectionLimit(z, location + continuityEpsilon);
     }
     if (distrID == CurriePoisson.getID()) {
-      lim = CurriePoisson.currieDetectionLimit(z, location+ continuityEpsilon);
+      lim = CurriePoisson.currieDetectionLimit(z, location + continuityEpsilon);
     }
     if (distrID == CompoundPoissonApprox.getID()) {
       lim = CompoundPoissonApprox.compoundDetectionLimit(z, location, siaShape);
@@ -227,16 +231,28 @@ public class ResettableStatDataSet implements StatDataSet, Serializable {
   public double calcLowerOutlierLimit() {
     double lim = 0;
     if (distrID == Poisson.getID()) {
-      lim = Poisson.poissonLowerOutlierLimit(alpha, location+ continuityEpsilon);
+      if (lowerPoissonLimitZero) {
+        lim = 0;
+      } else {
+        lim = Poisson.poissonLowerOutlierLimit(alpha, location + continuityEpsilon);
+      }
     }
     if (distrID == Gaussian.getID()) {
       lim = Gaussian.gaussianLowerOutlierLimit(z, location, spread);
     }
     if (distrID == PoissonNormal.getID()) {
-      lim = PoissonNormal.normalApproximationLowerOutlierLimit(z, location+ continuityEpsilon);
+      if (lowerPoissonLimitZero) {
+        lim = 0;
+      } else {
+        lim = PoissonNormal.normalApproximationLowerOutlierLimit(z, location + continuityEpsilon);
+      }
     }
     if (distrID == CurriePoisson.getID()) {
-      lim = CurriePoisson.currieLowerOutlierLimit(z, location+ continuityEpsilon);
+      if (lowerPoissonLimitZero) {
+        lim = 0;
+      } else {
+        lim = CurriePoisson.currieLowerOutlierLimit(z, location + continuityEpsilon);
+      }
     }
     if (distrID == CompoundPoissonApprox.getID()) {
       lim = CompoundPoissonApprox.compoundLowerOutlierLimit(alpha, location, siaShape);
@@ -257,7 +273,7 @@ public class ResettableStatDataSet implements StatDataSet, Serializable {
       pValue = Gaussian.calcSurvival(location, spread, intensity);
     }
     if (distrID == PoissonNormal.getID()) {
-      pValue = PoissonNormal.calcSurvival(location+ continuityEpsilon, intensity);
+      pValue = PoissonNormal.calcSurvival(location + continuityEpsilon, intensity);
     }
     if (distrID == CurriePoisson.getID()) {
       /*
@@ -376,7 +392,8 @@ public class ResettableStatDataSet implements StatDataSet, Serializable {
     public static double poissonCriticalLimit(double alpha, double mean) {
       if (mean > 0) {
         PoissonDistribution pd = new PoissonDistribution(mean);
-        return pd.inverseCumulativeProbability(1 - alpha);
+        double val = pd.inverseCumulativeProbability(1 - alpha);
+        return val;
       } else {
         return 0;
       }
@@ -399,7 +416,7 @@ public class ResettableStatDataSet implements StatDataSet, Serializable {
       return Math.pow(z, 2) + poissonCriticalLimit(1 - alpha, mean);
     }
 
-    public static double   calcSurvival(double mean, double intensity) {
+    public static double calcSurvival(double mean, double intensity) {
       if (mean > 0) {
         //        org.apache.commons.statistics.distribution.PoissonDistribution pd =
         //            org.apache.commons.statistics.distribution.PoissonDistribution.of(mean);
@@ -562,7 +579,15 @@ public class ResettableStatDataSet implements StatDataSet, Serializable {
 
     // The currie formalism is based on z, hence we have to use it here.
     public static double currieDetectionLimit(double z, double mean) {
-      return Math.pow(2 * z, 2) + currieCriticalLimit(2 * z, mean);
+      // I think this was wrong, as there should not be 2 * z but only z.
+      // Currie only needs to multiply 2 * z to replace the critical limit formula z * sqrt(mean)
+      // with 2 * z * sqrt(mean), as LD is given as LD = z^2 + 2 * LC.
+      // Note that this refers to the net LD (not gross YD), i.e., the mean is not taken into account,
+      // and one should not multiply 2 *  YC, as this gives 2 * [mean + z * sqrt(mean)].
+
+      // Old formula: return Math.pow(2 * z, 2) + currieCriticalLimit(2 * z, mean);
+      double k = Math.pow(z, 2);
+      return k + currieCriticalLimit(2 * z, mean);
     }
 
     public static int getID() {

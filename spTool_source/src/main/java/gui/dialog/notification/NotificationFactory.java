@@ -34,19 +34,29 @@ import javafx.scene.control.Button;
 import javafx.scene.control.ButtonType;
 import javafx.stage.Window;
 import javafx.util.Duration;
+import org.apache.commons.lang3.ObjectUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import util.Functional;
+
+import javax.annotation.Nullable;
 
 public class NotificationFactory {
 
   private static final Logger LOGGER = LogManager.getLogger(NotificationFactory.class);
 
   public static void openYesCancel(String message, Functional yes) {
-    openYesCancel(message, yes, Functional.empty());
+    openYesCancel(message, yes, Functional.empty(), null);
   }
 
-  public static void openYesCancel(String message, Functional yes, Functional cancel) {
+  public static void openYesCancel(String message, Functional yes, @Nullable Window owner) {
+    openYesCancel(message, yes, Functional.empty(), owner);
+  }
+
+  public static void openYesCancel(String message, Functional yes, Functional cancel,
+                                   @Nullable Window owner) {
+    Window finalOwner = owner;
+
     Platform.runLater(() -> {
 
       Alert alert = new Alert(
@@ -65,7 +75,12 @@ public class NotificationFactory {
       alert.setWidth(Math.max(400, wh[0]));
       alert.setHeight(Math.max(300, wh[1]));
 
-      alert.initOwner(SpTool3Main.getMainStage().getScene().getWindow());
+      if (finalOwner == null) {
+        alert.initOwner(SpTool3Main.getMainStage().getScene().getWindow());
+      } else {
+        alert.initOwner(owner);
+      }
+
 
       //Deactivate Default behavior for yes-Button:
       Button yesButton = (Button) alert.getDialogPane().lookupButton(ButtonType.YES);
@@ -170,8 +185,12 @@ public class NotificationFactory {
 
 
   public static void openInfo(String message) {
+    openInfo(message, null);
+  }
+
+  public static void openInfo(String message, @Nullable Window owner) {
     Platform.runLater(() -> {
-      TextNotification textNotification = new TextNotification(NoteType.NOTIFICATION, message);
+      TextNotification textNotification = new TextNotification(NoteType.NOTIFICATION, message, owner);
       textNotification.show();
     });
   }

@@ -114,6 +114,7 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
   private final Parameter<Boolean> showRawMCToggle;
   private final Parameter<Boolean> showHistoMCToggle;
   private final Parameter<Boolean> showScatterMCToggle;
+  private final Parameter<Boolean> showTernaryToggle;
   private final Parameter<Boolean> showBoxPlotToggle;
   private final Parameter<Boolean> showSpectrumToggle;
   private final Parameter<Boolean> showHACToggle;
@@ -150,6 +151,7 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
   private final Parameter<Double> siaLowerLimit;
   private final Parameter<Double> siaUpperLimit;
   private final Parameter<Double> siaSigmaClip;
+  private final Parameter<Double> siaParticleFilterAlpha;
 
   public ConfParams() {
     super("SpTool configuration", XML_ELEMENT_TAG);
@@ -384,7 +386,7 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
     this.showRawMCToggle = new BooleanParameter(
         "Graphs",
         "Show raw data view",
-        "Show the monte carlo raw data section in the user interface",
+        "Show the raw data section in the user interface",
         true,
         false,
         "showRawMCToggle");
@@ -392,7 +394,7 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
     this.showHistoMCToggle = new BooleanParameter(
         "Graphs",
         "Show histogram view",
-        "Show the monte carlo histogram section in the user interface",
+        "Show the histogram section in the user interface",
         true,
         false,
         "showHistoMCToggle");
@@ -440,10 +442,19 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
     this.showScatterMCToggle = new BooleanParameter(
         "Graphs",
         "Show scatter plot view",
-        "Show the monte carlo scatter plot section in the user interface",
+        "Show the scatter plot section in the user interface",
         false,
         false,
         "showScatterMCToggle");
+
+
+    this.showTernaryToggle = new BooleanParameter(
+        "Graphs",
+        "Show ternary plot view",
+        "Show the ternary plot section in the user interface",
+        false,
+        false,
+        "showTernaryToggle");
 
     this.showIclToggle = new BooleanParameter(
         "Graphs",
@@ -774,6 +785,16 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
         false,
         "siaSigmaClip");
 
+    siaParticleFilterAlpha = new DoubleParameter("SIA clip alpha",
+        """
+            Tightens the intensity range for SIA determination.
+            Specifies the alpha error to remove particle events""",
+        1E-5,
+        NF.D1C3Exp,
+        TextFormatterOption.ASSURE_NONZERO_POS_EXP_DOUBLE,
+        false,
+        "siaParticleFilterAlpha");
+
     organize();
   }
 
@@ -814,6 +835,7 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
     this.showRawMCToggle = confParams.showRawMCToggle.copyWithoutChildren();
     this.showHistoMCToggle = confParams.showHistoMCToggle.copyWithoutChildren();
     this.showScatterMCToggle = confParams.showScatterMCToggle.copyWithoutChildren();
+    this.showTernaryToggle = confParams.showTernaryToggle.copyWithoutChildren();
     this.showBoxPlotToggle = confParams.showBoxPlotToggle.copyWithoutChildren();
     this.showSpectrumToggle = confParams.showSpectrumToggle.copyWithoutChildren();
     this.showHACToggle = confParams.showHACToggle.copyWithoutChildren();
@@ -839,6 +861,7 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
     this.siaLowerLimit = confParams.siaLowerLimit.copyWithoutChildren();
     this.siaUpperLimit = confParams.siaUpperLimit.copyWithoutChildren();
     this.siaSigmaClip = confParams.siaSigmaClip.copyWithoutChildren();
+    this.siaParticleFilterAlpha = confParams.siaParticleFilterAlpha.copyWithoutChildren();
 
     this.nuImportSelectedIsotopes = confParams.nuImportSelectedIsotopes.copyWithoutChildren();
 
@@ -926,6 +949,7 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
           showRawMCToggle,
           showHistoMCToggle,
           showScatterMCToggle,
+          showTernaryToggle,
           showBoxPlotToggle,
           showSpectrumToggle,
           showHACToggle,
@@ -950,7 +974,8 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
           new SeparatorParameter(),
           siaLowerLimit,
           siaUpperLimit,
-          siaSigmaClip,
+          //siaSigmaClip,
+          siaParticleFilterAlpha,
           new SeparatorParameter(),
           logLevel,
           numberOfThreadsModel,
@@ -978,6 +1003,7 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
           showRawMCToggle,
           showHistoMCToggle,
           showScatterMCToggle,
+          showTernaryToggle,
           showBoxPlotToggle,
           showSingleEventView,
           showIclToggle,
@@ -997,7 +1023,8 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
           default_y_SD,
           siaLowerLimit,
           siaUpperLimit,
-          siaSigmaClip,
+          //siaSigmaClip,
+          siaParticleFilterAlpha,
           logLevel,
           numberOfThreadsModel,
           zstdCompressionLevel,
@@ -1065,6 +1092,7 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
     showRawMCToggle.setDecoration(new ImageDecoration<>("/img/rawViewMC.png"));
     showHistoMCToggle.setDecoration(new ImageDecoration<>("/img/histoViewMC.png"));
     showScatterMCToggle.setDecoration(new ImageDecoration<>("/img/scatter.png"));
+    showTernaryToggle.setDecoration(new ImageDecoration<>("/img/ternaryPlot.png"));
     showBoxPlotToggle.setDecoration(new ImageDecoration<>("/img/boxplot.png"));
     showSpectrumToggle.setDecoration(new ImageDecoration<>("/img/spectrumView.png"));
     showHACToggle.setDecoration(new ImageDecoration<>("/img/clusterDendrogram.png"));
@@ -1157,6 +1185,7 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
           case "showHistoMCToggle" -> showHistoMCToggle;
           case "showSingleEventView" -> showSingleEventView;
           case "showScatterMCToggle" -> showScatterMCToggle;
+          case "showTernaryToggle" -> showTernaryToggle;
           case "showBoxPlotToggle" -> showBoxPlotToggle;
           case "showSpectrumToggle" -> showSpectrumToggle;
           case "showHACToggle" -> showHACToggle;
@@ -1184,6 +1213,7 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
           case "siaLowerLimit" -> siaLowerLimit;
           case "siaUpperLimit" -> siaUpperLimit;
           case "siaSigmaClip" -> siaSigmaClip;
+          case "siaParticleFilterAlpha" -> siaParticleFilterAlpha;
 
           case "nuImportSelectedIsotopes" -> nuImportSelectedIsotopes;
 
@@ -1334,6 +1364,10 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
     return path;
   }
 
+  public void setDefaultProjectPath(Path newPath) {
+    defaultProjectPath.setValue(newPath.toString());
+  }
+
 
   public Path getDefaultMethodPath() {
     Path path = Path.of(defaultMethodPath.getValue());
@@ -1450,6 +1484,10 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
 
   public boolean isShowScatterMC() {
     return showScatterMCToggle.getValue();
+  }
+
+  public boolean isShowTernary() {
+    return showTernaryToggle.getValue();
   }
 
   public boolean isShowBoxPlot() {
@@ -1701,5 +1739,9 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
 
   public Parameter<Double> getSiaSigmaClip() {
     return siaSigmaClip;
+  }
+
+  public Parameter<Double> getSiaParticleFilterAlpha() {
+    return siaParticleFilterAlpha;
   }
 }

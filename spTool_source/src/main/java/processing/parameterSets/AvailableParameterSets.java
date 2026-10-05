@@ -515,7 +515,6 @@ public enum AvailableParameterSets {
 
   },
 
-
   SIGNIFICANCE_TEST {
     @Override
     public String toString() {
@@ -525,6 +524,72 @@ public enum AvailableParameterSets {
     @Override
     public ParamSet get() {
       return new SignificanceTestParams();
+    }
+
+    @Override
+    public Color getColor() {
+      return UiColors.GRAY.getFX();
+    }
+
+    @Override
+    public Node getShape() {
+      return UiUtil.getRectangleForListView(getColor());
+    }
+  },
+
+  METHOD_WATCH {
+    @Override
+    public String toString() {
+      return "Scheduled method execution";
+    }
+
+    @Override
+    public ParamSet get() {
+      return new MethodWatcherParams();
+    }
+
+    @Override
+    public Color getColor() {
+      return UiColors.GRAY.getFX();
+    }
+
+    @Override
+    public Node getShape() {
+      return UiUtil.getRectangleForListView(getColor());
+    }
+  },
+
+  METHOD_DOE {
+    @Override
+    public String toString() {
+      return "Scheduled DOE method execution";
+    }
+
+    @Override
+    public ParamSet get() {
+      return new MethodDoeParams();
+    }
+
+    @Override
+    public Color getColor() {
+      return UiColors.BLACK.getFX();
+    }
+
+    @Override
+    public Node getShape() {
+      return UiUtil.getRectangleForListView(getColor());
+    }
+  },
+
+  LOAD_METHOD_WIZARD {
+    @Override
+    public String toString() {
+      return "Load method wizard";
+    }
+
+    @Override
+    public ParamSet get() {
+      return new LoadMethodWizardParams();
     }
 
     @Override

@@ -134,6 +134,7 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import static math.regression.RegressionUtils.getOLS;
+import static visualizer.charts.JFreeUtil.HEIGHT;
 
 
 public abstract class Viewers {
@@ -373,7 +374,7 @@ public abstract class Viewers {
         refreshGraph();
       });
 
-      UiUtil.tooltip(regTypeComboBox, "Linear regression: weighted or ordinary.");
+      UiUtil.tooltip(regTypeComboBox, "Linear regression: weighted with 1/y or ordinary.");
       regTypeComboBox.getSelectionModel().select(LinRegType.OLS);
       regTypeComboBox.setPrefWidth(100);
       regTypeComboBox.getSelectionModel().selectedItemProperty().addListener(new ChangeListener<LinRegType>() {
@@ -1194,7 +1195,10 @@ public abstract class Viewers {
         ChartContainer chartContainer = SpChartFactory.bundleChartLegend(
             chart,
             legendComponents,
-            800, 500, true, false);
+            800, 500,
+            true,
+            true,
+            false);
 
         TextTitle topRightText = new TextTitle("Particles");
         UiUtil.formatTitle(topRightText);
@@ -1216,7 +1220,8 @@ public abstract class Viewers {
         ChartContainer chartContainer = SpChartFactory.bundleChartLegend(
             chart,
             legendComponents,
-            800, 500, true, false);
+            800, 500,
+            true);
 
         TextTitle topRightText = new TextTitle("Background");
         UiUtil.formatTitle(topRightText);
@@ -1242,7 +1247,11 @@ public abstract class Viewers {
         ChartContainer chartContainer = SpChartFactory.bundleChartLegend(
             chart,
             legendComponents,
-            1920, 500, true, false);
+            1920, 500,
+            true,
+            true,
+            false);
+
         legend = chartContainer.legend;
 
         topBox.getChildren().add(chartContainer.viewer);
@@ -1832,7 +1841,8 @@ public abstract class Viewers {
                   ChartContainer chartContainer = SpChartFactory.bundleChartLegend(
                       chart,
                       legendComponents,
-                      800, 500);
+                      800, 500,
+                      true);
                   Node viewNode = chartContainer.combinedPane;
 
                   int row = counter / numCols;
@@ -2026,7 +2036,8 @@ public abstract class Viewers {
               ChartContainer chartContainer = SpChartFactory.bundleChartLegend(
                   chart,
                   legendComponents,
-                  800, 500);
+                  800, 500,
+                  true);
               Node viewNode = chartContainer.combinedPane;
 
               int row = counter / numCols;
@@ -2805,6 +2816,7 @@ public abstract class Viewers {
                             chart,
                             allLegendComponents,
                             800, 500,
+                            true,
                             false,
                             Orientation.VERTICAL,
                             false);
@@ -3042,7 +3054,7 @@ public abstract class Viewers {
         Collections.reverse(charts);
         JFreeChart chart = SpChartFactory.createLineChart(charts);
         Node viewNode = SpChartFactory.bundleChartLegend(chart,
-            charts, 800, 500).combinedPane;
+            charts, 800, 500, true).combinedPane;
 
         double upX = windowViewMilliSec * 1.3;
         // cannot go lower than -peakMillis, which is the "zero" in the ref frame of the peak function
@@ -3447,7 +3459,8 @@ public abstract class Viewers {
                             // create population
                             if (!polygonIndices.isEmpty()) {
 
-                              IncompleteParticleMatrix newMatrix = ((IncompleteEventCollection) collection).getIncompleteMatrix().roi(polygonIndices);
+                              IncompleteParticleMatrix newMatrix =
+                                  ((IncompleteEventCollection) collection).getIncompleteMatrix().roi(polygonIndices);
 
                               EventCollection newCollection = new IncompleteEventCollection(trace, newMatrix);
 
@@ -3919,15 +3932,12 @@ public abstract class Viewers {
                       chart,
                       chartComponents,
                       800, 500,
+                      true,
                       false,
                       Orientation.VERTICAL,
                       false);
 
                   viewerRef.set(container.viewer);
-
-                  // TODO :)
-                  ChartViewer viewer = container.viewer;
-                  // PolygonOverlay.enablePolygon(viewer);
 
                   // Replace atomically — do NOT setCenter(null) first.
                   // Detaching while Prism render is in flight causes RTTexture NPE.
@@ -4100,8 +4110,9 @@ public abstract class Viewers {
             components,
             800,
             500,
+            true,
             false,
-            true).combinedPane;
+            false).combinedPane;
 
         // Keep in the same pulse/runlater of the UI thread
         targetPane.setCenter(viewNode);
@@ -4112,6 +4123,577 @@ public abstract class Viewers {
 
       // Show all isotopes in VBox (?)
 
+    }
+  }
+
+  public static class TernaryPlotViewer extends ViewerFXParamSet {
+
+    private final TernaryPlotParameters params;
+
+    private final AtomicReference<ChartViewer> viewerRef = new AtomicReference<>(null);
+    private final Button startPolygonBtn = UiUtil.getImageButton("Draw", "/img/drawPolygon.png",
+        "Start drawing a polygon in the scatter plot");
+    private final Button addPopulation = UiUtil.getImageButton("Store", "/img/selectAll.png",
+        "Store polygons as new populations");
+    private final Button clearPolygons = UiUtil.getImageButton("Clear", "/img/clearPolygon.png",
+        "Clear all polygons from the scatter plot");
+    private final Button removeAllPolygonPopsBtn = UiUtil.getImageButton("Delete", "/img/delete.png",
+        "Delete all populations in the sample that are of type 'polygon'");
+
+    private final HBox hbox = new HBox(5, startPolygonBtn, addPopulation, clearPolygons,
+        removeAllPolygonPopsBtn);
+    private final List<Pair<PolygonOverlay, AtomicBoolean>> polygons = new ArrayList<>();
+    private final List<Pair<PolygonOverlay, AtomicBoolean>> backupPolygons = new ArrayList<>();
+
+    public TernaryPlotViewer(TernaryPlotParameters plainSet) {
+      super(plainSet);
+      this.params = plainSet;
+    }
+
+    @Override
+    public double getValueWidth() {
+      return 135d;
+    }
+
+    @Override
+    public void refreshGraph() {
+      // add buttons
+      targetPane.setTop(hbox);
+
+      // delete the points
+      for (Pair<PolygonOverlay, AtomicBoolean> polygon : polygons) {
+        polygon.getKey().clear();
+      }
+      polygons.clear();
+
+      startPolygonBtn.setOnAction(e -> {
+        // unlisten prev polygons
+        for (Pair<PolygonOverlay, AtomicBoolean> polygon : polygons) {
+          polygon.getValue().set(false);
+        }
+
+        // make new polygon
+        PolygonOverlay overlay = new PolygonOverlay();
+        AtomicBoolean listen = new AtomicBoolean(true);
+        PolygonOverlay.enablePolygon(viewerRef.get(), overlay, listen);
+        Pair<PolygonOverlay, AtomicBoolean> pair = new Pair<>(overlay, listen);
+        polygons.add(pair);
+        backupPolygons.add(pair);
+      });
+
+      clearPolygons.setOnAction(e -> {
+        NotificationFactory.openYesCancel(
+            "Clear polygons drawn in scatter plot? This is irreversible.", () -> {
+              // delete the points
+              for (Pair<PolygonOverlay, AtomicBoolean> polygon : polygons) {
+                polygon.getValue().set(false); // silence all listeners
+                polygon.getKey().clear();
+              }
+              polygons.clear();
+              // sometimes polygons get stuck - this helps to definitively clear them
+              ChartViewer viewer = viewerRef.get();
+              if (viewer != null) {
+                ChartCanvas chartPanel = (ChartCanvas) viewer.getCanvas();
+                for (Pair<PolygonOverlay, AtomicBoolean> backupPolygon : backupPolygons) {
+                  backupPolygon.getValue().set(false); // silence all listeners
+                  backupPolygon.getKey().clear();
+                  chartPanel.removeOverlay(backupPolygon.getKey());
+                }
+                backupPolygons.clear();
+              }
+            });
+      });
+
+      removeAllPolygonPopsBtn.setOnAction(e -> {
+
+        NotificationFactory.openYesCancel(
+            "Remove all populations of polygon-type? This is irreversible.", () -> {
+              List<Sample> selSamples = SpTool3Main.getRunTime().getMainWindowCtl().getSelSamples();
+              for (Sample sample : selSamples) {
+                List<Channel> isotopes = sample.listChannels();
+                List<PopulationID> popIDs = sample.listAllPopulations().stream()
+                    .filter(populationID -> populationID.getSteps().stream()
+                        .anyMatch(step -> step instanceof PopulationStep.PolygonSubtype))
+                    .toList();
+
+                popIDs.forEach(id -> sample.removePopulations(isotopes, id));
+              }
+              SpTool3Main.getRunTime().getMainWindowCtl().updatePopulations();
+            });
+      });
+
+
+      List<Sample> selSamples = SpTool3Main.getRunTime().getMainWindowCtl().getSelSamples();
+      List<Channel> selChannels = SpTool3Main.getRunTime().getMainWindowCtl().getSelChannels();
+      List<PopulationID> selPops = SpTool3Main.getRunTime().getMainWindowCtl().getSelPops();
+      Unit unit = SpTool3Main.getRunTime().getMainWindowCtl().getUnit();
+
+      addPopulation.setOnAction(e -> {
+        /*
+        ##############################################################################
+        ################## Scatter CHANNELS ternary (3 isotopes) ####################
+        ##############################################################################
+        */
+        if (selChannels != null && selChannels.size() > 2 && params.getScatterIsotopes().getValue()) {
+          processing.options.EventParameter eventPar = params.getEventParameter().getValue();
+
+          for (Sample sample : selSamples) {
+
+            for (int i = 0; i < selPops.size(); i++) {
+              PopulationID popID = selPops.get(i);
+
+              // check if aligned
+              boolean isAlignedOrP = AnalysisUtils.isAlignedOrPValOrSim(popID);
+
+              if (isAlignedOrP) {
+
+                double[] a = sample.getData(selChannels.get(0), popID,
+                    EventType.NP, eventPar, unit);
+
+                double[] b = sample.getData(selChannels.get(1), popID,
+                    EventType.NP, eventPar, unit);
+
+                double[] c = sample.getData(selChannels.get(2), popID,
+                    EventType.NP, eventPar, unit);
+
+                Pair<double[], double[]> ternary = JFreeUtil.clampAndNormalizeToUnitTernary(a, b, c);
+                double[] xData = ternary.getKey();
+                double[] yData = ternary.getValue();
+
+                // iterate over all isotopes and add events that are within the region
+                // (we have to assume that indices on event (i.e., region) in one isotope matches all
+                // others)
+                List<Channel> allChannels = sample.listChannels();
+
+                for (int ij = 0; ij < allChannels.size(); ij++) {
+                  Channel channel = allChannels.get(ij);
+                  Trace trace = sample.getTrace(channel);
+                  if (trace != null) {
+                    Population pop = trace.getPopulation(popID);
+                    // If pop==null, we know that the isotope never had this population (e.g. b/c
+                    // exclusion rule)
+                    if (pop != null) {
+                      EventCollection collection = pop.getEvents();
+                      List<Event> events = collection.getNpEvents();
+
+                      // create component
+                      if (!events.isEmpty() && xData.length > 0 && yData.length > 0
+                          && xData.length == yData.length && events.size() == xData.length) {
+
+                        for (int ip = 0; ip < polygons.size(); ip++) {
+
+                          Pair<PolygonOverlay, AtomicBoolean> polygon = polygons.get(ip);
+                          List<Event> eventsInPolygon = new ArrayList<>();
+
+                          // construct double precision path from the polygon points
+                          List<Point2D> pts = polygon.getKey().getPoints();
+                          if (pts.size() >= 3) {
+
+                            // keep for the population
+                            double[] xVertices = new double[pts.size()];
+                            double[] yVertices = new double[pts.size()];
+
+                            // construct path
+                            java.awt.geom.Path2D.Double path = new java.awt.geom.Path2D.Double();
+                            path.moveTo(pts.get(0).getX(), pts.get(0).getY());
+                            xVertices[0] = pts.get(0).getX();
+                            yVertices[0] = pts.get(0).getY();
+
+                            for (int j = 1; j < pts.size(); j++) {
+                              xVertices[j] = pts.get(j).getX();
+                              yVertices[j] = pts.get(j).getY();
+                              path.lineTo(xVertices[j], yVertices[j]);
+                            }
+                            path.closePath();
+
+                            for (int n = 0; n < xData.length; n++) {
+                              if (path.contains(xData[n], yData[n])) {
+                                eventsInPolygon.add(events.get(n));
+                              }
+                            }
+
+                            // create population
+                            if (!eventsInPolygon.isEmpty()) {
+                              MainEventCollection coll = new SubEventCollection(trace, collection);
+                              coll.add(eventsInPolygon);
+
+                              PopulationID idCopy = new PopulationID(popID);
+                              idCopy.append((new PopulationStep.PolygonSubtype("PLGN_" + ip,
+                                  xVertices, yVertices)));
+
+                              trace.addOverridePopulation(idCopy,
+                                  new NpPopulation(
+                                      idCopy,
+                                      pop,
+                                      coll,
+                                      pop.getContributingChannels()
+                                  ),
+                                  true);
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+          SpTool3Main.getRunTime().getMainWindowCtl().updatePopulations();
+
+        /*
+        ##############################################################################
+        ############## Scatter EVENT PARAMETER ternary (A/B/C per channel) ##########
+        ##############################################################################
+        */
+        } else if (!params.getScatterIsotopes().getValue()) {
+
+          if (selSamples != null && !selSamples.isEmpty()
+              && selChannels != null && !selChannels.isEmpty()) {
+
+            for (Sample sample : selSamples) {
+
+              for (Channel channel : selChannels) {
+
+                Trace trace = sample.getTrace(channel);
+                if (trace != null) {
+
+                  for (int i = 0; i < selPops.size(); i++) {
+                    PopulationID popID = selPops.get(i);
+
+                    Population pop = trace.getPopulation(popID);
+                    if (pop != null) {
+                      EventCollection collection = pop.getEvents();
+                      List<Event> events = collection.getNpEvents();
+
+                      double[] a = sample.getData(channel, popID,
+                          EventType.NP, params.getEventParameterA().getValue(), unit);
+
+                      double[] b = sample.getData(channel, popID,
+                          EventType.NP, params.getEventParameterB().getValue(), unit);
+
+                      double[] c = sample.getData(channel, popID,
+                          EventType.NP, params.getEventParameterC().getValue(), unit);
+
+                      Pair<double[], double[]> ternary = JFreeUtil.clampAndNormalizeToUnitTernary(a, b, c);
+                      double[] xData = ternary.getKey();
+                      double[] yData = ternary.getValue();
+
+                      if (!events.isEmpty() && xData.length > 0 && yData.length > 0
+                          && xData.length == yData.length && events.size() == xData.length) {
+
+                        for (int ip = 0; ip < polygons.size(); ip++) {
+
+                          Pair<PolygonOverlay, AtomicBoolean> polygon = polygons.get(ip);
+                          List<Event> eventsInPolygon = new ArrayList<>();
+
+                          // construct double precision path from the polygon points
+                          List<Point2D> pts = polygon.getKey().getPoints();
+                          if (pts.size() >= 3) {
+
+                            // keep for the population
+                            double[] xVertices = new double[pts.size()];
+                            double[] yVertices = new double[pts.size()];
+
+                            // construct path
+                            java.awt.geom.Path2D.Double path = new java.awt.geom.Path2D.Double();
+                            path.moveTo(pts.get(0).getX(), pts.get(0).getY());
+                            xVertices[0] = pts.get(0).getX();
+                            yVertices[0] = pts.get(0).getY();
+
+                            for (int j = 1; j < pts.size(); j++) {
+                              xVertices[j] = pts.get(j).getX();
+                              yVertices[j] = pts.get(j).getY();
+                              path.lineTo(xVertices[j], yVertices[j]);
+                            }
+                            path.closePath();
+
+                            for (int n = 0; n < xData.length; n++) {
+                              if (path.contains(xData[n], yData[n])) {
+                                eventsInPolygon.add(events.get(n));
+                              }
+                            }
+
+                            // create population
+                            if (!eventsInPolygon.isEmpty()) {
+                              MainEventCollection coll = new SubEventCollection(trace, collection);
+                              coll.add(eventsInPolygon);
+
+                              PopulationID idCopy = new PopulationID(popID);
+                              idCopy.append((new PopulationStep.PolygonSubtype("PLGN_" + ip,
+                                  xVertices, yVertices)));
+
+                              trace.addOverridePopulation(idCopy,
+                                  new NpPopulation(
+                                      idCopy,
+                                      pop,
+                                      coll,
+                                      pop.getContributingChannels()
+                                  ),
+                                  true);
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+            SpTool3Main.getRunTime().getMainWindowCtl().updatePopulations();
+          }
+        }
+
+        // Finally clear the previous polygons
+        for (Pair<PolygonOverlay, AtomicBoolean> polygon : polygons) {
+          polygon.getValue().set(false); // silence all listeners
+          polygon.getKey().clear();
+        }
+        polygons.clear();
+      });
+
+      // start plotting
+      int nDiv = 9;
+
+      // Show populations with the same scatter marker
+      HashMap<PopulationID, MarkerStyle> markerMap = new HashMap<>();
+      Iterator<MarkerStyle> markerIterator = MarkerStyle.getScatterAwtIterator().iterator();
+      selPops.forEach(p -> markerMap.put(p, markerIterator.next()));
+
+      List<ChartComponent> components = new ArrayList<>();
+
+      // ################### PLOT CHANNELS PARAMETER ###################
+      if (selChannels != null && selChannels.size() > 2 && params.getScatterIsotopes().getValue()) {
+        processing.options.EventParameter eventPar = params.getEventParameter().getValue();
+
+        String lblA = selChannels.get(0).getUIString();
+        String lblB = selChannels.get(1).getUIString();
+        String lblC = selChannels.get(2).getUIString();
+
+        if (selSamples != null && !selSamples.isEmpty()) {
+
+          for (Sample sample : selSamples) {
+
+            // Decide the color
+            Colors color = AnalysisUtils.getColor(sample, null, selSamples.size(),
+                selChannels.size());
+
+            for (int i = 0; i < selPops.size(); i++) {
+              PopulationID popID = selPops.get(i);
+
+              if (AnalysisUtils.isAlignedOrPValOrSim(popID)) {
+
+                if (i > 0) {
+                  color = Colors.variationHSB(color, new SpColor(Colors.paletteColor(i)), i);
+                }
+
+                String label = AnalysisUtils.getLabelForPlots(sample,
+                    null,
+                    popID,
+                    EventType.NP);
+
+                double[] a = sample.getData(selChannels.get(0), popID,
+                    EventType.NP, eventPar, unit);
+
+                double[] b = sample.getData(selChannels.get(1), popID,
+                    EventType.NP, eventPar, unit);
+
+                double[] c = sample.getData(selChannels.get(2), popID,
+                    EventType.NP, eventPar, unit);
+
+                Pair<double[], double[]> ternary = JFreeUtil.clampAndNormalizeToUnitTernary(a, b, c);
+
+                double alpha = params.getColorAlpha().getValue();
+                alpha = Math.max(0, alpha);
+                alpha = Math.min(1, alpha);
+
+                // build chart
+                ChartComponent edgeLine = new ChartComponent(
+                    new ChartData(
+                        label + "_" + eventPar,
+                        ternary.getKey(),
+                        ternary.getValue(),
+                        "X", ViewUnits.NONE, MathMod.NONE,
+                        "Y", ViewUnits.NONE, MathMod.NONE),
+                    new ChartStyle(color, alpha,
+                        LineWidthDefaults.MEDIUM_THICK,
+                        LineDashDefaults.STRAIGHT, 0f,
+                        new CustomMarkerSize(params.getDotSize().getValue()),
+                        markerMap.get(popID),
+                        true,
+                        RendererOption.LINE_AND_SHAPE,
+                        LineGraphStyle.MARKER)
+                );
+                components.add(edgeLine);
+              }
+            }
+          }
+
+          // Make the chart
+          JFreeChart chart = SpChartFactory.createTernaryChart(components, lblA, lblB, lblC, nDiv);
+
+          // Create node
+          ChartContainer container = SpChartFactory.bundleChartLegend(
+              chart,
+              components,
+              800,
+              500,
+              false,
+              false,
+              true);
+
+          Node viewNode = container.combinedPane;
+
+          // store for the polygons
+          viewerRef.set(container.viewer);
+
+          // Bundle method calls makeNice() internally, make axes transparent afterward
+          JFreeUtil.hideAxesAndDefaultGrid(chart.getXYPlot());
+
+          // Initialise the plot slightly larger in order to show to bottom % labels
+          NumberAxis domainAxis = (NumberAxis) chart.getXYPlot().getDomainAxis();
+          NumberAxis rangeAxis = (NumberAxis) chart.getXYPlot().getRangeAxis();
+
+          double marginFrac = 0.2;
+          double yMargin = marginFrac * HEIGHT;
+          domainAxis.setRange(-marginFrac, 1 + marginFrac);
+          rangeAxis.setRange(-yMargin, HEIGHT + yMargin);
+          domainAxis.setDefaultAutoRange(new Range(-marginFrac, 1 + marginFrac));
+          rangeAxis.setDefaultAutoRange(new Range(-yMargin, HEIGHT + yMargin));
+
+          domainAxis.setAutoRangeStickyZero(false);
+          rangeAxis.setAutoRangeStickyZero(false);
+
+          domainAxis.setLowerMargin(marginFrac);
+          domainAxis.setUpperMargin(marginFrac);
+          rangeAxis.setLowerMargin(marginFrac);
+          rangeAxis.setUpperMargin(marginFrac);
+
+          // Keep in the same pulse/runlater of the UI thread
+          targetPane.setCenter(viewNode);
+
+        } else {
+          // Keep in the same pulse/runlater of the UI thread
+          targetPane.setCenter(new AnchorPane());
+        }
+
+        // ################### PLOT EVENT PARAMETER ###################
+      } else if (!params.getScatterIsotopes().getValue()) {
+        String lblA = params.getEventParameterA().getValueAsString();
+        String lblB = params.getEventParameterB().getValueAsString();
+        String lblC = params.getEventParameterC().getValueAsString();
+
+        if (selSamples != null && !selSamples.isEmpty()
+            && selChannels != null && !selChannels.isEmpty()) {
+
+          // TOOD: for loops
+          for (Sample sample : selSamples) {
+            for (Channel channel : selChannels) {
+
+              // Decide the color
+              Colors color = AnalysisUtils.getColor(sample, channel, selSamples.size(),
+                  selChannels.size());
+
+              for (int i = 0; i < selPops.size(); i++) {
+                PopulationID popID = selPops.get(i);
+
+                if (i > 0) {
+                  color = Colors.variationHSB(color, new SpColor(Colors.paletteColor(i)), i);
+                }
+
+                String label = AnalysisUtils.getLabelForPlots(sample,
+                    channel,
+                    popID,
+                    EventType.NP);
+
+                double[] a = sample.getData(channel, popID,
+                    EventType.NP, params.getEventParameterA().getValue(), unit);
+
+                double[] b = sample.getData(channel, popID,
+                    EventType.NP, params.getEventParameterB().getValue(), unit);
+
+                double[] c = sample.getData(channel, popID,
+                    EventType.NP, params.getEventParameterC().getValue(), unit);
+
+                Pair<double[], double[]> ternary = JFreeUtil.clampAndNormalizeToUnitTernary(a, b, c);
+
+                double alpha = params.getColorAlpha().getValue();
+                alpha = Math.max(0, alpha);
+                alpha = Math.min(1, alpha);
+
+                // build chart
+                ChartComponent edgeLine = new ChartComponent(
+                    new ChartData(
+                        label,
+                        ternary.getKey(),
+                        ternary.getValue(),
+                        "X", ViewUnits.NONE, MathMod.NONE,
+                        "Y", ViewUnits.NONE, MathMod.NONE),
+                    new ChartStyle(color, alpha,
+                        LineWidthDefaults.MEDIUM_THICK,
+                        LineDashDefaults.STRAIGHT, 0f,
+                        new CustomMarkerSize(params.getDotSize().getValue()),
+                        markerMap.get(popID),
+                        true,
+                        RendererOption.LINE_AND_SHAPE,
+                        LineGraphStyle.MARKER)
+                );
+                components.add(edgeLine);
+              }
+            }
+          }
+
+
+          JFreeChart chart = SpChartFactory.createTernaryChart(components, lblA, lblB, lblC, nDiv);
+
+          // Create node
+          ChartContainer container = SpChartFactory.bundleChartLegend(
+              chart,
+              components,
+              800,
+              500,
+              false,
+              false,
+              true);
+
+          Node viewNode = container.combinedPane;
+
+          // store for the polygons
+          viewerRef.set(container.viewer);
+
+          // Bundle method calls makeNice() internally, make axes transparent afterward
+          JFreeUtil.hideAxesAndDefaultGrid(chart.getXYPlot());
+
+          // Initialise the plot slightly larger in order to show to bottom % labels
+          NumberAxis domainAxis = (NumberAxis) chart.getXYPlot().getDomainAxis();
+          NumberAxis rangeAxis = (NumberAxis) chart.getXYPlot().getRangeAxis();
+
+          double marginFrac = 0.2;
+          double yMargin = marginFrac * HEIGHT;
+          domainAxis.setRange(-marginFrac, 1 + marginFrac);
+          rangeAxis.setRange(-yMargin, HEIGHT + yMargin);
+          domainAxis.setDefaultAutoRange(new Range(-marginFrac, 1 + marginFrac));
+          rangeAxis.setDefaultAutoRange(new Range(-yMargin, HEIGHT + yMargin));
+
+          domainAxis.setAutoRangeStickyZero(false);
+          rangeAxis.setAutoRangeStickyZero(false);
+
+          domainAxis.setLowerMargin(marginFrac);
+          domainAxis.setUpperMargin(marginFrac);
+          rangeAxis.setLowerMargin(marginFrac);
+          rangeAxis.setUpperMargin(marginFrac);
+
+          // Keep in the same pulse/runlater of the UI thread
+          targetPane.setCenter(viewNode);
+
+        } else {
+          // Keep in the same pulse/runlater of the UI thread
+          targetPane.setCenter(new AnchorPane());
+        }
+      } else {
+        // Keep in the same pulse/runlater of the UI thread
+        targetPane.setCenter(new AnchorPane());
+      }
     }
   }
 
@@ -4400,6 +4982,7 @@ public abstract class Viewers {
                         chart,
                         components,
                         800, 500,
+                        true,
                         false,
                         Orientation.VERTICAL,
                         false);
@@ -4682,7 +5265,7 @@ public abstract class Viewers {
                   dendroChartContainers.add(SpChartFactory.bundleChartLegend(
                       dendroChart,
                       List.of(dendroComponent),
-                      800, 500));
+                      800, 500, true));
 
                   for (ChartContainer cont : dendroChartContainers) {
                     dendroAndKneeBox.getChildren().add(UiUtil.putOnAnchorWithoutInsets(cont.viewer));
@@ -4750,7 +5333,7 @@ public abstract class Viewers {
                   ChartContainer chartContainer = SpChartFactory.bundleChartLegend(
                       kneeChart,
                       List.of(comp),
-                      800, 500);
+                      800, 500, true);
 
                   // Here, no legend is needed for the knee plot
                   dendroAndKneeBox.getChildren().add(UiUtil.putOnAnchorWithoutInsets(chartContainer.viewer));
@@ -4788,7 +5371,7 @@ public abstract class Viewers {
                       pieChartContainers.add(SpChartFactory.bundleChartLegend(
                           pieCharts.get(i),
                           List.of(pieChartComponents.get(i)),
-                          800, 500));
+                          800, 500, true));
                     }
                   }
 
@@ -5537,6 +6120,7 @@ public abstract class Viewers {
                         chart,
                         legendComponents,
                         800, 500,
+                        true,
                         false,
                         Orientation.VERTICAL,
                         false);
@@ -5760,12 +6344,14 @@ public abstract class Viewers {
                 * plainSet.getCustomKernelBandwidth();
             KernelDensity kd = new KernelDensity(data, bandwidth);
             double maxVal = ArrUtils.getMax(data);
-            // reduce step size if small range or log plot
-            double stepSize = 0.1;
-            if (maxVal < 100 || plainSet.getMathMod().equals(MathMod.LOG10)) {
-              stepSize = 0.001;
+            // CLAUDE fixed number of points instead of a fixed step size:
+            // ~4 points per bandwidth, but at least 200 and at most 2000
+            double upper = 1.5 * maxVal;
+            int nPoints = (int) Math.max(200, Math.min(2000, Math.ceil(4 * upper / bandwidth)));
+            double[] x = new double[nPoints];
+            for (int i = 0; i < nPoints; i++) {
+              x[i] = upper * i / (nPoints - 1);
             }
-            double[] x = ArrUtils.fillArrayExclusive(0, 1.5 * maxVal, stepSize);
             double[] y = new double[x.length];
             for (int i = 0; i < x.length; i++) {
               y[i] = kd.p(x[i]);
@@ -5903,7 +6489,8 @@ public abstract class Viewers {
             chart,
             legendComponents,
             800,
-            500).combinedPane;
+            500,
+            true).combinedPane;
 
         return viewNode;
       } else {

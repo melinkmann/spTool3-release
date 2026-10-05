@@ -187,8 +187,10 @@ public abstract class AbstractLinearQueue implements BatchTask {
     }
 
     if (isStopped.get()) {
+      setProgress(1.0);
       LOGGER.info("Linear Batch called '" + getTaskName() + "' was stopped.");
     } else {
+      setProgress(1.0);
       LOGGER.info("Linear Batch called '" + getTaskName() + "' finished all tasks.");
     }
   }

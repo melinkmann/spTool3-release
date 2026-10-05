@@ -134,7 +134,7 @@ public class NuInterpreterParams extends AbstractParamSet implements Serializabl
         "SIA",
         """
             SIA shape parameter for the isotope pre-screening""",
-        0.47,
+        0.55,
         NF.D1C3,
         TextFormatterOption.ASSURE_NONZERO_POSITIVE_DOUBLE,
         false,

@@ -26,7 +26,7 @@ import tasks.TaskResult;
 
 public class SimpleLinearBatch<T> extends AbstractLinearQueue {
 
-  private static final Logger LOGGER = LogManager.getLogger(SimpleParallelBatch.class);
+  private static final Logger LOGGER = LogManager.getLogger(SimpleLinearBatch.class);
 
   private final TaskResult onQueueFinished;
 

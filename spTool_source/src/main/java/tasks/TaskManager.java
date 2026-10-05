@@ -48,7 +48,7 @@ public class TaskManager {
 
   private static final Logger LOGGER = LogManager.getLogger(TaskManager.class);
 
-  public static final long HOUSEKEEPING_SLEEP = 100; // milliseconds
+  public static final long HOUSEKEEPING_SLEEP = 250; // milliseconds
   // HOUSEKEEPING_MODULO: one tracker tick each 100 ms; 20 ticks = 2000ms = 2s. 30 ticks = 3000ms = 3s.
   public static final int HOUSEKEEPING_MODULO = 50;
 
@@ -57,6 +57,7 @@ public class TaskManager {
   private final ExecutorService workingPool;
   private final ExecutorService housekeepingPool;
   private final ExecutorService parallelBatchHousekeepingPool; // limit parallel execution to keep weak refs
+  private final ExecutorService tinyTaskPool;
   private final ScheduledExecutorService managerPool;
 
   // Are tasks running?
@@ -76,6 +77,7 @@ public class TaskManager {
    */
   private final Map<Task, Future<TaskResult>> runningWatchedBatchTasks;
   private final Map<Task, Future<TaskResult>> runningWatchedGraphTasks;
+  private final Map<Task, Future<TaskResult>> runningTinyTasks;
 
   /*
   Only one batch at a time is expected to run. Hence, have a waiting list.
@@ -132,6 +134,12 @@ public class TaskManager {
         new ThreadFactoryBuilder().setDaemon(true).build());
 
     /*
+    For low-load tasks like a path watch that can virtually run in unlimited amounts.
+     */
+    tinyTaskPool = Executors.newCachedThreadPool
+        (new ThreadFactoryBuilder().setDaemon(true).build());
+
+    /*
     The Manager is running in the background all the time,
     spTool uses a ScheduledPool with scheduleAtFixedRate();
      */
@@ -145,6 +153,7 @@ public class TaskManager {
     this.runningWorkerTasks = Collections.synchronizedMap(new LinkedHashMap<>());
     this.runningWatchedBatchTasks = Collections.synchronizedMap(new LinkedHashMap<>());
     this.runningWatchedGraphTasks = Collections.synchronizedMap(new LinkedHashMap<>());
+    this.runningTinyTasks = Collections.synchronizedMap(new LinkedHashMap<>());
     this.waitingBatchTasks = Collections.synchronizedList(new ArrayList<>());
     this.isWorking = new AtomicBoolean(false);
 
@@ -226,6 +235,9 @@ public class TaskManager {
         // Remove batches that have been done
         runningWatchedGraphTasks.entrySet().removeIf(entries -> entries.getValue().isDone());
 
+        // Remove completed tiny tasks
+        runningTinyTasks.entrySet().removeIf(entries -> entries.getValue().isDone());
+
         // Calculate progress. Housekeepers should report adequate progress.
         if (runningWatchedBatchTasks.isEmpty() && waitingBatchTasks.isEmpty() && runningWatchedGraphTasks.isEmpty()) {
           showProgressStopped();
@@ -288,6 +300,7 @@ public class TaskManager {
     housekeepingPool.shutdown();
     parallelBatchHousekeepingPool.shutdown();
     workingPool.shutdown();
+    tinyTaskPool.shutdown();
     managerPool.shutdown();
     graphPool.shutdown();
 
@@ -295,6 +308,7 @@ public class TaskManager {
         " Housekeeping down: " + housekeepingPool.isShutdown()
         + ". Parallel housekeeping down: " + parallelBatchHousekeepingPool.isShutdown()
         + ". Graphing down: " + graphPool.isShutdown()
+        + ". Tiny task down: " + tinyTaskPool.isShutdown()
         + ". Worker down: " + workingPool.isShutdown()
         + ". Manager down: "
         + managerPool.isShutdown());
@@ -433,6 +447,11 @@ public class TaskManager {
   }
 
 
+  public void forceToTinyPool(Task tinyTask) {
+    Future<TaskResult> future = tinyTaskPool.submit(tinyTask);
+    runningTinyTasks.put(tinyTask, future);
+  }
+
   public synchronized void notifyNewStorageFile() {
     storageFileCounter.incrementAndGet();
   }
@@ -450,6 +469,9 @@ public class TaskManager {
       t.stop();
     }
     for (Task t : runningWatchedGraphTasks.keySet()) {
+      t.stop();
+    }
+    for (Task t : runningTinyTasks.keySet()) {
       t.stop();
     }
     waitingBatchTasks.clear();

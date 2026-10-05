@@ -47,18 +47,21 @@ public class FixedStatDataSet implements StatDataSet, Serializable {
   private final double spread;
   private final double siaShape;
   private final double continuityEpsilon;
+  private final boolean lowerPoissonLimitZero;
 
   // set significance level
   private double z = DEFAULT_Z;
   private double alpha = DEFAULT_ALPHA; // or else we call new ND for each instance:  Statistics.zToAlpha(z)
 
   public FixedStatDataSet(double location, double spread, double siaShape, double continuityEpsilon,
+                          boolean lowerPoissonLimitZero,
                           int distrID) {
     this.location = location;
     this.spread = spread;
     this.siaShape = siaShape;
     this.distrID = distrID;
     this.continuityEpsilon = continuityEpsilon;
+    this.lowerPoissonLimitZero = lowerPoissonLimitZero;
   }
 
   // for the outlier test where "z" (f) is incremented
@@ -131,7 +134,7 @@ public class FixedStatDataSet implements StatDataSet, Serializable {
   public double calcCriticalLimit() {
     double lim = 0;
     if (distrID == Poisson.getID()) {
-      lim = Poisson.poissonCriticalLimit(alpha, location+ continuityEpsilon);
+      lim = Poisson.poissonCriticalLimit(alpha, location + continuityEpsilon);
     }
     if (distrID == Gaussian.getID()) {
       lim = Gaussian.gaussianCriticalLimit(z, location, spread);
@@ -154,7 +157,7 @@ public class FixedStatDataSet implements StatDataSet, Serializable {
   public double calcDetectionLimit() {
     double lim = 0;
     if (distrID == Poisson.getID()) {
-      lim = Poisson.poissonDetectionLimit(z, location+ continuityEpsilon);
+      lim = Poisson.poissonDetectionLimit(z, location + continuityEpsilon);
     }
     if (distrID == Gaussian.getID()) {
       lim = Gaussian.gaussianDetectionLimit(z, location, spread);
@@ -178,16 +181,28 @@ public class FixedStatDataSet implements StatDataSet, Serializable {
   public double calcLowerOutlierLimit() {
     double lim = 0;
     if (distrID == Poisson.getID()) {
-      lim = Poisson.poissonLowerOutlierLimit(alpha, location+ continuityEpsilon);
+      if (lowerPoissonLimitZero) {
+        lim = 0;
+      } else {
+        lim = Poisson.poissonLowerOutlierLimit(alpha, location + continuityEpsilon);
+      }
     }
     if (distrID == Gaussian.getID()) {
       lim = Gaussian.gaussianLowerOutlierLimit(z, location, spread);
     }
     if (distrID == PoissonNormal.getID()) {
-      lim = PoissonNormal.normalApproximationLowerOutlierLimit(z, location + continuityEpsilon);
+      if (lowerPoissonLimitZero) {
+        lim = 0;
+      } else {
+        lim = PoissonNormal.normalApproximationLowerOutlierLimit(z, location + continuityEpsilon);
+      }
     }
     if (distrID == CurriePoisson.getID()) {
-      lim = CurriePoisson.currieLowerOutlierLimit(z, location + continuityEpsilon);
+      if (lowerPoissonLimitZero) {
+        lim = 0;
+      } else {
+        lim = CurriePoisson.currieLowerOutlierLimit(z, location + continuityEpsilon);
+      }
     }
     if (distrID == CompoundPoissonApprox.getID()) {
       lim = CompoundPoissonApprox.compoundLowerOutlierLimit(alpha, location, siaShape);

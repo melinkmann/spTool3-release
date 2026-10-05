@@ -89,7 +89,7 @@ public enum MeasureOfLocation implements MeasureOfStat {
         if (probeMedian > 0) {
           median = probeMedian;
         } else {
-          median = Median.median(ArrUtils.positiveNonzero(dataList));
+          median = Median.median(ArrUtils.nonzero(dataList));
         }
       }
       return median;
@@ -103,7 +103,7 @@ public enum MeasureOfLocation implements MeasureOfStat {
         if (probeMedian > 0) {
           median = probeMedian;
         } else {
-          median = Median.median(ArrUtils.positiveNonzero(data));
+          median = Median.median(ArrUtils.nonzero(data));
         }
       }
       return median;
@@ -119,7 +119,7 @@ public enum MeasureOfLocation implements MeasureOfStat {
     @Override
     public double calc(List<Double> data) {
       if (!data.isEmpty()) {
-        double median = Median.median(ArrUtils.positiveNonzero(data));
+        double median = Median.median(ArrUtils.nonzero(data));
         return median;
       } else {
         return 0;
@@ -129,7 +129,7 @@ public enum MeasureOfLocation implements MeasureOfStat {
     @Override
     public double calc(double[] data) {
       if (data.length > 0) {
-        return Median.median(ArrUtils.positiveNonzero(data));
+        return Median.median(ArrUtils.nonzero(data));
 
       } else {
         return 0;

@@ -34,6 +34,7 @@ import javafx.scene.control.ToggleButton;
 import javafx.scene.layout.BorderPane;
 import math.regression.RegressionUtils;
 import math.stat.MeasureOfLocation;
+import math.stat.MeasureOfSpread;
 import math.units.Unit;
 import math.units.enums.*;
 import org.apache.logging.log4j.LogManager;
@@ -64,6 +65,7 @@ public class RegressionViewContainer {
   private final List<PopulationID> selPops;
   private final HashMap<CalChannel, List<Double>> xData;
   private final HashMap<CalChannel, List<Double>> yData;
+  private final HashMap<CalChannel, List<Double>> wData;
 
   private String xLbl = "";
   private String yLbl = "";
@@ -97,6 +99,7 @@ public class RegressionViewContainer {
 
     this.xData = new HashMap<>();
     this.yData = new HashMap<>();
+    this.wData = new HashMap<>();
 
     this.slopes = new HashMap<>();
     this.graphComponents = new ArrayList<>();
@@ -112,6 +115,7 @@ public class RegressionViewContainer {
         chart,
         legendComponents,
         500, 500,
+        true,
         Orientation.HORIZONTAL);
 
     graphPane.setCenter(UiUtil.putOnAnchorWithoutInsets(chartContainer.combinedPane));
@@ -213,10 +217,12 @@ public class RegressionViewContainer {
     legendComponents.clear();
     xData.clear();
     yData.clear();
+    wData.clear();
     slopes.clear();
     for (CalChannel channel : selCalChannels) {
       xData.put(channel, new ArrayList<>());
       yData.put(channel, new ArrayList<>());
+      wData.put(channel, new ArrayList<>());
     }
 
     // sel pops must be empty in case ionic sample
@@ -243,6 +249,7 @@ public class RegressionViewContainer {
               channel.channel().getUIString(),
               ArrUtils.doubleListToArr(xData.get(channel)),
               ArrUtils.doubleListToArr(yData.get(channel)),
+              ArrUtils.doubleListToArr(wData.get(channel)),
               xLbl, xUnit,
               yLbl, yUnit,
               SpTool3Main.getRunTime().getConfParams().getColor(channel.channel()),
@@ -349,12 +356,14 @@ public class RegressionViewContainer {
                 }
                 double[] npData = sample.getData(selCalChannel.channel(), pop, EventType.NP, eventPar);
                 double yVal = loc.calc(npData);
+                double wVal = MeasureOfSpread.SD.calc(npData);
 
                 xData.get(selCalChannel).add(xVal);
                 xUnit = elementalMassUnit;
                 xLbl = "Elemental mass";
 
                 yData.get(selCalChannel).add(yVal);
+                wData.get(selCalChannel).add(wVal);
                 yUnit = (IntensityUnit.JUST_CTS);
                 yLbl = "Intensity";
               }
@@ -412,6 +421,9 @@ public class RegressionViewContainer {
               yData.get(selCalChannel).add(rawCps);
               yUnit = (IntensityUnit.CPS);
               yLbl = "Intensity";
+
+              // weight = y
+              wData.get(selCalChannel).add(rawCps);
             }
           }
         }
@@ -482,6 +494,9 @@ public class RegressionViewContainer {
                 yData.get(selCalChannel).add(npPerSecDetected);
                 yUnit = ViewUnits.NP_PER_SECOND;
                 yLbl = "Detected NP rate";
+
+                // weight = y
+                wData.get(selCalChannel).add(npPerSecDetected);
               }
             }
           }
@@ -492,6 +507,7 @@ public class RegressionViewContainer {
   }
 
 
+  // This allows to implement different strategy for number-based TE
   private void computeParticleNumberTE() {
     // get data
     if (!selPops.isEmpty()) {
@@ -555,6 +571,9 @@ public class RegressionViewContainer {
                 yData.get(selCalChannel).add(npPerSecDetected);
                 yUnit = ViewUnits.NP_PER_SECOND;
                 yLbl = "Detected NP rate";
+
+                // weight = y
+                wData.get(selCalChannel).add(npPerSecDetected);
               }
             }
           }

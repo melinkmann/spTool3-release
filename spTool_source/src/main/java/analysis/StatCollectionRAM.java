@@ -39,6 +39,7 @@ public class StatCollectionRAM implements StatCollection, Serializable {
   private final int lastSliceLength; // may be 998 or 1002 @ length = 1000 ...
   private final double siaShape;
   private final double continuityEpsilon;
+  private final boolean lowerPoissonLimitToZero;
 
   // Dummy
   public StatCollectionRAM() {
@@ -50,6 +51,7 @@ public class StatCollectionRAM implements StatCollection, Serializable {
     this.lastSliceLength = 0;
     this.siaShape = 0.47;
     this.continuityEpsilon = 0;
+    this.lowerPoissonLimitToZero = false;
   }
 
   // Shallow copy, depending on instance of StatCollection (HDD passes new array, RAM passes pointer)
@@ -62,13 +64,14 @@ public class StatCollectionRAM implements StatCollection, Serializable {
     this.lastSliceLength = collection.getLastSliceLength();
     this.siaShape = collection.getSiaShape();
     this.continuityEpsilon = collection.getContinuityEpsilon();
+    this.lowerPoissonLimitToZero = collection.getLowerPoissonLimitToZero();
   }
 
   // Deep copy
   public StatCollectionRAM(double[] location, double[] spread, double[] outlierFactor,
                            int[] distrKey,
                            int sliceLength, int lastSliceLength, double siaShape,
-                           double continuityEpsilon) {
+                           double continuityEpsilon, boolean lowerPoissonLimitToZero) {
     this.location = ArrUtils.copy(location);
     this.spread = ArrUtils.copy(spread);
     this.outlierFactor = ArrUtils.copy(outlierFactor);
@@ -77,15 +80,17 @@ public class StatCollectionRAM implements StatCollection, Serializable {
     this.lastSliceLength = lastSliceLength;
     this.siaShape = siaShape;
     this.continuityEpsilon = continuityEpsilon;
+    this.lowerPoissonLimitToZero = lowerPoissonLimitToZero;
   }
 
   public StatCollectionRAM(StatDataSet set, int sliceLength, int lastSliceLength, double siaShape,
-                           double continuityEpsilon) {
-    this(Collections.singletonList(set), sliceLength, lastSliceLength, siaShape, continuityEpsilon);
+                           double continuityEpsilon, boolean lowerPoissonLimitToZero) {
+    this(Collections.singletonList(set), sliceLength, lastSliceLength, siaShape, continuityEpsilon,
+        lowerPoissonLimitToZero);
   }
 
   public StatCollectionRAM(List<StatDataSet> list, int sliceLength, int lastSliceLength,
-                           double siaShape, double continuityEpsilon) {
+                           double siaShape, double continuityEpsilon, boolean lowerPoissonLimitToZero) {
     this.location = new double[list.size()];
     this.spread = new double[list.size()];
     this.outlierFactor = new double[list.size()];
@@ -101,17 +106,19 @@ public class StatCollectionRAM implements StatCollection, Serializable {
     this.lastSliceLength = lastSliceLength;
     this.siaShape = siaShape;
     this.continuityEpsilon = continuityEpsilon;
+    this.lowerPoissonLimitToZero = lowerPoissonLimitToZero;
   }
 
   @Override
   public StatCollection copy() {
     return new StatCollectionRAM(location, spread, outlierFactor,
-        distrKey, sliceLength, lastSliceLength, siaShape, continuityEpsilon);
+        distrKey, sliceLength, lastSliceLength, siaShape, continuityEpsilon, lowerPoissonLimitToZero);
   }
 
   @Override
   public StatDataSet getSlice(int sliceIndex) {
     return new FixedStatDataSet(location[sliceIndex], spread[sliceIndex], siaShape, continuityEpsilon,
+        lowerPoissonLimitToZero,
         distrKey[sliceIndex]);
   }
 
@@ -156,6 +163,11 @@ public class StatCollectionRAM implements StatCollection, Serializable {
     return continuityEpsilon;
   }
 
+  @Override
+  public boolean getLowerPoissonLimitToZero() {
+    return false;
+  }
+
   /**
    * Interpolates the underlying statistics (µ, SD) to generate a new distribution.
    * This is needed for the interpolating p value computation.
@@ -169,6 +181,7 @@ public class StatCollectionRAM implements StatCollection, Serializable {
     // Trivial case: just one slice -> always return the same set
     if (noOfSlices == 1) {
       interpolatedDataSet = new FixedStatDataSet(location[0], spread[0], siaShape, continuityEpsilon,
+          lowerPoissonLimitToZero,
           distrKey[0]);
     } else {
       // How many regular slices?
@@ -195,6 +208,7 @@ public class StatCollectionRAM implements StatCollection, Serializable {
         // are we in the first slice? --> Cannot interpolate
         if (sliceIdx == 0) {
           interpolatedDataSet = new FixedStatDataSet(location[0], spread[0], siaShape, continuityEpsilon,
+              lowerPoissonLimitToZero,
               distrKey[0]);
         } else {
           // get slice to the left
@@ -207,13 +221,14 @@ public class StatCollectionRAM implements StatCollection, Serializable {
               spread[sliceIdx], dpIdx);
           // use the distribution type from the slice we are in currently @sliceIdx
           interpolatedDataSet = new FixedStatDataSet(intpLocation, intpSpread, siaShape, continuityEpsilon,
+              lowerPoissonLimitToZero,
               distrKey[sliceIdx]);
         }
       } else if (dpIdx > centerIdx) {
         // are we in the last slice? --> Cannot interpolate
         if (sliceIdx == noOfSlices - 1) {
           interpolatedDataSet = new FixedStatDataSet(location[noOfSlices - 1], spread[noOfSlices - 1],
-              siaShape, continuityEpsilon, distrKey[noOfSlices - 1]);
+              siaShape, continuityEpsilon, lowerPoissonLimitToZero, distrKey[noOfSlices - 1]);
         } else {
           int rightSliceIdx = sliceIdx + 1;
           int rightCenterIdx;
@@ -232,12 +247,13 @@ public class StatCollectionRAM implements StatCollection, Serializable {
               spread[rightSliceIdx], dpIdx);
           // use the distribution type from the slice we are in currently @sliceIdx
           interpolatedDataSet = new FixedStatDataSet(intpLocation, intpSpread, siaShape, continuityEpsilon,
+              lowerPoissonLimitToZero,
               distrKey[sliceIdx]);
         }
       } else {
         // we hit the center!
         interpolatedDataSet = new FixedStatDataSet(location[sliceIdx], spread[sliceIdx], siaShape,
-            continuityEpsilon,
+            continuityEpsilon, lowerPoissonLimitToZero,
             distrKey[sliceIdx]);
       }
     }

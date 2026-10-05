@@ -22,6 +22,7 @@ package math.regression;
 import java.io.Serial;
 import java.io.Serializable;
 import java.util.Arrays;
+
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -39,7 +40,7 @@ import org.apache.logging.log4j.Logger;
  */
 public class WeightedLinearRegressionSpTool implements Serializable {
 
-  private static final Logger LOGGER = LogManager.getLogger(WLS.class);
+  private static final Logger LOGGER = LogManager.getLogger(WeightedLinearRegressionSpTool.class);
 
   @Serial
   private static final long serialVersionUID = 1L;
@@ -92,7 +93,7 @@ public class WeightedLinearRegressionSpTool implements Serializable {
   /**
    * Run a 1D weighted regression.
    */
-  public void regress1d(double[] y, double[] x, double[] w) throws IllegalArgumentException{
+  public void regress1d(double[] y, double[] x, double[] w) throws IllegalArgumentException {
     if (x.length == 0) {
       throw new IllegalArgumentException("Need more than 0 points");
     }
@@ -109,11 +110,13 @@ public class WeightedLinearRegressionSpTool implements Serializable {
   }
 
   /**
+   * a
    * Calculate the weighted linear regression for a set of points.
    *
    * @param Y Y[j] is the j-th measured or observed dependent variable value.
    * @param X X[i][j] is the j-th measured independent variable value for the i-th variable.
-   * @param W W[j] is the j-th weight value.
+   * @param W W[j] is the j-th weight value: weights should be, e.g., 1/y, and given as such! No inversion
+   *          is computed here.
    */
   public void regress(double[] Y, double[][] X, double[] W) throws IllegalStateException {
     // Y[j]   = j-th observed data point

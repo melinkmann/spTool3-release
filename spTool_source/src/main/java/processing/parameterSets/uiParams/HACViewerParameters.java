@@ -174,7 +174,7 @@ public class HACViewerParameters extends AbstractParamSet implements ParamSet {
             e) 'Exclude': create a 'blacklist' of isotopes that shall not be included
              (besides these, all loaded isotopes will be used)""",
         IsotopeSelection.ALL_LOADED,
-        IsotopeSelection.values(),
+        IsotopeSelection.getUI(),
         IsotopeSelection.class,
         false,
         "isotopeSelection");

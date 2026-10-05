@@ -72,6 +72,8 @@ public class SampleImpl implements Sample, Serializable {
   private String nickName;
   private boolean highlighted;
   private String comment;
+  @Nullable
+  private Double doeMatchScore;
   private final SampleFile sampleFile;
   private final HashMap<Channel, Trace> traces;
   private final List<ParticlePopulationMatrix> matrices;
@@ -238,6 +240,7 @@ public class SampleImpl implements Sample, Serializable {
         recordedTofRange,
         inclusiveStartIndex,
         inclusiveEndIndex);
+    newSample.setDoeMatchScore(doeMatchScore);
     return newSample;
   }
 
@@ -259,6 +262,7 @@ public class SampleImpl implements Sample, Serializable {
         recordedTofRange,
         inclusiveStartIndex,
         inclusiveEndIndex);
+    newSample.setDoeMatchScore(doeMatchScore);
     return newSample;
   }
 
@@ -358,7 +362,11 @@ public class SampleImpl implements Sample, Serializable {
 
   @Override
   public String getNickName() {
-    return nickName;
+    if (doeMatchScore == null) {
+      return nickName;
+    } else {
+      return "rank-" + SnF.doubleToString(doeMatchScore, NF.D1C0) + "_" + nickName;
+    }
   }
 
   @Override
@@ -382,6 +390,16 @@ public class SampleImpl implements Sample, Serializable {
   }
 
   @Override
+  public @Nullable Double getDoeMatchScore() {
+    return doeMatchScore;
+  }
+
+  @Override
+  public void setDoeMatchScore(@Nullable Double score) {
+    doeMatchScore = score;
+  }
+
+  @Override
   public void setComment(String comment) {
     this.comment = comment;
   }
@@ -400,13 +418,23 @@ public class SampleImpl implements Sample, Serializable {
   }
 
   @Override
-  public double getMeanSiaShape() {
+  public double getFilteredMeanSiaShape() {
     double lowerLimit = SpTool3Main.getRunTime().getConfParams().getSiaLowerLimit().getValue();
     double upperLimit = SpTool3Main.getRunTime().getConfParams().getSiaUpperLimit().getValue();
     double sia = traces.values().stream()
         .map(Trace::getSiaShape)
         .filter(d -> d > lowerLimit)
         .filter(d -> d < upperLimit)
+        .mapToDouble(Double::doubleValue)
+        .average().orElse(0);
+    return sia;
+  }
+
+  @Override
+  public double getMeanSiaShape() {
+    double sia = traces.values().stream()
+        .map(Trace::getSiaShape)
+        .filter(Double::isFinite)
         .mapToDouble(Double::doubleValue)
         .average().orElse(0);
     return sia;
@@ -596,7 +624,7 @@ public class SampleImpl implements Sample, Serializable {
   @Override
   public void removeChannels(List<Channel> channels) {
     // remove trace itself
-    this.traces.keySet().removeAll(channels);
+    channels.forEach(this.traces.keySet()::remove);
     //    // remove from spectra too [feels unexpected as we do not see these in the UI]
     //    for (PopulationID popID : spectra.keySet()) {
     //      List<SpectralArray> spec = spectra.get(popID);
@@ -697,6 +725,31 @@ public class SampleImpl implements Sample, Serializable {
         data = quantData;
       }
     }
+    return data;
+  }
+
+  @Override
+  public double[] revertData(double[] quantifiedInput, Channel channel, EventParameter param, Unit unit) {
+
+    double[] data = new double[0];
+
+    if (quantifiedInput != null && quantifiedInput.length > 0) {
+      // reversion (from quantified unit to cts)
+      double[] revertedData = revertQuant(quantifiedInput, channel, param, unit);
+
+      // revertedData is empty if unable to revert
+      if (revertedData.length < quantifiedInput.length) {
+        if (IntensityUnit.CTS.equals(unit) || IntensityUnit.JUST_CTS.equals(unit)) {
+          data = quantifiedInput; // indicates that we request cts and return these
+        } else {
+          // indicate that data is not reverted by passing empty list
+          data = new double[0];
+        }
+      } else {
+        data = revertedData;
+      }
+    }
+
     return data;
   }
 
@@ -872,9 +925,6 @@ public class SampleImpl implements Sample, Serializable {
   public double[] revertQuant(double[] quantifiedInput, Channel channel, EventParameter param,
                               Unit unit) {
 
-    // double[] result = ArrUtils.copy(quantifiedInput);
-    double[] result = new double[0];
-
     // isotope is null if none present
     CalChannel calChannel = AnalysisUtils.getCalChannel(channel);
 
@@ -883,14 +933,16 @@ public class SampleImpl implements Sample, Serializable {
         || (IntensityUnit.CTS.equals(unit) || IntensityUnit.JUST_CTS.equals(unit))
         || !EventParameter.canQuantify(param)
         || !quant.getExperimentalConditions().getEventPar().equals(param)) {
-      return result;
+      return new double[0];
     }
 
     if (!quant.getExperimentalConditions().getCalibratorRole().getValue().equals(CalibratorRole.SAMPLE)) {
       return new double[0];
     }
 
+    // prepare conversion
     double ctsPerFg = 0;
+    double[] result = ArrUtils.copy(quantifiedInput);
 
     // --- Recompute sensitivity exactly as in applyQuant ---
     switch (quant.getCalibrationStrategy()) {
@@ -1096,8 +1148,12 @@ public class SampleImpl implements Sample, Serializable {
   public double getMaxThr(@Nullable Channel channel, PopulationID populationID, boolean netSignal,
                           Unit unit) {
     double thr = getMaxThr(channel, populationID, netSignal);
-    double[] qThr = applyQuant(new double[]{thr}, channel, EventParameter.NET_AREA, unit);
-    return qThr.length > 0 ? qThr[0] : 0;
+    if (unit.equals(IntensityUnit.CTS) || unit.equals(IntensityUnit.JUST_CTS)) {
+      return thr;
+    } else {
+      double[] qThr = applyQuant(new double[]{thr}, channel, EventParameter.NET_AREA, unit);
+      return qThr.length > 0 ? qThr[0] : 0;
+    }
   }
 
   @Override
@@ -1411,14 +1467,24 @@ public class SampleImpl implements Sample, Serializable {
   }
 
   @Override
-  public String tabMeanSIAShape(Channel channel) {
+  public String tabMeanSIAShape() {
     return str(getMeanSiaShape(), NF.D1C4);
+  }
+
+  @Override
+  public String tabMeanFilteredSIAShape() {
+    return str(getFilteredMeanSiaShape(), NF.D1C4);
   }
 
   @Override
   public String tabPopName(Channel channel, PopulationID populationID) {
     return check(channel, populationID) ?
         getTrace(channel).getPopulation(populationID).getName() : EMPTY_CELL;
+  }
+
+  @Override
+  public String tabPopHistory(Channel channel, PopulationID populationID) {
+    return check(channel, populationID) ? populationID.getString() : EMPTY_CELL;
   }
 
   @Override

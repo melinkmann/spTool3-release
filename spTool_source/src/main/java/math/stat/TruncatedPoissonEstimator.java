@@ -31,7 +31,7 @@ public class TruncatedPoissonEstimator {
     int zeroTruncationThreshold = (int) Math.floor(0.25 * lengthAll); // 25% is debatable
 
     double[] nonzeros = ArrUtils.nonzero(data);
-    double mode = Mode.calculateMode(nonzeros);
+    double mode = Mode.calc(nonzeros);
     double mean = MeasureOfLocation.MEAN.calc(nonzeros);
     double estimMu = (2*mean / 3d + mode / 3); // weighted mean - this is debatable but seems to work
     // (as in gives net signal scattering around the mean)

@@ -27,7 +27,7 @@ import tasks.single.ExampleWorkingTask;
 
 public class SimpleParallelBatch extends AbstractParallelQueue {
 
-  private static final Logger LOGGER = LogManager.getLogger(ExampleWorkingTask.class);
+  private static final Logger LOGGER = LogManager.getLogger(SimpleParallelBatch.class);
 
   private final TaskResult onQueueFinished;
 

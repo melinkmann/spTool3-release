@@ -73,7 +73,7 @@ public class ElementBundle implements ParamBundle {
             Background signal intensity of the respective element.
             The background signal is given in counts, i.e., counts per dwell time.
             The total background signal is calculated as the sum of all particle populations.""",
-        5d,
+        0d,
         NF.D1C3,
         TextFormatterOption.ASSURE_POSITIVE_DOUBLE,
         false,

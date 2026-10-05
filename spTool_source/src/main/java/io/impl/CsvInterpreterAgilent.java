@@ -28,8 +28,6 @@ import dataModelNew.TISeriesRAM;
 import dataModelNew.Trace;
 import dataModelNew.TraceImpl;
 import dataModelNew.mz.Channel;
-import dataModelNew.mz.MSID;
-import dataModelNew.mz.MZValue;
 import io.FileInterpreterUtils;
 
 import java.nio.file.Path;
@@ -551,7 +549,7 @@ public class CsvInterpreterAgilent implements CsvInterpreter {
       }
 
       // override first time stamp
-      double dwellTimeGuess = Mode.calculateMode(differences);
+      double dwellTimeGuess = Mode.calc(differences);
       result[0] = result[1] - dwellTimeGuess;
 
       // just to be safe
@@ -577,7 +575,7 @@ public class CsvInterpreterAgilent implements CsvInterpreter {
       for (int i = 1; i < Math.min(time.size(), 100); i++) {
         differences.add(time.get(i) - time.get(i - 1));
       }
-      double dwellTimeGuess = Mode.calculateMode(differences);
+      double dwellTimeGuess = Mode.calc(differences);
 
       // create artificial time stamps
       result[0] = dwellTimeGuess;

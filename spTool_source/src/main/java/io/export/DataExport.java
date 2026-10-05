@@ -346,6 +346,16 @@ public abstract class DataExport {
                     NF.D1C6));
 
             hBlock.addColumn(Arrays.asList(element.getSymbol(), isotope.getNumberAndElement()),
+                "Start index (integrated at >1cts) [-]",
+                SnF.doubleToStrArr(cont.getDataMap().get(isotope).get(EventParameter.START_INDEX),
+                    NF.D1C0));
+
+            hBlock.addColumn(Arrays.asList(element.getSymbol(), isotope.getNumberAndElement()),
+                "End index (integrated at >1cts) [-]",
+                SnF.doubleToStrArr(cont.getDataMap().get(isotope).get(EventParameter.END_INDEX),
+                    NF.D1C0));
+
+            hBlock.addColumn(Arrays.asList(element.getSymbol(), isotope.getNumberAndElement()),
                 "BG per NP (summed at >1cts) [" + IntensityUnit.JUST_CTS.getLiteralString() + "]",
                 SnF.doubleToStrArr(
                     cont.getDataMap().get(isotope).get(EventParameter.BACKGROUND_PER_NP),

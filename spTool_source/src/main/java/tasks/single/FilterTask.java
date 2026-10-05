@@ -645,9 +645,9 @@ public class FilterTask extends AbstractWorkingTask implements WorkingTask {
                           if (applyRoi) {
 
                             // try to revert quantification
-                            double[] startParArr = sampleImpl.revertQuant(new double[]{startPar}, channel,
+                            double[] startParArr = sampleImpl.revertData(new double[]{startPar}, channel,
                                 eventParameter, unit);
-                            double[] endParArr = sampleImpl.revertQuant(new double[]{endPar}, channel,
+                            double[] endParArr = sampleImpl.revertData(new double[]{endPar}, channel,
                                 eventParameter, unit);
 
                             // in some edge cases where quant is not done correctly, empty arrays return

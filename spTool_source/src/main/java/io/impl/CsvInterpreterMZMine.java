@@ -17,13 +17,12 @@
 
 package io.impl;
 
-import analysis.RawProcessingUtils;
 import com.opencsv.CSVReader;
 import dataModelNew.*;
 import dataModelNew.mz.*;
 import io.FileInterpreterUtils;
 import io.PathUtil;
-import io.nu.ShapeEstimator;
+import io.nu.SiaShapeEstimation;
 import math.stat.Mode;
 import math.units.Unit;
 import math.units.enums.ViewUnits;
@@ -31,10 +30,7 @@ import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import processing.options.EICNormalisation;
-import processing.options.SignalConversionOption;
-import processing.options.Source;
 import processing.parameterSets.impl.CsvInterpreterParams;
-import sandbox.montecarlo.Isotope;
 import util.ArrUtils;
 import util.NF;
 import util.SnF;
@@ -170,7 +166,7 @@ public class CsvInterpreterMZMine implements CsvInterpreter {
           }
         }
         // Mode should be relatively robust to yield the best value
-        globalNonzeroMinimum = Mode.calculateMode(globalNonzeroMinima);
+        globalNonzeroMinimum = Mode.calc(globalNonzeroMinima);
 
         Sample sample = new SampleImpl(sampleName, sampleFile);
         if (mzChannels.size() == allIntensitySeries.size()) {
@@ -211,7 +207,7 @@ public class CsvInterpreterMZMine implements CsvInterpreter {
             }
 
             // Estimate SIA shape
-            double sia = ShapeEstimator.computeShape(y, null);
+            double sia = SiaShapeEstimation.computeShape(y, null);
             if (!Double.isFinite(sia)) {
               sia = 0;
             }

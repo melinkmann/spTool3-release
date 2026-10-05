@@ -89,7 +89,8 @@ public class StageFactory {
       Scene scene = new Scene(root);
 
       // WORKS: setListView.getStyleClass().add("list-view-unselect");
-      //https://stackoverflow.com/questions/62897231/javafx-change-listviews-focusmodel scene.getStylesheets().add(StageFactory.class.getResource("/styles/style.css").toExternalForm());
+      //https://stackoverflow.com/questions/62897231/javafx-change-listviews-focusmodel scene
+      // .getStylesheets().add(StageFactory.class.getResource("/styles/style.css").toExternalForm());
 
       mainStage.setScene(scene);
       mainStage.show();
@@ -97,6 +98,9 @@ public class StageFactory {
       LOGGER.fatal(ExceptionUtils.getStackTrace(e));
     }
     mainStage.setOnCloseRequest(e -> {
+      LOGGER.info("Saving run time parameters...");
+      SpTool3Main.getRunTime().saveParameterSets();
+
       LOGGER.info("Shutdown command to thread pools.");
       SpTool3Main.getRunTime().getTaskManager().shutdownThreadPools();
     });

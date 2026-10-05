@@ -24,6 +24,7 @@ import dataModelNew.Sample;
 import dataModelNew.SampleImpl;
 import dataModelNew.Trace;
 import dataModelNew.mz.Channel;
+import dataModelNew.mz.StaticChannelCategory;
 import math.stat.MeasureOfLocation;
 import math.stat.Median;
 import org.apache.commons.lang3.exception.ExceptionUtils;
@@ -39,11 +40,14 @@ import tasks.TaskResult;
 import tasks.WorkingTask;
 import tasks.results.EmptyTaskResult;
 import util.ArrUtils;
+import util.Util;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Predicate;
 
 public class AlignTask extends AbstractWorkingTask implements WorkingTask {
 
@@ -74,7 +78,7 @@ public class AlignTask extends AbstractWorkingTask implements WorkingTask {
       // START ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ##
       if (sampleRef.get() != null && params.getEnableBoolean().getValue()) {
 
-        LOGGER.info("Merging starts for " + sampleRef.get().getNickName()
+        LOGGER.info("Align starts for " + sampleRef.get().getNickName()
             + " in thread " + Thread.currentThread().getId());
         double counter = 0;
         mainLoop:
@@ -83,8 +87,11 @@ public class AlignTask extends AbstractWorkingTask implements WorkingTask {
           NetCorrectionOption netSignalChoice = params.getNetCorrectionOption().getValue();
           AlignAlgorithm alignAlgorithm = params.getAlignAlgorithm().getValue();
           IsotopeSelection isotopeSelection = params.getIsotopeSelection().getValue();
+          boolean alignIntoAllChannels = params.getAddAlignedPopulationToAllTraces().getValue();
           List<Isotope> excludedIsotopes = params.listExcludedIsotopes();
           List<Isotope> includedIsotopes = params.listIncludedIsotopes();
+          List<Double> includedChannelMZ = params.getIncludedChannels();
+          double ppmPrecisionChannels = params.getIncludeChannelsPrecision().getValue();
           MeasureOfLocation netSignalLocation = params.getNetTimeWindowLocation().getValue();
           boolean suppressNegativeNetValues = params.getSuppressNegativeValues().getValue();
           double netSignalTime = params.getNetTimeWindow().getValue();
@@ -92,20 +99,51 @@ public class AlignTask extends AbstractWorkingTask implements WorkingTask {
           Sample sample = sampleRef.get();
           if (sample instanceof SampleImpl) {
 
-            List<Trace> traces = sample.getTraces();
+            List<Trace> allTraces = sample.getTraces();
+            List<Trace> filteredTraces = new ArrayList<>(allTraces);
+            List<Trace> targetTraces;
+            if (alignIntoAllChannels) {
+              targetTraces = new ArrayList<>(allTraces);
+            } else {
+              targetTraces = filteredTraces;
+            }
+
+            // check if any trace is TIC
+            boolean hasTIC = filteredTraces.stream()
+                .map(t -> t.getChannel())
+                .anyMatch(c -> c.getCategory().equals(StaticChannelCategory.TIC));
+
+            // match traces and requested MZs
+            Map<Double, Trace> matchMap = Util.matchDoublesToChannels(
+                includedChannelMZ,
+                filteredTraces,
+                ppmPrecisionChannels);
 
             // enable exclusion of certain isotopes
             switch (isotopeSelection) {
               case ALL_LOADED -> {
               }
               case SELECTED -> {
-                traces.removeIf(t -> !selChannels.contains(t.getChannel()));
+                filteredTraces.removeIf(t -> !selChannels.contains(t.getChannel()));
               }
               case POSITIVE_LIST_SELECTION -> {
-                traces.removeIf(t -> !includedIsotopes.contains(t.getChannel().getIsotope()));
+                filteredTraces.removeIf(t -> !includedIsotopes.contains(t.getChannel().getIsotope()));
               }
               case NEGATIVE_LIST_EXCLUSION -> {
-                traces.removeIf(t -> excludedIsotopes.contains(t.getChannel().getIsotope()));
+                filteredTraces.removeIf(t -> excludedIsotopes.contains(t.getChannel().getIsotope()));
+              }
+
+              case TIC -> {
+                if (hasTIC) {
+                  filteredTraces.removeIf(Predicate.not(t -> t.getChannel().getCategory().equals(StaticChannelCategory.TIC)));
+                } else {
+                  // All loaded
+                }
+
+              }
+
+              case POSITIVE_LIST_CHANNEL_SELECTION -> {
+                filteredTraces.removeIf(matchMap::containsValue);
               }
               default -> {
                 // keep as is, we should not reach this branch
@@ -116,7 +154,11 @@ public class AlignTask extends AbstractWorkingTask implements WorkingTask {
 
             // Extract event collections of current leading population
             List<EventCollection> eventCollections = new ArrayList<>();
-            for (Trace trace : traces) {
+
+            for (Trace trace : filteredTraces) {
+
+              // complete list first and iterate over traces
+              contributingChannels.add(trace.getChannel());
 
               // only apply to leading population in the branch
               PopulationID popID = branch.getID(trace);
@@ -125,6 +167,7 @@ public class AlignTask extends AbstractWorkingTask implements WorkingTask {
                 if (getIsStopped().get()) {
                   break;
                 }
+
                 Population pop = trace.getPopulation(popID);
 
                 if (pop != null) {
@@ -150,13 +193,8 @@ public class AlignTask extends AbstractWorkingTask implements WorkingTask {
 
               if (!mergedEvents.isEmpty()) {
 
-                // complete list first and iterate over traces
-                for (Trace trace : traces) {
-                  contributingChannels.add(trace.getChannel());
-                }
-
                 // put that into each trace as new population
-                for (Trace trace : traces) {
+                for (Trace trace : targetTraces) {
                   counter++;
 
                   // only apply to leading population in the branch
@@ -390,7 +428,7 @@ public class AlignTask extends AbstractWorkingTask implements WorkingTask {
                 }
               }
             }
-            setProgress(counter / traces.size());
+            setProgress(counter / targetTraces.size());
           }
           setProgress(1);
           break mainLoop;

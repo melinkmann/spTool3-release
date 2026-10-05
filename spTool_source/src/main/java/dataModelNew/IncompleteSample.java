@@ -47,6 +47,7 @@ import processing.parameterSets.ListMethod;
 import processing.parameterSets.Method;
 import sandbox.montecarlo.ParticlePopulationMatrix;
 import util.NF;
+import util.SnF;
 
 import static visualizer.ResultsTable.EMPTY_CELL;
 
@@ -60,6 +61,8 @@ public class IncompleteSample implements Sample, Serializable {
   private String nickName;
   private boolean highlighted;
   private String comment;
+  @Nullable
+  private Double doeMatchScore;
   private final SampleFile sampleFile;
   private final HashMap<Channel, Trace> traces;
   private Method method;
@@ -129,11 +132,12 @@ public class IncompleteSample implements Sample, Serializable {
 
   @Override
   public Sample copyWithoutTraces() {
-    return new IncompleteSample(nickName, highlighted, comment, sampleFile,
+    Sample newSample = new IncompleteSample(nickName, highlighted, comment, sampleFile,
         traces, method.getCopyWithoutFile(), quant, color, matrix.copy(), sampleDefaultChannels,
         removedIsotopeInfo);
+    newSample.setDoeMatchScore(doeMatchScore);
+    return newSample;
   }
-
 
   @Serial
   private void writeObject(ObjectOutputStream out) throws IOException {
@@ -165,7 +169,11 @@ public class IncompleteSample implements Sample, Serializable {
 
   @Override
   public String getNickName() {
-    return nickName;
+    if (doeMatchScore == null) {
+      return nickName;
+    } else {
+      return "rank-" + SnF.doubleToString(doeMatchScore, NF.D1C0) + "_" + nickName;
+    }
   }
 
   @Override
@@ -193,6 +201,16 @@ public class IncompleteSample implements Sample, Serializable {
     this.comment = comment;
   }
 
+  @Override
+  public @Nullable Double getDoeMatchScore() {
+    return doeMatchScore;
+  }
+
+  @Override
+  public void setDoeMatchScore(@Nullable Double score) {
+    doeMatchScore = score;
+  }
+
   public Cal getQuant() {
     return quant;
   }
@@ -207,13 +225,23 @@ public class IncompleteSample implements Sample, Serializable {
   }
 
   @Override
-  public double getMeanSiaShape() {
+  public double getFilteredMeanSiaShape() {
     double lowerLimit = SpTool3Main.getRunTime().getConfParams().getSiaLowerLimit().getValue();
     double upperLimit = SpTool3Main.getRunTime().getConfParams().getSiaUpperLimit().getValue();
     double sia = traces.values().stream()
         .map(Trace::getSiaShape)
         .filter(d -> d > lowerLimit)
         .filter(d -> d < upperLimit)
+        .mapToDouble(Double::doubleValue)
+        .average().orElse(0);
+    return sia;
+  }
+
+  @Override
+  public double getMeanSiaShape() {
+    double sia = traces.values().stream()
+        .map(Trace::getSiaShape)
+        .filter(Double::isFinite)
         .mapToDouble(Double::doubleValue)
         .average().orElse(0);
     return sia;
@@ -416,9 +444,9 @@ public class IncompleteSample implements Sample, Serializable {
     if (!traceList.isEmpty()) {
       Trace first = traceList.get(0);
       Population pop = first.getPopulation(populationID);
-      if (pop != null){
+      if (pop != null) {
         EventCollection evtColl = pop.getEvents();
-        if (evtColl instanceof IncompleteEventCollection){
+        if (evtColl instanceof IncompleteEventCollection) {
           result = ((IncompleteEventCollection) evtColl).getIncompleteMatrix();
         }
       }
@@ -463,6 +491,20 @@ public class IncompleteSample implements Sample, Serializable {
     Trace trace = getTrace(channel);
     if (trace != null) {
       data = trace.get(populationID, eventType, param);
+    }
+    //}
+    return data;
+  }
+
+  @Override
+  public double[] revertData(double[] quantifiedInput, Channel channel, EventParameter param, Unit unit) {
+    double[] data = new double[0];
+    // Just return, whatever has been stored (user may load quant or external data)
+    //if (IntensityUnit.CTS.equals(unit)) {
+    // call getter (possibly null)
+    Trace trace = getTrace(channel);
+    if (trace != null) {
+      data = quantifiedInput;
     }
     //}
     return data;
@@ -658,14 +700,24 @@ public class IncompleteSample implements Sample, Serializable {
   }
 
   @Override
-  public String tabMeanSIAShape(Channel channel) {
+  public String tabMeanSIAShape() {
     return str(getMeanSiaShape(), NF.D1C4);
+  }
+
+  @Override
+  public String tabMeanFilteredSIAShape() {
+    return str(getFilteredMeanSiaShape(), NF.D1C4);
   }
 
   @Override
   public String tabPopName(Channel channel, PopulationID populationID) {
     return check(channel, populationID) ?
         getTrace(channel).getPopulation(populationID).getName() : EMPTY_CELL;
+  }
+
+  @Override
+  public String tabPopHistory(Channel channel, PopulationID populationID) {
+    return check(channel, populationID) ? populationID.getString() : EMPTY_CELL;
   }
 
   @Override

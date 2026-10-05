@@ -18,6 +18,7 @@
 package gui.dialog.notification;
 
 
+import core.SpTool3Main;
 import gui.StageFactory;
 import gui.dialog.DialogUtil;
 import gui.util.UiUtil;
@@ -36,8 +37,11 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.Region;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
+import javafx.stage.Window;
 import javafx.util.Duration;
 import util.Util;
+
+import javax.annotation.Nullable;
 
 /**
  * Dialog class cannot be fired while another Dialog is showing and waiting (showAndWait()). Hence,
@@ -77,12 +81,22 @@ public class TextNotification {
   private final String labelString;
   private final boolean showAreaInitially;
   private final NoteType notificationType;
+  private final Window owner;
+
 
   public TextNotification(NoteType notificationType, String message) {
     this.message = message;
     this.labelString = null;
     this.showAreaInitially = true;
     this.notificationType = notificationType;
+    this.owner = SpTool3Main.getMainStage();
+  }
+  public TextNotification(NoteType notificationType, String message,  @Nullable Window owner) {
+    this.message = message;
+    this.labelString = null;
+    this.showAreaInitially = true;
+    this.notificationType = notificationType;
+    this.owner = owner;
   }
 
   public TextNotification(NoteType notificationType, String message, String labelString) {
@@ -90,6 +104,16 @@ public class TextNotification {
     this.labelString = labelString;
     this.showAreaInitially = false;
     this.notificationType = notificationType;
+    this.owner = SpTool3Main.getMainStage();
+  }
+
+  public TextNotification(NoteType notificationType, String message, String labelString,
+                          @Nullable Window owner) {
+    this.message = message;
+    this.labelString = labelString;
+    this.showAreaInitially = false;
+    this.notificationType = notificationType;
+    this.owner = owner;
   }
 
   public void show() {
@@ -173,6 +197,7 @@ public class TextNotification {
 
       // Initial title
       popupStage.setTitle("Closing in " + secondsLeft[0] + "s");
+      popupStage.initOwner(owner);
       popupStage.show();
 
       Timeline timeline = new Timeline(
@@ -191,6 +216,7 @@ public class TextNotification {
       timeline.play();
     } else {
       // Show the popup window
+      popupStage.initOwner(owner);
       popupStage.show();
     }
 

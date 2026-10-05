@@ -36,7 +36,7 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
-import io.nu.ShapeEstimator;
+import io.nu.SiaShapeEstimation;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -685,7 +685,7 @@ public class MonteCarloGeneratorTask extends AbstractWorkingTask implements Work
               // Create the actual " trace in the sample" for the UI.
               TISeries tiSeries = new TISeriesHDD(time, signal);
               // Estimate SIA for the giggles
-              double empiricalShape = ShapeEstimator.computeShape(signal);
+              double empiricalShape = SiaShapeEstimation.computeShape(signal, null);
 
               TraceMC trace = new TraceMC(
                   sample,

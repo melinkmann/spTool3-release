@@ -149,6 +149,18 @@ public abstract class ArrUtils {
     }
   }
 
+  /**
+   * Rounds all elements in the array to n decimal places.
+   */
+  public static double[] round(double[] values, int decimalPlaces) {
+    double[] result = new double[values.length];
+    double multiplier = Math.pow(10, decimalPlaces);
+    for (int i = 0; i < values.length; i++) {
+      result[i] = Math.round(values[i] * multiplier) / multiplier;
+    }
+    return result;
+  }
+
   public static void ceilOverriding(double[] array) {
     for (int i = 0; i < array.length; i++) {
       array[i] = Math.ceil(array[i]);
@@ -804,6 +816,26 @@ public abstract class ArrUtils {
     return Arrays.stream(arr).sum();
   }
 
+  public static double[] sumArrays(Collection<double[]> arrays) {
+    double[] result = new double[0];
+    if (!arrays.isEmpty()) {
+
+      int length = arrays.iterator().next().length;
+      double[] sum = new double[length];
+
+      for (double[] array : arrays) {
+        if (array.length == length) {
+          for (int i = 0; i < length; i++) {
+            sum[i] += array[i];
+          }
+        }
+      }
+
+      result = sum;
+    }
+    return result;
+  }
+
 
   /*
   ----------------------------------------------------------------------------------------
@@ -941,6 +973,16 @@ public abstract class ArrUtils {
     List<Double> nzList = new ArrayList<>();
     for (double d : array) {
       if (d > smallest) {
+        nzList.add(d);
+      }
+    }
+    return doubleListToArr(nzList);
+  }
+
+  public static double[] strictlySmallerThan(double[] array, double greatest) {
+    List<Double> nzList = new ArrayList<>();
+    for (double d : array) {
+      if (d < greatest) {
         nzList.add(d);
       }
     }
@@ -1494,5 +1536,29 @@ public abstract class ArrUtils {
     }
   }
 
+  /// /
+  public static <T> List<List<T>> split(List<T> list, int numberOfParts) {
+    List<List<T>> parts = new ArrayList<>();
+
+    int listSize = list.size();
+    int partSize = listSize / numberOfParts; // integer division; the last part takes the remainder
+
+    // Fewer elements than parts: one element per part (only as many parts as elements).
+    if (partSize == 0) {
+      for (T element : list) {
+        List<T> part = new ArrayList<>();
+        part.add(element);
+        parts.add(part);
+      }
+      return parts;
+    }
+
+    for (int p = 0; p < numberOfParts; p++) {
+      int from = p * partSize;
+      int to = (p == numberOfParts - 1) ? listSize : from + partSize; // last part carries the remainder
+      parts.add(new ArrayList<>(list.subList(from, to)));
+    }
+    return parts;
+  }
 
 }

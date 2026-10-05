@@ -18,7 +18,9 @@
 package io;
 
 import core.SpTool3Main;
+
 import java.nio.file.Path;
+
 import util.Util;
 
 public abstract class GlobalIO {
@@ -134,6 +136,15 @@ public abstract class GlobalIO {
     subMethodsFile = PathUtil.addDir(subMethodsFile, "spTool3", "config");
     PathUtil.createDir(subMethodsFile);
     subMethodsFile = PathUtil.addFile(subMethodsFile, "guiParameter" + METHOD_EXTENSION);
+    PathUtil.createFile(subMethodsFile);
+    return subMethodsFile;
+  }
+
+  public static Path makeRuntimeSubmethodFile() {
+    Path subMethodsFile = PathUtil.getUserDir();
+    subMethodsFile = PathUtil.addDir(subMethodsFile, "spTool3", "config");
+    PathUtil.createDir(subMethodsFile);
+    subMethodsFile = PathUtil.addFile(subMethodsFile, "runtimeParameter" + METHOD_EXTENSION);
     PathUtil.createFile(subMethodsFile);
     return subMethodsFile;
   }

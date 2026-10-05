@@ -192,8 +192,10 @@ public abstract class AbstractParallelQueue implements BatchTask {
     }
 
     if (isStopped.get()) {
+      setProgress(1.0);
       LOGGER.info("Parallel Batch called '" + getTaskName() + "' was stopped.");
     } else {
+      setProgress(1.0);
       LOGGER.info("Parallel Batch called '" + getTaskName() + "' finished all tasks.");
     }
 

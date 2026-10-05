@@ -21,20 +21,23 @@ import core.SpTool3Main;
 import dataModelNew.*;
 import dataModelNew.mz.*;
 import gui.util.UiUtil;
-import io.nu.ShapeEstimator;
+import io.nu.SiaShapeEstimation;
 import sandbox.montecarlo.Isotope;
 import util.Util;
 
 import java.util.*;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 public class SignalModificationUtil {
-  public static void addIsotopeSum(Sample sample, boolean excludeIsobars, boolean selectedIsotopesOnly) {
+
+  public static void addIsotopeSum(Sample sample,
+                                   List<Channel> allChannels,
+                                   List<Channel> selChannels,
+                                   boolean excludeIsobars, boolean selectedIsotopesOnly) {
     if (sample instanceof SampleImpl) {
 
       List<Element> elements = sample.listElements();
-
-      List<Channel> allChannels = SpTool3Main.getRunTime().getMainWindowCtl().getAllChannels();
-      List<Channel> selChannels = SpTool3Main.getRunTime().getMainWindowCtl().getSelChannels();
 
       HashMap<Isotope, Channel> allIsotopesMap = AnalysisUtils.getMatchMap(allChannels);
       HashMap<Isotope, Channel> selIsotopesMap = AnalysisUtils.getMatchMap(selChannels);
@@ -106,7 +109,7 @@ public class SignalModificationUtil {
           Trace sumTrace;
           if (hasSIA) {
             // TODO: Consider reusing the blanker regions here (optional for better SIA estimation)
-            double sia = ShapeEstimator.computeShape(sumSeries.getIntensity(), new ArrayList<>());
+            double sia = SiaShapeEstimation.computeShape(sumSeries.getIntensity(), new ArrayList<>());
             sumTrace = new TraceImpl(sample, sumChannel, sumSeries, sia);
           } else {
             sumTrace = new TraceImpl(sample, sumChannel, sumSeries);
@@ -114,6 +117,63 @@ public class SignalModificationUtil {
           sample.addTrace(sumTrace);
         }
       }
+    }
+  }
+
+  public static void addTIC(Sample sample) {
+    if (sample instanceof SampleImpl) {
+
+      // remove previous TICs (if existent)
+      List<Channel> ticChannels = sample.listChannels().stream()
+          .filter(ch -> ch.getCategory().equals(StaticChannelCategory.TIC))
+          .toList();
+      sample.removeChannels(ticChannels);
+
+      List<Trace> traces = sample.listChannels().stream()
+          // do not add TICs! (double check with lines above)
+          .filter(Predicate.not(ch -> ch.getCategory().equals(StaticChannelCategory.TIC)))
+          .map(sample::getTrace)
+          .filter(Objects::nonNull)
+          .toList();
+
+      List<Channel> contributingChannels = new ArrayList<>();
+
+      // Check if SIA shape has been computed before. If yes, do it again for the sum.
+      boolean hasSIA = traces.stream().anyMatch(t -> t.getSiaShape() > 0);
+
+      // Iterate to add traces
+      if (!traces.isEmpty()) {
+        // get time
+        double[] time = traces.get(0).getTISeries().getTime();
+        double[] summedData = new double[time.length];
+
+        // compute TIC
+        for (Trace trace : traces) {
+          // make sure only existing channels are actually added
+          contributingChannels.add(trace.getChannel());
+          double[] intensity = trace.getTISeries().getIntensity();
+          for (int i = 0; i < intensity.length && i < summedData.length; i++) {
+            summedData[i] += intensity[i];
+          }
+        }
+
+        // create new TISeries
+        TISeries sumSeries = new TISeriesHDD(time, summedData);
+        Channel sumChannel = new ComputedChannel(StaticChannelCategory.TIC, "TIC", contributingChannels);
+        Trace sumTrace;
+        if (hasSIA) {
+          // TODO: Consider reusing the blanker regions here (optional for better SIA estimation)
+          double sia = SiaShapeEstimation.computeShape(sumSeries.getIntensity(), new ArrayList<>());
+          sumTrace = new TraceImpl(sample, sumChannel, sumSeries, sia);
+        } else {
+          sumTrace = new TraceImpl(sample, sumChannel, sumSeries);
+        }
+
+        // then add trace
+        sample.addTrace(sumTrace);
+      }
+
+
     }
   }
 }

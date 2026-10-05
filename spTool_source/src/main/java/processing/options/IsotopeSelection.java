@@ -36,16 +36,28 @@ public enum IsotopeSelection {
       return "All selected isotopes";
     }
   },
+  TIC {
+    @Override
+    public String toString() {
+      return "TIC (if available)";
+    }
+  },
   POSITIVE_LIST_SELECTION {
     @Override
     public String toString() {
-      return "Set list";
+      return "Set isotope list";
     }
   },
   NEGATIVE_LIST_EXCLUSION {
     @Override
     public String toString() {
-      return "Exclude";
+      return "Exclude isotopes";
+    }
+  },
+  POSITIVE_LIST_CHANNEL_SELECTION {
+    @Override
+    public String toString() {
+      return "Set channel list";
     }
   };
 
@@ -54,7 +66,18 @@ public enum IsotopeSelection {
         ALL_LOADED,
         SELECTED,
         POSITIVE_LIST_SELECTION,
-        NEGATIVE_LIST_EXCLUSION
+        NEGATIVE_LIST_EXCLUSION,
+    };
+  }
+
+  public static IsotopeSelection[] getAlign() {
+    return new IsotopeSelection[]{
+        ALL_LOADED,
+        SELECTED,
+        POSITIVE_LIST_SELECTION,
+        NEGATIVE_LIST_EXCLUSION,
+        TIC,
+        POSITIVE_LIST_CHANNEL_SELECTION
     };
   }
 

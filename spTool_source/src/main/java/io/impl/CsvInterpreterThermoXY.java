@@ -24,13 +24,10 @@ import dataModelNew.SampleFile;
 import dataModelNew.SampleImpl;
 import dataModelNew.TISeries;
 import dataModelNew.TISeriesHDD;
-import dataModelNew.TISeriesRAM;
 import dataModelNew.Trace;
 import dataModelNew.TraceImpl;
 import dataModelNew.mz.Channel;
 import dataModelNew.mz.IsotopeChannel;
-import dataModelNew.mz.MZValue;
-import dataModelNew.mz.SQmz;
 import io.FileInterpreterUtils;
 import io.PathUtil;
 
@@ -568,7 +565,7 @@ public class CsvInterpreterThermoXY implements CsvInterpreter {
           differences.add(time[i] - time[i - 1]);
         }
         // Estimate dwell time as mode of differences
-        dwellTimeGuess = Mode.calculateMode(differences);
+        dwellTimeGuess = Mode.calc(differences);
       } else {
         /*
         we cannot rely on differences, as we do not know how many equal stamps there are in between.

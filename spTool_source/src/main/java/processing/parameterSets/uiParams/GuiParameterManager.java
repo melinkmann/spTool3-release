@@ -78,6 +78,7 @@ public class GuiParameterManager {
   private final ToggleButton hacToggle;
   private final ToggleButton boxplotToggle;
   private final ToggleButton scatterMCToggle;
+  private final ToggleButton ternaryToggle;
   private final ToggleButton eventToggle;
   private final ToggleButton alignToggle;
   private final ToggleButton iclToggle;
@@ -97,6 +98,7 @@ public class GuiParameterManager {
   private final BorderPane hacTabPane = new BorderPane();
   private final BorderPane boxplotTabPane = new BorderPane();
   private final BorderPane scatterMCTabPane = new BorderPane();
+  private final BorderPane ternaryTabPane = new BorderPane();
   private final BorderPane averageTabPane = new BorderPane();
   private final BorderPane eventTabPane = new BorderPane();
   private final BorderPane iclTabPane = new BorderPane();
@@ -127,6 +129,7 @@ public class GuiParameterManager {
     this.hacToggle = UiUtil.getTabBtn("HAC", "/img/clusterDendrogram.png", toggleGroup);
     this.boxplotToggle = UiUtil.getTabBtn("Box", "/img/boxplot.png", toggleGroup);
     this.scatterMCToggle = UiUtil.getTabBtn("XY", "/img/scatter.png", toggleGroup);
+    this.ternaryToggle = UiUtil.getTabBtn("TER", "/img/ternaryPlot.png", toggleGroup);
     this.eventToggle = UiUtil.getTabBtn("EVT", "/img/singlePeakView.png", toggleGroup);
     this.alignToggle = UiUtil.getTabBtn("Align", "/img/align.png", toggleGroup);
     this.averageMCToggle = UiUtil.getTabBtn("AVG", "/img/averageView.png", toggleGroup);
@@ -177,6 +180,7 @@ public class GuiParameterManager {
     availableUiSets.add(new MonteCarloHistoParameters());
     availableUiSets.add(new BoxPlotParameters());
     availableUiSets.add(new MonteCarloScatterPlotParameters());
+    availableUiSets.add(new TernaryPlotParameters());
     availableUiSets.add(new SpectrumViewerParameters());
     availableUiSets.add(new HACViewerParameters());
     availableUiSets.add(new SingleEventViewerParameters());
@@ -225,6 +229,7 @@ public class GuiParameterManager {
       case MonteCarloScatterPlotParameters.XML_ELEMENT_TAG -> getScatterMCTabPane();
       case MonteCarloHistoParameters.XML_ELEMENT_TAG -> getHistoMCTabPane();
       case SpectrumViewerParameters.XML_ELEMENT_TAG -> getSpectrumPane();
+      case TernaryPlotParameters.XML_ELEMENT_TAG -> getTernaryTabPane();
       case HACViewerParameters.XML_ELEMENT_TAG -> getHacTabPane();
       case SingleEventViewerParameters.XML_ELEMENT_TAG -> getEventTabPane();
       case AverageViewerParameters.XML_ELEMENT_TAG -> getAverageTabPane();
@@ -339,6 +344,11 @@ public class GuiParameterManager {
     scatterMCToggle.setOnMouseClicked(e -> {
       handleToggleSelection(e, "Scatter plot viewer", scatterMCToggle, scatterMCTabPane,
           MonteCarloScatterPlotParameters.XML_ELEMENT_TAG);
+    });
+
+    ternaryToggle.setOnMouseClicked(e -> {
+      handleToggleSelection(e, "Ternary plot viewer", ternaryToggle, ternaryTabPane,
+          TernaryPlotParameters.XML_ELEMENT_TAG);
     });
 
     boxplotToggle.setOnMouseClicked(e -> {
@@ -465,6 +475,10 @@ public class GuiParameterManager {
       toggleBox.getChildren().add(scatterMCToggle);
     }
 
+    if (confParams.isShowTernary()) {
+      toggleBox.getChildren().add(ternaryToggle);
+    }
+
     if (confParams.isShowBoxPlot()) {
       toggleBox.getChildren().add(boxplotToggle);
     }
@@ -531,6 +545,10 @@ public class GuiParameterManager {
 
   public BorderPane getScatterMCTabPane() {
     return scatterMCTabPane;
+  }
+
+  public BorderPane getTernaryTabPane() {
+    return ternaryTabPane;
   }
 
   public BorderPane getBoxplotTabPane() {

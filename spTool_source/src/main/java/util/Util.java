@@ -21,6 +21,8 @@ import core.SpTool3Main;
 import dataModelNew.InstrumentID;
 import dataModelNew.Sample;
 import dataModelNew.SampleFile;
+import dataModelNew.Trace;
+import dataModelNew.mz.Channel;
 import gui.dialog.DialogUtil;
 import gui.dialog.FxEntry;
 
@@ -34,6 +36,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.time.Duration;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -85,6 +88,7 @@ public abstract class Util {
       HttpRequest request = HttpRequest.newBuilder()
           .uri(URI.create(url))
           .header("User-Agent", "my-app")
+          .timeout(Duration.ofSeconds(10))
           .method("HEAD", HttpRequest.BodyPublishers.noBody())
           .build();
 
@@ -193,6 +197,38 @@ public abstract class Util {
         map.put(key, list);
       }
     }
+  }
+
+  // Matches MZs with list of doubles
+  public static Map<Double, Trace> matchDoublesToChannels(
+      List<Double> values,
+      List<Trace> traces,
+      double precisionPPM) {
+
+    Map<Double, Trace> matches = new LinkedHashMap<>();
+
+    for (Double value : values) {
+      Trace bestTrace = null;
+      double bestDiff = Double.MAX_VALUE;
+
+      for (Trace trace : traces) {
+        Channel channel = trace.getChannel();
+        double mz = channel.getMZ();
+        double tolerance = mz * precisionPPM / 1e6;
+        double diff = Math.abs(value - mz);
+
+        if (diff <= tolerance && diff < bestDiff) {
+          bestTrace = trace;
+          bestDiff = diff;
+        }
+      }
+
+      if (bestTrace != null) {
+        matches.put(value, bestTrace);
+      }
+    }
+
+    return matches;
   }
 
 

@@ -22,6 +22,7 @@ import math.stat.MeasureOfLocation;
 import math.units.Unit;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.jetbrains.annotations.Nullable;
 import processing.options.LinRegType;
 import processing.options.MathMod;
 import sandbox.montecarlo.Isotope;
@@ -111,6 +112,7 @@ public abstract class RegressionUtils {
       String isotopeLbl,
       double[] x,
       double[] y,
+      @Nullable double[] w,
       String xLbl, Unit xUnit,
       String yLbl, Unit yUnit,
       Colors color,
@@ -131,7 +133,7 @@ public abstract class RegressionUtils {
             yLbl, yUnit, MathMod.NONE),
         new SpChartFactory.ChartStyle(color, 1,
             LineWidthDefaults.MEDIUM_THICK,
-            LineDashDefaults.STRAIGHT,0f,
+            LineDashDefaults.STRAIGHT, 0f,
             MarkerSizeDefaults.LARGE,
             markerStyle,
             false,
@@ -142,13 +144,26 @@ public abstract class RegressionUtils {
 
     ///
 
-    ReducedData reduced = RegressionUtils.collapseDuplicateX(x, y, null);
+    ReducedData reduced = RegressionUtils.collapseDuplicateX(x, y, w);
 
     LSResult linReg;
     if (linRegType.equals(LinRegType.OLS) && y.length > 0) {
       linReg = getOLS(reduced.x, reduced.y, 1.2);
     } else {
-      linReg = getWLS(reduced.x, reduced.y, makeWeights(reduced.y), 1.2);
+      double[] reducedCheckedWeights = reduced.w;
+      // check if weights are all zero - in that case, replace with y
+      boolean allZero = true;
+      for (double v : reducedCheckedWeights) {
+        if (v != 0) {
+          allZero = false;
+          break;
+        }
+      }
+      if (allZero) {
+        reducedCheckedWeights = reduced.y;
+      }
+
+      linReg = getWLS(reduced.x, reduced.y, makeWeights(reducedCheckedWeights), 1.2);
     }
 
     slopes.put(calChannel, linReg.slope);
@@ -164,7 +179,7 @@ public abstract class RegressionUtils {
             yLbl, yUnit, MathMod.NONE),
         new SpChartFactory.ChartStyle(color, 0.75,
             LineWidthDefaults.THICK,
-            LineDashDefaults.STRAIGHT,0f,
+            LineDashDefaults.STRAIGHT, 0f,
             MarkerSizeDefaults.SMALL,
             MarkerStyle.CIRCLE,
             false,
@@ -186,7 +201,9 @@ public abstract class RegressionUtils {
     }
 
     if (anyZero) {
-      return y;
+      // return weight = 1 (which is invariant under inverse transformation and  remains w=1)
+      double[] w = ArrUtils.fillArray(1d, y.length);
+      return w;
     } else {
       double[] invY = new double[y.length];
       for (int i = 0; i < invY.length; i++) {

@@ -110,13 +110,6 @@ public class ShapeEstimator {
   // ── Public API ────────────────────────────────────────────────────────────
 
   /**
-   * Convenience overload – no blanker information available.
-   */
-  public static double computeShape(double[] intensity) {
-    return computeShape(intensity, null);
-  }
-
-  /**
    * Estimates the lognormal shape parameter sigma.
    *
    * @param intensity     full intensity array (zeros allowed)
@@ -125,6 +118,12 @@ public class ShapeEstimator {
    * @return sigma > 0, or NaN if estimation fails
    */
   public static double computeShape(double[] intensity, List<int[]> blankedRanges) {
+
+    // ---
+
+    double shape = SiaShapeEstimation.computeShape(intensity, blankedRanges);
+
+    // ---
 
     boolean hasBlanker = blankedRanges != null && !blankedRanges.isEmpty();
 

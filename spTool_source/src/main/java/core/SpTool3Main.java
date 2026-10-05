@@ -20,16 +20,25 @@ package core;
 import gui.StageFactory;
 import gui.dialog.notification.NotificationFactory;
 import javafx.application.Application;
+import javafx.scene.Scene;
 import javafx.stage.Stage;
 import javafx.stage.WindowEvent;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.jfree.chart.ChartRenderingInfo;
+import org.jfree.chart.JFreeChart;
+import org.jfree.chart.fx.ChartViewer;
+import org.jfree.chart.plot.XYPlot;
+import org.jfree.chart.renderer.xy.XYLineAndShapeRenderer;
+import org.jfree.data.xy.XYSeriesCollection;
 import util.Functional;
 import util.storage.TmpFileCleanup;
 import visualizer.charts.JFreeUtil;
 
+import java.awt.*;
 import java.util.Locale;
+
 
 
 public class SpTool3Main extends Application {
@@ -65,7 +74,7 @@ public class SpTool3Main extends Application {
   public static final Boolean SHOW_PVALUE_EXPORT = true;
   public static final Boolean SHOW_PRECISION_RECALL_EXPORT = true;
 
-  public static final String VERSION_ID = "3.2.5";
+  public static final String VERSION_ID = "3.2.6";
 
   public static final String AUTHOR_STATEMENT =
       """     

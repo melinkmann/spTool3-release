@@ -101,7 +101,7 @@ public class IsotopeRemoverTask extends AbstractWorkingTask implements WorkingTa
                     int nEvt = trace.getNoOfEvents(popID);
                     double duration = trace.getTISeries().getDuration();
                     double rate = nEvt / duration;
-                    double minNetArea = ArrUtils.getMin(trace.get(popID, EventType.NP, EventParameter.NET_AREA));
+                    double maxNetArea = ArrUtils.getMax(trace.get(popID, EventType.NP, EventParameter.NET_AREA));
 
                     int lowerCutoff = params.getLowerIsotopeAbsoluteCutoff().getValue();
                     double upperCutoff = params.getUpperIsotopeRateCutoff().getValue();
@@ -118,14 +118,14 @@ public class IsotopeRemoverTask extends AbstractWorkingTask implements WorkingTa
                           (existing, newVal) -> existing + "&" + newVal);
                       hasChanged.set(true);
                     }
-                    if (minNetArea < lowerAreaCutoff && params.getRemoveLessIntenseIsotopesThan().getValue()) {
+                    if (maxNetArea < lowerAreaCutoff && params.getRemoveLessIntenseIsotopesThan().getValue()) {
                       badTraces.merge(trace,
-                          trace.getChannel().getUIString() + "<" + minNetArea + "cts",
+                          trace.getChannel().getUIString() + "<" + maxNetArea + "cts",
                           (existing, newVal) -> existing + "&" + newVal);
                       hasChanged.set(true);
                     }
                   } else {
-                    // pop does not event exist -> remove
+                    // pop does not even exist -> remove
                     badTraces.put(trace, trace.getChannel().getUIString() + ":N/A");
                   }
 

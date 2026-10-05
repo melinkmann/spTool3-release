@@ -79,6 +79,8 @@ public abstract class BaselineGenerator {
       continuityEpsilon = par.getPoissonContinuityCorrection().getValue();
     }
 
+    boolean lowerPoissonLimitToZero = par.getLowerPoissonLimitZeroBoolean().getValue();
+
     double siaShape = par.getSiaShape().getValue();
     // siaShape = 0 is the "NaN" or "no set at all" flag
     if (par.getPreferEmpiricalSIA().getValue() && empiricalSiaShape > 0) {
@@ -197,6 +199,7 @@ public abstract class BaselineGenerator {
           MeasureOfSpread.SD, // just informative to report SD in the table
           siaShape,
           continuityEpsilon,
+          lowerPoissonLimitToZero,
           poissonDistrID);
 
       ResettableStatDataSet gaussStatData = new ResettableStatDataSet(
@@ -204,6 +207,7 @@ public abstract class BaselineGenerator {
           spreadGauss,
           siaShape,
           0,
+          lowerPoissonLimitToZero,
           gaussianDistrID);
 
       // Outlier test!
@@ -286,10 +290,10 @@ public abstract class BaselineGenerator {
     // and store it.
     if (statDataSets.size() > 1) {
       collection = new StatCollectionHDD(statDataSets, pointsPerSlice, lastSliceLength, siaShape,
-          continuityEpsilon);
+          continuityEpsilon, lowerPoissonLimitToZero);
     } else {
       collection = new StatCollectionRAM(statDataSets, pointsPerSlice, lastSliceLength, siaShape,
-          continuityEpsilon);
+          continuityEpsilon, lowerPoissonLimitToZero);
     }
 
     return new Baseline(collection, summaryString);

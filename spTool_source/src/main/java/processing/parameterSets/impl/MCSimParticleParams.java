@@ -472,6 +472,10 @@ public class MCSimParticleParams extends AbstractParamSet implements ParamSet {
     return elementBundles;
   }
 
+  public SpawnControlParameter getElementBundleParam() {
+    return (SpawnControlParameter) numberOfParticlePopulations;
+  }
+
 
   @Override
   public String getTooltip() {

@@ -158,7 +158,7 @@ public class NuImportTask extends AbstractWorkingTask implements WorkingTask {
                   continue;   // channel was not loaded (should not happen, but guard anyway)
                 }
 
-                double sia = ShapeEstimator.computeShape(ser.getIntensity(), blanks);
+                double sia = SiaShapeEstimation.computeShape(ser.getIntensity(), blanks);
                 if (!Double.isFinite(sia)) {
                   sia = 0;
                 }
@@ -334,7 +334,7 @@ public class NuImportTask extends AbstractWorkingTask implements WorkingTask {
                     continue;   // channel was not loaded (should not happen, but guard anyway)
                   }
 
-                  double sia = ShapeEstimator.computeShape(ser.getIntensity(), blanks);
+                  double sia = SiaShapeEstimation.computeShape(ser.getIntensity(), blanks);
                   if (!Double.isFinite(sia)) {
                     sia = 0;
                   }
@@ -483,7 +483,7 @@ public class NuImportTask extends AbstractWorkingTask implements WorkingTask {
                   Isotope guessIsotope = SpTool3Main.getRunTime()
                       .getConfParams().resolveConflictOrGet(roundedNominalIsotopicNumber);
 
-                  double sia = ShapeEstimator.computeShape(ser.getIntensity(), blanks);
+                  double sia = SiaShapeEstimation.computeShape(ser.getIntensity(), blanks);
                   if (!Double.isFinite(sia)) {
                     sia = 0;
                   }
@@ -504,7 +504,7 @@ public class NuImportTask extends AbstractWorkingTask implements WorkingTask {
                   List<Isotope> matches = Isotope.getFromNominalMass(roundedNominalIsotopicNumber);
                   for (Isotope isotopeMatch : matches) {
 
-                    double sia = ShapeEstimator.computeShape(ser.getIntensity(), blanks);
+                    double sia = SiaShapeEstimation.computeShape(ser.getIntensity(), blanks);
                     if (!Double.isFinite(sia)) {
                       sia = 0;
                     }
@@ -616,7 +616,7 @@ public class NuImportTask extends AbstractWorkingTask implements WorkingTask {
                 continue;   // channel was not loaded (should not happen, but guard anyway)
               }
 
-              double sia = ShapeEstimator.computeShape(ser.getIntensity(), blanks);
+              double sia = SiaShapeEstimation.computeShape(ser.getIntensity(), blanks);
               if (!Double.isFinite(sia)) {
                 sia = 0;
               }

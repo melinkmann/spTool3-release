@@ -17,16 +17,9 @@
 
 package gui.table;
 
-import com.fasterxml.jackson.databind.util.ExceptionUtil;
-import com.opencsv.CSVWriter;
 import core.SpTool3Main;
 import io.SampleSet;
 
-import java.io.BufferedWriter;
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -267,20 +260,36 @@ public class TableUtils {
    */
   public static class TableKeyEventHandler implements EventHandler<KeyEvent> {
 
-    KeyCodeCombination copyKeyCodeCombination =
+    KeyCodeCombination copyAllKeyCodeCombination =
         new KeyCodeCombination(KeyCode.C, KeyCombination.CONTROL_ANY);
+
+    KeyCodeCombination copyCellKeyCodeCombination =
+        new KeyCodeCombination(KeyCode.C, KeyCombination.CONTROL_ANY, KeyCombination.SHIFT_ANY);
 
     @Override
     public void handle(final KeyEvent keyEvent) {
 
-      if (copyKeyCodeCombination.match(keyEvent)) {
+      // Control + C
+      if (copyAllKeyCodeCombination.match(keyEvent)) {
 
         if (keyEvent.getSource() instanceof TableView) {
 
           // copy to clipboard
           extractNestedTableViewData((TableView<?>) keyEvent.getSource());
 
-          LOGGER.debug("Selection copied to clipboard");
+          LOGGER.debug("Table selection copied to clipboard.");
+
+          // event is handled, consume it
+          keyEvent.consume();
+
+        }
+      } else  if (copyCellKeyCodeCombination.match(keyEvent)) {
+        if (keyEvent.getSource() instanceof TableView) {
+
+          // copy to clipboard
+          extractNestedTableViewCellData((TableView<?>) keyEvent.getSource());
+
+          LOGGER.debug("Cell selection copied to clipboard.");
 
           // event is handled, consume it
           keyEvent.consume();
@@ -431,6 +440,46 @@ public class TableUtils {
     }
 
     // To clipboard
+    ClipboardContent content = new ClipboardContent();
+    content.putString(sb.toString());
+    Clipboard.getSystemClipboard().setContent(content);
+  }
+
+  // Claude Sonnet 5
+  public static <T> void extractNestedTableViewCellData(TableView<T> tableView) {
+    StringBuilder sb = new StringBuilder();
+
+    ObservableList<TablePosition> positions = tableView.getSelectionModel().getSelectedCells();
+
+    if (positions.isEmpty()) {
+      return;
+    }
+
+    int prevRowIdx = -1;
+
+    for (TablePosition position : positions) {
+      int rowIdx = position.getRow();
+
+      @SuppressWarnings("unchecked")
+      TableColumn<T, ?> col = position.getTableColumn();
+
+      Object cell = null;
+      if (col != null && rowIdx > -1) {
+        cell = col.getCellData(rowIdx);
+      }
+
+      String text = (cell != null) ? cell.toString() : "";
+
+      if (prevRowIdx == rowIdx) {
+        sb.append('\t');
+      } else if (prevRowIdx != -1) {
+        sb.append('\r').append('\n');
+      }
+
+      sb.append(text);
+      prevRowIdx = rowIdx;
+    }
+
     ClipboardContent content = new ClipboardContent();
     content.putString(sb.toString());
     Clipboard.getSystemClipboard().setContent(content);

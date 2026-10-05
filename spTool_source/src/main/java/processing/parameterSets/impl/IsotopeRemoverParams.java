@@ -99,7 +99,7 @@ public class IsotopeRemoverParams extends AbstractParamSet implements ParamSet {
     );
 
     this.removeLessIntenseIsotopesThan = new BooleanParameter("Remove",
-        "Isotopes with net peak area larger below",
+        "Isotopes with greatest net peak area below",
         "Remove isotopes from the sample entirely if no peak has more cts (area) then specified",
         false,
         false,

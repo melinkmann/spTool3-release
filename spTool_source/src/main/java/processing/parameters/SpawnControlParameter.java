@@ -159,14 +159,17 @@ public class SpawnControlParameter extends AbstractParameter<Integer> implements
 
      Example structure for orientation:
 
-      <parameter defaultValue="1" label="Particle populations [#]" value="2" xmlID="numberOfParticlePopulations">
+      <parameter defaultValue="1" label="Particle populations [#]" value="2"
+      xmlID="numberOfParticlePopulations">
           <parameterBundle bundleID="elementBundle">
-              <parameter defaultValue="Au (Gold)" label="Element" value="Ru (Ruthenium)" xmlID="elementHeaderParameter"/>
+              <parameter defaultValue="Au (Gold)" label="Element" value="Ru (Ruthenium)"
+              xmlID="elementHeaderParameter"/>
               <parameter defaultValue="0.25" label="Mass fraction" value="0.75" xmlID="massFraction"/>
               <parameter defaultValue="15.0" label="Particle event rate" value="15.0" xmlID="eventRate"/>
           </parameterBundle>
           <parameterBundle bundleID="elementBundle">
-              <parameter defaultValue="Au (Gold)" label="Element" value="Mg (Magnesium)" xmlID="elementHeaderParameter"/>
+              <parameter defaultValue="Au (Gold)" label="Element" value="Mg (Magnesium)"
+              xmlID="elementHeaderParameter"/>
               <parameter defaultValue="0.25" label="Mass fraction" value="0.25" xmlID="massFraction"/>
               <parameter defaultValue="15.0" label="Particle event rate" value="15.0" xmlID="eventRate"/>
           </parameterBundle>
@@ -175,7 +178,8 @@ public class SpawnControlParameter extends AbstractParameter<Integer> implements
 
 
     /*
-     Check if the parameter node has a sub-node that contains bundled children, i.e., <parameterBundle bundleID="aBundle">.
+     Check if the parameter node has a sub-node that contains bundled children, i.e., <parameterBundle
+     bundleID="aBundle">.
      The bundleNodeList is a List of all bundles that the parameter node (i.e., THIS parameter) has.
      */
     NodeList bundleNodeList = xmlElement.getElementsByTagName(XmlUtil.BUNDLE_NODE);
@@ -405,6 +409,10 @@ public class SpawnControlParameter extends AbstractParameter<Integer> implements
     sortChildrenList();
   }
 
+  public void increment() {
+    setValue(getValue() + 1);
+  }
+
   @Override
   public void trySetValue(Parameter<?> par) {
     if (par instanceof SpawnControlParameter) {
@@ -461,6 +469,28 @@ public class SpawnControlParameter extends AbstractParameter<Integer> implements
       And override "resetToDefault()" here. >>>
       */
   }
+
+  /// /////////////////////////////////////////////////// For the autofill
+  public void clear() {
+    setValue(0);
+    this.activeChildrenBundles.clear();
+    this.defaultActiveChildrenBundles.clear();
+    sortChildrenList();
+  }
+  /** Adds one bundle and returns exactly that instance (no sorting, so the caller can fill it). */
+  public ParamBundle addBundle() {
+    ParamBundle bundle = getNext();
+    activeChildrenBundles.add(bundle);
+    this.value = activeChildrenBundles.size();
+    return bundle;
+  }
+
+  /** Call once after filling the bundles. */
+  public void sortBundles() {
+    setChildLevels();
+    sortChildrenList();
+  }
+  /// //////////////////////////////////////////////////
 
 
   private void initializeLists(List<ParamBundle> inputBundles,

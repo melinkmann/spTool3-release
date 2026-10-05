@@ -468,9 +468,16 @@ public abstract class ResultsTable {
 
     MEAN_SIA_SHAPE {
       public String getValue(Sample s, Channel i, PopulationID p) {
-        return s.tabMeanSIAShape(i);
+        return s.tabMeanSIAShape();
       }
     },
+
+    MEAN_FILTERED_SIA_SHAPE {
+      public String getValue(Sample s, Channel i, PopulationID p) {
+        return s.tabMeanFilteredSIAShape();
+      }
+    },
+
 
     AEROSOL_TE {
       public String getValue(Sample s, Channel i, PopulationID p) {
@@ -493,6 +500,12 @@ public abstract class ResultsTable {
     POPULATION_NAME {
       public String getValue(Sample s, Channel i, PopulationID p) {
         return s.tabPopName(i, p);
+      }
+    },
+
+    POPULATION_HISTORY{
+      public String getValue(Sample s, Channel i, PopulationID p) {
+        return s.tabPopHistory(i, p);
       }
     },
 
@@ -839,6 +852,7 @@ public abstract class ResultsTable {
             RAW_MEDIAN_CPS,
             SIA_SHAPE,
             MEAN_SIA_SHAPE,
+            MEAN_FILTERED_SIA_SHAPE,
             BLN_DISTR,
             BLN_MEAN,
             BLN_SD,
@@ -859,7 +873,8 @@ public abstract class ResultsTable {
             RAW_MEAN_CPS,
             RAW_MEDIAN_CPS,
             SIA_SHAPE,
-            MEAN_SIA_SHAPE
+            MEAN_SIA_SHAPE,
+            MEAN_FILTERED_SIA_SHAPE
         ));
       }
     }
@@ -869,6 +884,7 @@ public abstract class ResultsTable {
       if (SpTool3Main.getANALYZER()) {
         List<TablePar> pars = new ArrayList<>(Arrays.asList(
             POPULATION_NAME,
+            POPULATION_HISTORY,
             POPULATION_ADDITIONAL,
             NP_COUNT,
             PNC,
@@ -905,6 +921,7 @@ public abstract class ResultsTable {
       } else {
         return new ArrayList<>(Arrays.asList(
             POPULATION_NAME,
+            POPULATION_HISTORY,
             POPULATION_ADDITIONAL,
             NP_COUNT,
             NP_RATE,
@@ -1019,11 +1036,13 @@ public abstract class ResultsTable {
         case RAW_MAD -> "Raw MAD SD [cts]";
         case SIA_SHAPE -> "SIA shape [-]";
         case MEAN_SIA_SHAPE -> "Mean SIA shape [-]";
+        case MEAN_FILTERED_SIA_SHAPE -> "Mean filtered SIA shape [-]";
 
         case AEROSOL_TE -> "TE [%]";
         case PNC_TE -> "PNC TE [%]";
         case BG_EQUIV_CONC -> "BG conc. [µg/L]";
         case POPULATION_NAME -> "Population";
+        case POPULATION_HISTORY -> "History";
         case POPULATION_ADDITIONAL -> "Input parameters";
         case NP_COUNT -> "NP number [-]";
         case PNC -> "PNC [NP/mL]";
@@ -1053,9 +1072,9 @@ public abstract class ResultsTable {
           Unit unit = SpTool3Main.getRunTime().getConfParams().getCustomEventUnit();
           String mathStr = "";
           if (!math.equals(MathMod.NONE)) {
-            mathStr = math.toString();
+            mathStr = math.toString()+ " " ; // add space here or else metpy mathStr produces 2xspace
           }
-          yield "Custom NP mean " + mathStr + " " + p.toString() + " [" + AxisLabel.getUnit(p, unit).getUnit().getUiString() + "]";
+          yield "Custom NP mean " + mathStr + p.toString() + " [" + AxisLabel.getUnit(p, unit).getUnit().getUiString() + "]";
         }
         case NP_CUSTOM_MEDIAN -> {
           EventParameter p = SpTool3Main.getRunTime().getConfParams().getEventParameter().getValue();

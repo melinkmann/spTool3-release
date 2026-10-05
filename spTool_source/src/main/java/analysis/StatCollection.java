@@ -35,6 +35,8 @@ public interface StatCollection extends Serializable {
 
   double getContinuityEpsilon();
 
+  boolean getLowerPoissonLimitToZero();
+
   public default int getSegmentIndex(int rawDataIndex) {
     return rawDataIndex / getSliceLength();
   }

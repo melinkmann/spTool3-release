@@ -29,6 +29,18 @@ public enum StaticChannelCategory implements ChannelCategory {
     public String getUniqueXmlString() {
       return "{Unknown}";
     }
+  },
+
+  TIC {
+    @Override
+    public String getUIString() {
+      return "TIC";
+    }
+
+    @Override
+    public String getUniqueXmlString() {
+      return "{TotalIonCurrent}";
+    }
   }
 
 }

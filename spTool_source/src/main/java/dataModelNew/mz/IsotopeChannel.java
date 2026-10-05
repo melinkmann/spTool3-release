@@ -89,11 +89,24 @@ public class IsotopeChannel implements Channel, Serializable {
     if (this == o) {
       return true;
     }
-    if (o == null || getClass() != o.getClass()) {
+    // This would defy the idea in MZChannel to check for isotope
+    // (TODO: reconsider implementation if we allow half masses via the MSID!)
+    // if (o == null || getClass() != o.getClass()) {
+    //   return false;
+    // }
+    if (o == null) {
       return false;
     }
-    IsotopeChannel channel = (IsotopeChannel) o;
-    return Objects.equals(isotope, channel.isotope);
+
+    if (o instanceof IsotopeChannel) {
+      IsotopeChannel channel = (IsotopeChannel) o;
+      return Objects.equals(isotope, channel.isotope);
+    } else if (o instanceof MZChannel) {
+      MZChannel channel = (MZChannel) o;
+      return Objects.equals(isotope, channel.getIsotope());
+    } else {
+      return false; // no isotopes
+    }
   }
 
   @Override

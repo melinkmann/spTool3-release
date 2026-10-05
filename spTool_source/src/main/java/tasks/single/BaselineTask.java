@@ -71,7 +71,7 @@ public class BaselineTask extends AbstractWorkingTask implements WorkingTask {
 
           if (sample instanceof SampleImpl) {
 
-            double meanSIA = sample.getMeanSiaShape();
+            double meanSIA = sample.getFilteredMeanSiaShape();
 
             List<Trace> traces = sample.getTraces();
             for (Trace trace : traces) {

@@ -35,14 +35,7 @@ import gui.dialog.notification.NotificationFactory;
 import gui.listAndSearch.SampleListAndTable;
 import gui.util.TextFieldUtils;
 import gui.util.UiUtil;
-import io.FileSet;
-import io.FxFileSet;
-import io.FxVisitedFile;
-import io.GlobalIO;
-import io.PathUtil;
-import io.SampleSet;
-import io.Serializer;
-import io.XmlUtil;
+import io.*;
 
 import java.io.File;
 import java.io.IOException;
@@ -50,7 +43,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 import javafx.application.Platform;
@@ -61,7 +56,6 @@ import javafx.collections.ObservableList;
 import javafx.event.EventHandler;
 import javafx.fxml.FXML;
 import javafx.geometry.Pos;
-import javafx.scene.CacheHint;
 import javafx.scene.Parent;
 import javafx.scene.control.*;
 import javafx.scene.control.SplitPane.Divider;
@@ -87,13 +81,11 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import processing.objectSerials.ImportDefaults;
 import processing.parameterSets.Method;
+import processing.parameterSets.ParamSet;
 import processing.parameterSets.action.Actions;
-import processing.parameterSets.impl.ConfParams;
-import processing.parameterSets.impl.CsvInterpreterParams;
-import processing.parameterSets.impl.ExporterParams;
-import processing.parameterSets.impl.NuInterpreterParams;
+import processing.parameterSets.impl.*;
 import processing.parameterSets.uiParams.GuiParameterManager;
-import sandbox.montecarlo.Isotope;
+import sandbox.montecarlo.AutofillGenerator;
 import tasks.BatchTask;
 import tasks.Task;
 import tasks.WorkingTask;
@@ -136,6 +128,7 @@ public class MainWindowController {
   public SplitPane sampleChooserSplitPane;
   public TableView<FxSample> sampleTableView;
   public TableView<FxChannel> channelTableView;
+  public Text channelTableViewFeedbackText;
   public ListView<FxEntry<SampleSet>> sampleSetListView;
   public ListView<PopulationID> populationView;
   public BorderPane sampleSetBorderPane;
@@ -253,6 +246,7 @@ public class MainWindowController {
         sampleSetListView,
         sampleTableView,
         channelTableView,
+        channelTableViewFeedbackText,
         channelSearchField,
         populationView,
         SelectionMode.SINGLE,
@@ -360,6 +354,35 @@ public class MainWindowController {
     Actions.makeTimeRoiMenuItem(actionMenu, lastMenuItem);
     Actions.makeBasicRoiMenuItem(actionMenu, lastMenuItem);
     Actions.makeIsotopeRatioMenu(actionMenu, lastMenuItem);
+
+    actionMenu.getItems().add(new SeparatorMenuItem());
+    Actions.makeMethodDOEMenuItem(actionMenu, lastMenuItem);
+
+    MenuItem methodSchedulerMenu = new MenuItem("Method scheduler");
+    methodSchedulerMenu.setOnAction(e -> {
+      MethodSchedulerView launcher = new MethodSchedulerView(SpTool3Main.getRunTime().methodWatcherParams);
+
+      // tell it to reset the parameters to default
+      launcher.setResetMethodLatch(new Consumer<>() {
+        @Override
+        public void accept(ParamSet paramSet) {
+          if (paramSet instanceof MethodWatcherParams) {
+            LOGGER.info("Rejected parameter change due to cancel operation.");
+            SpTool3Main.getRunTime().methodWatcherParams = (MethodWatcherParams) paramSet;
+          } else {
+            LOGGER.error("Cannot cast {} to {}", paramSet.getClass(), MethodWatcherParams.class);
+          }
+        }
+      });
+
+
+      launcher.show(); //non-blocking
+    });
+
+
+    actionMenu.getItems().addAll(methodSchedulerMenu);
+
+    //////////////
 
     MenuItem confMenu = new MenuItem("Configuration");
     confMenu.setOnAction(e -> {
@@ -1006,8 +1029,29 @@ public class MainWindowController {
      */
   }
 
+  private final AtomicBoolean sampleSetRefreshPending = new AtomicBoolean(false);
+
+  public void triggerSelectionResetOfSampleSetList() {
+    var sm = sampleSetListView.getSelectionModel();
+    int idx = sm.getSelectedIndex();
+    if (idx >= 0) {
+      sm.clearSelection();
+      sm.select(idx);
+    }
+  }
+
   public void updateSampleSets() {
-    Platform.runLater(() -> combinedSampleListAndSearchView.filterSampleSets());
+    if (sampleSetRefreshPending.compareAndSet(false, true)) {
+      Platform.runLater(() -> {
+        sampleSetRefreshPending.set(false); // reset BEFORE running, so changes during the refresh queue
+        // another one
+        try {
+          combinedSampleListAndSearchView.filterSampleSets();
+        } catch (Exception e) {
+          LOGGER.error(ExceptionUtils.getStackTrace(e));
+        }
+      });
+    }
   }
 
   public void updatePopulations() {

@@ -60,6 +60,8 @@ import javax.annotation.Nullable;
 
 import math.HAC;
 import math.units.Unit;
+import math.units.enums.IntensityUnit;
+import math.units.enums.TimeUnit;
 import math.units.enums.ViewUnits;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.logging.log4j.LogManager;
@@ -94,10 +96,136 @@ import util.NF;
 import visualizer.charts.JFreeUtil.ExtendedHistogramDataSet;
 import visualizer.styles.*;
 
+import static visualizer.charts.JFreeUtil.*;
+
 
 public abstract class SpChartFactory {
 
   private static final Logger LOGGER = LogManager.getLogger(SpChartFactory.class);
+
+
+  public static JFreeChart createTernaryChart(
+      List<ChartComponent> graphComponents,
+      String lblA,
+      String lblB,
+      String lblC,
+      int nDiv) {
+
+    // Dummy
+    JFreeChart chart = ChartFactory.createScatterPlot(null, "", "", new DefaultXYDataset());
+
+    List<ChartComponent> components = new ArrayList<>(graphComponents);
+
+    if (!components.isEmpty()) {
+      ChartComponent component = components.get(0);
+
+      // add the triangle lines
+      ChartComponent edgeLine = new ChartComponent(
+          new ChartData(
+              "Left",
+              new double[]{TRIANGLE_CORNER_A.x(), TRIANGLE_CORNER_B.x()},
+              new double[]{TRIANGLE_CORNER_A.y(), TRIANGLE_CORNER_B.y()},
+              "X", ViewUnits.NONE, MathMod.NONE,
+              "Y", ViewUnits.NONE, MathMod.NONE),
+          new ChartStyle(OkabeItoColors.BLACK, 1,
+              LineWidthDefaults.MEDIUM_THICK,
+              LineDashDefaults.STRAIGHT, 0f,
+              MarkerSizeDefaults.SMALL,
+              MarkerStyle.CROSS,
+              false,
+              RendererOption.LINE_AND_SHAPE,
+              LineGraphStyle.LINE)
+      );
+      components.add(edgeLine);
+
+      edgeLine = new ChartComponent(
+          new ChartData(
+              "Bottom",
+              new double[]{TRIANGLE_CORNER_B.x(), TRIANGLE_CORNER_C.x()},
+              new double[]{TRIANGLE_CORNER_B.y(), TRIANGLE_CORNER_C.y()},
+              "X", ViewUnits.NONE, MathMod.NONE,
+              "Y", ViewUnits.NONE, MathMod.NONE),
+          new ChartStyle(OkabeItoColors.BLACK, 1,
+              LineWidthDefaults.MEDIUM_THICK,
+              LineDashDefaults.STRAIGHT, 0f,
+              MarkerSizeDefaults.SMALL,
+              MarkerStyle.CROSS,
+              false,
+              RendererOption.LINE_AND_SHAPE,
+              LineGraphStyle.LINE)
+      );
+      components.add(edgeLine);
+
+      edgeLine = new ChartComponent(
+          new ChartData(
+              "Right",
+              new double[]{TRIANGLE_CORNER_C.x(), TRIANGLE_CORNER_A.x()},
+              new double[]{TRIANGLE_CORNER_C.y(), TRIANGLE_CORNER_A.y()},
+              "X", ViewUnits.NONE, MathMod.NONE,
+              "Y", ViewUnits.NONE, MathMod.NONE),
+          new ChartStyle(OkabeItoColors.BLACK, 1,
+              LineWidthDefaults.MEDIUM_THICK,
+              LineDashDefaults.STRAIGHT, 0f,
+              MarkerSizeDefaults.SMALL,
+              MarkerStyle.CROSS,
+              false,
+              RendererOption.LINE_AND_SHAPE,
+              LineGraphStyle.LINE)
+      );
+      components.add(edgeLine);
+
+      // Internal Grid
+      components.addAll(JFreeUtil.buildTernaryGridLineComponents(nDiv));
+
+      chart = ChartFactory.createXYLineChart("",
+          component.getData().translateXLbl(),
+          component.translateYLbl(), // this method includes log10
+          new DefaultXYDataset(),
+          PlotOrientation.VERTICAL,
+          false,
+          false,
+          false);
+
+      int noOfComponents = components.size();
+      for (int i = 0; i < noOfComponents; i++) {
+        component = components.get(i);
+        XYItemRenderer renderer = component.getStyle().getXYRenderer();
+        XYDataset dataset = new XYSeriesCollection();
+        chart.getXYPlot().setRenderer(i, renderer);
+        chart.getXYPlot().setDataset(i, dataset);
+      }
+
+      chart.setNotify(false);
+
+      chart.getXYPlot().setNotify(false);
+      for (int i = 0; i < noOfComponents; i++) {
+        XYDataset dataset = chart.getXYPlot().getDataset(i);
+        component = components.get(i);
+        JFreeUtil.fillDataset(dataset, component);
+      }
+    }
+
+    // reactivate notifications
+    chart.setNotify(true);
+    chart.getXYPlot().setNotify(true);
+    for (int i = 0; i < chart.getXYPlot().getSeriesCount(); i++) {
+      XYDataset dataset = chart.getXYPlot().getDataset(i);
+      if (dataset instanceof XYSeriesCollection) {
+        ((XYSeriesCollection) dataset).setNotify(true);
+        for (int j = 0; j < dataset.getSeriesCount(); j++) {
+          ((XYSeriesCollection) dataset).getSeries(j).setNotify(true);
+        }
+      }
+    }
+
+    // Add the "axis labels" !! THIS MUST BE SET HERE AFTER MAKING CHART OR ELSE THEY DO NOT SHOW !!
+    JFreeUtil.addEdgeTickLabelAnnotations(chart.getXYPlot(), nDiv, 0.04);
+
+    // Corner labels for the component
+    JFreeUtil.addComponentLabelAnnotations(chart.getXYPlot(), lblA, lblB, lblC, 0.05);
+
+    return chart;
+  }
 
   public static JFreeChart createLineChart(List<ChartComponent> components) {
 
@@ -475,7 +603,7 @@ public abstract class SpChartFactory {
         XYIntervalSeriesCollection dataset =
             (XYIntervalSeriesCollection) chart.getXYPlot().getDataset(i);
         component = components.get(i);
-        fillMassSpecDataset(dataset, component,stickWidth);
+        fillMassSpecDataset(dataset, component, stickWidth);
       }
 
       // Reactivate notifications
@@ -691,7 +819,7 @@ public abstract class SpChartFactory {
     }
   }
 
-  public static void makeNice(JFreeChart chart) {
+  public static void makeNice(JFreeChart chart, boolean highlightZeroCross) {
     /*
     BASIC THEME
      */
@@ -703,13 +831,16 @@ public abstract class SpChartFactory {
     marker.setStroke(LineWidthDefaults.THINNER.getStroke());
 
     // This is supposed to speed up symbol plots
-    chart.getRenderingHints().put(
-        JFreeChart.KEY_SUPPRESS_SHADOW_GENERATION, true);
+    chart.getRenderingHints().put(JFreeChart.KEY_SUPPRESS_SHADOW_GENERATION, true);
 
     // XY
     if (chart.getPlot() instanceof XYPlot) {
-      chart.getXYPlot().addDomainMarker(marker);
-      chart.getXYPlot().addRangeMarker(marker);
+
+      // only add the zero cross lines on the axes if requested
+      if (highlightZeroCross) {
+        chart.getXYPlot().addDomainMarker(marker);
+        chart.getXYPlot().addRangeMarker(marker);
+      }
 
       // important for DrawingSupplier
       chart.getXYPlot().setSeriesRenderingOrder(SeriesRenderingOrder.FORWARD);
@@ -721,17 +852,21 @@ public abstract class SpChartFactory {
 
       // Category
     } else if (chart.getPlot() instanceof CategoryPlot) {
-      CategoryMarker catMarker = new CategoryMarker(0);  // position is the value on the axis
-      marker.setPaint(Colors.PLOT_ZERO_MARKER);
-      marker.setStroke(LineWidthDefaults.THINNER.getStroke());
-      chart.getCategoryPlot().addDomainMarker(catMarker);
-      chart.getCategoryPlot().addRangeMarker(marker);
+
+      if (highlightZeroCross) {
+        CategoryMarker catMarker = new CategoryMarker(0);  // position is the value on the axis
+        marker.setPaint(Colors.PLOT_ZERO_MARKER);
+        marker.setStroke(LineWidthDefaults.THINNER.getStroke());
+        chart.getCategoryPlot().addDomainMarker(catMarker);
+        chart.getCategoryPlot().addRangeMarker(marker);
+      }
 
       // important for DrawingSupplier
       chart.getCategoryPlot().setDatasetRenderingOrder(DatasetRenderingOrder.FORWARD);
 
       // axes pan
       chart.getCategoryPlot().setRangePannable(true);
+
     }
 
     /*
@@ -1245,10 +1380,12 @@ public abstract class SpChartFactory {
 
   public static ChartContainer bundleChartLegend(JFreeChart chart,
                                                  List<ChartComponent> components,
-                                                 double width, double height) {
+                                                 double width, double height,
+                                                 boolean showZeroCross) {
     return bundleChartLegend(chart,
         components,
         width, height,
+        showZeroCross,
         false,
         Orientation.VERTICAL,
         false);
@@ -1257,24 +1394,29 @@ public abstract class SpChartFactory {
   public static ChartContainer bundleChartLegend(JFreeChart chart,
                                                  List<ChartComponent> components,
                                                  double width, double height,
+                                                 boolean showZeroCross,
                                                  Orientation splitOrientation) {
     return bundleChartLegend(chart,
         components,
         width, height,
+        showZeroCross,
         false,
         splitOrientation,
         false);
   }
 
+
   public static ChartContainer bundleChartLegend(JFreeChart chart,
                                                  List<ChartComponent> components,
                                                  double width, double height,
+                                                 boolean showZeroCross,
                                                  boolean disableSplitDivider,
                                                  boolean singleCol) {
 
     return bundleChartLegend(chart,
         components,
         width, height,
+        showZeroCross,
         disableSplitDivider,
         Orientation.VERTICAL,
         singleCol);
@@ -1283,13 +1425,14 @@ public abstract class SpChartFactory {
   public static ChartContainer bundleChartLegend(JFreeChart chart,
                                                  List<ChartComponent> components,
                                                  double width, double height,
+                                                 boolean showZeroCross,
                                                  boolean disableSplitDivider,
                                                  Orientation splitOrientation,
                                                  boolean singleCol) {
 
     // Colors, ...
     chart.setNotify(false); // avoid triggering a chart notification before the canvas is ready
-    makeNice(chart);
+    makeNice(chart, showZeroCross);
 
     // The viewer
     ChartViewer viewer = new ChartViewer(chart) {{
@@ -1392,6 +1535,7 @@ public abstract class SpChartFactory {
                                                  JFreeChart chart,
                                                  List<ChartComponent> components,
                                                  double width, double height,
+                                                 boolean showZeroCross,
                                                  boolean disableSplitDivider,
                                                  Orientation splitOrientation,
                                                  boolean singleCol) {
@@ -1400,7 +1544,7 @@ public abstract class SpChartFactory {
 
     // Colors, ...
     chart.setNotify(false);
-    makeNice(chart);
+    makeNice(chart, showZeroCross);
 
     /// The viewer: only create if not instantiated yet
     if (viewer == null) {

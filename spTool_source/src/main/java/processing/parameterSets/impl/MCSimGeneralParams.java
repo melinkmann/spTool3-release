@@ -520,6 +520,10 @@ public class MCSimGeneralParams extends AbstractParamSet implements ParamSet {
     return elementBundles;
   }
 
+  public SpawnControlParameter getSiaExceptions() {
+    return (SpawnControlParameter) siaExceptions;
+  }
+
   @Override
   public String getTooltip() {
     StringBuilder builder = new StringBuilder("SiA exception elements in " + label.getValue() + ":\n");

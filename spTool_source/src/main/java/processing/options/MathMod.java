@@ -19,6 +19,9 @@ package processing.options;
 
 import com.google.common.math.DoubleMath;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public enum MathMod {
 
 
@@ -48,6 +51,10 @@ public enum MathMod {
       return values;
     }
 
+    @Override
+    public List<Double> calc(List<Double> values) {
+      return values;
+    }
   },
 
   CUBEROOT {
@@ -76,6 +83,16 @@ public enum MathMod {
       double[] conv = new double[values.length];
       for (int i = 0; i < values.length; i++) {
         conv[i] = Math.cbrt(values[i]);
+      }
+      return conv;
+    }
+
+
+    @Override
+    public List<Double> calc(List<Double> values) {
+      List<Double> conv = new ArrayList<>();
+      for (Double v : values) {
+        conv.add(Math.cbrt(v));
       }
       return conv;
     }
@@ -142,6 +159,23 @@ public enum MathMod {
       }
       return conv;
     }
+
+
+    @Override
+    public List<Double> calc(List<Double> values) {
+      List<Double> conv = new ArrayList<>(values.size());
+
+      for (int i = 0; i < values.size(); i++) {
+        if (values.get(i) <= 0) {
+          // Input is zero or negative
+          conv.add(LOG_ZERO);
+        } else {
+          // Normal positive input: calc log10
+          conv.add(Math.log10(values.get(i)));
+        }
+      }
+      return conv;
+    }
   };
 
   public abstract double calc(double val);
@@ -149,6 +183,8 @@ public enum MathMod {
   public abstract double invert(double val);
 
   public abstract double[] calc(double[] values);
+
+  public abstract List<Double> calc(List<Double> values);
 
   public abstract String getUiString();
 
