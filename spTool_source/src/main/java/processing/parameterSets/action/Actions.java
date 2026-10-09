@@ -289,7 +289,6 @@ public abstract class Actions {
           }
         }
 
-
         sample.setMethod(newMethod);
       }
     }

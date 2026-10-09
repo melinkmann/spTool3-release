@@ -54,7 +54,9 @@ public class NormalSearchParams extends AbstractParamSet implements ParamSet {
   private Parameter<Boolean> enableBoolean;
 
   private final Parameter<PopulationType> targetPopulation;
+  public Parameter<String> populationName;
   private final Parameter<SearchAlgorithm> searchAlgorithm;
+  private Parameter<Integer> plusNContinuation;
   private Parameter<SmoothType> smoothType;
   private final ThresholdBundle startCriterium;
   private final ThresholdBundle stopCriterium;
@@ -115,15 +117,63 @@ public class NormalSearchParams extends AbstractParamSet implements ParamSet {
         "targetPopulation"
     );
 
+    this.populationName = new StringParameter(
+        "Population name",
+        """
+            Name that will be assigned to the population that is created from this search submethod.
+            If empty, no name will be assigned and the default ID is shown""",
+        "",
+        TextFormatterOption.ALL_PASS,
+        true,
+        false,
+        "populationName"
+    );
+
     this.searchAlgorithm = new ComboEnumParameter<>(
         "Search algorithm",
-        "Search strategy",
+        """
+            Search strategy:
+            1) Simple search: every data point above the threshold is an event.
+               Events have one data point.
+            
+            2) Simple search '+1': every data point above the threshold is an event.
+               If the following data point also is above the threshold, this single data point is also
+               considered part of the event.
+               Events have one or two data points.
+            
+            3) Split correction: This is the default option!
+               All consecutive data points above the start/stop threshold are part of a peak
+               and combined into one event. If the highest data point in the peak is above the search height threshold,
+               the event is valid and added to the population.
+               Events have one or more data points.
+            
+            4) Smooth and split correction: smoothes the data during split correction [Experimental feature].
+            
+            5) Split correction with window: each data point above the accumulation threshold is extended
+               to form a window around it; this works best for very noisy data at dwell times < 50 µs
+               [Experimental feature].
+            
+            6) Accumulated p value [Experimental feature].
+            """,
         SearchAlgorithm.SPLIT_CORRECTION,
         SearchAlgorithm.getActiveValues(),
         SearchAlgorithm.class,
         false,
         "searchAlgorithm"
     );
+
+    this.plusNContinuation = new IntegerParameter(
+        "Continuation DP [#]",
+        """
+            If a series of data points (DPs) is above the threshold,
+            this parameter states how many of them are combined into one event.
+            Idea: At dwell time DT = 10 ms, if sample is appropriately dilute and events do not coincide,
+            data quality is improved by combining two adjacent significant data points into one peak,
+            avoiding split-events. At DT = 5 ms, a higher number of data points to be combined may be better""",
+        1,
+        TextFormatterOption.ASSURE_NONZERO_POSITIVE_INTEGER,
+        false,
+        "plusNContinuation");
 
     this.smoothType = new ComboEnumParameter<>("Smooth type",
         "Decide the type of smoothing for the data",
@@ -482,7 +532,9 @@ public class NormalSearchParams extends AbstractParamSet implements ParamSet {
     super.setComment(params.getCommentParameter());
     this.enableBoolean = params.enableBoolean.copyWithoutChildren();
     this.targetPopulation = params.targetPopulation.copyWithoutChildren();
+    this.populationName = params.populationName.copyWithoutChildren();
     this.searchAlgorithm = params.searchAlgorithm.copyWithoutChildren();
+    this.plusNContinuation = params.plusNContinuation.copyWithoutChildren();
     this.smoothType = params.smoothType.copyWithoutChildren();
     this.startCriterium = params.startCriterium.getCopy();
     this.stopCriterium = params.stopCriterium.getCopy();
@@ -535,6 +587,7 @@ public class NormalSearchParams extends AbstractParamSet implements ParamSet {
     super.setParentParameters(
         enableBoolean,
         targetPopulation,
+        populationName,
         searchAlgorithm,
         netCorrectionOption
     );
@@ -542,6 +595,11 @@ public class NormalSearchParams extends AbstractParamSet implements ParamSet {
     // Conditional children
     searchAlgorithm.addConditionalChild(
         SearchAlgorithm.SIMPLE,
+        heightCriterium.getThresholdOption());
+
+    searchAlgorithm.addConditionalChild(
+        SearchAlgorithm.SIMPLE_EXTENDED,
+        plusNContinuation,
         heightCriterium.getThresholdOption());
 
     searchAlgorithm.addConditionalChild(
@@ -681,7 +739,11 @@ public class NormalSearchParams extends AbstractParamSet implements ParamSet {
 
           case "targetPopulation" -> targetPopulation;
 
+          case "populationName" -> populationName;
+
           case "searchAlgorithm" -> searchAlgorithm;
+
+          case "plusNContinuation" -> plusNContinuation;
 
           case "smoothType" -> smoothType;
 
@@ -770,8 +832,16 @@ public class NormalSearchParams extends AbstractParamSet implements ParamSet {
     return targetPopulation;
   }
 
+  public Parameter<String> getPopulationName() {
+    return populationName;
+  }
+
   public Parameter<SearchAlgorithm> getSearchAlgorithm() {
     return searchAlgorithm;
+  }
+
+  public Parameter<Integer> getPlusNContinuation() {
+    return plusNContinuation;
   }
 
   public Parameter<SmoothType> getSmoothType() {
@@ -883,6 +953,15 @@ public class NormalSearchParams extends AbstractParamSet implements ParamSet {
     // Fix missing fields from old serialized versions: we have to use
     if (enableBoolean == null) {
       this.enableBoolean = defaults.enableBoolean;
+    }
+
+    if (plusNContinuation == null) {
+      this.plusNContinuation = defaults.plusNContinuation;
+    }
+
+
+    if (populationName == null) {
+      this.populationName = defaults.populationName;
     }
 
     if (windowBonusWidth == null) {

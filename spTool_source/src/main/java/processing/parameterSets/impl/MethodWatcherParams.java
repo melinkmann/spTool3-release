@@ -18,6 +18,7 @@
 package processing.parameterSets.impl;
 
 import io.XmlUtil;
+import org.apache.commons.numbers.gamma.RegularizedGamma;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
@@ -25,6 +26,7 @@ import processing.options.EventParameter;
 import processing.options.MathMod;
 import processing.options.SigTests;
 import processing.parameterSets.*;
+import processing.parameters.BooleanParameter;
 import processing.parameters.ComboEnumParameter;
 import processing.parameters.Parameter;
 import processing.parameters.PathParameter;
@@ -40,6 +42,8 @@ public class MethodWatcherParams extends AbstractParamSet implements ParamSet {
   public static final String XML_ELEMENT_TAG = "MethodWatcherParams";
 
   private final Parameter<String> currentMethodWatchPath;
+  private final Parameter<Boolean> addDateTag;
+  private final Parameter<Boolean> moveFiles;
 
   public MethodWatcherParams() {
     this("Method watch parameters");
@@ -55,6 +59,27 @@ public class MethodWatcherParams extends AbstractParamSet implements ParamSet {
         false,
         "currentMethodWatchPath");
 
+    this.moveFiles = new BooleanParameter(
+        "Files",
+        "Move to 'scheduled'",
+        """
+            Method files are moved to the 'scheduled' subdirectory""",
+        true,
+        false,
+        "moveFiles"
+    );
+
+    this.addDateTag = new BooleanParameter(
+        "File name",
+        "Add date tag",
+        """
+            Method files that are moved to the 'scheduled' subdirectory get a date prefix tag,
+            e.g., 'name.spm' becomes '2026-Oct-06_15-04-24_name.spm'""",
+        false,
+        false,
+        "addDateTag"
+    );
+
     organize();
   }
 
@@ -64,6 +89,8 @@ public class MethodWatcherParams extends AbstractParamSet implements ParamSet {
     super.setComment(params.getCommentParameter());
 
     this.currentMethodWatchPath = params.currentMethodWatchPath.copyWithoutChildren();
+    this.moveFiles = params.moveFiles.copyWithoutChildren();
+    this.addDateTag = params.addDateTag.copyWithoutChildren();
 
     organize();
   }
@@ -88,7 +115,8 @@ public class MethodWatcherParams extends AbstractParamSet implements ParamSet {
   }
 
   private void organize() {
-    super.setParentParameters(currentMethodWatchPath);
+    super.setParentParameters(currentMethodWatchPath, moveFiles);
+    moveFiles.addConditionalChild(true, addDateTag);
   }
 
 
@@ -109,6 +137,8 @@ public class MethodWatcherParams extends AbstractParamSet implements ParamSet {
           case UUID_PAR_XML_ID -> super.uuidString;
 
           case "currentMethodWatchPath" -> currentMethodWatchPath;
+          case "moveFiles" -> moveFiles;
+          case "addDateTag" -> addDateTag;
 
           default -> null;
         };
@@ -149,5 +179,13 @@ public class MethodWatcherParams extends AbstractParamSet implements ParamSet {
   /// /////////////////////////////////////
   public Parameter<String> getCurrentMethodWatchPath() {
     return currentMethodWatchPath;
+  }
+
+  public Parameter<Boolean> getAddDateTag() {
+    return addDateTag;
+  }
+
+  public Parameter<Boolean> getMoveFiles() {
+    return moveFiles;
   }
 }

@@ -55,12 +55,12 @@ public class TraceMC extends TraceImpl implements Trace, Serializable {
   }
 
   public TraceMC(Sample sample, Channel channel, TISeries tiSeries, double macroDTSeconds, double siaShape) {
-    super(sample, channel, tiSeries,siaShape);
+    super(sample, channel, tiSeries, siaShape);
     this.macroDTSeconds = macroDTSeconds;
     // always add simulation as population
     PopulationID id = new PopulationID(PopulationType.SIMULATION);
     super.addOverridePopulation(id,
-        new MCPopulation(id, new MCEventCollection(this)),false);
+        new MCPopulation(id, new MCEventCollection(this)), false);
   }
 
   // Deep copy: note that the populations are cloned in the super class, we may pass direct pointers
@@ -105,7 +105,8 @@ public class TraceMC extends TraceImpl implements Trace, Serializable {
     // make sure to keep the simulation populations as these are not generated during reprocessing
     HashMap<PopulationID, Population> mcPops = new LinkedHashMap<>();
     for (PopulationID id : populations.keySet()) {
-      if (id.getType().equals(PopulationType.SIMULATION)) {
+      // only keep the original sim pop
+      if (id.getType().equals(PopulationType.SIMULATION) && id.getSteps().size() == 0) {
         mcPops.put(id, populations.get(id));
       }
     }

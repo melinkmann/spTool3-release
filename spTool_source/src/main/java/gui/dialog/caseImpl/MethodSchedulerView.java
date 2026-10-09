@@ -25,6 +25,7 @@ import io.MethodSchedulerTask;
 import javafx.geometry.Insets;
 import javafx.scene.control.*;
 import javafx.scene.layout.BorderPane;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import processing.parameterSets.AvailableParameterSets;
@@ -40,7 +41,10 @@ public class MethodSchedulerView extends ExecuteSubmethod {
   private static final Logger LOGGER = LogManager.getLogger(MethodSchedulerView.class);
 
   protected static final double USER_WIDTH = 600;
-  protected static final double USER_HEIGHT = 200;
+  protected static final double USER_HEIGHT = 280;
+
+  private final boolean addDateTag;
+  private final boolean moveFiles;
 
   private MethodSchedulerTask methodWatcher;
   private final ToggleButton watchButton = new ToggleButton("Watch");
@@ -54,6 +58,8 @@ public class MethodSchedulerView extends ExecuteSubmethod {
         USER_WIDTH,
         USER_HEIGHT);
 
+    this.addDateTag = params.getAddDateTag().getValue();
+    this.moveFiles = params.getMoveFiles().getValue();
     this.methodWatcher = new MethodSchedulerTask();
 
     watchButton.setOnAction(e -> {
@@ -67,21 +73,29 @@ public class MethodSchedulerView extends ExecuteSubmethod {
 
           if (!dir.toString().isEmpty() && Files.exists(dir) && Files.isDirectory(dir) && Files.isReadable(dir)) {
 
-            NotificationFactory.openYesCancel(
-                "Do you want to schedule method execution from this directory:" +
-                    "\n" + pathStr + "?" +
-                    "\n\nBe aware that spTool will move any '.spm' file in the directory to a new directory" +
-                    "\nthat will be created in the input path called 'scheduled':" +
-                    "\n" + pathStr + File.separator + "scheduled",
-                () -> {
-                  SpTool3Main.getRunTime().saveParameterSets();
-                  methodWatcher.arm(dir, watchButton);
-                },
-                () -> {
-                  watchButton.setSelected(false);
-                  methodWatcher.disarm();
-                },
-                UiUtil.getOwner(watchButton));
+            if (moveFiles) {
+              NotificationFactory.openYesCancel(
+                  "Do you want to schedule method execution from this directory:" +
+                      "\n" + pathStr + "?" +
+                      "\n\nBe aware that spTool will move any '.spm' file in the directory to a new " +
+                      "directory" +
+                      "\nthat will be created in the input path called 'scheduled':" +
+                      "\n" + pathStr + File.separator + "scheduled",
+                  () -> {
+                    SpTool3Main.getRunTime().saveParameterSets();
+                    methodWatcher.arm(dir, moveFiles, addDateTag, watchButton);
+                  },
+                  () -> {
+                    watchButton.setSelected(false);
+                    methodWatcher.disarm();
+                  },
+                  UiUtil.getOwner(watchButton));
+            } else {
+              SpTool3Main.getRunTime().saveParameterSets();
+              methodWatcher.arm(dir, moveFiles, addDateTag, watchButton);
+            }
+
+
           } else {
             // new state: not active
             methodWatcher.disarm();

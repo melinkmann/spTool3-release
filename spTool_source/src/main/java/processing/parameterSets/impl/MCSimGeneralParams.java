@@ -235,13 +235,15 @@ public class MCSimGeneralParams extends AbstractParamSet implements ParamSet {
         "siaExceptions");
 
     shotNoiseCoefficient = new DoubleParameter("Shot noise (s)",
-        "Shot noise coefficient ('s'), i.e., pure Poisson noise."
-            + "\nThis parameter is supplemented by the flicker noise ('f')."
-            + "\nShot noise represents Poisson noise, while flicker noise reflects overdispersion."
-            + "\nBoth types of noise are used to model the standard deviation (SD)."
-            + "\nSD = root{ (f·µ)^2 + s·µ }."
-            + "\nIf f=0 and s=1, the model behaves as pure Poisson-Normal approximation."
-            + "\n)f s=0, then a reflects the relative standard deviation (RSD, i.e., a=1.2 means RSD=120%",
+        """
+            Shot noise coefficient ('s'), i.e., pure Poisson noise.
+            
+            This parameter is supplemented by the flicker noise ('f').
+            Shot noise represents Poisson noise, while flicker noise reflects overdispersion.
+            Both types of noise are used to model the standard deviation (SD).
+            SD = sqrt{ (f·µ)^2 + s·µ }.
+            If f=0 and s=1, the model behaves as pure Poisson-Normal approximation.
+            If s=0, then f reflects the relative standard deviation (RSD), i.e., f = 1.2 means RSD=120%)""",
         1d,
         NF.D1C4,
         TextFormatterOption.ASSURE_POSITIVE_DOUBLE,
@@ -249,14 +251,15 @@ public class MCSimGeneralParams extends AbstractParamSet implements ParamSet {
         "shotNoiseCoefficient");
 
     flickerNoiseCoefficient = new DoubleParameter("Flicker noise",
-        "Flicker noise coefficient ('f')."
-            + "\nThis parameter is supplemented by the shot noise coefficient ('s'), i.e., pure Poisson " +
-            "noise."
-            + "\nShot noise represents Poisson noise, while flicker noise reflects overdispersion."
-            + "\nBoth types of noise are used to model the standard deviation (SD)."
-            + "\nSD = root{ (f·µ)^2 + s·µ }."
-            + "\nIf f=0 and s=1, the model behaves as pure Poisson-Normal approximation."
-            + "\n)f s=0, then a reflects the relative standard deviation (RSD, i.e., a=1.2 means RSD=120%",
+        """
+            Flicker noise coefficient ('f').
+            
+            This parameter is supplemented by the shot noise coefficient ('s'), i.e., pure Poisson noise.
+            Shot noise represents Poisson noise, while flicker noise reflects overdispersion.
+            Both types of noise are used to model the standard deviation (SD).
+            SD = sqrt{ (f·µ)^2 + s·µ }.
+            If f=0 and s=1, the model behaves as pure Poisson-Normal approximation.
+            If s=0, then f reflects the relative standard deviation (RSD), i.e., f = 1.2 means RSD=120%)""",
         0.18,
         NF.D1C4,
         TextFormatterOption.ASSURE_POSITIVE_DOUBLE,
@@ -402,7 +405,7 @@ public class MCSimGeneralParams extends AbstractParamSet implements ParamSet {
         oscillation,
         evenPeakSpacing,
         applyDilution
-        );
+    );
 
     applyDilution.addConditionalChild(true, dilutionFactor);
 

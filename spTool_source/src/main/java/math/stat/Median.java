@@ -23,10 +23,12 @@ package math.stat;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+
 import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import smile.math.MathEx;
+import smile.sort.QuickSelect;
 import util.ArrUtils;
 
 public class Median {
@@ -114,6 +116,49 @@ public class Median {
     }
     return median;
   }
+
+
+  public static double q1(double[] data) {
+    double median;
+    if (data.length > 10_000) {
+      // The smiles library uses QuickSelect and alters the array, thus copy!
+      data = ArrUtils.copy(data);
+      median = MathEx.q1(data);
+    } else {
+      DescriptiveStatistics ds = new DescriptiveStatistics(data);
+      median = ds.getPercentile(25);
+    }
+    return median;
+  }
+
+  public static double q3(double[] data) {
+    double median;
+    if (data.length > 10_000) {
+      // The smiles library uses QuickSelect and alters the array, thus copy!
+      data = ArrUtils.copy(data);
+      median = MathEx.q3(data);
+    } else {
+      DescriptiveStatistics ds = new DescriptiveStatistics(data);
+      median = ds.getPercentile(75);
+    }
+    return median;
+  }
+
+  public static double q(double[] data, double percent) {
+    double median;
+    if (data.length > 10_000) {
+      // The smiles library uses QuickSelect and alters the array, thus copy!
+      data = ArrUtils.copy(data);
+      int k = (int) (percent / 100.0 * data.length);   // same algo as 3 * n / 4 in QuickSelect
+      k = Math.min(k, data.length - 1);                // percent = 100 would give k = n
+      median = QuickSelect.select(data, k);
+    } else {
+      DescriptiveStatistics ds = new DescriptiveStatistics(data);
+      median = ds.getPercentile(percent);
+    }
+    return median;
+  }
+
 
 //  /****************
 //   * @param coll an ArrayList of Comparable objects

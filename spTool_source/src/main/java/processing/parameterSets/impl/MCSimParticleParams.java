@@ -31,6 +31,7 @@ import java.util.List;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
+import processing.options.BGUnit;
 import processing.options.MCSimIclShapeParameters;
 import processing.parameterSets.AbstractParamSet;
 import processing.parameterSets.AvailableParameterSets;
@@ -57,6 +58,7 @@ public class MCSimParticleParams extends AbstractParamSet implements ParamSet {
   public final Parameter<Double> minimumEventSignal;
   public final Parameter<Double> paretoShape;
   public final Parameter<Double> paretoScale;
+  public Parameter<BGUnit> backgroundUnit;
 
   private final Parameter<Integer> numberOfParticlePopulations;
 
@@ -193,6 +195,19 @@ public class MCSimParticleParams extends AbstractParamSet implements ParamSet {
         "particleMassDistribution"
     );
 
+    this.backgroundUnit = new ComboEnumParameter<>(
+        "Background unit",
+        """
+            The background signal can be given in cts, i.e., counts per dwell time
+            or cps, i.e., counts per second, depending on the unit option""",
+        BGUnit.COUNTS,
+        BGUnit.values(),
+        BGUnit.class,
+        false,
+        "backgroundUnit"
+    );
+
+
     peakShape = new ComboEnumParameter<>("Peak shape (v, y)",
         """
             Choose how the ion cloud profiles are generated.
@@ -327,6 +342,8 @@ public class MCSimParticleParams extends AbstractParamSet implements ParamSet {
 
     this.numberOfParticlePopulations = params.numberOfParticlePopulations.copyWithoutChildren();
 
+    this.backgroundUnit = params.backgroundUnit.copyWithoutChildren();
+
     this.peakShape = params.peakShape.copyWithoutChildren();
     this.v_mu = params.v_mu.copyWithoutChildren();
     this.v_SD = params.v_SD.copyWithoutChildren();
@@ -365,6 +382,7 @@ public class MCSimParticleParams extends AbstractParamSet implements ParamSet {
     super.setParentParameters(
         eventRate,
         particleMassDistribution,
+        backgroundUnit,
         numberOfParticlePopulations,
         peakShape,
         y_Distribution,
@@ -423,6 +441,8 @@ public class MCSimParticleParams extends AbstractParamSet implements ParamSet {
           case "minimumEventSignal" -> minimumEventSignal;
           case "paretoShape" -> paretoShape;
           case "paretoScale" -> paretoScale;
+
+          case "backgroundUnit" -> backgroundUnit;
 
           case "peakShape" -> peakShape;
           case "v_mu" -> v_mu;
@@ -496,6 +516,10 @@ public class MCSimParticleParams extends AbstractParamSet implements ParamSet {
     // default supplier
     final MCSimParticleParams defaults = new MCSimParticleParams();
 
+    if (backgroundUnit == null) {
+      this.backgroundUnit = defaults.backgroundUnit;
+    }
+
     // backwards compatibility
     if (peakShape != null) {
       if (MCSimIclShapeParameters.isDeprecatedEnum(peakShape.getValue())) {
@@ -504,8 +528,6 @@ public class MCSimParticleParams extends AbstractParamSet implements ParamSet {
       if (MCSimIclShapeParameters.isDeprecatedEnum(peakShape.getDefaultValue())) {
         peakShape.setValue(MCSimIclShapeParameters.DEFAULT);
       }
-
-
     }
 
   }

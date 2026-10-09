@@ -26,6 +26,7 @@ import dataModelNew.Trace;
 import dataModelNew.mz.Channel;
 import gui.listAndSearch.SampleListAndTable;
 import gui.util.UiUtil;
+import javafx.scene.control.Tooltip;
 import javafx.scene.control.cell.TextFieldListCell;
 import javafx.scene.image.ImageView;
 import javafx.util.StringConverter;
@@ -36,6 +37,9 @@ public class PopulationListCell extends TextFieldListCell<PopulationID> {
 
   private final List<PopulationID> lockedPopulations;
   private final SampleListAndTable sampleListAndTable;
+  // One tooltip instance per cell, reused across updates
+  private final Tooltip tooltip = new Tooltip();
+
 
   public PopulationListCell(SampleListAndTable sampleListAndTable, List<PopulationID> lockedPopulations) {
     super();
@@ -112,13 +116,13 @@ public class PopulationListCell extends TextFieldListCell<PopulationID> {
     if (empty || item == null) {
       setText("");
       setGraphic(null); // reset graphic if not locked, else random symbol appear
-      //setTooltip(null);
+      setTooltip(null); // important: clear it, cells are recycled
     } else {
       //https://docs.oracle.com/javase/8/javafx/api/javafx/scene/control/Cell.html https://stackoverflow
       // .com/questions/62897231/javafx-change-listviews-focusmodel
       setText(item.toString());
-      //tooltip.setText(String.valueOf(getItem().getOrder()));
-      //setTooltip(tooltip);
+      tooltip.setText("Processing history: " + item.getString());
+      setTooltip(tooltip);
       if (lockedPopulations.contains(item)) {
         ImageView view = UiUtil.getViewer("/img/lock.png");
         this.setGraphic(view);
@@ -128,7 +132,7 @@ public class PopulationListCell extends TextFieldListCell<PopulationID> {
       // check if no sample contains
       boolean anySampleContains;
       List<Sample> selSamples = sampleListAndTable.getSelSamples();
-      ;
+
       List<Channel> selIsotopes = sampleListAndTable.getSelChannels();
       List<PopulationID> availableIDs = AnalysisUtils.listPopulations(selSamples,
           selIsotopes);

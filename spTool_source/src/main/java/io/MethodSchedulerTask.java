@@ -46,12 +46,17 @@ public class MethodSchedulerTask {
 
   private final AtomicReference<Path> currentPath = new AtomicReference<>(null);
   private final AtomicBoolean isActive = new AtomicBoolean(false);
+  private boolean addDateTag = true;
+  private boolean moveFiles = true;
 
   private ToggleButton masterButton;
 
-  public synchronized void arm(Path path, ToggleButton button) {
+  public synchronized void arm(Path path, boolean moveFiles, boolean addDateTag, ToggleButton button) {
 
+    this.moveFiles = moveFiles;
+    this.addDateTag = addDateTag;
     this.masterButton = button;
+
 
     // read this outside of the multithreading!
     int nRep = SpTool3Main.getRunTime().getMainWindowCtl().repetitionSpinner.getValue();
@@ -74,7 +79,7 @@ public class MethodSchedulerTask {
         @Override
         public void stop() {
           // call this before the isActive boolean == false kills the while loop
-          Platform.runLater(()->{
+          Platform.runLater(() -> {
             if (masterButton != null) {
               masterButton.setSelected(false);
             }
@@ -100,7 +105,7 @@ public class MethodSchedulerTask {
               Thread.sleep(1000);
             } catch (InterruptedException e) {
               Thread.currentThread().interrupt(); // preserve interrupt flag
-              Platform.runLater(()->{
+              Platform.runLater(() -> {
                 if (masterButton != null) {
                   isActive.set(false);
                   masterButton.setSelected(false);
@@ -139,30 +144,44 @@ public class MethodSchedulerTask {
                   if (!isActive.get()) {
                     break; // stop() was called mid-way
                   }
-                  String dateTag = Util.getYearMonthDateDayHourMinuteSecond();
-                  Path target = finished.resolve(dateTag + "_" + methodPath.getFileName());
-                  try {
-                    Files.move(methodPath, target, StandardCopyOption.REPLACE_EXISTING);
-                    LOGGER.trace("Moved method file from {} to {}",
-                        methodPath.toAbsolutePath().normalize(),
-                        target.toAbsolutePath().normalize());
-                  } catch (NoSuchFileException e) {
-                    // another instance already moved it - fine
-                    LOGGER.trace("Method file {} already moved by another instance",
-                        methodPath.toAbsolutePath().normalize());
-                  } catch (IOException e) {
-                    // e.g. file still locked by the sender; it stays in place and is retried next run
-                    LOGGER.trace("Could not move method file {} to {}: {}",
-                        methodPath.toAbsolutePath().normalize(),
-                        target.toAbsolutePath().normalize(), e.getMessage());
+
+                  if (moveFiles) {
+                    Path target;
+                    if (addDateTag) {
+                      String dateTag = Util.getYearMonthDateDayHourMinuteSecond();
+                      target = finished.resolve(dateTag + "_" + methodPath.getFileName());
+                    } else {
+                      target = finished.resolve(methodPath.getFileName());
+                    }
+
+                    try {
+                      Files.move(methodPath, target, StandardCopyOption.REPLACE_EXISTING);
+                      LOGGER.trace("Moved method file from {} to {}",
+                          methodPath.toAbsolutePath().normalize(),
+                          target.toAbsolutePath().normalize());
+                    } catch (NoSuchFileException e) {
+                      // another instance already moved it - fine
+                      LOGGER.trace("Method file {} already moved by another instance",
+                          methodPath.toAbsolutePath().normalize());
+                    } catch (IOException e) {
+                      // e.g. file still locked by the sender; it stays in place and is retried next run
+                      LOGGER.trace("Could not move method file {} to {}: {}",
+                          methodPath.toAbsolutePath().normalize(),
+                          target.toAbsolutePath().normalize(), e.getMessage());
+                    }
                   }
 
                 }
               }
             }
 
+            // if we do not move, stop watching
+            if (!moveFiles){
+              break;
+            }
+
           } // end of while - break sends us here
-          Platform.runLater(()->{
+          Platform.runLater(() -> {
             if (masterButton != null) {
               masterButton.setSelected(false);
             }
@@ -180,7 +199,7 @@ public class MethodSchedulerTask {
   public synchronized void disarm() {
     isActive.set(false);
     currentPath.set(null);
-    Platform.runLater(()->{
+    Platform.runLater(() -> {
       if (masterButton != null) {
         masterButton.setSelected(false);
       }

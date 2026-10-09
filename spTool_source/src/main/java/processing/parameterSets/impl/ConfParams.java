@@ -150,8 +150,8 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
 
   private final Parameter<Double> siaLowerLimit;
   private final Parameter<Double> siaUpperLimit;
-  private final Parameter<Double> siaSigmaClip;
   private final Parameter<Double> siaParticleFilterAlpha;
+  private final Parameter<Double> siaParticleFilterAlphaLowerLimit;
 
   public ConfParams() {
     super("SpTool configuration", XML_ELEMENT_TAG);
@@ -774,26 +774,32 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
         false,
         "siaUpperLimit");
 
-
-    siaSigmaClip = new DoubleParameter("SIA sigma clip",
-        """
-            Tightens the intensity range for SIA determination.
-            Larger values tend to yield larger SIA shape estimates""",
-        5d,
-        NF.D1C1,
-        TextFormatterOption.ASSURE_NONZERO_POSITIVE_DOUBLE,
-        false,
-        "siaSigmaClip");
-
     siaParticleFilterAlpha = new DoubleParameter("SIA clip alpha",
         """
             Tightens the intensity range for SIA determination.
-            Specifies the alpha error to remove particle events""",
-        1E-5,
+            Specifies the alpha error to remove particle events.
+            As with 'SIA clip upper alpha', smaller values (e.g., 1E-5) tend to give higher SIA shapes estimates.
+            The idea here is that sample without NPs need a less tight limit to keep all background events.
+            Otherwise, the mean and SD are lowered, and cause lower SIA shape estimates""",
+        1E-6,
         NF.D1C3Exp,
         TextFormatterOption.ASSURE_NONZERO_POS_EXP_DOUBLE,
         false,
         "siaParticleFilterAlpha");
+
+    siaParticleFilterAlphaLowerLimit = new DoubleParameter("SIA clip NP alpha",
+        """
+            This is the increased alpha, used for SIA estimation when NPs are present in the sample.
+            When NPs are in the sample, this value will be used.
+            As with 'SIA clip alpha', smaller values (e.g., 1E-6) tend to give higher SIA shapes estimates.
+            The idea here is that sample with NPs need a tighter limit to exclude all NP events
+            Otherwise, the mean and SD are inflated, and cause higher SIA shape estimates""",
+        1E-4,
+        NF.D1C3Exp,
+        TextFormatterOption.ASSURE_NONZERO_POS_EXP_DOUBLE,
+        false,
+        "siaParticleFilterAlphaLowerLimit");
+
 
     organize();
   }
@@ -860,8 +866,8 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
 
     this.siaLowerLimit = confParams.siaLowerLimit.copyWithoutChildren();
     this.siaUpperLimit = confParams.siaUpperLimit.copyWithoutChildren();
-    this.siaSigmaClip = confParams.siaSigmaClip.copyWithoutChildren();
     this.siaParticleFilterAlpha = confParams.siaParticleFilterAlpha.copyWithoutChildren();
+    this.siaParticleFilterAlphaLowerLimit = confParams.siaParticleFilterAlphaLowerLimit.copyWithoutChildren();
 
     this.nuImportSelectedIsotopes = confParams.nuImportSelectedIsotopes.copyWithoutChildren();
 
@@ -974,8 +980,8 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
           new SeparatorParameter(),
           siaLowerLimit,
           siaUpperLimit,
-          //siaSigmaClip,
           siaParticleFilterAlpha,
+          siaParticleFilterAlphaLowerLimit,
           new SeparatorParameter(),
           logLevel,
           numberOfThreadsModel,
@@ -1023,8 +1029,8 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
           default_y_SD,
           siaLowerLimit,
           siaUpperLimit,
-          //siaSigmaClip,
           siaParticleFilterAlpha,
+          siaParticleFilterAlphaLowerLimit,
           logLevel,
           numberOfThreadsModel,
           zstdCompressionLevel,
@@ -1212,8 +1218,8 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
 
           case "siaLowerLimit" -> siaLowerLimit;
           case "siaUpperLimit" -> siaUpperLimit;
-          case "siaSigmaClip" -> siaSigmaClip;
           case "siaParticleFilterAlpha" -> siaParticleFilterAlpha;
+          case "siaParticleFilterAlphaLowerLimit" -> siaParticleFilterAlphaLowerLimit;
 
           case "nuImportSelectedIsotopes" -> nuImportSelectedIsotopes;
 
@@ -1737,8 +1743,8 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
     return siaUpperLimit;
   }
 
-  public Parameter<Double> getSiaSigmaClip() {
-    return siaSigmaClip;
+  public Parameter<Double> getSiaParticleFilterAlphaLowerLimit() {
+    return siaParticleFilterAlphaLowerLimit;
   }
 
   public Parameter<Double> getSiaParticleFilterAlpha() {

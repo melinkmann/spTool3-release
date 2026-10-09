@@ -33,10 +33,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.hipparchus.linear.SparseFieldMatrix;
 import org.jetbrains.annotations.Nullable;
-import processing.options.DoeModel;
-import processing.options.EventParameter;
-import processing.options.EventType;
-import processing.options.MathMod;
+import processing.options.*;
 import processing.parameterSets.ListMethod;
 import processing.parameterSets.Method;
 import processing.parameterSets.ParamBundle;
@@ -329,6 +326,7 @@ public class AutofillGenerator {
     siaSpawn.clear();
 
     double duration = 0;
+    double dwellTime = 0;
 
     // fill in general stuff
     boolean success = false;
@@ -342,6 +340,7 @@ public class AutofillGenerator {
           generalParams.macroDT.setValue(trace.getTISeries().getDT() * 1E6);
           duration = trace.getTISeries().getDuration();
           generalParams.duration.setValue(duration);
+          dwellTime = trace.getTISeries().getDT();
         }
         success = true;
 
@@ -484,7 +483,13 @@ public class AutofillGenerator {
           if (bundle instanceof ElementBundle) {
             ((ElementBundle) bundle).elementHeaderParameter.setValue(element);
             ((ElementBundle) bundle).massFraction.setValue(meanFrac);
-            ((ElementBundle) bundle).backgroundSignalIntensity.setValue(bgSum);
+            // cts?
+            if (nmpSimPar.backgroundUnit.equals(BGUnit.COUNTS)) {
+              ((ElementBundle) bundle).backgroundSignalIntensity.setValue(bgSum);
+            } else if (dwellTime > 0) {
+              ((ElementBundle) bundle).backgroundSignalIntensity.setValue(bgSum / dwellTime);
+            }
+
           } else {
             LOGGER.error("AutofillPopulation: unexpected element bundle type: {}", bundle == null ? "null"
                 : bundle.getClass());

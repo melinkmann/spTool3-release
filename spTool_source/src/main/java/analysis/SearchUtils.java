@@ -431,4 +431,125 @@ public abstract class SearchUtils {
   }
 
 
+  public static MainEventCollection simpleSearchExtended(Trace trace, TISeries tiSeries,
+                                                         ThresholdSupplier thr) {
+
+    double[] yData = tiSeries.getIntensity();
+
+    MainEventCollection collection = new MainEventCollection(trace);
+
+    for (int i = 0; i < yData.length; i++) {
+      double yVal = yData[i];
+
+      // If we assume QMS data, round the value to skim off potential imprecision ('5.02 cts' or so)
+      if (tiSeries.isInteger()) {
+        yVal = Math.round(yVal);
+      }
+
+      if (yVal > thr.interpolateProtected(i, yData.length) && yVal > 0) {
+
+        int nextI = i + 1;
+        if (nextI < yData.length) {
+          double nextYVal = yData[nextI];
+          // If we assume QMS data, round the value to skim off potential imprecision ('5.02 cts' or so)
+          if (tiSeries.isInteger()) {
+            nextYVal = Math.round(nextYVal);
+          }
+          if (nextYVal > thr.interpolateProtected(nextI, yData.length) && nextYVal > 0) {
+            List<Integer> indices = new ArrayList<>();
+            indices.add(i);
+            indices.add(nextI);
+            collection.add(new NpEvent(collection, indices));
+
+            // skip nextI
+            i++;
+          } else {
+            collection.add(new NpEvent(collection, Collections.singletonList(i)));
+          }
+        } else {
+          collection.add(new NpEvent(collection, Collections.singletonList(i)));
+        }
+      }
+    }
+
+    // Precalculate the event peak index
+    collection.getNpEvents().forEach(e -> e.calcPeakIndex(yData));
+    return collection;
+  }
+
+  public static MainEventCollection simpleSearchExtended(Trace trace, TISeries tiSeries,
+                                                         ThresholdSupplier thr, int nContinuation) {
+
+    double[] yData = tiSeries.getIntensity();
+
+    MainEventCollection collection = new MainEventCollection(trace);
+
+    for (int i = 0; i < yData.length; i++) {
+      double yVal = yData[i];
+
+      // If we assume QMS data, round the value to skim off potential imprecision ('5.02 cts' or so)
+      if (tiSeries.isInteger()) {
+        yVal = Math.round(yVal);
+      }
+
+      // First data point is above THR?
+      if (yVal > thr.interpolateProtected(i, yData.length) && yVal > 0) {
+
+        List<Integer> indices = new ArrayList<>();
+        indices.add(i);
+
+        // peek at up to nContinuation following points
+        for (int nextI = i + 1; nextI < yData.length && nextI <= i + nContinuation; nextI++) {
+          double nextYVal = yData[nextI];
+
+          // If we assume QMS data, round the value to skim off potential imprecision ('5.02 cts' or so)
+          if (tiSeries.isInteger()) {
+            nextYVal = Math.round(nextYVal);
+          }
+          if (nextYVal > thr.interpolateProtected(nextI, yData.length) && nextYVal > 0) {
+            indices.add(nextI);
+          } else {
+            break; // continuation ends at the first point below threshold
+          }
+        }
+
+        collection.add(new NpEvent(collection, indices));
+
+        // skip the consumed continuation points
+        i += indices.size() - 1;
+      }
+    }
+
+    // Precalculate the event peak index
+    collection.getNpEvents().forEach(e -> e.calcPeakIndex(yData));
+    return collection;
+  }
+
+
+  /// Simplified version for background statistics
+  public static List<Integer> splitEventSearch(double[] y, double start, double stop, double height) {
+    List<Integer> result = new ArrayList<>();
+    List<Integer> current = new ArrayList<>();
+    double peak = 0;
+
+    // Loop runs one past the end so an event still open at the last sample gets flushed
+    for (int i = 0; i <= y.length; i++) {
+      boolean inEvent = i < y.length
+          && (y[i] >= start || (!current.isEmpty() && y[i] >= stop && y[i] > 0));
+
+      if (inEvent) {
+        current.add(i);
+        peak = Math.max(peak, y[i]);
+      } else if (!current.isEmpty()) {
+        if (peak > height) {
+          result.addAll(current);
+        }
+        current.clear();
+        peak = 0;
+      }
+    }
+    return result;
+  }
+
+
 }

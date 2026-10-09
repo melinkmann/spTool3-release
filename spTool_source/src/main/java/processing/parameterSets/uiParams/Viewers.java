@@ -3059,7 +3059,9 @@ public abstract class Viewers {
         double upX = windowViewMilliSec * 1.3;
         // cannot go lower than -peakMillis, which is the "zero" in the ref frame of the peak function
         double lowX = Math.max(-windowViewMilliSec, -peakMillis * 1.2);
-        chart.getXYPlot().getDomainAxis().setRange(new Range(lowX, upX));
+        if (upX > lowX) {
+          chart.getXYPlot().getDomainAxis().setRange(new Range(lowX, upX));
+        }
 
         if (plainSet.isResample() && plainSet.isShowDTGrid()) {
           double lowY = chart.getXYPlot().getRangeAxis().getRange().getLowerBound();
@@ -3068,7 +3070,9 @@ public abstract class Viewers {
           // Use one scale for all perspectives (extdYMaxBeforeRandom), unless random number was larger.
           // Hence the Math.max();
           upY = Math.max(upY, extdYMaxBeforeRandom);
-          chart.getXYPlot().getRangeAxis().setRange(new Range(lowY, upY));
+          if (upY > lowY) {
+            chart.getXYPlot().getRangeAxis().setRange(new Range(lowY, upY));
+          }
         }
 
         if (plainSet.isShowDTGrid()) {

@@ -74,7 +74,7 @@ public class SpTool3Main extends Application {
   public static final Boolean SHOW_PVALUE_EXPORT = true;
   public static final Boolean SHOW_PRECISION_RECALL_EXPORT = true;
 
-  public static final String VERSION_ID = "3.2.6";
+  public static final String VERSION_ID = "3.2.7";
 
   public static final String AUTHOR_STATEMENT =
       """     

@@ -36,6 +36,18 @@ public enum SearchAlgorithm {
     }
   },
 
+  SIMPLE_EXTENDED {
+    @Override
+    public String toString() {
+      return "Simple search '+n' (if DT >> 1 ms)";
+    }
+
+    @Override
+    public String shortString() {
+      return "Points search";
+    }
+  },
+
   SPLIT_CORRECTION {
     @Override
     public String toString() {
@@ -88,6 +100,7 @@ public enum SearchAlgorithm {
   public static SearchAlgorithm[] getActiveValues() {
     List<SearchAlgorithm> active = new ArrayList<>();
     active.add(SIMPLE);
+    // active.add(SIMPLE_EXTENDED);
     active.add(SPLIT_CORRECTION);
 
     if (SpTool3Main.SHOW_WINDOW) {

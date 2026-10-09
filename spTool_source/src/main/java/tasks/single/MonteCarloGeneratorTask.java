@@ -40,11 +40,7 @@ import io.nu.SiaShapeEstimation;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import processing.options.DeadTimeModel;
-import processing.options.IsotopeConflictOption;
-import processing.options.MCSimIclShapeParameters;
-import processing.options.MonteCarloOscillation;
-import processing.options.PDF;
+import processing.options.*;
 import processing.parameterSets.AvailableParameterSets;
 import processing.parameterSets.Method;
 import processing.parameterSets.ParamSet;
@@ -292,6 +288,8 @@ public class MonteCarloGeneratorTask extends AbstractWorkingTask implements Work
               GettablePDF massDist = npPopParams.particleMassDistribution.getValue();
               double minimumPeakHeightExpDistr = npPopParams.minimumEventSignal.getValue();
 
+              BGUnit bgUnit = npPopParams.backgroundUnit.getValue();
+
               double elementFractionUncertainty = npPopParams.elementFractionUncertainty.getValue();
               double peakDelayUncertainty = npPopParams.peakDelayUncertainty.getValue();
               double isotopicFracUncertainty = npPopParams.isotopicFractionUncertainty.getValue();
@@ -368,8 +366,11 @@ public class MonteCarloGeneratorTask extends AbstractWorkingTask implements Work
                 // Parse the element
                 Element element = elementBundle.elementHeaderParameter.getValue().unwrap();
 
-                // BG
+                // BG: expected to be given in counts!
                 double muBG = elementBundle.backgroundSignalIntensity.getValue();
+                if (bgUnit.equals(BGUnit.CPS)) {
+                  muBG = muBG * macroDTSec;
+                }
                 if (applyDilution) {
                   muBG = muBG / dilutionFactor;
                 }
@@ -645,6 +646,8 @@ public class MonteCarloGeneratorTask extends AbstractWorkingTask implements Work
                   case COMPOUND_POISSON, COMPOUND_POISSON_OVERDISPERSED -> {
                     if (siaShapeParameters.containsKey(isotope.getElement())) {
                       siaShape = siaShapeParameters.get(isotope.getElement());
+                    } else {
+                      siaShape = generalParams.defaultSiaShapeParameter.getValue();
                     }
 
                     // estimate which algorithm to use via the mean background
@@ -684,7 +687,7 @@ public class MonteCarloGeneratorTask extends AbstractWorkingTask implements Work
 
               // Create the actual " trace in the sample" for the UI.
               TISeries tiSeries = new TISeriesHDD(time, signal);
-              // Estimate SIA for the giggles
+              // Estimate SIA
               double empiricalShape = SiaShapeEstimation.computeShape(signal, null);
 
               TraceMC trace = new TraceMC(

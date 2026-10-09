@@ -149,6 +149,8 @@ public class SearchTask extends AbstractWorkingTask implements WorkingTask {
                   ThresholdSupplier stop = stopInstr.get(bln.getBackgroundDistribution());
                   ThresholdSupplier height = heightInstr.get(bln.getBackgroundDistribution());
 
+                  int continuationN = params.getPlusNContinuation().getValue();
+
                   // Dummy
                   EventCollection coll = new MainEventCollection();
                   PopParSummary popParSummary = new PopParSummary();
@@ -156,6 +158,14 @@ public class SearchTask extends AbstractWorkingTask implements WorkingTask {
 
                     case SIMPLE -> {
                       coll = SearchUtils.simpleSearch(trace, trace.getTISeries(), height);
+                      break;
+                    }
+
+                    case SIMPLE_EXTENDED -> {
+                      coll = SearchUtils.simpleSearchExtended(trace, trace.getTISeries(), height,
+                          continuationN);
+                      popParSummary.add("plusN", params.getPlusNContinuation(),
+                          Integer.toString(continuationN));
                       break;
                     }
 
@@ -189,6 +199,12 @@ public class SearchTask extends AbstractWorkingTask implements WorkingTask {
                   }
 
                   PopulationID populationID = branch.startBranchForTrace(trace, params);
+
+                  String popLabel = params.getPopulationName().getValue();
+                  if (!popLabel.isEmpty()) {
+                    populationID.setLabel(popLabel);
+                  }
+
                   Population population = new NpPopulation(
                       populationID,
                       coll,
@@ -196,6 +212,7 @@ public class SearchTask extends AbstractWorkingTask implements WorkingTask {
                       stopInstr,
                       heightInstr,
                       popParSummary);
+
                   trace.addOverridePopulation(populationID, population, false);
 
                   // ##############################################################
@@ -758,6 +775,12 @@ public class SearchTask extends AbstractWorkingTask implements WorkingTask {
                           NF.D1C3));
                       popParSummary.add("MZ", preScreenMap.size() + "/" + interestingTraces.size());
                       PopulationID populationID = branch.startBranchForTrace(trace, params);
+
+                      String popLabel = params.getPopulationName().getValue();
+                      if (!popLabel.isEmpty()) {
+                        populationID.setLabel(popLabel);
+                      }
+
                       Population population = new NpPopulation(
                           populationID,
                           collection,

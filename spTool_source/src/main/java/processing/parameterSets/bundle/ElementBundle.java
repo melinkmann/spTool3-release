@@ -28,10 +28,14 @@ import java.io.ObjectInputStream;
 import java.io.Serial;
 import java.util.List;
 
+import math.stat.DoePlanner;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
+import processing.options.BGUnit;
+import processing.options.DistributionModel;
 import processing.options.MCSimIclShapeParameters;
 import processing.parameterSets.ParamBundle;
+import processing.parameterSets.impl.NormalSearchParams;
 import processing.parameters.AutoFillParam;
 import processing.parameters.ComboEnumParameter;
 import processing.parameters.DoubleParameter;
@@ -49,6 +53,7 @@ public class ElementBundle implements ParamBundle {
   private final SpawnControlParameter parentSpawnPar;
   //
   public final Parameter<Fillable<Element>> elementHeaderParameter;
+
   public final Parameter<Double> backgroundSignalIntensity;
   public final Parameter<Double> massFraction;
   public final Parameter<Double> peakDelay;
@@ -68,11 +73,12 @@ public class ElementBundle implements ParamBundle {
         false,
         wrapID("elementHeaderParameter"));
 
-    this.backgroundSignalIntensity = new DoubleParameter("Background [cts/DT]",
+    this.backgroundSignalIntensity = new DoubleParameter("Background",
         """
             Background signal intensity of the respective element.
-            The background signal is given in counts, i.e., counts per dwell time.
-            The total background signal is calculated as the sum of all particle populations.""",
+            The background signal is given in counts, i.e., counts per dwell time
+            or cps, i.e., counts per second, depending on the unit option.
+            The total background signal is calculated as the sum of all particle populations""",
         0d,
         NF.D1C3,
         TextFormatterOption.ASSURE_POSITIVE_DOUBLE,
@@ -80,11 +86,12 @@ public class ElementBundle implements ParamBundle {
         wrapID("backgroundSignalIntensity"));
 
     massFraction = new DoubleParameter("Intensity fraction [0-1]",
-        "'Mass' fraction of the respective element. Make sure that the fraction add up to 1.0."
-            + "\nFor the scope of the data generator, we use the intensity fraction as a proxy for the mass" +
-            " fraction"
-            + "\nbecause the relationship of mass and intensity strongly depends on instrument tuning and " +
-            "element",
+        """
+            'Mass' fraction of the respective element. Make sure that the fraction add up to 1.0.
+            For the scope of the data generator,
+            we use the intensity fraction as a proxy for the mass fraction
+            because the relationship of mass and intensity strongly depends on
+            instrument tuning and element""",
         1d,
         NF.D1C3,
         TextFormatterOption.ASSURE_NONZERO_POSITIVE_DOUBLE,
@@ -107,8 +114,7 @@ public class ElementBundle implements ParamBundle {
             Each parameter has a mean value ± a standard deviation (SD) to simulate random ion clouds.
             The default values can be changed in the configuration of spTool
             (Edit -> Configuration -> *scroll down*).
-            Alternatively, it is also possible to select custom values here in this method
-            """,
+            Alternatively, it is also possible to select custom values here in this method""",
         MCSimIclShapeParameters.DEFAULT,
         MCSimIclShapeParameters.validOptions(),
         MCSimIclShapeParameters.class,
@@ -308,6 +314,8 @@ public class ElementBundle implements ParamBundle {
     // Default deserialization
     in.defaultReadObject();
 
+    final ElementBundle defaults = new ElementBundle(parentSpawnPar);
+
     // backwards compatibility
     if (peakShape != null) {
       if (MCSimIclShapeParameters.isDeprecatedEnum(peakShape.getValue())) {
@@ -317,5 +325,7 @@ public class ElementBundle implements ParamBundle {
         peakShape.setValue(MCSimIclShapeParameters.DEFAULT);
       }
     }
+
+
   }
 }

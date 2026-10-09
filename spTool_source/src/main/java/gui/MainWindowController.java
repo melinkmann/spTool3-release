@@ -18,6 +18,7 @@
 package gui;
 
 import analysis.PopulationID;
+import core.RunTimeInstance;
 import core.SpTool3Main;
 import dataModelNew.Sample;
 import dataModelNew.fxImpl.FxChannel;
@@ -562,6 +563,29 @@ public class MainWindowController {
             // Check spTool system fil types first as these have clear indications what to do.
             if (PathUtil.getExtensionWithDot(importFile).equals(GlobalIO.METHOD_EXTENSION)) {
               if (Files.isReadable(importFile)) {
+
+                // first check for config file
+                try {
+                  Path confFile = ConfParams.CONFIG_FILE.toPath();
+                  if (confFile.getFileName().equals(importFile.getFileName())) {
+                    List<ParamSet> sets = XmlUtil.readSetsFromXml(importFile);
+                    if (!sets.isEmpty()) {
+                      if (sets.get(0) != null && sets.get(0) instanceof ConfParams) {
+                        ConfParams confParams = (ConfParams) sets.get(0);
+                        NotificationFactory.openYesCancel("Do you want to replace the configuration?",
+                            () -> {
+                              SpTool3Main.getRunTime().setConfParams(confParams);
+                              confParams.executeOverridingSave();
+                            });
+                      }
+                    }
+                  }
+                } catch (Exception e) {
+                  LOGGER.info("Cannot read config file. Details: "
+                      + ExceptionUtils.getStackTrace(e));
+                }
+
+                // or else, this is a method
                 try {
                   Method method = XmlUtil.readMethodFromXml(importFile);
                   if (method != null && !method.getSets().isEmpty()) {
