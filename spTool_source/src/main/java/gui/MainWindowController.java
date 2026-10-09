@@ -577,6 +577,8 @@ public class MainWindowController {
                               SpTool3Main.getRunTime().setConfParams(confParams);
                               confParams.executeOverridingSave();
                             });
+                        // prevent also setting config as main method!
+                        break tryBlock;
                       }
                     }
                   }
