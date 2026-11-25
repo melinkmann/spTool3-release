@@ -22,6 +22,7 @@ import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import com.google.common.primitives.Doubles;
 import javafx.util.Pair;
 import math.Arithmetic;
 import org.apache.logging.log4j.LogManager;
@@ -145,7 +146,7 @@ public abstract class ArrUtils {
 
   public static void roundOverriding(double[] array) {
     for (int i = 0; i < array.length; i++) {
-      array[i] = Math.round(array[i]);
+      array[i] = Math.rint(array[i]);
     }
   }
 
@@ -156,7 +157,20 @@ public abstract class ArrUtils {
     double[] result = new double[values.length];
     double multiplier = Math.pow(10, decimalPlaces);
     for (int i = 0; i < values.length; i++) {
-      result[i] = Math.round(values[i] * multiplier) / multiplier;
+      result[i] = Math.rint(values[i] * multiplier) / multiplier;
+    }
+    return result;
+  }
+
+
+  /**
+   * Rounds all elements in the array to n decimal places.
+   */
+  public static double[] round(List<Double> values, int decimalPlaces) {
+    double[] result = new double[values.size()];
+    double multiplier = Math.pow(10, decimalPlaces);
+    for (int i = 0; i < values.size(); i++) {
+      result[i] = Math.rint(values.get(i) * multiplier) / multiplier;
     }
     return result;
   }
@@ -193,6 +207,7 @@ public abstract class ArrUtils {
 
   public static double[] barCDF(double[] histBarHeights) {
     double[] result = new double[histBarHeights.length];
+    histBarHeights = copy(histBarHeights); // else: mutuates original
 
     if (histBarHeights.length > 0) {
       int n = histBarHeights.length;
@@ -218,6 +233,16 @@ public abstract class ArrUtils {
         result = cdf;
       }
     }
+    return result;
+  }
+
+  public static double[] differences(double[] array) {
+    double[] result = new double[array.length - 1];
+
+    for (int i = 0; i < result.length; i++) {
+      result[i] = array[i + 1] - array[i];
+    }
+
     return result;
   }
 
@@ -408,7 +433,7 @@ public abstract class ArrUtils {
   // --------------------------- Array vs. array of * and / ----------------------------------
 
   public static double[] multiply(double[] a, double[] b) {
-    double[] product = new double[1];
+    double[] product = new double[0];
     if (arrayMathCheck(a, b)) {
       product = new double[a.length];
       for (int i = 0; i < a.length; i++) {
@@ -420,7 +445,7 @@ public abstract class ArrUtils {
 
   // Dividing by zero will yield +-INF, only Integer division throws exception if dividing by 0.
   public static double[] divide(double[] a, double[] b) {
-    double[] quotient = new double[1];
+    double[] quotient = new double[0];
     if (arrayMathCheck(a, b)) {
       quotient = new double[a.length];
       for (int i = 0; i < a.length; i++) {
@@ -433,7 +458,7 @@ public abstract class ArrUtils {
   // --------------------------- Array vs. array of + and - ----------------------------------
 
   public static double[] add(double[] a, double[] b) {
-    double[] sum = new double[1];
+    double[] sum = new double[0];
     if (arrayMathCheck(a, b)) {
       sum = new double[a.length];
       for (int i = 0; i < a.length; i++) {
@@ -445,7 +470,7 @@ public abstract class ArrUtils {
 
 
   public static int[] add(int[] a, int[] b) {
-    int[] sum = new int[1];
+    int[] sum = new int[0];
     if (arrayMathCheck(a, b)) {
       sum = new int[a.length];
       for (int i = 0; i < a.length; i++) {
@@ -456,7 +481,7 @@ public abstract class ArrUtils {
   }
 
   public static double[] subtract(double[] a, double[] b) {
-    double[] difference = new double[1];
+    double[] difference = new double[0];
     if (arrayMathCheck(a, b)) {
       difference = new double[a.length];
       for (int i = 0; i < a.length; i++) {
@@ -813,7 +838,7 @@ public abstract class ArrUtils {
 
 
   public static double intSum(int[] arr) {
-    return Arrays.stream(arr).sum();
+    return Arrays.stream(arr).asLongStream().sum();
   }
 
   public static double[] sumArrays(Collection<double[]> arrays) {
@@ -884,7 +909,7 @@ public abstract class ArrUtils {
         nzList.add(d);
       }
     }
-    return doubleListToArr(positiveNonzeroAsList(array));
+    return doubleListToArr(nzList);
   }
 
   public static void replaceNegativeWithZero(double[] array) {
@@ -982,11 +1007,22 @@ public abstract class ArrUtils {
   public static double[] strictlySmallerThan(double[] array, double greatest) {
     List<Double> nzList = new ArrayList<>();
     for (double d : array) {
-      if (d < greatest) {
+      if (d < greatest && Double.isFinite(d)) {
         nzList.add(d);
       }
     }
     return doubleListToArr(nzList);
+  }
+
+  public static double[] strictlySmallerThan(double[] array, double lowerLim, double replacement) {
+    double[] flatArr = copy(array);
+    for (int i = 0; i < flatArr.length; i++) {
+      double d = flatArr[i];
+      if (d < lowerLim || !Doubles.isFinite(d)) {
+        flatArr[i] = replacement;
+      }
+    }
+    return flatArr;
   }
 
   public static Pair<double[], double[]> strictlyGreaterThan(double[] arr1, double[] arr2, double smallest) {
@@ -1029,6 +1065,22 @@ public abstract class ArrUtils {
       }
     }
     return doubleListToArr(nzList);
+  }
+
+  /**
+   * True if at least k values exceed the threshold.
+   */
+  public static boolean exceedsThreshold(double[] values, double threshold, int k) {
+    int n = 0;
+    for (double v : values) {
+      if (v > threshold) {
+        n++;
+        if (n >= k) {
+          return true;
+        }
+      }
+    }
+    return false;
   }
 
 
@@ -1081,7 +1133,10 @@ public abstract class ArrUtils {
     return cutData;
   }
 
-  public static double[] getPortion(double[] arr, int start, int end, Logger logger) {
+  public static double[] getPortion(double[] arr, int start, int end, @Nullable Logger logger) {
+    if (logger == null) {
+      logger = LOGGER;
+    }
     if (0 <= start && start <= end && end < arr.length) {
       // note that Arrays.copy... defines "to" = "endIdx" exclusive (therefore endIdx+1)
       return Arrays.copyOfRange(arr, start, end + 1);
@@ -1101,14 +1156,17 @@ public abstract class ArrUtils {
     }
   }
 
-  public static int[] getPortion(int[] arr, int start, int end, Logger logger) {
+  public static int[] getPortion(int[] arr, int start, int end, @Nullable Logger logger) {
+    if (logger == null) {                                   // FIX 1: same null guard as the double[] version
+      logger = LOGGER;
+    }
     if (0 <= start && start <= end && end < arr.length) {
       // note that Arrays.copy... defines "to" = "endIdx" exclusive (therefore endIdx+1)
       return Arrays.copyOfRange(arr, start, end + 1);
     } else {
       int[] data;
       // return array with all entries 0 and notify logger
-      logger.error("getSlice: requested start or end index out of bounds.");
+      // FIX 2: removed the unconditional logger.error(...) that was here (it logged twice)
       int dataLength = end - start + 1; //e.g. from 5-7 {5 6 7} = 7-5+1 = 3
       if (dataLength > 0) {
         logger.error("getSlice: requested start or end index out of bounds.");
@@ -1223,6 +1281,13 @@ public abstract class ArrUtils {
     return merge(list);
   }
 
+  public static List<Integer> mergeUnique(List<int[]> arrays) {
+    return arrays.stream()
+        .flatMapToInt(Arrays::stream)
+        .boxed()
+        .distinct()
+        .collect(Collectors.toList());
+  }
 
   /*
   ----------------------------------------------------------------------------------------
@@ -1231,13 +1296,8 @@ public abstract class ArrUtils {
    */
 
   public static double[][] doubleArrListToArr(List<double[]> list) {
-    // fail safe but maybe slow?
-    int maxSize = 0;
-    for (double[] d : list) {
-      maxSize = Math.max(maxSize, d.length);
-    }
-
-    double[][] arr = new double[list.size()][maxSize];
+    // fail-safe but maybe slow?
+    double[][] arr = new double[list.size()][];
     for (int i = 0; i < list.size(); i++) {
       arr[i] = list.get(i);
     }
@@ -1256,11 +1316,11 @@ public abstract class ArrUtils {
     List<double[]> result = new ArrayList<>();
     int inputArrLength = input.length;
 
-    if (inputArrLength > 0) {
+    if (inputArrLength > 0 && subArrSize > 0) {
       int i = 0;
 
       // Fill a List with copies from the original data
-      while (i + subArrSize <= inputArrLength) {
+      while (inputArrLength - i >= subArrSize) {
         result.add(Arrays.copyOfRange(input, i, i + subArrSize));
         i += subArrSize;
       }
@@ -1379,13 +1439,15 @@ public abstract class ArrUtils {
   }
 
   public static double[] fillArrayInclusive(double start, double end, double stepSize) {
-    int length = (int) Math.ceil((end - start + 1.0) / stepSize);
-    double[] result = new double[length];
+    double[] result = new double[0];
+    if (stepSize > 0) {
+      int length = (int) Math.ceil((end - start + 1.0) / stepSize);
+      result = new double[length];
 
-    for (int i = 0; i < length; i++) {
-      result[i] = start + i * stepSize;
+      for (int i = 0; i < length; i++) {
+        result[i] = start + i * stepSize;
+      }
     }
-
     return result;
   }
 
@@ -1398,22 +1460,32 @@ public abstract class ArrUtils {
   public static double[] fillArrayExclusive(double exclusiveStart, double end, double stepsize) {
     // WARNING: DON'T use "value += stepsize;" as there are floating imprecision that add up this way!
     // WARNING2: https://stackoverflow.com/questions/37335/how-to-deal-with-java-lang-outofmemoryerror-java-heap-space-error
-    int required = (int) Math.ceil((end - exclusiveStart) / stepsize);
 
-    double[] array = new double[required];
-    for (int i = 0; i < required; i++) {
-      array[i] = exclusiveStart + (i + 1) * stepsize;
+    double[] result = new double[0];
+    if (stepsize > 0) {
+      int required = (int) Math.ceil((end - exclusiveStart) / stepsize);
+
+      double[] array = new double[required];
+      for (int i = 0; i < required; i++) {
+        array[i] = exclusiveStart + (i + 1) * stepsize;
+      }
+      result = array;
     }
-    return array;
+    return result;
   }
 
 
   // Python like linspace
   public static double[] linspace(double start, double endInclusive, int steps) {
-    double[] result = new double[steps];
-    double step = (endInclusive - start) / (steps - 1);  // ensure inclusive end
-    for (int i = 0; i < steps; i++) {
-      result[i] = start + i * step;
+    double[] result;
+    if (steps > 1) {
+      result = new double[steps];
+      double step = (endInclusive - start) / (steps - 1);  // ensure inclusive end
+      for (int i = 0; i < steps; i++) {
+        result[i] = start + i * step;
+      }
+    } else {
+      result = new double[]{start};
     }
     return result;
   }
@@ -1461,13 +1533,16 @@ public abstract class ArrUtils {
   ----------------------------------------------------------------------------------------
    */
   public static int findClosestIndex(double[] sorted, double value) {
+    if (sorted == null || sorted.length == 0) {
+      LOGGER.error("findClosestIndex: empty array, returning " + DEFAULT_FAIL_INT + ".");
+      return DEFAULT_FAIL_INT;
+    }
     int lo = 0;
     int hi = sorted.length - 1;
 
     if (value <= sorted[lo]) {
       return lo;
     }
-
     if (value >= sorted[hi]) {
       return hi;
     }
@@ -1515,23 +1590,28 @@ public abstract class ArrUtils {
   }
 
   public static Pair<Integer, Integer> findBoundingIndices(double[] sorted, double value) {
+    if (sorted == null || sorted.length == 0) {
+      LOGGER.error("findBoundingIndices: empty array, returning (" + DEFAULT_FAIL_INT + ", "
+          + DEFAULT_FAIL_INT + ").");
+      return new Pair<>(DEFAULT_FAIL_INT, DEFAULT_FAIL_INT);
+    }
+    if (sorted.length == 1) {
+      return new Pair<>(0, 0);
+    }
+
     int index = Arrays.binarySearch(sorted, value);
 
     if (index >= 0) {
-      // Exact match: return index and itself (degenerate case)
       return new Pair<>(index, index);
     }
 
     int insertionPoint = -index - 1;
 
     if (insertionPoint <= 0) {
-      // Value is smaller than the first element
       return new Pair<>(0, 1);
     } else if (insertionPoint >= sorted.length) {
-      // Value is larger than the last element
       return new Pair<>(sorted.length - 2, sorted.length - 1);
     } else {
-      // Value lies between insertionPoint - 1 and insertionPoint
       return new Pair<>(insertionPoint - 1, insertionPoint);
     }
   }

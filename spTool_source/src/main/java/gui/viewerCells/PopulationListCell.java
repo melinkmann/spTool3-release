@@ -68,7 +68,7 @@ public class PopulationListCell extends TextFieldListCell<PopulationID> {
         }
         PopulationID id = getItem();
         if (id != null) {
-          id.setLabel(string);
+          id.setLabel(string); // likely redundant since the pop sets label in its ID in setName() below
           // check the other sample's pop IDs, too (name is not part of the hash/equals routine)
           for (Sample sample : sampleListAndTable.getSelSamples()) {
             for (Sample subSample : sample.getAllSamples()) {

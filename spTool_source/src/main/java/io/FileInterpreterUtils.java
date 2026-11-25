@@ -37,6 +37,7 @@ import java.util.Locale;
 import javafx.util.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.jetbrains.annotations.Nullable;
 import processing.options.CharSet;
 import processing.options.Delimiter;
 import sandbox.montecarlo.Isotope;
@@ -103,7 +104,7 @@ public class FileInterpreterUtils {
     }
 
     // dummy instance
-    Pair<Boolean, Channel> result = new Pair<>(false,new MZChannel());
+    Pair<Boolean, Channel> result = new Pair<>(false, new MZChannel());
 
     // "|" indicates TQ data
     if (rawMzField.contains("|")) {
@@ -222,32 +223,37 @@ public class FileInterpreterUtils {
     return new MZChannel(new MSIDImpl(new MZImpl(parsedIsotope.getIsotopicNumber())), parsedIsotope);
   }
 
+  @Nullable
   public static Channel parseAgilentTQmz(String rawMzField) throws IndexOutOfBoundsException {
     // "->" indicates TQ data, cf: "Fe56 -> 72" or "Fe55 -> 55"
     Channel mzValue;
-    if (rawMzField.contains("->")) {
-      String firstMass = rawMzField.substring(0, rawMzField.indexOf("-"));
-      String secondMass = rawMzField.substring(rawMzField.indexOf(">"));
-
-      String firstExtractedMZ = SnF.getDigitOnlyPattern().matcher(firstMass).replaceAll("");
-      String secondExtractedMZ = SnF.getDigitOnlyPattern().matcher(secondMass).replaceAll("");
-      double fistMassValue = SnF.strToDouble(firstExtractedMZ);
-      double secondMassValue = SnF.strToDouble(secondExtractedMZ);
-      // TQ has mass shift?
-      if (!DoubleMath.fuzzyEquals(fistMassValue, secondMassValue, MZValue.EPSILON)) {
-        Isotope parsedIsotope = safelyGetMZ1(firstExtractedMZ).getValue();
-        mzValue = new MZChannel(
-            new MSIDImpl(new MZImpl(fistMassValue), new MZImpl(secondMassValue)),
-            parsedIsotope);
-        // TQ is on mass
-      } else {
-        Isotope parsedIsotope = safelyGetMZ1(firstExtractedMZ).getValue();
-        mzValue = new MZChannel(new MSIDImpl(new MZImpl(fistMassValue)), parsedIsotope);
-      }
+    if (rawMzField == null || rawMzField.isEmpty() || rawMzField.trim().isEmpty()) {
+      mzValue = null;
     } else {
-      String cleanStr = SnF.getDigitsAndLettersOnly(rawMzField);
-      Isotope parsedIsotope = safelyGetMZ1(cleanStr).getValue();
-      mzValue = new MZChannel(new MSIDImpl(new MZImpl(parsedIsotope.getIsotopicNumber())), parsedIsotope);
+      if (rawMzField.contains("->")) {
+        String firstMass = rawMzField.substring(0, rawMzField.indexOf("-"));
+        String secondMass = rawMzField.substring(rawMzField.indexOf(">"));
+
+        String firstExtractedMZ = SnF.getDigitOnlyPattern().matcher(firstMass).replaceAll("");
+        String secondExtractedMZ = SnF.getDigitOnlyPattern().matcher(secondMass).replaceAll("");
+        double fistMassValue = SnF.strToDouble(firstExtractedMZ);
+        double secondMassValue = SnF.strToDouble(secondExtractedMZ);
+        // TQ has mass shift?
+        if (!DoubleMath.fuzzyEquals(fistMassValue, secondMassValue, MZValue.EPSILON)) {
+          Isotope parsedIsotope = safelyGetMZ1(firstExtractedMZ).getValue();
+          mzValue = new MZChannel(
+              new MSIDImpl(new MZImpl(fistMassValue), new MZImpl(secondMassValue)),
+              parsedIsotope);
+          // TQ is on mass
+        } else {
+          Isotope parsedIsotope = safelyGetMZ1(firstExtractedMZ).getValue();
+          mzValue = new MZChannel(new MSIDImpl(new MZImpl(fistMassValue)), parsedIsotope);
+        }
+      } else {
+        String cleanStr = SnF.getDigitsAndLettersOnly(rawMzField);
+        Isotope parsedIsotope = safelyGetMZ1(cleanStr).getValue();
+        mzValue = new MZChannel(new MSIDImpl(new MZImpl(parsedIsotope.getIsotopicNumber())), parsedIsotope);
+      }
     }
     return mzValue;
   }

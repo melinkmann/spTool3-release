@@ -22,10 +22,11 @@ import java.io.Serializable;
 import java.util.List;
 import javax.annotation.Nullable;
 
-import core.SpTool3Main;
+import com.google.common.math.DoubleMath;
 import math.stat.MeasureOfLocation;
 import math.stat.MeasureOfSpread;
 import org.apache.commons.math3.distribution.PoissonDistribution;
+import org.apache.commons.numbers.gamma.RegularizedBeta;
 import org.apache.commons.statistics.distribution.NormalDistribution;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -199,7 +200,9 @@ public class ResettableStatDataSet implements StatDataSet, Serializable {
     if (distrID == CompoundPoissonTable.getID()) {
       lim = CompoundPoissonTable.compoundCriticalLimit(alpha, location, siaShape);
     }
-
+    if (distrID == NegativeBinomial.getID()) {
+      lim = NegativeBinomial.negativeBinomialCriticalLimit(alpha, location + continuityEpsilon, spread);
+    }
 
     return lim;
   }
@@ -223,6 +226,9 @@ public class ResettableStatDataSet implements StatDataSet, Serializable {
     }
     if (distrID == CompoundPoissonTable.getID()) {
       lim = CompoundPoissonTable.compoundDetectionLimit(z, location, siaShape);
+    }
+    if (distrID == NegativeBinomial.getID()) {
+      lim = NegativeBinomial.negativeBinomialDetectionLimit(z, location + continuityEpsilon, spread);
     }
     return lim;
   }
@@ -260,6 +266,14 @@ public class ResettableStatDataSet implements StatDataSet, Serializable {
     if (distrID == CompoundPoissonTable.getID()) {
       lim = CompoundPoissonTable.compoundLowerOutlierLimit(alpha, location, siaShape);
     }
+
+    if (distrID == NegativeBinomial.getID()) {
+      if (lowerPoissonLimitZero) {
+        lim = 0;
+      } else {
+        lim = NegativeBinomial.negativeBinomialLowerOutlierLimit(alpha, location + continuityEpsilon, spread);
+      }
+    }
     return lim;
   }
 
@@ -291,6 +305,51 @@ public class ResettableStatDataSet implements StatDataSet, Serializable {
     }
     if (distrID == CompoundPoissonTable.getID()) {
       pValue = CompoundPoissonTable.calcSurvival(location, siaShape, intensity);
+    }
+    if (distrID == NegativeBinomial.getID()) {
+      pValue = NegativeBinomial.calcSurvival(location + continuityEpsilon, spread, intensity);
+    }
+    return pValue;
+  }
+
+  private double calcTruncatedPValue(double threshold) {
+    double pSel = 1; // same neutral default as calcPValue
+    if (distrID == Poisson.getID()) {
+      pSel = Poisson.calcTruncatedPValue(location, threshold);
+    }
+    if (distrID == Gaussian.getID()) {
+      pSel = Gaussian.calcTruncatedPValue(location, spread, threshold);
+    }
+    if (distrID == PoissonNormal.getID()) {
+      pSel = PoissonNormal.calcTruncatedPValue(location + continuityEpsilon, threshold);
+    }
+    if (distrID == CurriePoisson.getID()) {
+      // calcPValue uses the exact Poisson for Currie, so the selection probability must too.
+      pSel = Poisson.calcTruncatedPValue(location, threshold);
+    }
+    if (distrID == CompoundPoissonApprox.getID()) {
+      pSel = CompoundPoissonApprox.calcTruncatedPValue(location, siaShape, threshold);
+    }
+    if (distrID == CompoundPoissonTable.getID()) {
+      pSel = CompoundPoissonTable.calcTruncatedPValue(location, siaShape, threshold);
+    }
+    if (distrID == NegativeBinomial.getID()) {
+      pSel = NegativeBinomial.calcTruncatedPValue(location + continuityEpsilon, spread, threshold);
+    }
+    return pSel;
+  }
+
+  @Override
+  public double calcTruncatedPValue(double intensity, double threshold) {
+    double pValue;
+    if (intensity > threshold) {
+      pValue = calcPValue(intensity) / calcTruncatedPValue(threshold);
+
+      // cap to (0,1]
+      pValue = Math.min(1d, Math.max(Math.nextUp(0d), pValue));
+    } else {
+      pValue = calcPValue(intensity);
+      pValue = Math.min(1d, Math.max(Math.nextUp(0d), pValue));
     }
     return pValue;
   }
@@ -438,7 +497,36 @@ public class ResettableStatDataSet implements StatDataSet, Serializable {
       } else {
         // Poisson is not defined for mu=0!
         //... we kind of are at the leftmost tail of the defined intensity space.
-        return Math.nextUp(0d);
+        if (DoubleMath.fuzzyEquals(intensity, 0d, 1E-6)) {
+          return 1;
+        } else {
+          return Math.nextUp(0d);
+        }
+      }
+    }
+
+    public static double calcTruncatedPValue(double mean, double threshold) {
+      if (mean > 0) {
+        // Full probability mass of the selected region, NOT mid-p:
+        // this is the probability of the selection event itself, so there are no ties to split.
+        org.apache.commons.statistics.distribution.PoissonDistribution pd =
+            org.apache.commons.statistics.distribution.PoissonDistribution.of(mean);
+
+        // integer counts: x > threshold <=> x > floor(threshold)
+        int k = (int) Math.floor(threshold);
+        double pVal = pd.survivalProbability(k); // P(X > k)
+
+        // cap to >0
+        pVal = Math.max(Math.nextUp(0d), pVal);
+
+        return pVal;
+      } else {
+        // We are at the leftmost tail of the defined intensity space.
+        if (DoubleMath.fuzzyEquals(threshold, 0d, 1E-6)) {
+          return 1;
+        } else {
+          return Math.nextUp(0d);
+        }
       }
     }
 
@@ -481,6 +569,7 @@ public class ResettableStatDataSet implements StatDataSet, Serializable {
 
     public static double calcSurvival(double mean, double spread, double intensity) {
       if (mean > 0 && spread > 0) {
+        // ND only defined for strictly positive SD
         NormalDistribution nd = NormalDistribution.of(mean, spread);
         double pVal = nd.survivalProbability(intensity);
 
@@ -488,9 +577,19 @@ public class ResettableStatDataSet implements StatDataSet, Serializable {
         pVal = Math.max(Math.nextUp(0d), pVal);
         return pVal;
       } else {
-        // We are likely at the leftmost tail of the defined intensity space.
-        return Math.nextUp(0d);
+        // We are likely at the leftmost tail of the defined intensity space, i.e.,
+        // if blank is truly just zeros, we can return a very small probability for any nonzero intensity.
+        if (DoubleMath.fuzzyEquals(intensity, 0d, 1E-6)) {
+          return 1;
+        } else {
+          return Math.nextUp(0d);
+        }
       }
+    }
+
+    public static double calcTruncatedPValue(double mean, double spread, double threshold) {
+      // continuous: there is no mid-p, so calcSurvival already is P(X > threshold)
+      return calcSurvival(mean, spread, threshold);
     }
 
     public static int getID() {
@@ -541,8 +640,19 @@ public class ResettableStatDataSet implements StatDataSet, Serializable {
         return pVal;
       } else {
         // We are at the leftmost tail of the defined intensity space.
-        return Math.nextUp(0d);
+        if (DoubleMath.fuzzyEquals(intensity, 0d, 1E-6)) {
+          return 1;
+        } else {
+          return Math.nextUp(0d);
+        }
       }
+    }
+
+    public static double calcTruncatedPValue(double mean, double threshold) {
+      // counts are integers: x > threshold <=> x >= t, with t = floor(threshold) + 1.
+      // The normal approximation of P(X >= t) is S(t - 0.5) = S(floor(threshold) + 0.5).
+      // calcSurvival has no mid-p here, so it can be reused as is.
+      return calcSurvival(mean, Math.floor(threshold) + 0.5);
     }
 
     public static int getID() {
@@ -621,7 +731,11 @@ public class ResettableStatDataSet implements StatDataSet, Serializable {
         return pVal;
       } else {
         // We are at the leftmost tail of the defined intensity space.
-        return Math.nextUp(0d);
+        if (DoubleMath.fuzzyEquals(intensity, 0d, 1E-6)) {
+          return 1;
+        } else {
+          return Math.nextUp(0d);
+        }
       }
     }
   }
@@ -666,25 +780,27 @@ public class ResettableStatDataSet implements StatDataSet, Serializable {
 
           // P(X > k)
           double pGreater =
-              Statistics.getCompoundPoissonLnApproxSurvivalPValue(model,
+              Statistics.getCompoundPoissonSurvivalPValue(model,
                   intensity + 1,
                   mean,
                   muLog,
                   sigmaLog);
 
           // Here we have to estimate the p(x) via CDF(x+e)-CDF(x)
-          double pX = Statistics.getCompoundPoissonLnApproxSurvivalPValue(model,
+          double pX = Statistics.getCompoundPoissonSurvivalPValue(model,
               intensity,
               mean,
               muLog,
               sigmaLog);
 
-          // get next larger value from table
+          // get next larger value from approx; here increment by 1 and not 0.1
+          // Why? aprrox. ist continuous and would trigger immediately;
+          // for mean below 2, adding +1 sounds reasonable
           double pX1 = pX;
-          int maxCounter = 10_000;
+          int maxCounter = 100;
           for (int i = 0; i < maxCounter; i++) {
-            pX1 = Statistics.getCompoundPoissonLnApproxSurvivalPValue(model,
-                intensity + (i + 1) * 0.1,
+            pX1 = Statistics.getCompoundPoissonSurvivalPValue(model,
+                intensity + (i + 1d),
                 mean,
                 muLog,
                 sigmaLog);
@@ -702,22 +818,41 @@ public class ResettableStatDataSet implements StatDataSet, Serializable {
             // midP failed, use the normal p (comes from code "kind of anyway if suv=0" but enforce strictly
 
             // Only ensures that p>0. No further checking of caps internally in this function:
-            pVal = Statistics.getCompoundPoissonLnApproxSurvivalPValue(model,
+            pVal = Statistics.getCompoundPoissonSurvivalPValue(model,
                 intensity,
                 mean,
                 muLog,
                 sigmaLog);
           }
 
+          pVal = Math.max(pVal, Math.nextUp(0d));
           return pVal;
         } else {
-          return Statistics.getCompoundPoissonLnApproxSurvivalPValue(model,
+          double p = Statistics.getCompoundPoissonSurvivalPValue(model,
               intensity,
               mean,
               muLog,
               sigmaLog);
+          return Math.max(p, Math.nextUp(0d));
         }
 
+      } else {
+        // We are at the leftmost tail of the defined intensity space.
+        return Math.nextUp(0d);
+      }
+    }
+
+    public static double calcTruncatedPValue(double mean, double sigmaLog, double threshold) {
+      if (mean > 0) {
+        double muLog = Statistics.getLognormalMuNormalized(sigmaLog);
+
+        // continuous: P(X > threshold) is the plain survival, not the mid-p branch of calcSurvival
+        double pSel = Statistics.getCompoundPoissonSurvivalPValue(CompoundPoissonModel.LOG_APPROX,
+            threshold,
+            mean,
+            muLog,
+            sigmaLog);
+        return Math.max(pSel, Math.nextUp(0d));
       } else {
         // We are at the leftmost tail of the defined intensity space.
         return Math.nextUp(0d);
@@ -816,14 +951,14 @@ public class ResettableStatDataSet implements StatDataSet, Serializable {
 
           // P(X > k)
           double pGreater =
-              Statistics.getCompoundPoissonLnApproxSurvivalPValue(model,
+              Statistics.getCompoundPoissonSurvivalPValue(model,
                   intensity + 1,
                   mean,
                   muLog,
                   sigmaLog);
 
           // Here we have to estimate the p(x) via CDF(x+e)-CDF(x)
-          double pX = Statistics.getCompoundPoissonLnApproxSurvivalPValue(model,
+          double pX = Statistics.getCompoundPoissonSurvivalPValue(model,
               intensity,
               mean,
               muLog,
@@ -833,7 +968,7 @@ public class ResettableStatDataSet implements StatDataSet, Serializable {
           double pX1 = pX;
           int maxCounter = 10_000;
           for (int i = 0; i < maxCounter; i++) {
-            pX1 = Statistics.getCompoundPoissonLnApproxSurvivalPValue(model,
+            pX1 = Statistics.getCompoundPoissonSurvivalPValue(model,
                 intensity + (i + 1) * 0.1,
                 mean,
                 muLog,
@@ -845,29 +980,48 @@ public class ResettableStatDataSet implements StatDataSet, Serializable {
 
           double approxPMF = pX - pX1;
           if (approxPMF > 0) {
-            // just make sure that this is positive+
+            // just make sure that this is positive
             double pEqual = Math.abs(approxPMF); // P(X = k)
             pVal = pGreater + 0.5 * pEqual;
           } else {
             // midP failed, use the normal p (comes from code "kind of anyway if suv=0" but enforce strictly
 
             // Only ensures that p>0. No further checking of caps internally in this function:
-            pVal = Statistics.getCompoundPoissonLnApproxSurvivalPValue(model,
+            pVal = Statistics.getCompoundPoissonSurvivalPValue(model,
                 intensity,
                 mean,
                 muLog,
                 sigmaLog);
           }
 
+          pVal = Math.max(pVal, Math.nextUp(0d));
           return pVal;
         } else {
-          return Statistics.getCompoundPoissonLnApproxSurvivalPValue(model,
+          double p = Statistics.getCompoundPoissonSurvivalPValue(model,
               intensity,
               mean,
               muLog,
               sigmaLog);
+          return Math.max(p, Math.nextUp(0d));
         }
 
+      } else {
+        // We are at the leftmost tail of the defined intensity space.
+        return Math.nextUp(0d);
+      }
+    }
+
+    public static double calcTruncatedPValue(double mean, double sigmaLog, double threshold) {
+      if (mean > 0) {
+        double muLog = Statistics.getLognormalMuNormalized(sigmaLog);
+
+        // continuous: P(X > threshold) is the plain survival, not the mid-p branch of calcSurvival
+        double pSel = Statistics.getCompoundPoissonSurvivalPValue(CompoundPoissonModel.LOOKUP_TABLE,
+            threshold,
+            mean,
+            muLog,
+            sigmaLog);
+        return Math.max(pSel, Math.nextUp(0d));
       } else {
         // We are at the leftmost tail of the defined intensity space.
         return Math.nextUp(0d);
@@ -893,6 +1047,147 @@ public class ResettableStatDataSet implements StatDataSet, Serializable {
 
     public static MeasureOfSpread getDefaultSpread() {
       return MeasureOfSpread.SQUARE_ROOT;
+    }
+  }
+
+  // Claude Sonnet 5.5, unchecked (TODO)
+  public static class NegativeBinomial implements Limit {
+
+    // The NB needs var > mean. If the estimated variance is not above the mean (by chance, or because the
+    // blank is not overdispersed), it is raised to mean * (1 + MIN_OVERDISPERSION). The NB then is
+    // practically a Poisson, and r and p stay valid, so nothing breaks.
+    private static final double MIN_OVERDISPERSION = 1E-3;
+
+    private static double calcVariance(double mean, double spread) {
+      return Math.max(spread * spread, mean * (1 + MIN_OVERDISPERSION));
+    }
+
+    // Method of moments: var = mean + mean^2 / r. Real-valued, NOT rounded to an int.
+    private static double calcR(double mean, double spread) {
+      return mean * mean / (calcVariance(mean, spread) - mean);
+    }
+
+    // success probability: mean = r * (1 - p) / p and var = mean / p
+    private static double calcP(double mean, double spread) {
+      return mean / calcVariance(mean, spread);
+    }
+
+    // P(X > k), full mass. Complement of the regularized beta, so small tails stay accurate.
+    private static double survivalProbability(double r, double p, int k) {
+      if (k < 0) {
+        return 1;
+      } else {
+        return RegularizedBeta.complement(p, r, k + 1.0);
+      }
+    }
+
+    // smallest integer k with P(X > k) <= tail
+    private static double upperTailQuantile(double r, double p, double tail, double mean, double spread) {
+      // bracket from above
+      int hi = Math.max(1, (int) Math.ceil(mean + spread));
+      while (survivalProbability(r, p, hi) > tail) {
+        if (hi > Integer.MAX_VALUE / 2) {
+          return Integer.MAX_VALUE;
+        }
+        hi *= 2;
+      }
+      // bisection, with P(X > lo) > tail >= P(X > hi); lo = -1 stands for P(X > -1) = 1
+      int lo = -1;
+      while (hi - lo > 1) {
+        int mid = lo + (hi - lo) / 2;
+        if (survivalProbability(r, p, mid) > tail) {
+          lo = mid;
+        } else {
+          hi = mid;
+        }
+      }
+      return hi;
+    }
+
+    public static double negativeBinomialCriticalLimit(double alpha, double mean, double spread) {
+      if (mean > 0) {
+        return upperTailQuantile(calcR(mean, spread), calcP(mean, spread), alpha, mean, spread);
+      } else {
+        return 0;
+      }
+    }
+
+    public static double negativeBinomialLowerOutlierLimit(double alpha, double mean, double spread) {
+      if (mean > 0) {
+        // LOWER limit: Not P(X > k) <= alpha BUT P(X > k) <= 1 - alpha
+        return upperTailQuantile(calcR(mean, spread), calcP(mean, spread), 1 - alpha, mean, spread);
+      } else {
+        return 0;
+      }
+    }
+
+    // The currie formalism is based on z, hence we have to use it here. Analogous to the exact Poisson.
+    public static double negativeBinomialDetectionLimit(double z, double mean, double spread) {
+      double alpha = Statistics.zToAlpha(2 * z);
+      return Math.pow(z, 2) + negativeBinomialCriticalLimit(1 - alpha, mean, spread);
+    }
+
+    public static double calcSurvival(double mean, double spread, double intensity) {
+      if (mean > 0) {
+        double r = calcR(mean, spread);
+        double p = calcP(mean, spread);
+
+        // midP for more uniformity in discrete distributions
+        int k = (int) Math.floor(intensity);
+        double pGreater = survivalProbability(r, p, k);                 // P(X > k)
+        double pEqual = survivalProbability(r, p, k - 1) - pGreater;    // P(X = k) = P(X >= k) - P(X > k)
+        double pVal = pGreater + 0.5 * pEqual;
+
+        // cap to >0
+        pVal = Math.max(Math.nextUp(0d), pVal);
+
+        return pVal;
+      } else {
+        // NB is not defined for mean = 0: same handling as the Poisson
+        if (DoubleMath.fuzzyEquals(intensity, 0d, 1E-6)) {
+          return 1;
+        } else {
+          return Math.nextUp(0d);
+        }
+      }
+    }
+
+    public static double calcTruncatedPValue(double mean, double spread, double threshold) {
+      if (mean > 0) {
+        double r = calcR(mean, spread);
+        double p = calcP(mean, spread);
+
+        // Full probability mass, NOT mid-p. Integer counts: x > threshold <=> x > floor(threshold)
+        int k = (int) Math.floor(threshold);
+        double pVal = survivalProbability(r, p, k); // P(X > k)
+
+        // cap to >0
+        pVal = Math.max(Math.nextUp(0d), pVal);
+
+        return pVal;
+      } else {
+        return Poisson.calcTruncatedPValue(mean, threshold);
+      }
+    }
+
+    public static int getID() {
+      return 7;
+    }
+
+    public static boolean isID(int id) {
+      return id == getID();
+    }
+
+    static String getName() {
+      return "Negative binomial";
+    }
+
+    public static MeasureOfLocation getDefaultLocation() {
+      return MeasureOfLocation.MEAN;
+    }
+
+    public static MeasureOfSpread getDefaultSpread() {
+      return MeasureOfSpread.SD;
     }
   }
 

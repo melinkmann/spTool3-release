@@ -20,6 +20,7 @@ package processing.parameterSets.uiParams;
 import gui.util.TextFormatterOption;
 import io.XmlUtil;
 
+import java.io.IOException;
 import java.io.Serial;
 import java.nio.file.Path;
 
@@ -28,6 +29,7 @@ import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import processing.options.EventParameter;
 import processing.options.MathMod;
+import processing.options.ScatterOptions;
 import processing.parameterSets.AbstractParamSet;
 import processing.parameterSets.AvailableParameterSets;
 import processing.parameterSets.FxParamSetImpl;
@@ -127,8 +129,7 @@ public class MonteCarloScatterPlotParameters extends AbstractParamSet implements
         }
    */
 
-
-  private final Parameter<Boolean> scatterIsotopes;
+  private Parameter<ScatterOptions> scatterOptions;
 
   private final Parameter<EventParameter> eventParameterX;
   private final Parameter<MathMod> mathModificationX;
@@ -154,16 +155,23 @@ public class MonteCarloScatterPlotParameters extends AbstractParamSet implements
   public MonteCarloScatterPlotParameters() {
     super("Monte carlo scatter plot viewer parameters", XML_ELEMENT_TAG);
 
-    this.scatterIsotopes = new BooleanParameter(
+    this.scatterOptions = new ComboEnumParameter<>(
         "Data",
-        "2 Isotopes",
         """
-            If selected, the first selected isotope is put on the x-axis
+            Parameter vs Param: scatter different peak parameters for the same isotope
+            
+            Ch vs Ch: the first selected isotope is put on the x-axis
             and the second selected isotope is put on the y-axis.
-            Otherwise, we scatter different peak parameters for the same isotope""",
+            
+            Ratio vs Ch: Among the first 2 selected isotope, the most abundant
+            (by natural redundancy) is declared Iso1, and the other Iso2.
+            The graph puts Iso1 on the x-axis
+            and the ratio of Iso2/Iso1 on the y-axis""",
+        ScatterOptions.PARAMETER,
+        ScatterOptions.values(),
+        ScatterOptions.class,
         false,
-        true,
-        "scatterIsotopes"
+        "scatterOptions"
     );
 
     eventParameterX = new ComboEnumParameter<>(
@@ -281,7 +289,7 @@ public class MonteCarloScatterPlotParameters extends AbstractParamSet implements
         "Choose the lower y-axis limit as a absolute value",
         0d,
         NF.D1C3,
-        TextFormatterOption.ASSURE_POSITIVE_DOUBLE,
+        TextFormatterOption.ASSURE_DOUBLE,
         false,
         "lowerYLimit");
 
@@ -301,12 +309,12 @@ public class MonteCarloScatterPlotParameters extends AbstractParamSet implements
   public MonteCarloScatterPlotParameters(MonteCarloScatterPlotParameters params) {
     super(params.getLabelParameter().getValue(), XML_ELEMENT_TAG);
     super.setComment(params.getCommentParameter());
-    this.scatterIsotopes = params.scatterIsotopes.copyWithoutChildren();
+    this.scatterOptions = params.scatterOptions.copyWithoutChildren();
     this.mathModificationX = params.mathModificationX.copyWithoutChildren();
     this.eventParameterX = params.eventParameterX.copyWithoutChildren();
     this.mathModificationY = params.mathModificationY.copyWithoutChildren();
     this.eventParameterY = params.eventParameterY.copyWithoutChildren();
-    this.logWithoutZeros=params.logWithoutZeros.copyWithoutChildren();
+    this.logWithoutZeros = params.logWithoutZeros.copyWithoutChildren();
     this.addRegression = params.addRegression.copyWithoutChildren();
     this.regressionViewRatio = params.regressionViewRatio.copyWithoutChildren();
     this.colorAlpha = params.colorAlpha.copyWithoutChildren();
@@ -343,7 +351,7 @@ public class MonteCarloScatterPlotParameters extends AbstractParamSet implements
 
     // Register parent
     super.setParentParameters(
-        scatterIsotopes,
+        scatterOptions,
         eventParameterX,
         mathModificationX,
         eventParameterY,
@@ -381,7 +389,7 @@ public class MonteCarloScatterPlotParameters extends AbstractParamSet implements
           case DATE_PAR_XML_ID -> super.dateCreated;
           case UUID_PAR_XML_ID -> super.uuidString;
 
-          case "scatterIsotopes" -> scatterIsotopes;
+          case "scatterOptions" -> scatterOptions;
 
           case "eventParameterX" -> eventParameterX;
           case "mathModificationX" -> mathModificationX;
@@ -433,8 +441,8 @@ public class MonteCarloScatterPlotParameters extends AbstractParamSet implements
 
   /// ///////////////////////////////////////////////////////////
 
-  public Parameter<Boolean> getScatterIsotopes() {
-    return scatterIsotopes;
+  public Parameter<ScatterOptions> getScatterIsotopes() {
+    return scatterOptions;
   }
 
   public Parameter<EventParameter> getEventParameterX() {
@@ -494,5 +502,20 @@ public class MonteCarloScatterPlotParameters extends AbstractParamSet implements
 
   public Parameter<Double> getLowerYLimit() {
     return lowerYLimit;
+  }
+
+
+  @Serial
+  private void readObject(java.io.ObjectInputStream in) throws IOException, ClassNotFoundException {
+
+    in.defaultReadObject();
+
+    // default supplier
+    final MonteCarloScatterPlotParameters defaults = new MonteCarloScatterPlotParameters();
+
+    if (scatterOptions == null) {
+      scatterOptions = defaults.scatterOptions;
+    }
+
   }
 }

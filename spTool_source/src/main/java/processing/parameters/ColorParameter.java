@@ -95,11 +95,11 @@ public class ColorParameter extends AbstractParameter<String> implements Seriali
     }
 
     if (chXmlID != null && !chXmlID.isEmpty()) {
-      this.channelXmlID = chXmlID;
+      this.channelXmlID = StringEscapeUtils.unescapeXml(chXmlID);
     }
 
     if (matchID != null && !matchID.isEmpty()) {
-      this.matcherID = matchID;
+      this.matcherID = StringEscapeUtils.unescapeXml(matchID);
     }
   }
 
@@ -129,7 +129,7 @@ public class ColorParameter extends AbstractParameter<String> implements Seriali
 
   @Override
   public void setValue(String s) {
-    if (value != null) {
+    if (s != null) {
       this.value = s;
     }
   }
@@ -160,7 +160,7 @@ public class ColorParameter extends AbstractParameter<String> implements Seriali
   }
 
   public void setColor(Colors colors) {
-    this.value = Colors.colorToRgbForXML(colors.getFX());
+    setValue(Colors.colorToRgbForXML(colors.getFX()));
   }
 
   public String getChannelXmlID() {

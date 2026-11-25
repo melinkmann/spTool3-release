@@ -172,6 +172,20 @@ public abstract class MethodWizardUtils {
         if (addValleyFilter.selectedProperty().get()) {
           method.getSets().add(filterParams);
         }
+
+
+        // Always add align for the TOF
+        if (Objects.equals(instrumentType.getSelectionModel().getSelectedItem(), "Time-of-flight (TOF)")) {
+          AlignerParams alignerParams = new AlignerParams();
+          method.getSets().add(alignerParams);
+
+          FilterParams overRangeAlignFilter = new FilterParams();
+          overRangeAlignFilter.getFilterOption().setValue(FilterOptions.ALIGNED_OVER_RANGE);
+          method.getSets().add(overRangeAlignFilter);
+        }
+
+
+
       } // is analyzer
     }
     methodView.setMethod(method);

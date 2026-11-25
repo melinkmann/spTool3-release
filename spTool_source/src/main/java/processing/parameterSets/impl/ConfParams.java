@@ -42,15 +42,12 @@ import javax.annotation.Nullable;
 import javafx.stage.Window;
 import math.units.Unit;
 import math.units.enums.NMPUnit;
-import math.units.enums.QuantityUnit;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
-import processing.options.EventParameter;
-import processing.options.LogLevel;
-import processing.options.MathMod;
+import processing.options.*;
 import processing.parameterSets.AbstractParamSet;
 import processing.parameterSets.AvailableParameterSets;
 import processing.parameterSets.ParamSet;
@@ -92,6 +89,8 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
   private final Parameter<Boolean> incrementNewSampleSetOnImport;
   private final Parameter<String> defaultMethodPath;
   private final Parameter<String> currentMethodFile;
+  private final Parameter<Delimiter> delimiter;
+  private final Parameter<Character> customDelimiter;
   private final Parameter<CpuThreadOption> numberOfThreadsModel;
   private final Parameter<Integer> numberOfThreads;
   private final Parameter<Integer> dragDropImportFolderDepth;
@@ -103,6 +102,9 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
   private final Parameter<Double> axisLabelSpacing;
   private final Parameter<Boolean> expertMode;
 
+  private final Parameter<Boolean> useGroundTruthForMCEvents;
+  private final Parameter<Double> groundTruthPeakIntegrationAreaPercent;
+
   private final Parameter<Integer> axisFontSize;
   private final Parameter<Boolean> jfreePlotsWhiteOnly;
   private final Parameter<Boolean> lockZoomInGraphs;
@@ -113,6 +115,8 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
   private final Parameter<Boolean> showTableToggle;
   private final Parameter<Boolean> showRawMCToggle;
   private final Parameter<Boolean> showHistoMCToggle;
+  private final Parameter<BinWidthHarmonisation> histogramBinWidthHarmonisation;
+  private final Parameter<Boolean> forceHistogramMinToZero;
   private final Parameter<Boolean> showScatterMCToggle;
   private final Parameter<Boolean> showTernaryToggle;
   private final Parameter<Boolean> showBoxPlotToggle;
@@ -148,10 +152,13 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
   private final Parameter<Double> default_y_mu;
   private final Parameter<Double> default_y_SD;
 
+  private final Parameter<Double> linLogScaleCutoff;
   private final Parameter<Double> siaLowerLimit;
   private final Parameter<Double> siaUpperLimit;
   private final Parameter<Double> siaParticleFilterAlpha;
   private final Parameter<Double> siaParticleFilterAlphaLowerLimit;
+
+  private final Parameter<Boolean> storeSmoothedSearchDataAsChannel;
 
   public ConfParams() {
     super("SpTool configuration", XML_ELEMENT_TAG);
@@ -210,6 +217,21 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
         "currentMethodFile");
     ((FileParameter) currentMethodFile).addFileExtension(new ExtensionFilter("Method files",
         "*" + GlobalIO.METHOD_EXTENSION));
+
+
+    this.delimiter = new ComboEnumParameter<>("Export separator",
+        "Separator character for the 'csv' exports",
+        Delimiter.COMMA,
+        Delimiter.values(),
+        Delimiter.class,
+        false,
+        "delimiter");
+
+    this.customDelimiter = new CharacterParameter("Custom Separator",
+        "Custom separator character for the 'csv' exports",
+        '|',
+        false,
+        "customDelimiter");
 
     this.numberOfThreadsModel = new ComboEnumParameter<>(
         "Multithreading",
@@ -354,9 +376,36 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
         "Expert mode",
         "Show advanced options",
         "Show all advanced parameters and options in the user interface",
-        false,
+        true,
         false,
         "expertMode");
+
+    useGroundTruthForMCEvents = new BooleanParameter(
+        "In-silico peaks",
+        "Show ground-truth signal",
+        """
+            There are 2 ways of showing intensity data for in-silico events:
+            1) use the ground-truth assigned values during generation
+            2) compute the event indices by covering 99% of the area,
+            and project these indices into the final raw data. This option includes resampling noise,
+            which may be desirable comparing simulated and recovered values. However, it also includes
+            overlapping events, i.e., not showing ground-truth""",
+        false,
+        false,
+        "useGroundTruthForMCEvents");
+
+    this.groundTruthPeakIntegrationAreaPercent = new DoubleParameter(
+        "In-silico peak THR [%]",
+        """
+            To show ground-truth of NP events, peaks are integrated to achieve X %, e.g., 99%
+            of the peak area. This give the number of points per in-silico peak,
+            their width and symmetry if ground truth is selected.
+            This parameter merely states the area percent value for these calculations""",
+        99d,
+        NF.D1C2,
+        TextFormatterOption.ASSURE_NONZERO_POSITIVE_DOUBLE,
+        false,
+        "groundTruthPeakIntegrationAreaPercent");
 
     //
     this.showReadmeToggle = new BooleanParameter(
@@ -398,6 +447,33 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
         true,
         false,
         "showHistoMCToggle");
+
+    this.histogramBinWidthHarmonisation = new ComboEnumParameter<>(
+        "Bin width",
+        """
+            If several samples/channels/populations are selected,
+            a bin width according to the selected bin width estimator will be calculated
+            for each histogram data set. However, for better comparability,
+            all should be shown with the same bin width.
+            This option is a global parameter that decides how this
+            'common bin width for all' is calculated from the individual bin widths""",
+        BinWidthHarmonisation.MIN,
+        BinWidthHarmonisation.values(),
+        BinWidthHarmonisation.class,
+        false,
+        "histogramBinWidthHarmonisation"
+    );
+
+    forceHistogramMinToZero = new BooleanParameter(
+        "Histogram",
+        "Minimum at least zero",
+        """
+            The minimum of the histogram data set will be at least as low as zero.
+            This lets the bins start at least at zero.
+            This option may help visualise signal vs. background scenarios""",
+        false,
+        false,
+        "forceHistogramMinToZero");
 
     this.showBoxPlotToggle = new BooleanParameter(
         "Graphs",
@@ -752,6 +828,18 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
         "default_y_SD");
 
 
+    linLogScaleCutoff = new DoubleParameter("LinLog axis cutoff",
+        """
+            For the LingLog scale, data below this cutoff is not changed,
+            above the cutoff data is transformed as follows:
+            cutoff * (1 + log10(value / cutoff))""",
+        10d,
+        NF.D1C3,
+        TextFormatterOption.ASSURE_DOUBLE,
+        false,
+        "linLogScaleCutoff");
+
+
     siaLowerLimit = new DoubleParameter("SIA lower limit",
         """
             Lower tolerated limit of the SIA shape factor for baseline computation.
@@ -800,6 +888,15 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
         false,
         "siaParticleFilterAlphaLowerLimit");
 
+    storeSmoothedSearchDataAsChannel = new BooleanParameter(
+        "Smooth search",
+        "Store smoothed data",
+        """
+            Store smoothed raw data for visualization
+            """,
+        false,
+        true,
+        "storeSmoothedSearchDataAsChannel");
 
     organize();
   }
@@ -823,6 +920,9 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
     this.dragDropImportFolderDepth = confParams.dragDropImportFolderDepth.copyWithoutChildren();
     this.dragDropImportFileType = confParams.dragDropImportFileType.copyWithoutChildren();
 
+    this.delimiter = confParams.delimiter.copyWithoutChildren();
+    this.customDelimiter = confParams.customDelimiter.copyWithoutChildren();
+
     this.logLevel = confParams.logLevel.copyWithoutChildren();
     this.zstdCompressionLevel = confParams.zstdCompressionLevel.copyWithoutChildren();
     this.allowMultithreadingCompression = confParams.allowMultithreadingCompression.copyWithoutChildren();
@@ -830,6 +930,9 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
     this.axisLabelSpacing = confParams.axisLabelSpacing.copyWithoutChildren();
 
     this.expertMode = confParams.expertMode.copyWithoutChildren();
+    this.useGroundTruthForMCEvents = confParams.useGroundTruthForMCEvents.copyWithoutChildren();
+    this.groundTruthPeakIntegrationAreaPercent = confParams.groundTruthPeakIntegrationAreaPercent
+        .copyWithoutChildren();
 
     this.axisFontSize = confParams.axisFontSize.copyWithoutChildren();
     this.jfreePlotsWhiteOnly = confParams.jfreePlotsWhiteOnly.copyWithoutChildren();
@@ -840,6 +943,8 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
     this.showTableToggle = confParams.showTableToggle.copyWithoutChildren();
     this.showRawMCToggle = confParams.showRawMCToggle.copyWithoutChildren();
     this.showHistoMCToggle = confParams.showHistoMCToggle.copyWithoutChildren();
+    this.histogramBinWidthHarmonisation = confParams.histogramBinWidthHarmonisation.copyWithoutChildren();
+    this.forceHistogramMinToZero = confParams.forceHistogramMinToZero.copyWithoutChildren();
     this.showScatterMCToggle = confParams.showScatterMCToggle.copyWithoutChildren();
     this.showTernaryToggle = confParams.showTernaryToggle.copyWithoutChildren();
     this.showBoxPlotToggle = confParams.showBoxPlotToggle.copyWithoutChildren();
@@ -864,6 +969,7 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
     this.default_y_mu = confParams.default_y_mu.copyWithoutChildren();
     this.default_y_SD = confParams.default_y_SD.copyWithoutChildren();
 
+    this.linLogScaleCutoff = confParams.linLogScaleCutoff.copyWithoutChildren();
     this.siaLowerLimit = confParams.siaLowerLimit.copyWithoutChildren();
     this.siaUpperLimit = confParams.siaUpperLimit.copyWithoutChildren();
     this.siaParticleFilterAlpha = confParams.siaParticleFilterAlpha.copyWithoutChildren();
@@ -871,13 +977,15 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
 
     this.nuImportSelectedIsotopes = confParams.nuImportSelectedIsotopes.copyWithoutChildren();
 
+    this.storeSmoothedSearchDataAsChannel = confParams.storeSmoothedSearchDataAsChannel.copyWithoutChildren();
+
     // Default colors
 
     this.isotopeColorIsotopeMainParameter = confParams.isotopeColorIsotopeMainParameter.copyWithoutChildren();
     // add copy of children
     for (Parameter<?> parameter : confParams.isotopeColorIsotopeMainParameter.getAllChildrenFirstGen()) {
       if (parameter instanceof ColorParameter colorParameter) {
-        String colorMatchString = colorParameter.getChannelXmlID();
+        String colorMatchString = colorParameter.getMatcherID();
         this.isotopeColorIsotopeMainParameter.addConditionalChild(colorMatchString,
             colorParameter.copyWithoutChildren());
       }
@@ -935,10 +1043,13 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
           dragDropImportFileType,
           useMethodsCsvReader,
           createNewSampleSetOnImport,
+          nuImportSelectedIsotopes,
+          delimiter,
           defaultMethodPath,
           currentMethodFile,
-          nuImportSelectedIsotopes,
           new SeparatorParameter(),
+          useGroundTruthForMCEvents,
+          groundTruthPeakIntegrationAreaPercent,
           isotopeColorIsotopeMainParameter,
           defaultIsotopeElementPar,
           resolveIsotopeConflictPar,
@@ -978,10 +1089,14 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
           default_y_mu,
           default_y_SD,
           new SeparatorParameter(),
+          linLogScaleCutoff,
+          new SeparatorParameter(),
           siaLowerLimit,
           siaUpperLimit,
           siaParticleFilterAlpha,
           siaParticleFilterAlphaLowerLimit,
+          new SeparatorParameter(),
+          storeSmoothedSearchDataAsChannel,
           new SeparatorParameter(),
           logLevel,
           numberOfThreadsModel,
@@ -994,6 +1109,9 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
           defaultProjectPath,
           defaultMethodPath,
           currentMethodFile,
+          delimiter,
+          useGroundTruthForMCEvents,
+          groundTruthPeakIntegrationAreaPercent,
           isotopeColorIsotopeMainParameter,
           defaultIsotopeElementPar,
           resolveIsotopeConflictPar,
@@ -1027,6 +1145,9 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
           default_v_SD,
           default_y_mu,
           default_y_SD,
+          new SeparatorParameter(),
+          linLogScaleCutoff,
+          new SeparatorParameter(),
           siaLowerLimit,
           siaUpperLimit,
           siaParticleFilterAlpha,
@@ -1048,6 +1169,8 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
 
 
     // Attach Children.
+    delimiter.addConditionalChild(Delimiter.CUSTOM, customDelimiter);
+
     numberOfThreadsModel.addConditionalChild(CpuThreadOption.CUSTOM, numberOfThreads);
 
     createNewSampleSetOnImport.addConditionalChild(true, incrementNewSampleSetOnImport);
@@ -1097,6 +1220,7 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
     showMethodToggle.setDecoration(new ImageDecoration<>("/img/method.png"));
     showRawMCToggle.setDecoration(new ImageDecoration<>("/img/rawViewMC.png"));
     showHistoMCToggle.setDecoration(new ImageDecoration<>("/img/histoViewMC.png"));
+    showHistoMCToggle.addConditionalChild(true, histogramBinWidthHarmonisation, forceHistogramMinToZero);
     showScatterMCToggle.setDecoration(new ImageDecoration<>("/img/scatter.png"));
     showTernaryToggle.setDecoration(new ImageDecoration<>("/img/ternaryPlot.png"));
     showBoxPlotToggle.setDecoration(new ImageDecoration<>("/img/boxplot.png"));
@@ -1168,6 +1292,8 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
           case "useMethodsCsvReader" -> useMethodsCsvReader;
           case "defaultMethodPath" -> defaultMethodPath;
           case "currentMethodFile" -> currentMethodFile;
+          case "delimiter" -> delimiter;
+          case "customDelimiter" -> customDelimiter;
           case "createNewSampleSetOnImport" -> createNewSampleSetOnImport;
           case "incrementNewSampleSetOnImport" -> incrementNewSampleSetOnImport;
           case "numberOfThreadsModel" -> numberOfThreadsModel;
@@ -1178,6 +1304,8 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
           case "zstdCompressionLevel" -> zstdCompressionLevel;
           case "allowMultithreadingCompression" -> allowMultithreadingCompression;
           case "expertMode" -> expertMode;
+          case "useGroundTruthForMCEvents" -> useGroundTruthForMCEvents;
+          case "groundTruthPeakIntegrationAreaPercent" -> groundTruthPeakIntegrationAreaPercent;
           case "axisFontSize" -> axisFontSize;
           case "jfreePlotsWhiteOnly" -> jfreePlotsWhiteOnly;
           case "lockZoomInGraphs" -> lockZoomInGraphs;
@@ -1189,6 +1317,8 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
           case "showTableToggle" -> showTableToggle;
           case "showRawMCToggle" -> showRawMCToggle;
           case "showHistoMCToggle" -> showHistoMCToggle;
+          case "histogramBinWidthHarmonisation" -> histogramBinWidthHarmonisation;
+          case "forceHistogramMinToZero" -> forceHistogramMinToZero;
           case "showSingleEventView" -> showSingleEventView;
           case "showScatterMCToggle" -> showScatterMCToggle;
           case "showTernaryToggle" -> showTernaryToggle;
@@ -1199,7 +1329,7 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
           case "showAverageView" -> showAverageView;
           case "showLoggerToggle" -> showLoggerToggle;
           case "extendChannelTable" -> extendChannelTable;
-          case "isotopeColorIsotopePar" -> isotopeColorIsotopeMainParameter;
+          case "isotopeColorIsotopeMainParameter" -> isotopeColorIsotopeMainParameter;
           case "defaultIsotopeElementPar" -> defaultIsotopeElementPar;
           case "resolveIsotopeConflictPar" -> resolveIsotopeConflictPar;
           case "showQuantToggle" -> showQuantToggle;
@@ -1216,12 +1346,15 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
           case "default_y_mu" -> default_y_mu;
           case "default_y_SD" -> default_y_SD;
 
+          case "linLogScaleCutoff" -> linLogScaleCutoff;
           case "siaLowerLimit" -> siaLowerLimit;
           case "siaUpperLimit" -> siaUpperLimit;
           case "siaParticleFilterAlpha" -> siaParticleFilterAlpha;
           case "siaParticleFilterAlphaLowerLimit" -> siaParticleFilterAlphaLowerLimit;
 
           case "nuImportSelectedIsotopes" -> nuImportSelectedIsotopes;
+
+          case "storeSmoothedSearchDataAsChannel" -> storeSmoothedSearchDataAsChannel;
 
           default -> null;
         };
@@ -1263,7 +1396,7 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
                 );
                 rgbParam.readFromXmlElement(element);
                 // now extract the colorMatchString to add as child
-                String colorMatchString = rgbParam.getChannelXmlID();
+                String colorMatchString = rgbParam.getMatcherID();
                 isotopeColorIsotopeMainParameter.addConditionalChild(colorMatchString, rgbParam);
               }
             }
@@ -1460,6 +1593,14 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
     return expertMode.getValue();
   }
 
+  public Parameter<Boolean> getUseGroundTruthForMCEvents() {
+    return useGroundTruthForMCEvents;
+  }
+
+  public Parameter<Double> getGroundTruthPeakIntegrationAreaPercent() {
+    return groundTruthPeakIntegrationAreaPercent;
+  }
+
   public boolean isShowReadme() {
     return showReadmeToggle.getValue();
   }
@@ -1478,6 +1619,14 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
 
   public boolean isShowHistoMC() {
     return showHistoMCToggle.getValue();
+  }
+
+  public Parameter<BinWidthHarmonisation> getHistogramBinWidthHarmonisation() {
+    return histogramBinWidthHarmonisation;
+  }
+
+  public Parameter<Boolean> getForceHistogramMinToZero() {
+    return forceHistogramMinToZero;
   }
 
   public boolean isShowSpectrum() {
@@ -1735,6 +1884,10 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
   }
 
 
+  public Parameter<Double> getLinLogScaleCutoff() {
+    return linLogScaleCutoff;
+  }
+
   public Parameter<Double> getSiaLowerLimit() {
     return siaLowerLimit;
   }
@@ -1749,5 +1902,27 @@ public class ConfParams extends AbstractParamSet implements ParamSet {
 
   public Parameter<Double> getSiaParticleFilterAlpha() {
     return siaParticleFilterAlpha;
+  }
+
+  public Parameter<Delimiter> getDelimiterParameter() {
+    return delimiter;
+  }
+
+  public Parameter<Character> getCustomDelimiterParameter() {
+    return customDelimiter;
+  }
+
+  public Character getDelimiter() {
+    Character character = ',';
+    if (delimiter.getValue().equals(Delimiter.CUSTOM)) {
+      character = customDelimiter.getValue();
+    } else {
+      character = delimiter.getValue().getDelimiter();
+    }
+    return character;
+  }
+
+  public Parameter<Boolean> getStoreSmoothedSearchDataAsChannel() {
+    return storeSmoothedSearchDataAsChannel;
   }
 }

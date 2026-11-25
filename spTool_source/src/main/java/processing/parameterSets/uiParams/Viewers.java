@@ -73,9 +73,7 @@ import math.stat.MeasureOfLocation;
 import math.stat.PeakSymmetry;
 import math.stat.PreFilter;
 import math.units.Unit;
-import math.units.enums.IntensityUnit;
-import math.units.enums.TimeUnit;
-import math.units.enums.ViewUnits;
+import math.units.enums.*;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.commons.math3.analysis.integration.BaseAbstractUnivariateIntegrator;
 import org.apache.commons.math3.analysis.integration.RombergIntegrator;
@@ -1539,7 +1537,7 @@ public abstract class Viewers {
 
       } else if (smoothType.equals(SmoothType.MOAV)) {
         double[] intensity = averagedData.getIntensity();
-        intensity = Smoothing.moavSmooth(intensity, moavWidth);
+        intensity = Smoothing.centredMoavSmooth(intensity, moavWidth);
         series = new TISeriesRAM(averagedData.getTime(), intensity);
 
       } else if (smoothType.equals(SmoothType.SAVITZKY_GOLAY)) {
@@ -1675,7 +1673,10 @@ public abstract class Viewers {
                         .boxed()
                         .sorted(Comparator.comparingDouble(i -> regionBasedEventParameter[i]))
                         .map(events::get)
-                        .toList();
+                        .collect(Collectors.toCollection(ArrayList::new));
+                    if (plainSet.getInvertSortBoolean().getValue()) {
+                      Collections.reverse(events);
+                    }
                     eventMap.put(ch, events);
                   }
                 } else {
@@ -1881,6 +1882,9 @@ public abstract class Viewers {
                 double val2 = o2.get(plainSet.getEventParameter().getValue());
                 return Double.compare(val1, val2);
               });
+              if (plainSet.getInvertSortBoolean().getValue()) {
+                Collections.reverse(events);
+              }
             }
 
             // for some reason we should +1 (I think b/c we show 1 DP overlapping with event)
@@ -3181,27 +3185,36 @@ public abstract class Viewers {
       // TODO: Clean this up!
       // TODO 2: consider moving parts of the chart creation out of the parallel task (c.f. raw plot)
       addPopulation.setOnAction(e -> {
+
+        // Aligned populations (index-matched across isotopes) are only valid with exactly one selected
+        // channel.
+        // Everything else goes through the per-channel logic.
+        List<PopulationID> alignedPops = new ArrayList<>();
+        List<PopulationID> plainPops = new ArrayList<>();
+        for (PopulationID p : selPop) {
+          if (selChannels.size() == 1 && AnalysisUtils.isAlignedOrPValOrSim(p)) {
+            alignedPops.add(p);
+          } else {
+            plainPops.add(p);
+          }
+        }
+
         /*
         ##############################################################################
         ################## Scatter all Isotopes ##############################
         ##############################################################################
         */
 
-        if (!plainSet.getScatterIsotopes().getValue()) {
+        if (plainSet.getScatterIsotopes().getValue().equals(ScatterOptions.PARAMETER)) {
 
           // check if aligned version is present
-          boolean isAligned = false;
-          if (selChannels.size() == 1) {
-            isAligned = AnalysisUtils.isAnyAlignedOrPValOrSim(selPop);
-          }
-
-          if (isAligned) {
+          if (!alignedPops.isEmpty()) {
             for (Sample sample : samples) {
 
-              for (PopulationID populationID : selPop) {
+              for (PopulationID populationID : alignedPops) {
 
                 for (int i = 0; i < polygons.size(); i++) {
-                  HashSet<Integer> regionsInPolygon = new HashSet<>();
+                  TreeSet<Integer> regionsInPolygon = new TreeSet<>();
 
                   Pair<PolygonOverlay, AtomicBoolean> polygon = polygons.get(i);
                   // construct double precision path from the polygon points
@@ -3251,23 +3264,36 @@ public abstract class Viewers {
                           EventCollection collection = pop.getEvents();
                           List<Event> events = collection.getNpEvents();
 
+                          // make sure that the events at invalid indices (i.e., x or y zero) are removed
+                          if (plainSet.isComputeNonzero()) {
+                            List<Event> validEvents = new ArrayList<>();
+                            for (Integer validIndex : validIndices) {
+                              if (validIndex < events.size()) {
+                                validEvents.add(events.get(validIndex));
+                              }
+                            }
+                            events = validEvents;
+                          }
+
                           // create component
                           if (xData.length > 0 && yData.length > 0 && !events.isEmpty()
                               && xData.length == yData.length && events.size() == xData.length) {
 
                             for (int n = 0; n < xData.length; n++) {
                               if (path.contains(xData[n], yData[n])) {
-                                regionsInPolygon.add(n);
+                                // map the filtered position back to the original event index
+                                regionsInPolygon.add(plainSet.isComputeNonzero() ? validIndices.get(n) : n);
                               }
                             }
                           }
                         }
                       }
 
-                      // if we remove events according to nonzero criterion, we have to remove them here too
-                      if (plainSet.isComputeNonzero()) {
-                        regionsInPolygon.removeIf(idx -> !validIndices.contains(idx));
-                      }
+                      // // if we remove events according to nonzero criterion, we have to remove them here
+                      // too
+                      // if (plainSet.isComputeNonzero()) {
+                      //   regionsInPolygon.removeIf(idx -> !validIndices.contains(idx));
+                      // }
                     }
 
                     // now construct population for all isotopes
@@ -3285,13 +3311,16 @@ public abstract class Viewers {
                           if (pop != null) {
                             EventCollection collection = pop.getEvents();
                             List<Event> events = collection.getNpEvents();
+                            List<Event> targetEvents = new ArrayList<>(events.size());
 
-                            MainEventCollection newCollection = new SubEventCollection(trace, collection);
                             for (Integer idx : regionsInPolygon) {
                               if (idx < events.size()) {
-                                newCollection.add(events.get(idx));
+                                targetEvents.add(events.get(idx));
                               }
                             }
+
+                            EventCollection newCollection = AnalysisUtils.createSubEventCollection(trace,
+                                pop, targetEvents);
 
                             PopulationID idCopy = new PopulationID(populationID);
                             idCopy.append((new PopulationStep.PolygonSubtype(
@@ -3320,17 +3349,20 @@ public abstract class Viewers {
           ############## Scatter all isotopes but is not aligned nor p-value ###########
           ##############################################################################
            */
-          } else {
+          }
+          if (!plainPops.isEmpty()) {
 
             for (Sample sample : samples) {
               for (Channel channel : selChannels) {
-                for (PopulationID populationID : selPop) {
+                for (PopulationID populationID : plainPops) {
 
                   double[] xData = sample.getData(channel, populationID,
                       EventType.NP, plainSet.getEventParameterX().getValue(), unit);
 
                   double[] yData = sample.getData(channel, populationID,
                       EventType.NP, plainSet.getEventParameterY().getValue(), unit);
+
+                  final int nUnfiltered = xData.length;
 
                   List<Integer> validIndices = new ArrayList<>();
                   if (plainSet.isComputeNonzero()) {
@@ -3402,10 +3434,10 @@ public abstract class Viewers {
                             // create population
                             if (!eventsInPolygon.isEmpty()) {
 
-                              MainEventCollection newCollection = new SubEventCollection(trace, collection);
-                              newCollection.add(eventsInPolygon);
-                              // isotope!!!
+                              EventCollection newCollection = AnalysisUtils.createSubEventCollection(
+                                  trace, pop, eventsInPolygon);
 
+                              // isotope!!!
                               PopulationID idCopy = new PopulationID(populationID);
                               idCopy.append((new PopulationStep.PolygonSubtype(
                                   "PLGN_" + i, xVertices, yVertices)));
@@ -3425,12 +3457,12 @@ public abstract class Viewers {
                         // INCOMPLETE POPULATION: check COLLECTION size() not the event LIST size()
                       } else if (collection instanceof IncompleteEventCollection &&
                           xData.length > 0 && yData.length > 0
-                          && xData.length == yData.length && collection.size() == xData.length) {
-                        List<Integer> polygonIndices = new ArrayList<>();
+                          && xData.length == yData.length && collection.size() == nUnfiltered) {
                         for (int i = 0; i < polygons.size(); i++) {
+                          List<Integer> polygonIndices = new ArrayList<>();
 
                           Pair<PolygonOverlay, AtomicBoolean> polygon = polygons.get(i);
-                          List<Event> eventsInPolygon = new ArrayList<>();
+                          // List<Event> eventsInPolygon = new ArrayList<>();
 
                           // construct double precision path from the polygon points
                           List<Point2D> pts = polygon.getKey().getPoints();
@@ -3456,7 +3488,7 @@ public abstract class Viewers {
 
                             for (int n = 0; n < xData.length; n++) {
                               if (path.contains(xData[n], yData[n])) {
-                                polygonIndices.add(n);
+                                polygonIndices.add(plainSet.isComputeNonzero() ? validIndices.get(n) : n);
                               }
                             }
 
@@ -3510,6 +3542,7 @@ public abstract class Viewers {
                 PopulationID populationID = selPop.get(i);
 
                 // check if aligned
+                // TODO: HAC stores SimPops apparently by index, i.e., introduces the resampled error of area!
                 boolean isAlignedOrP = AnalysisUtils.isAlignedOrPValOrSim(populationID);
 
                 if (isAlignedOrP) {
@@ -3519,6 +3552,31 @@ public abstract class Viewers {
 
                   double[] yData = sample.getData(channelY, populationID,
                       EventType.NP, plainSet.getEventParameterY().getValue(), unit);
+
+                  // check for isotope ratio
+                  if (plainSet.getScatterIsotopes().getValue().equals(ScatterOptions.RATIO)) {
+                    double meanX = MeasureOfLocation.MEAN.calc(xData);
+                    double meanY = MeasureOfLocation.MEAN.calc(yData);
+                    if (meanX < meanY) {
+                      // Swap
+                      Channel tempX = channelX;
+                      Channel tempY = channelY;
+                      double[] tempXArr = xData;
+                      double[] tempYArr = yData;
+                      xData = tempYArr;
+                      yData = tempXArr;
+                      channelX = tempY;
+                      channelY = tempX;
+                    }
+
+                    double[] ratio = new double[yData.length];
+                    for (int j = 0; j < ratio.length; j++) {
+                      if (xData[j] != 0) {
+                        ratio[j] = yData[j] / xData[j];
+                      }
+                    }
+                    yData = ratio;
+                  }
 
                   List<Integer> validIndices = new ArrayList<>();
                   if (plainSet.isComputeNonzero()) {
@@ -3597,8 +3655,8 @@ public abstract class Viewers {
 
                               // create population
                               if (!eventsInPolygon.isEmpty()) {
-                                MainEventCollection coll = new SubEventCollection(trace, collection);
-                                coll.add(eventsInPolygon);
+                                EventCollection newCollection = AnalysisUtils.createSubEventCollection(
+                                    trace, pop, eventsInPolygon);
 
                                 PopulationID idCopy = new PopulationID(populationID);
                                 idCopy.append((new PopulationStep.PolygonSubtype("PLGN_" + ip,
@@ -3608,7 +3666,7 @@ public abstract class Viewers {
                                     new NpPopulation(
                                         idCopy,
                                         pop,
-                                        coll,
+                                        newCollection,
                                         pop.getContributingChannels()
                                     ),
                                     true);
@@ -3697,7 +3755,7 @@ public abstract class Viewers {
               int totalSteps = samples.size() * selChannels.size();
               int step = 0;
 
-              if (!plainSet.getScatterIsotopes().getValue()) {
+              if (plainSet.getScatterIsotopes().getValue().equals(ScatterOptions.PARAMETER)) {
                 for (Sample sample : samples) {
 
                   isotopeLoop:
@@ -3813,6 +3871,34 @@ public abstract class Viewers {
                       double[] yData = sample.getData(channelY, populationID,
                           EventType.NP, plainSet.getEventParameterY().getValue(), unit);
 
+                      // check for isotope ratio
+                      if (plainSet.getScatterIsotopes().getValue().equals(ScatterOptions.RATIO)) {
+                        double meanX = MeasureOfLocation.MEAN.calc(xData);
+                        double meanY = MeasureOfLocation.MEAN.calc(yData);
+                        if (meanX < meanY) {
+                          // Swap
+                          Channel tempX = channelX;
+                          Channel tempY = channelY;
+                          double[] tempXArr = xData;
+                          double[] tempYArr = yData;
+                          xData = tempYArr;
+                          yData = tempXArr;
+                          channelX = tempY;
+                          channelY = tempX;
+                        }
+
+                        double[] ratio = new double[yData.length];
+                        for (int j = 0; j < ratio.length; j++) {
+                          if (xData[j] != 0) {
+                            ratio[j] = yData[j] / xData[j];
+                          }
+                        }
+                        yData = ratio;
+                      }
+
+                      // TODO: on fig update fill HashMap<Channel ,Record:Events+x+y
+                      //  -> make polygon from the map
+
                       List<Integer> validIndices = new ArrayList<>();
                       if (plainSet.isComputeNonzero()) {
                         Pair<double[], double[]> nz = ArrUtils.strictlyGreaterThan(xData, yData,
@@ -3826,8 +3912,14 @@ public abstract class Viewers {
 
                       // Else we append as "Si Si Si Si Si Si Element mass /fg"
                       if (needsAxisLabel) {
-                        xLabel = channelX.getShortUIString() + " " + xLabel;
-                        yLabel = channelY.getShortUIString() + " " + yLabel;
+                        if (plainSet.getScatterIsotopes().getValue().equals(ScatterOptions.RATIO)) {
+                          xLabel = channelX.getShortUIString() + " " + xLabel;
+                          yLabel = channelY.getShortUIString() + "/" +
+                              channelX.getShortUIString() + " (ratio of " + yLabel + ")";
+                        } else {
+                          xLabel = channelX.getShortUIString() + " " + xLabel;
+                          yLabel = channelY.getShortUIString() + " " + yLabel;
+                        }
                         needsAxisLabel = false;
                       }
 
@@ -4135,6 +4227,8 @@ public abstract class Viewers {
     private final TernaryPlotParameters params;
 
     private final AtomicReference<ChartViewer> viewerRef = new AtomicReference<>(null);
+    private final Button shuffleBtn = UiUtil.getImageButton("Shuffle", "/img/selectRandom.png",
+        "Randomly select 3 channels");
     private final Button startPolygonBtn = UiUtil.getImageButton("Draw", "/img/drawPolygon.png",
         "Start drawing a polygon in the scatter plot");
     private final Button addPopulation = UiUtil.getImageButton("Store", "/img/selectAll.png",
@@ -4144,7 +4238,8 @@ public abstract class Viewers {
     private final Button removeAllPolygonPopsBtn = UiUtil.getImageButton("Delete", "/img/delete.png",
         "Delete all populations in the sample that are of type 'polygon'");
 
-    private final HBox hbox = new HBox(5, startPolygonBtn, addPopulation, clearPolygons,
+    private final HBox hbox = new HBox(5, shuffleBtn, new Separator(Orientation.VERTICAL),
+        startPolygonBtn, addPopulation, clearPolygons,
         removeAllPolygonPopsBtn);
     private final List<Pair<PolygonOverlay, AtomicBoolean>> polygons = new ArrayList<>();
     private final List<Pair<PolygonOverlay, AtomicBoolean>> backupPolygons = new ArrayList<>();
@@ -4169,6 +4264,10 @@ public abstract class Viewers {
         polygon.getKey().clear();
       }
       polygons.clear();
+
+      shuffleBtn.setOnAction(e -> {
+        SpTool3Main.getRunTime().getMainWindowCtl().randomlySelectIsotopes(3);
+      });
 
       startPolygonBtn.setOnAction(e -> {
         // unlisten prev polygons
@@ -4311,15 +4410,16 @@ public abstract class Viewers {
                             path.closePath();
 
                             for (int n = 0; n < xData.length; n++) {
-                              if (path.contains(xData[n], yData[n])) {
+                              if (JFreeUtil.hasTernarySignal(a[n], b[n], c[n])
+                                  && path.contains(xData[n], yData[n])) {
                                 eventsInPolygon.add(events.get(n));
                               }
                             }
 
                             // create population
                             if (!eventsInPolygon.isEmpty()) {
-                              MainEventCollection coll = new SubEventCollection(trace, collection);
-                              coll.add(eventsInPolygon);
+                              EventCollection newCollection = AnalysisUtils.createSubEventCollection(
+                                  trace, pop, eventsInPolygon);
 
                               PopulationID idCopy = new PopulationID(popID);
                               idCopy.append((new PopulationStep.PolygonSubtype("PLGN_" + ip,
@@ -4329,7 +4429,7 @@ public abstract class Viewers {
                                   new NpPopulation(
                                       idCopy,
                                       pop,
-                                      coll,
+                                      newCollection,
                                       pop.getContributingChannels()
                                   ),
                                   true);
@@ -4413,15 +4513,16 @@ public abstract class Viewers {
                             path.closePath();
 
                             for (int n = 0; n < xData.length; n++) {
-                              if (path.contains(xData[n], yData[n])) {
+                              if (JFreeUtil.hasTernarySignal(a[n], b[n], c[n])
+                                  && path.contains(xData[n], yData[n])) {
                                 eventsInPolygon.add(events.get(n));
                               }
                             }
 
                             // create population
                             if (!eventsInPolygon.isEmpty()) {
-                              MainEventCollection coll = new SubEventCollection(trace, collection);
-                              coll.add(eventsInPolygon);
+                              EventCollection newCollection = AnalysisUtils.createSubEventCollection(
+                                  trace, pop, eventsInPolygon);
 
                               PopulationID idCopy = new PopulationID(popID);
                               idCopy.append((new PopulationStep.PolygonSubtype("PLGN_" + ip,
@@ -4431,7 +4532,7 @@ public abstract class Viewers {
                                   new NpPopulation(
                                       idCopy,
                                       pop,
-                                      coll,
+                                      newCollection,
                                       pop.getContributingChannels()
                                   ),
                                   true);
@@ -4505,7 +4606,8 @@ public abstract class Viewers {
                 double[] c = sample.getData(selChannels.get(2), popID,
                     EventType.NP, eventPar, unit);
 
-                Pair<double[], double[]> ternary = JFreeUtil.clampAndNormalizeToUnitTernary(a, b, c);
+                Pair<double[], double[]> ternary = JFreeUtil.keepTernarySignal(a, b, c,
+                    JFreeUtil.clampAndNormalizeToUnitTernary(a, b, c));
 
                 double alpha = params.getColorAlpha().getValue();
                 alpha = Math.max(0, alpha);
@@ -4619,7 +4721,8 @@ public abstract class Viewers {
                 double[] c = sample.getData(channel, popID,
                     EventType.NP, params.getEventParameterC().getValue(), unit);
 
-                Pair<double[], double[]> ternary = JFreeUtil.clampAndNormalizeToUnitTernary(a, b, c);
+                Pair<double[], double[]> ternary = JFreeUtil.keepTernarySignal(a, b, c,
+                    JFreeUtil.clampAndNormalizeToUnitTernary(a, b, c));
 
                 double alpha = params.getColorAlpha().getValue();
                 alpha = Math.max(0, alpha);
@@ -5054,7 +5157,23 @@ public abstract class Viewers {
 
     @Override
     public double getValueWidth() {
-      return 135d;
+      return 140d;
+    }
+
+    // This ensures that we keep the previous graph
+    @Override
+    public void clearGraph() {
+      if (super.getPlainSet() instanceof HACViewerParameters) {
+        HACViewerParameters plainSet = (HACViewerParameters) super.getPlainSet();
+        boolean isFreeze = plainSet.getFreezeGraphBoolean().getValue();
+        if (isFreeze) {
+          // do nothing
+        } else {
+          super.clearGraph();
+        }
+      } else {
+        super.clearGraph();
+      }
     }
 
     @Override
@@ -5062,357 +5181,543 @@ public abstract class Viewers {
       if (super.getPlainSet() instanceof HACViewerParameters) {
         HACViewerParameters plainSet = (HACViewerParameters) super.getPlainSet();
 
-        progress.set(0d);
-        isStopped.set(false);
+        boolean isFreeze = plainSet.getFreezeGraphBoolean().getValue();
+        if (!isFreeze) {
 
-        UiUtil.showLoading(targetPane);
+          progress.set(0d);
+          isStopped.set(false);
 
-        List<Sample> selSamples = SpTool3Main.getRunTime().getMainWindowCtl().getSelSamples();
-        List<PopulationID> selPops = SpTool3Main.getRunTime().getMainWindowCtl().getSelPops();
-        List<Channel> loadedChannels = SpTool3Main.getRunTime().getMainWindowCtl().getAllChannels();
-        List<Channel> selChannels = SpTool3Main.getRunTime().getMainWindowCtl().getSelChannels();
+          UiUtil.showLoading(targetPane);
 
-        double minFractionPct = plainSet.getMinFractionPct().getValue();
-        int minClusterSizePie = plainSet.getMinClusterSizePie().getValue();
-        IsotopeSelection isotopeSelection = plainSet.getIsotopeSelection().getValue();
-        List<Isotope> excludedList = plainSet.listExcludedIsotopes();
-        List<Isotope> includedList = plainSet.listIncludedIsotopes();
-        boolean removeIsobaricConflicts = plainSet.getFlattenIsobarsToDefaults().getValue();
+          List<Sample> selSamples = SpTool3Main.getRunTime().getMainWindowCtl().getSelSamples();
+          List<PopulationID> selPops = SpTool3Main.getRunTime().getMainWindowCtl().getSelPops();
+          List<Channel> loadedChannels = SpTool3Main.getRunTime().getMainWindowCtl().getAllChannels();
+          List<Channel> selChannels = SpTool3Main.getRunTime().getMainWindowCtl().getSelChannels();
 
-        double intensityThreshold = plainSet.getIntensityThreshold().getValue();
-        boolean useLog2 = plainSet.getUseLog2().getValue();
-        ZScoreTarget zScoreTarget = plainSet.getzScoreType().getValue();
-        DistanceOptions distanceOption = plainSet.getOverrideThreshold().getValue();
-        double distanceThreshold = plainSet.getDistanceThreshold().getValue();
-        boolean useLogScaleDendrogram = plainSet.getUseLogScaleDendrogram().getValue();
-        boolean showClusterNumbers = plainSet.getShowClusterNumbers().getValue();
-        boolean applyCosine = plainSet.getApplyCosineFlattening().getValue();
-        double cosineMergeThreshold = plainSet.getCosineScore().getValue();
-        boolean useLog2ForCosine = plainSet.getUseLog2ForCosine().getValue();
+          double minFractionPct = plainSet.getMinFractionPct().getValue();
+          int minClusterSizePie = plainSet.getMinClusterSizePie().getValue();
+          IsotopeSelection isotopeSelection = plainSet.getIsotopeSelection().getValue();
+          List<Isotope> excludedList = plainSet.listExcludedIsotopes();
+          List<Isotope> includedList = plainSet.listIncludedIsotopes();
+          boolean removeIsobaricConflicts = plainSet.getFlattenIsobarsToDefaults().getValue();
 
-        // Copied from spectrum viewer, which was built by claude sonnet 4.6 based on the histogram
-        // template
-        WorkingTask graphTask = new WorkingTask() {
-          @Override
-          public String getTaskName() {
-            return "Show HAC plot";
-          }
+          double intensityThreshold = plainSet.getIntensityThreshold().getValue();
+          boolean useLog2 = plainSet.getUseLog2().getValue();
+          ZScoreTarget zScoreTarget = plainSet.getzScoreType().getValue();
+          DistanceOptions distanceOption = plainSet.getOverrideThreshold().getValue();
+          double distanceThreshold = plainSet.getDistanceThreshold().getValue();
+          double distanceThresholdPct = plainSet.getDistanceThresholdPercent().getValue();
+          boolean useLogScaleDendrogram = plainSet.getUseLogScaleDendrogram().getValue();
+          boolean showClusterNumbers = plainSet.getShowClusterNumbers().getValue();
+          boolean applyCosine = plainSet.getApplyCosineFlattening().getValue();
+          double cosineMergeThreshold = plainSet.getCosineScore().getValue();
+          boolean useLog2ForCosine = plainSet.getUseLog2ForCosine().getValue();
 
-          @Override
-          public AtomicDouble getProgress() {
-            return progress;
-          }
+          // Copied from spectrum viewer, which was built by claude sonnet 4.6 based on the histogram
+          // template
+          WorkingTask graphTask = new WorkingTask() {
+            @Override
+            public String getTaskName() {
+              return "Show HAC plot";
+            }
 
-          @Override
-          public void stop() {
-            isStopped.set(true);
-          }
+            @Override
+            public AtomicDouble getProgress() {
+              return progress;
+            }
 
-          @Override
-          public TaskResult call() {
-            try {
-              if (selSamples != null && !selSamples.isEmpty()
-                  && selPops != null && !selPops.isEmpty()) {
+            @Override
+            public void stop() {
+              isStopped.set(true);
+            }
 
-                // Only apply to first selected so far to keep it easy: Later consider scroll/tab pane?
-                Sample sample = selSamples.get(0);
-                PopulationID popID = selPops.get(0);
+            @Override
+            public TaskResult call() {
+              try {
+                if (selSamples != null && !selSamples.isEmpty()
+                    && selPops != null && !selPops.isEmpty()) {
 
-                // Convert to spectral region
-                List<SpectralArray> spectralRegionsData = new ArrayList<>(sample.getSpectralData(popID));
-                // when creating populations, we shall add complete unfiltered regions data
-                final List<SpectralArray> spectralRegionsDataCopy = new ArrayList<>(spectralRegionsData);
+                  // Only apply to first selected so far to keep it easy: Later consider scroll/tab pane?
+                  Sample sample = selSamples.get(0);
+                  PopulationID popID = selPops.get(0);
 
-                if (spectralRegionsData.isEmpty()) {
-                  // try to compute the spectra from drive b/c the cache inside the samlpe was empty
-                  LOGGER.trace("No spectral data. Loading data from available sources.");
-                  SpectralUtil.computeSpectra(sample, popID);
-                  // try load again
-                  spectralRegionsData = new ArrayList<>(sample.getSpectralData(popID));
-                }
+                  // this means, just take the index-based spectral data (ignoring processing options)
+                  boolean useSpectralData = plainSet.getUseDataFromSpectra().getValue();
+                  boolean useQuant = plainSet.getLimitToAndApplyQuantifiedMass().getValue();
+                  boolean isAlignedPSim = AnalysisUtils.isAlignedOrPValOrSim(popID);
 
+                  // TODO: HAC stores SimPops apparently by index, i.e., introduces the resampled error!
+                  if (isAlignedPSim) {
 
-                // check for blacklisted elements
-                // enable exclusion of certain isotopes
-                switch (isotopeSelection) {
-                  case ALL_SAMPLE -> {
-                  }
-                  case ALL_LOADED -> {
-                    spectralRegionsData.removeIf(spectArr -> !loadedChannels.contains(spectArr.getChannel()));
-                  }
-                  case SELECTED -> {
-                    spectralRegionsData.removeIf(spectArr -> !selChannels.contains(spectArr.getChannel()));
-                  }
-                  case POSITIVE_LIST_SELECTION -> {
-                    spectralRegionsData.removeIf(spectArr -> !includedList.contains(spectArr.getChannel().getIsotope()));
-                  }
-                  case NEGATIVE_LIST_EXCLUSION -> {
-                    spectralRegionsData.removeIf(spectArr -> excludedList.contains(spectArr.getChannel().getIsotope()));
-                  }
-                  default -> {
-                    // keep as is, we should not reach this branch
-                  }
-                }
+                    // Convert to spectral region
+                    List<SpectralArray> spectralRegionsData = new ArrayList<>(sample.getSpectralData(popID));
 
-                /*
-                 * Filter spectra: Ignore spectra where no m/z exceeds the threshold.
-                 * Filter here at top level (and not inside preprocess) to keep labels for slices correct
-                 */
-                spectralRegionsData.removeIf(spectArr -> {
-                  int aboveThrCounter = 0;
-                  for (double v : spectArr.getIntensity()) {
-                    if (v > intensityThreshold) {
-                      aboveThrCounter = aboveThrCounter + 1;
+                    if (spectralRegionsData.isEmpty()) {
+                      // try to compute the spectra from drive b/c the cache inside the sample was empty
+                      LOGGER.trace("No spectral data. Loading data from available sources.");
+                      SpectralUtil.computeSpectra(sample, popID);
+                      // try load again
+                      spectralRegionsData = new ArrayList<>(sample.getSpectralData(popID));
                     }
-                    if (aboveThrCounter > 1) {
-                      return false; // keep
+
+                    // when creating populations, we shall add complete unfiltered regions data
+                    final List<SpectralArray> spectralRegionsDataCopy = new ArrayList<>(spectralRegionsData);
+
+                    // check for blacklisted elements
+                    // enable exclusion of certain isotopes
+                    switch (isotopeSelection) {
+                      case ALL_SAMPLE -> {
+                      }
+                      case ALL_LOADED -> {
+                        spectralRegionsData.removeIf(spectArr -> !loadedChannels.contains(spectArr.getChannel()));
+                      }
+                      case SELECTED -> {
+                        spectralRegionsData.removeIf(spectArr -> !selChannels.contains(spectArr.getChannel()));
+                      }
+                      case POSITIVE_LIST_SELECTION -> {
+                        spectralRegionsData.removeIf(spectArr -> !includedList.contains(spectArr.getChannel().getIsotope()));
+                      }
+                      case NEGATIVE_LIST_EXCLUSION -> {
+                        spectralRegionsData.removeIf(spectArr -> excludedList.contains(spectArr.getChannel().getIsotope()));
+                      }
+                      default -> {
+                        // keep as is, we should not reach this branch
+                      }
                     }
-                  }
-                  return true; // drop
-                });
 
-                List<Channel> validChannels = spectralRegionsData.stream()
-                    .map(SpectralArray::getChannel)
-                    .toList();
+                    // Check if quantification is requested; useQuant option only shows if useSpectral==false
+                    List<double[]> procData = new ArrayList<>();
+                    List<Channel> usedChannels = new ArrayList<>();
 
-                // transpose to regions and elements:
-                SpectralRegionElement sre = new SpectralRegionElement(spectralRegionsData);
+                    if (useSpectralData) {
+                      /*
+                       * Filter spectra: Ignore spectra where no m/z exceeds the threshold.
+                       * Filter here at top level (and not inside preprocess) to keep labels for slices
+                       * correct
+                       */
+                      spectralRegionsData.removeIf(sa -> !ArrUtils.exceedsThreshold(
+                          sa.getIntensity(),
+                          intensityThreshold,
+                          2));
+                    } else {
+                      // We are using the processed data, potentially including quantification.
+                      // Group by channel category (not by isotope): non-element channels have no isotope.
+                      Map<ChannelCategory, List<SpectralArray>> categorySpecArrMap = new LinkedHashMap<>();
+                      for (SpectralArray sa : spectralRegionsData) {
+                        ChannelCategory category = sa.getChannel().getCategory();
+                        if (category != null) {
+                          categorySpecArrMap.computeIfAbsent(category, k -> new ArrayList<>()).add(sa);
+                        }
+                      }
 
-                // are there data?
-                if (!sre.getIntensities().isEmpty()) {
-                  List<double[]> data = sre.getIntensities();
+                      List<SpectralArray> keptSpecArrays = new ArrayList<>();
+                      for (Map.Entry<ChannelCategory, List<SpectralArray>> entry :
+                          categorySpecArrMap.entrySet()) {
+                        ChannelCategory category = entry.getKey();
+                        Element element = category instanceof Element ele ? ele : null; // null for
+                        // non-elements
+                        List<SpectralArray> spectralArrays = new ArrayList<>(entry.getValue());
 
-                  // Fit (expensive): reuse cached FittedHAC if preprocessing inputs are unchanged
-                  HacInstructionWrapper wrapper = sample.getHacWrapper(popID);
-                  HAC.FittedHAC fitted;
+                        if (useQuant) {
+                          // Mass quantification (abundance, default isotope, atto-gram) only exists for
+                          // elements
+                          if (element == null) {
+                            LOGGER.trace("Category {} is not an element; skipped in quantified mode.",
+                                category);
+                            continue;
+                          }
 
-                  // check if valid wrapper
-                  if (wrapper != null && wrapper.isEqualInstructions(
-                      useLog2,
-                      zScoreTarget,
-                      validChannels)) {
-                    fitted = wrapper.getFit();
-                  } else {
+                          // Sort by abundance
+                          spectralArrays.sort((a, b) -> {
+                            var isotopeA = a.getChannel().getIsotope();
+                            var isotopeB = b.getChannel().getIsotope();
+                            if (isotopeA == null || isotopeB == null) {
+                              return 0;
+                            }
+                            return Double.compare(isotopeB.getAbundance(), isotopeA.getAbundance());
+                          });
 
-                    // 2. Preprocess [my own implementation!] -> here we apply the intensity threshold
-                    List<double[]> processed = HAC.preprocess(
-                        data,
-                        useLog2,
-                        zScoreTarget
-                    );
+                          // regardless the abundance, set the default choice from config first!
+                          Isotope defaultIsotope =
+                              SpTool3Main.getRunTime().getConfParams().getDefaultIsotope(element);
+                          for (int i = 0; i < spectralArrays.size(); i++) {
+                            if (Objects.equals(defaultIsotope,
+                                spectralArrays.get(i).getChannel().getIsotope())) {
+                              spectralArrays.add(0, spectralArrays.remove(i));
+                              break;
+                            }
+                          }
 
-                    // Here we execute the HAC fit!
-                    fitted = HAC.fit(processed);
+                          // Go through spectral arrays from most to least abundant
+                          for (SpectralArray sa : spectralArrays) {
+                            Channel channel = sa.getChannel();
+                            double[] mass = sample.getData(channel, popID, EventType.NP,
+                                EventParameter.NET_AREA, MassUnit.ATTO_GRAM);
+                            if (mass.length > 1) {
+                              double[] counts = sample.getData(channel, popID, EventType.NP,
+                                  EventParameter.NET_AREA, IntensityUnit.CTS);
+                              if (ArrUtils.exceedsThreshold(counts, intensityThreshold, 2)) {
+                                procData.add(mass);
+                                keptSpecArrays.add(sa);
+                                usedChannels.add(channel);
+                              }
+                              break; // first calibrated isotope decides
+                            }
+                          }
 
-                    sample.putHacWrapper(popID, new HacInstructionWrapper(
-                        fitted,
-                        useLog2,
-                        zScoreTarget,
-                        validChannels));
-                  }
+                          // NOT QUANT:
+                        } else {
+                          // Sum of all channels of this category that survived selection
+                          double[] sum = null;
+                          SpectralArray mostAbundantMatchingSpecArr = null;
+                          List<Channel> categoryChannels = new ArrayList<>();
 
-                  // **Claude Sonnet implementation of SMILES HAC**
-                  // Cut (cheap): derive threshold from the uncut tree, then cut once at the chosen
-                  // threshold
-                  HAC.ClusterResult crForThreshold = fitted.cut(0.0);
+                          for (SpectralArray sa : spectralArrays) {
+                            Channel channel = sa.getChannel();
+                            double[] pData = sample.getData(channel, popID, EventType.NP,
+                                EventParameter.NET_AREA, IntensityUnit.CTS);
+                            if (pData.length < 2 || !ArrUtils.exceedsThreshold(pData, intensityThreshold,
+                                2)) {
+                              continue;
+                            }
+                            if (sum == null) {
+                              sum = new double[pData.length];
+                            } else if (sum.length != pData.length) {
+                              LOGGER.warn("Channel {} has a different event count. It was not summed into " +
+                                      "{}.",
+                                  channel, category);
+                              continue;
+                            }
+                            for (int i = 0; i < pData.length; i++) {
+                              sum[i] += pData[i];
+                            }
+                            categoryChannels.add(channel);
+                            // first one wins; for elements, the most abundant isotope takes over
+                            if (mostAbundantMatchingSpecArr == null
+                                || (element != null
+                                && Objects.equals(channel.getIsotope(), element.getMostAbundant()))) {
+                              mostAbundantMatchingSpecArr = sa;
+                            }
+                          }
 
-                  double threshold = distanceThreshold;
-                  if (distanceOption.equals(DistanceOptions.HALF)) {
-                    threshold = crForThreshold.getHalfThreshold();
-                  } else if (distanceOption.equals(DistanceOptions.STEP_DIFFERENCE)) {
-                    threshold = crForThreshold.getSuggestedStepThreshold();
-                  } else if (distanceOption.equals(DistanceOptions.CURVATURE)) {
-                    threshold = crForThreshold.getSuggestedCurvatureThreshold();
-                  }
+                          if (sum != null) {
+                            procData.add(sum);
+                            keptSpecArrays.add(mostAbundantMatchingSpecArr);
+                            usedChannels.addAll(categoryChannels);
+                          }
+                        }
+                      }
+                      spectralRegionsData.clear();
+                      spectralRegionsData.addAll(keptSpecArrays);
+                    }
+
+                    // Now get the valid channels and data
+                    final List<Channel> validChannels;
+                    if (useSpectralData) {
+                      validChannels = new ArrayList<>(spectralRegionsData.stream()
+                          .map(SpectralArray::getChannel)
+                          .toList());
+                    } else {
+                      validChannels = new ArrayList<>(usedChannels);
+                    }
+
+                    // Prepare data, and element names for pies + ChannelCategories to get colors
+                    List<double[]> data;
+                    String[] elementNames;
+                    List<ChannelCategory> channelCategories;
+                    // override if it is supposed to be based on the processed/quantified data
+                    if (!useSpectralData) {
+                      data = new ArrayList<>(procData);
+                      channelCategories = new ArrayList<>(usedChannels.stream()
+                          .map(Channel::getCategory)
+                          .distinct()
+                          .toList());
+                      elementNames = channelCategories.stream()
+                          .map(ChannelCategory::getUIString)
+                          .toList()
+                          .toArray(new String[0]);
+                    } else {
+                      // transpose to regions and elements:
+                      SpectralRegionElement sre = new SpectralRegionElement(spectralRegionsData);
+                      data = sre.getIntensities();
+                      elementNames = sre.getNames().toArray(new String[0]);
+                      channelCategories = sre.getCategories();
+                    }
+
+                    // are there data?
+                    if (!data.isEmpty()) {
+
+                      // Fit (expensive): reuse cached FittedHAC if preprocessing inputs are unchanged
+                      HacInstructionWrapper wrapper = sample.getHacWrapper(popID);
+                      HAC.FittedHAC fitted;
+
+                      // check if valid wrapper
+                      if (wrapper != null && wrapper.isEqualInstructions(
+                          useSpectralData,
+                          useQuant,
+                          useLog2,
+                          zScoreTarget,
+                          validChannels)) {
+                        fitted = wrapper.getFit();
+                      } else {
+
+                        // 2. Preprocess [my own implementation!] -> here we apply the intensity threshold
+                        List<double[]> processed = HAC.preprocess(
+                            data,
+                            useLog2,
+                            zScoreTarget
+                        );
+
+                        // Here we execute the HAC fit!
+                        fitted = HAC.fit(processed);
+
+                        sample.putHacWrapper(popID, new HacInstructionWrapper(
+                            fitted,
+                            useSpectralData,
+                            useQuant,
+                            useLog2,
+                            zScoreTarget,
+                            validChannels));
+                      }
+
+                      // **Claude Sonnet implementation of SMILES HAC**
+                      // Cut (cheap): derive threshold from the uncut tree, then cut once at the chosen
+                      // threshold
+                      HAC.ClusterResult crForThreshold = fitted.cut(0.0);
+
+                      double threshold = distanceThreshold;
+                      if (distanceOption.equals(DistanceOptions.HALF)) {
+                        threshold = crForThreshold.getHalfThreshold();
+                      } else if (distanceOption.equals(DistanceOptions.STEP_DIFFERENCE)) {
+                        threshold = crForThreshold.getSuggestedStepThreshold();
+                      } else if (distanceOption.equals(DistanceOptions.CURVATURE)) {
+                        threshold = crForThreshold.getSuggestedCurvatureThreshold();
+                      } else if (distanceOption.equals(DistanceOptions.PERCENT)) {
+                        threshold = crForThreshold.getPercentThreshold(distanceThresholdPct);
+                      }
 
                   /* crWard: pure Ward cut, kept unchanged for dendrogram + knee plot.
                    cr      : working result; may be reassigned by cosine post-processing below.
                             Only labels, k, sizes and names are replaced; mergeTree and mergeHeights stay.
                     */
-                  HAC.ClusterResult crWard = fitted.cut(threshold);
-                  HAC.ClusterResult cr = crWard;
+                      HAC.ClusterResult crWard = fitted.cut(threshold);
+                      HAC.ClusterResult cr = crWard;
 
-                  // ── Cosine similarity post-processing ────────────────────────────────────
-                  // Merge clusters whose mean raw spectra are compositionally indistinguishable.
-                  // Only applied when the user has set a threshold below 1.0 (i.e., opted in).
-                  if (applyCosine) {
-                    List<double[]> dataForCosine;
-                    if (useLog2ForCosine) {
-                      dataForCosine = HAC.preprocess(
-                          data,
-                          useLog2,
-                          ZScoreTarget.NONE   // never z-score before cosine
-                      );
-                    } else {
-                      dataForCosine = data;
-                    }
+                      // ── Cosine similarity post-processing ────────────────────────────────────
+                      // Merge clusters whose mean raw spectra are compositionally indistinguishable.
+                      // Only applied when the user has set a threshold below 1.0 (i.e., opted in).
+                      if (applyCosine) {
+                        List<double[]> dataForCosine;
+                        if (useLog2ForCosine) {
+                          dataForCosine = HAC.preprocess(
+                              data,
+                              useLog2ForCosine,
+                              ZScoreTarget.NONE   // never z-score before cosine
+                          );
+                        } else {
+                          dataForCosine = data;
+                        }
 
-                    cr = cr.mergeByCosineSimilarity(dataForCosine, cosineMergeThreshold);
-                  }
+                        cr = cr.mergeByCosineSimilarity(dataForCosine, cosineMergeThreshold);
+                      }
 
-                  // ___________________________________________________________________________________
+                      // ___________________________________________________________________________________
 
-                  HBox dendroAndKneeBox = new HBox(10);
-                  plotBoxRef.get().getChildren().add(UiUtil.putOnAnchorWithoutInsets(dendroAndKneeBox));
+                      HBox dendroAndKneeBox = new HBox(10);
+                      plotBoxRef.get().getChildren().add(UiUtil.putOnAnchorWithoutInsets(dendroAndKneeBox));
 
-                  // #################################################################################
-                  // ######################## DENDROGRAM ##########################################
-                  // #################################################################################
-                  ChartComponent dendroComponent = new ChartComponent(
-                      new SpChartFactory.DendrogramChartData(crWard, popID.toString(), popID.toString()),
-                      new SpChartFactory.DendrogramChartStyle(LineWidthDefaults.MEDIUM,
-                          useLogScaleDendrogram, showClusterNumbers));
+                      // #################################################################################
+                      // ######################## DENDROGRAM ##########################################
+                      // #################################################################################
+                      ChartComponent dendroComponent = new ChartComponent(
+                          new SpChartFactory.DendrogramChartData(crWard, popID.toString(),
+                              popID.toString()),
+                          new SpChartFactory.DendrogramChartStyle(LineWidthDefaults.MEDIUM,
+                              useLogScaleDendrogram, showClusterNumbers));
 
-                  JFreeChart dendroChart = SpChartFactory.createDendrogram(dendroComponent);
+                      JFreeChart dendroChart = SpChartFactory.createDendrogram(dendroComponent);
 
-                  List<ChartContainer> dendroChartContainers = new ArrayList<>();
-                  dendroChartContainers.add(SpChartFactory.bundleChartLegend(
-                      dendroChart,
-                      List.of(dendroComponent),
-                      800, 500, true));
-
-                  for (ChartContainer cont : dendroChartContainers) {
-                    dendroAndKneeBox.getChildren().add(UiUtil.putOnAnchorWithoutInsets(cont.viewer));
-                  }
-
-                  ValueMarker markerHorz;
-                  if (useLogScaleDendrogram) {
-                    markerHorz = new ValueMarker(Math.log1p(crWard.threshold()));
-                  } else {
-                    markerHorz = new ValueMarker(crWard.threshold());
-                  }
-                  markerHorz.setLabel("THR = " + SnF.doubleToString(crWard.threshold(), NF.D1C2));
-                  markerHorz.setPaint(OkabeItoColors.BLACK.get());
-                  markerHorz.setStroke(SpChartFactory.getStroke(
-                      LineWidthDefaults.MEDIUM,
-                      LineDashDefaults.S));
-                  dendroChart.getXYPlot().addRangeMarker(markerHorz);
-
-                  markerHorz.setLabelAnchor(org.jfree.chart.ui.RectangleAnchor.TOP_RIGHT);
-                  markerHorz.setLabelTextAnchor(org.jfree.chart.ui.TextAnchor.BOTTOM_RIGHT);
-                  markerHorz.setLabelFont(new Font("Tahoma", Font.BOLD,
-                      SpTool3Main.getRunTime().getConfParams().getAxisFontSize() - 3));
-                  markerHorz.setLabelPaint(OkabeItoColors.BLACK_DARK.get());
-
-                  // #################################################################################
-                  // ######################## KNEE PLOT ##########################################
-                  // #################################################################################
-                  int maxSteps = Math.max(crWard.k() + 10, 50);
-                  Pair<double[], double[]> kneeData = HACCharts.getKneePlotXY(crWard, maxSteps);
-
-                  ChartComponent comp = new ChartComponent(
-                      new ChartData(popID.toString(),
-                          kneeData.getKey(),
-                          kneeData.getValue(),
-                          "Merge step (from top)", ViewUnits.NONE, MathMod.NONE,
-                          "Ward distance", ViewUnits.NONE, MathMod.NONE),
-                      new ChartStyle(OkabeItoColors.BLACK, 1,
-                          LineWidthDefaults.MEDIUM_THICK,
-                          LineDashDefaults.STRAIGHT, 0f,
-                          MarkerSizeDefaults.LARGE,
-                          MarkerStyle.DIAMOND,
-                          false,
-                          RendererOption.LINE_AND_SHAPE,
-                          LineGraphStyle.LINE_AND_MARKER)
-                  );
-
-                  JFreeChart kneeChart = SpChartFactory.createLineChart(List.of(comp));
-
-                  // add the marker
-                  ValueMarker marker = new ValueMarker(crWard.k());
-                  marker.setLabel("k = " + crWard.k());
-                  marker.setPaint(Colors.LABEL_DARK);
-                  marker.setStroke(SpChartFactory.getStroke(
-                      LineWidthDefaults.MEDIUM,
-                      LineDashDefaults.S));
-                  kneeChart.getXYPlot().addDomainMarker(marker);
-
-                  marker.setLabelAnchor(org.jfree.chart.ui.RectangleAnchor.TOP_RIGHT);
-                  marker.setLabelTextAnchor(org.jfree.chart.ui.TextAnchor.TOP_LEFT);
-                  marker.setLabelFont(new Font("Tahoma", Font.BOLD,
-                      SpTool3Main.getRunTime().getConfParams().getAxisFontSize() - 3));
-                  marker.setLabelPaint(OkabeItoColors.BLACK_DARK.get());
-
-                  // make the chart.
-                  ChartContainer chartContainer = SpChartFactory.bundleChartLegend(
-                      kneeChart,
-                      List.of(comp),
-                      800, 500, true);
-
-                  // Here, no legend is needed for the knee plot
-                  dendroAndKneeBox.getChildren().add(UiUtil.putOnAnchorWithoutInsets(chartContainer.viewer));
-                  // Divide at 1/3 between dendrogram and knee plot
-                  chartContainer.viewer.minWidthProperty().bind(dendroAndKneeBox.widthProperty().divide(3));
-                  chartContainer.viewer.maxWidthProperty().bind(dendroAndKneeBox.widthProperty().divide(3));
-
-
-                  // #################################################################################
-                  // ######################## PIE CHARTS ##########################################
-                  // #################################################################################
-                  String[] elementNames = sre.getNames().toArray(new String[0]);
-                  List<SpChartFactory.PieChartData> pieChartData = HACCharts.getPieChartData(
-                      cr,
-                      elementNames,
-                      data,
-                      minClusterSizePie,
-                      minFractionPct);
-
-                  // get colors for element by most abundant isotope
-                  Map<String, Colors> elementColors = HACCharts.getPieChartColors(sre.getCategories());
-
-                  List<ChartComponent> pieChartComponents = new ArrayList<>();
-                  for (SpChartFactory.PieChartData pieChartDat : pieChartData) {
-                    pieChartComponents.add(new ChartComponent(
-                        pieChartDat,
-                        new SpChartFactory.PieChartStyle(elementColors)));
-                  }
-
-                  List<JFreeChart> pieCharts = SpChartFactory.createPieCharts(pieChartComponents);
-
-                  List<ChartContainer> pieChartContainers = new ArrayList<>();
-                  if (pieChartComponents.size() == pieCharts.size()) {
-                    for (int i = 0; i < pieCharts.size(); i++) {
-                      pieChartContainers.add(SpChartFactory.bundleChartLegend(
-                          pieCharts.get(i),
-                          List.of(pieChartComponents.get(i)),
+                      List<ChartContainer> dendroChartContainers = new ArrayList<>();
+                      dendroChartContainers.add(SpChartFactory.bundleChartLegend(
+                          dendroChart,
+                          List.of(dendroComponent),
                           800, 500, true));
-                    }
-                  }
 
-                  VBox pieGroupBox = new VBox(10);
-                  ScrollPane pieScroll = new ScrollPane(pieGroupBox);
-                  UiUtil.formatScrollPane(pieScroll);
-                  UiUtil.makePaneBrightAndRound(pieScroll);
-                  UiUtil.installFastScroll(pieScroll);
-                  // pieScroll.setFitToWidth(false);
-                  // pieScroll.setFitToHeight(false); // would prevent pies from shrinking
-                  plotBoxRef.get().getChildren().add(UiUtil.putOnAnchorWithoutInsets(pieScroll));
-                  // Keep scroll pane at 50%
-                  pieScroll.minHeightProperty().bind(plotBoxRef.get().heightProperty().divide(1.5));
-                  pieScroll.maxHeightProperty().bind(plotBoxRef.get().heightProperty().divide(1.5));
+                      for (ChartContainer cont : dendroChartContainers) {
+                        dendroAndKneeBox.getChildren().add(UiUtil.putOnAnchorWithoutInsets(cont.viewer));
+                      }
 
-                  HBox pieBox = new HBox(10);
-                  for (int i = 0; i < pieChartContainers.size(); i++) {
-                    if (i % 4 == 0) {
-                      pieBox = new HBox(10);
-                      pieGroupBox.getChildren().add(pieBox);
-                    }
-                    pieBox.getChildren().add(UiUtil.putOnAnchorWithoutInsets(pieChartContainers.get(i).viewer));
-                    pieChartContainers.get(i).viewer.setMinHeight(150); // or else, pies shrink to nothing
-                  }
+                      ValueMarker markerHorz;
+                      if (useLogScaleDendrogram) {
+                        markerHorz = new ValueMarker(Math.log1p(crWard.threshold()));
+                      } else {
+                        markerHorz = new ValueMarker(crWard.threshold());
+                      }
+                      markerHorz.setLabel("THR = " + SnF.doubleToString(crWard.threshold(), NF.D1C2));
+                      markerHorz.setPaint(OkabeItoColors.BLACK.get());
+                      markerHorz.setStroke(SpChartFactory.getStroke(
+                          LineWidthDefaults.MEDIUM,
+                          LineDashDefaults.S));
+                      dendroChart.getXYPlot().addRangeMarker(markerHorz);
 
-                  // #################################################################################
-                  // ######################## THE BUTTONS ##########################################
-                  // #################################################################################
-                  Button savePopulationsBtn = UiUtil.getImageButton("Store", "/img/selectAll.png",
-                      "Store clusters as new populations");
+                      markerHorz.setLabelAnchor(org.jfree.chart.ui.RectangleAnchor.TOP_RIGHT);
+                      markerHorz.setLabelTextAnchor(org.jfree.chart.ui.TextAnchor.BOTTOM_RIGHT);
+                      markerHorz.setLabelFont(new Font("Tahoma", Font.BOLD,
+                          SpTool3Main.getRunTime().getConfParams().getAxisFontSize() - 3));
+                      markerHorz.setLabelPaint(OkabeItoColors.BLACK_DARK.get());
 
-                  // Capture for use in button action lambdas (must be effectively final for lambda
-                  // capture)
-                  final List<SpectralArray> capturedSpectra = new ArrayList<>(spectralRegionsDataCopy);
+                      // #################################################################################
+                      // ######################## KNEE PLOT ##########################################
+                      // #################################################################################
+                      int maxSteps = Math.max(crWard.k() + 10, 50);
+                      Pair<double[], double[]> kneeData = HACCharts.getKneePlotXY(crWard, maxSteps);
 
-                  HAC.ClusterResult finalCr = cr;
-                  savePopulationsBtn.setOnAction(e -> {
+                      ChartComponent comp = new ChartComponent(
+                          new ChartData(popID.toString(),
+                              kneeData.getKey(),
+                              kneeData.getValue(),
+                              "Merge step (from top)", ViewUnits.NONE, MathMod.NONE,
+                              "Ward distance", ViewUnits.NONE, MathMod.NONE),
+                          new ChartStyle(OkabeItoColors.BLACK, 1,
+                              LineWidthDefaults.MEDIUM_THICK,
+                              LineDashDefaults.STRAIGHT, 0f,
+                              MarkerSizeDefaults.LARGE,
+                              MarkerStyle.DIAMOND,
+                              false,
+                              RendererOption.LINE_AND_SHAPE,
+                              LineGraphStyle.LINE_AND_MARKER)
+                      );
+
+                      JFreeChart kneeChart = SpChartFactory.createLineChart(List.of(comp));
+
+                      // add the marker
+                      ValueMarker marker = new ValueMarker(crWard.k());
+                      marker.setLabel("k = " + crWard.k());
+                      marker.setPaint(Colors.LABEL_DARK);
+                      marker.setStroke(SpChartFactory.getStroke(
+                          LineWidthDefaults.MEDIUM,
+                          LineDashDefaults.S));
+                      kneeChart.getXYPlot().addDomainMarker(marker);
+
+                      marker.setLabelAnchor(org.jfree.chart.ui.RectangleAnchor.TOP_RIGHT);
+                      marker.setLabelTextAnchor(org.jfree.chart.ui.TextAnchor.TOP_LEFT);
+                      marker.setLabelFont(new Font("Tahoma", Font.BOLD,
+                          SpTool3Main.getRunTime().getConfParams().getAxisFontSize() - 3));
+                      marker.setLabelPaint(OkabeItoColors.BLACK_DARK.get());
+
+                      // make the chart.
+                      ChartContainer chartContainer = SpChartFactory.bundleChartLegend(
+                          kneeChart,
+                          List.of(comp),
+                          800, 500, true);
+
+                      // Here, no legend is needed for the knee plot
+                      dendroAndKneeBox.getChildren().add(UiUtil.putOnAnchorWithoutInsets(chartContainer.viewer));
+                      // Divide at 1/3 between dendrogram and knee plot
+                      chartContainer.viewer.minWidthProperty().bind(dendroAndKneeBox.widthProperty().divide(3));
+                      chartContainer.viewer.maxWidthProperty().bind(dendroAndKneeBox.widthProperty().divide(3));
+
+
+                      // #################################################################################
+                      // ######################## PIE CHARTS ##########################################
+                      // #################################################################################
+                      List<SpChartFactory.PieChartData> pieChartData = HACCharts.getPieChartData(
+                          cr,
+                          elementNames,
+                          data,
+                          minClusterSizePie,
+                          minFractionPct);
+
+                      // get colors for element by most abundant isotope
+                      Map<String, Colors> elementColors = HACCharts.getPieChartColors(channelCategories);
+
+                      List<ChartComponent> pieChartComponents = new ArrayList<>();
+                      for (SpChartFactory.PieChartData pieChartDat : pieChartData) {
+                        pieChartComponents.add(new ChartComponent(
+                            pieChartDat,
+                            new SpChartFactory.PieChartStyle(elementColors)));
+                      }
+
+                      List<JFreeChart> pieCharts = SpChartFactory.createPieCharts(pieChartComponents);
+
+                      List<ChartContainer> pieChartContainers = new ArrayList<>();
+                      if (pieChartComponents.size() == pieCharts.size()) {
+                        for (int i = 0; i < pieCharts.size(); i++) {
+                          pieChartContainers.add(SpChartFactory.bundleChartLegend(
+                              pieCharts.get(i),
+                              List.of(pieChartComponents.get(i)),
+                              800, 500, true));
+                        }
+                      }
+
+                      // --- Sort pie containers: clusters with most events first ---------------
+                      // One size per pie, in the same order the pies were created
+                      if (plainSet.sortClusters()) {
+                        final int[] clusterSizes = cr.sizes();
+                        final List<Integer> pieSizes = new ArrayList<>();
+                        for (int c = 0; c < cr.k(); c++) {
+                          if (clusterSizes[c] >= minClusterSizePie) {
+                            pieSizes.add(clusterSizes[c]);
+                          }
+                        }
+
+                        if (pieSizes.size() == pieChartContainers.size()) {
+                          List<Integer> order = new ArrayList<>();
+                          for (int i = 0; i < pieChartContainers.size(); i++) {
+                            order.add(i);
+                          }
+                          // stable sort: ties keep their original order
+                          order.sort((a, b) -> Integer.compare(pieSizes.get(b), pieSizes.get(a)));
+
+                          List<ChartContainer> sortedContainers = new ArrayList<>();
+                          for (int i : order) {
+                            sortedContainers.add(pieChartContainers.get(i));
+                          }
+                          pieChartContainers = sortedContainers;
+                        } else {
+                          LOGGER.warn("Pie count ({}) does not match shown clusters ({}); pies left " +
+                                  "unsorted.",
+                              pieChartContainers.size(), pieSizes.size());
+                        }
+                      }
+                      // ---------------------------
+
+
+                      VBox pieGroupBox = new VBox(10);
+                      ScrollPane pieScroll = new ScrollPane(pieGroupBox);
+                      UiUtil.formatScrollPane(pieScroll);
+                      UiUtil.makePaneBrightAndRound(pieScroll);
+                      UiUtil.installFastScroll(pieScroll);
+                      // pieScroll.setFitToWidth(false);
+                      // pieScroll.setFitToHeight(false); // would prevent pies from shrinking
+                      plotBoxRef.get().getChildren().add(UiUtil.putOnAnchorWithoutInsets(pieScroll));
+                      // Keep scroll pane at 50%
+                      pieScroll.minHeightProperty().bind(plotBoxRef.get().heightProperty().divide(1.5));
+                      pieScroll.maxHeightProperty().bind(plotBoxRef.get().heightProperty().divide(1.5));
+
+                      HBox pieBox = new HBox(10);
+                      for (int i = 0; i < pieChartContainers.size(); i++) {
+                        if (i % 4 == 0) {
+                          pieBox = new HBox(10);
+                          pieGroupBox.getChildren().add(pieBox);
+                        }
+                        pieBox.getChildren().add(UiUtil.putOnAnchorWithoutInsets(pieChartContainers.get(i).viewer));
+                        pieChartContainers.get(i).viewer.setMinHeight(150); // or else, pies shrink to
+                        // nothing
+                      }
+
+                      // #################################################################################
+                      // ######################## THE BUTTONS ##########################################
+                      // #################################################################################
+                      Button savePopulationsBtn = UiUtil.getImageButton("Store", "/img/selectAll.png",
+                          "Store clusters as new populations");
+
+                      // Capture for use in button action lambdas (must be effectively final for lambda
+                      // capture)
+                      final List<SpectralArray> capturedSpectra = new ArrayList<>(spectralRegionsDataCopy);
+
+                      HAC.ClusterResult finalCr = cr;
+                      savePopulationsBtn.setOnAction(e -> {
 
                     /*
                      TODO:
@@ -5420,289 +5725,292 @@ public abstract class Viewers {
                       2) in general: while at it, clean up this chaos in viewer to compute outside
                      */
 
-                    List<List<Integer>> allRegionIndices = finalCr.indicesByCluster();
+                        List<List<Integer>> allRegionIndices = finalCr.indicesByCluster();
 
-                    List<Integer> hacIndices = new ArrayList<>();
-                    List<List<Integer>> regionIndices = new ArrayList<>();
+                        List<Integer> hacIndices = new ArrayList<>();
+                        List<List<Integer>> regionIndices = new ArrayList<>();
 
-                    for (int c = 0; c < allRegionIndices.size(); c++) {
-                      List<Integer> list = allRegionIndices.get(c);
-                      // only use clusters that are larger than min size, i.e., that are shown in UI
-                      if (list.size() >= minClusterSizePie) {
-                        hacIndices.add(c);
-                        regionIndices.add(list);
-                      }
-                    }
-
-
-                    // check which isotopes to show as population
-                    List<Channel> channels = new ArrayList<>(sample.listChannels());
-                    // only remove if it has an isotope assigned AND that isotope is blacklisted
-                    channels.removeIf(ch -> ch.getIsotope() != null
-                        && !validChannels.contains(ch));
-
-                    // get the Event list for each isotope
-                    for (Channel channel : channels) {
-                      Trace trace = sample.getTrace(channel);
-                      if (trace != null) {
-                        Population pop = trace.getPopulation(popID);
-                        if (pop != null) {
-                          EventCollection collection = pop.getEvents();
-                          List<Event> events = collection.getNpEvents();
+                        for (int c = 0; c < allRegionIndices.size(); c++) {
+                          List<Integer> list = allRegionIndices.get(c);
+                          // only use clusters that are larger than min size, i.e., that are shown in UI
+                          if (list.size() >= minClusterSizePie) {
+                            hacIndices.add(c);
+                            regionIndices.add(list);
+                          }
+                        }
 
 
-                          // create cluster population for each cluster
-                          for (int i = 0; i < regionIndices.size(); i++) {
-                            int hacClusterLabel = hacIndices.get(i);
+                        // check which isotopes to show as population
+                        List<Channel> channels = new ArrayList<>(sample.listChannels());
+                        // only remove if it has an isotope assigned AND that isotope is blacklisted
+                        channels.removeIf(ch -> ch.getIsotope() != null
+                            && !validChannels.contains(ch));
 
-                            MainEventCollection coll = new SubEventCollection(trace, collection);
-                            List<Integer> cluster = regionIndices.get(i);
-                            List<Event> eventsInCluster = new ArrayList<>();
-                            for (Integer idx : cluster) {
-                              if (idx < events.size()) {
-                                eventsInCluster.add(events.get(idx));
+                        // get the Event list for each isotope
+                        for (Channel channel : channels) {
+                          Trace trace = sample.getTrace(channel);
+                          if (trace != null) {
+                            Population pop = trace.getPopulation(popID);
+                            if (pop != null) {
+                              EventCollection collection = pop.getEvents();
+                              List<Event> events = collection.getNpEvents();
+
+                              // create cluster population for each cluster
+                              for (int i = 0; i < regionIndices.size(); i++) {
+                                int hacClusterLabel = hacIndices.get(i);
+
+                                List<Integer> cluster = regionIndices.get(i);
+                                List<Event> eventsInCluster = new ArrayList<>();
+                                for (Integer idx : cluster) {
+                                  if (idx < events.size()) {
+                                    eventsInCluster.add(events.get(idx));
+                                  }
+                                }
+
+                                EventCollection newCollection = AnalysisUtils.createSubEventCollection(
+                                    trace, pop, eventsInCluster);
+
+                                // create new population
+                                PopulationID idCopy = new PopulationID(popID);
+                                idCopy.append(new PopulationStep.ClusterSubtype(sample, hacClusterLabel,
+                                    finalCr.clusterNames()[hacClusterLabel]));
+                                trace.addOverridePopulation(idCopy,
+                                    new NpPopulation(
+                                        idCopy,
+                                        pop,
+                                        newCollection,
+                                        new ArrayList<>(channels)
+                                    ),
+                                    true);
                               }
                             }
-                            coll.add(eventsInCluster);
-
-                            // create new population
-                            PopulationID idCopy = new PopulationID(popID);
-                            idCopy.append(new PopulationStep.ClusterSubtype(sample, hacClusterLabel,
-                                finalCr.clusterNames()[hacClusterLabel]));
-                            trace.addOverridePopulation(idCopy,
-                                new NpPopulation(
-                                    idCopy,
-                                    pop,
-                                    coll,
-                                    new ArrayList<>(channels)
-                                ),
-                                true);
                           }
                         }
-                      }
-                    }
 
-                    // -----------------------------------------------------------------------
-                    // Mirror the clustering into SpectralArray data for each new sub-population
-                    // -----------------------------------------------------------------------
-                    // spectralRegionsData is already available in the enclosing WorkingTask scope:
-                    // it holds one SpectralArray per isotope, each with intensity[i] = particle i.
-                    for (int i = 0; i < regionIndices.size(); i++) {
-                      int hacClusterLabel = hacIndices.get(i);
-                      List<Integer> cluster = regionIndices.get(i);
+                        // -----------------------------------------------------------------------
+                        // Mirror the clustering into SpectralArray data for each new sub-population
+                        // -----------------------------------------------------------------------
+                        // spectralRegionsData is already available in the enclosing WorkingTask scope:
+                        // it holds one SpectralArray per isotope, each with intensity[i] = particle i.
+                        for (int i = 0; i < regionIndices.size(); i++) {
+                          int hacClusterLabel = hacIndices.get(i);
+                          List<Integer> cluster = regionIndices.get(i);
 
-                      PopulationID idCopy = new PopulationID(popID);
-                      idCopy.append(new PopulationStep.ClusterSubtype(sample, hacClusterLabel,
-                          finalCr.clusterNames()[hacClusterLabel]));
+                          PopulationID idCopy = new PopulationID(popID);
+                          idCopy.append(new PopulationStep.ClusterSubtype(sample, hacClusterLabel,
+                              finalCr.clusterNames()[hacClusterLabel]));
 
-                      List<SpectralArray> clusterSpectra = new ArrayList<>();
-                      for (SpectralArray sarr : capturedSpectra) {
-                        double[] allIntensities = sarr.getIntensity();
-                        double[] clusterIntensities = new double[cluster.size()];
-                        for (int j = 0; j < cluster.size(); j++) {
-                          int particleIdx = cluster.get(j);
-                          clusterIntensities[j] = particleIdx < allIntensities.length
-                              ? allIntensities[particleIdx]
-                              : 0.0;
-                        }
+                          List<SpectralArray> clusterSpectra = new ArrayList<>();
+                          for (SpectralArray sarr : capturedSpectra) {
+                            double[] allIntensities = sarr.getIntensity();
+                            double[] clusterIntensities = new double[cluster.size()];
+                            for (int j = 0; j < cluster.size(); j++) {
+                              int particleIdx = cluster.get(j);
+                              clusterIntensities[j] = particleIdx < allIntensities.length
+                                  ? allIntensities[particleIdx]
+                                  : 0.0;
+                            }
 
-                        // Slice additional features by the same cluster indices
-                        HashMap<String, double[]> clusterFeatures = new HashMap<>();
-                        for (String key : sarr.listAdditionalFeatures()) {
-                          double[] allFeatureValues = sarr.getAdditionalFeature(key);
-                          double[] clusterFeatureValues = new double[cluster.size()];
-                          for (int j = 0; j < cluster.size(); j++) {
-                            int particleIdx = cluster.get(j);
-                            clusterFeatureValues[j] =
-                                (allFeatureValues != null && particleIdx < allFeatureValues.length)
-                                    ? allFeatureValues[particleIdx]
-                                    : 0.0;
+                            // Slice additional features by the same cluster indices
+                            HashMap<String, double[]> clusterFeatures = new HashMap<>();
+                            for (String key : sarr.listAdditionalFeatures()) {
+                              double[] allFeatureValues = sarr.getAdditionalFeature(key);
+                              double[] clusterFeatureValues = new double[cluster.size()];
+                              for (int j = 0; j < cluster.size(); j++) {
+                                int particleIdx = cluster.get(j);
+                                clusterFeatureValues[j] =
+                                    (allFeatureValues != null && particleIdx < allFeatureValues.length)
+                                        ? allFeatureValues[particleIdx]
+                                        : 0.0;
+                              }
+                              clusterFeatures.put(key, clusterFeatureValues);
+                            }
+
+                            clusterSpectra.add(new SpectralArray(
+                                sarr.getChannel(),
+                                clusterIntensities,
+                                clusterFeatures));
                           }
-                          clusterFeatures.put(key, clusterFeatureValues);
+
+                          sample.addSpectralData(idCopy, clusterSpectra);
+                        }
+                        // -----------------------------------------------------------------------
+
+
+                        SpTool3Main.getRunTime().getMainWindowCtl().updatePopulations();
+                      });
+
+                      Button clearMergedBtn = UiUtil.getImageButton("Delete", "/img/delete.png",
+                          "Delete all populations in the sample that are of type 'cluster'");
+
+                      clearMergedBtn.setOnAction(e -> {
+                        NotificationFactory.openYesCancel(
+                            "Remove all populations of cluster-type? This is irreversible.", () -> {
+                              List<Channel> channels = sample.listChannels();
+                              List<PopulationID> popIDs = sample.listAllPopulations().stream()
+                                  .filter(populationID -> populationID.getSteps().stream()
+                                      .anyMatch(step -> step instanceof PopulationStep.ClusterSubtype))
+                                  .toList();
+                              popIDs.forEach(id -> sample.removePopulations(channels, id));
+                              SpTool3Main.getRunTime().getMainWindowCtl().updatePopulations();
+                            });
+                      });
+
+                      Button clustersToClipboardBtn = UiUtil.getSquareImageButton("Clipboard", "/img/copy" +
+                              ".png",
+                          "Copy composition results to clipboard");
+
+                      clustersToClipboardBtn.setOnAction(ev -> {
+                        ExportWriter writer = new ClipboardWriter();
+
+                        // data is already element-major — no isotope collapse needed here.
+                        // elementNames aligns 1:1 with data (both from SpectralRegionElement).
+                        int nElements = elementNames.length;
+                        int nParticles = data.get(0).length;
+
+                        // meanRaw[cluster][element] — accumulated sum, divided by counts below
+                        double[][] meanRaw = new double[finalCr.k()][nElements];
+                        int[] counts = new int[finalCr.k()];
+
+                        for (int p = 0; p < nParticles; p++) {
+                          int clusterIndex = finalCr.labels()[p];
+                          counts[clusterIndex] = counts[clusterIndex] + 1;
                         }
 
-                        clusterSpectra.add(new SpectralArray(
-                            sarr.getChannel(),
-                            clusterIntensities,
-                            clusterFeatures));
-                      }
-
-                      sample.addSpectralData(idCopy, clusterSpectra);
-                    }
-                    // -----------------------------------------------------------------------
-
-
-                    SpTool3Main.getRunTime().getMainWindowCtl().updatePopulations();
-                  });
-
-                  Button clearMergedBtn = UiUtil.getImageButton("Delete", "/img/delete.png",
-                      "Delete all populations in the sample that are of type 'cluster'");
-
-                  clearMergedBtn.setOnAction(e -> {
-                    NotificationFactory.openYesCancel(
-                        "Remove all populations of cluster-type? This is irreversible.", () -> {
-                          List<Channel> channels = sample.listChannels();
-                          List<PopulationID> popIDs = sample.listAllPopulations().stream()
-                              .filter(populationID -> populationID.getSteps().stream()
-                                  .anyMatch(step -> step instanceof PopulationStep.ClusterSubtype))
-                              .toList();
-                          popIDs.forEach(id -> sample.removePopulations(channels, id));
-                          SpTool3Main.getRunTime().getMainWindowCtl().updatePopulations();
-                        });
-                  });
-
-                  Button clustersToClipboardBtn = UiUtil.getSquareImageButton("Clipboard", "/img/copy.png",
-                      "Copy composition results to clipboard");
-
-                  clustersToClipboardBtn.setOnAction(ev -> {
-                    ExportWriter writer = new ClipboardWriter();
-
-                    // data is already element-major — no isotope collapse needed here.
-                    // elementNames aligns 1:1 with data (both from SpectralRegionElement).
-                    int nElements = elementNames.length;
-                    int nParticles = data.get(0).length;
-
-                    // meanRaw[cluster][element] — accumulated sum, divided by counts below
-                    double[][] meanRaw = new double[finalCr.k()][nElements];
-                    int[] counts = new int[finalCr.k()];
-
-                    for (int p = 0; p < nParticles; p++) {
-                      int clusterIndex = finalCr.labels()[p];
-                      counts[clusterIndex] = counts[clusterIndex] + 1;
-                    }
-
-                    for (int e = 0; e < nElements; e++) {
-                      double[] channel = data.get(e);
-                      for (int p = 0; p < nParticles; p++) {
-                        int clusterIndex = finalCr.labels()[p];
-                        meanRaw[clusterIndex][e] = meanRaw[clusterIndex][e] + channel[p];
-                      }
-                    }
-
-                    // Divide to get means, then clamp negatives.
-                    // Small negatives are noise from background subtraction — clamp silently.
-                    // Large negatives (> 5% of the cluster's max element mean) suggest
-                    // background overshot badly — log a warning.
-                    for (int c = 0; c < finalCr.k(); c++) {
-                      if (counts[c] == 0) {
-                        continue;
-                      }
-
-                      for (int e = 0; e < nElements; e++) {
-                        meanRaw[c][e] = meanRaw[c][e] / counts[c];
-                      }
-
-                      double maxMean = 0.0;
-                      for (int e = 0; e < nElements; e++) {
-                        if (meanRaw[c][e] > maxMean) {
-                          maxMean = meanRaw[c][e];
-                        }
-                      }
-
-                      for (int e = 0; e < nElements; e++) {
-                        if (meanRaw[c][e] < 0.0) {
-                          boolean isLargeNegative = Math.abs(meanRaw[c][e]) > 0.25 * maxMean;
-                          if (isLargeNegative) {
-                            LOGGER.warn(
-                                "Clipboard export — cluster {} '{}': element '{}' has a strongly "
-                                    + "negative mean ({}) — background subtraction may have overshot. "
-                                    + "Clamping to 0.",
-                                c, finalCr.clusterNames()[c], elementNames[e], meanRaw[c][e]);
+                        for (int e = 0; e < nElements; e++) {
+                          double[] channel = data.get(e);
+                          for (int p = 0; p < nParticles; p++) {
+                            int clusterIndex = finalCr.labels()[p];
+                            meanRaw[clusterIndex][e] = meanRaw[clusterIndex][e] + channel[p];
                           }
-                          meanRaw[c][e] = 0.0;
                         }
-                      }
+
+                        // Divide to get means, then clamp negatives.
+                        // Small negatives are noise from background subtraction — clamp silently.
+                        // Large negatives (> 5% of the cluster's max element mean) suggest
+                        // background overshot badly — log a warning.
+                        for (int c = 0; c < finalCr.k(); c++) {
+                          if (counts[c] == 0) {
+                            continue;
+                          }
+
+                          for (int e = 0; e < nElements; e++) {
+                            meanRaw[c][e] = meanRaw[c][e] / counts[c];
+                          }
+
+                          double maxMean = 0.0;
+                          for (int e = 0; e < nElements; e++) {
+                            if (meanRaw[c][e] > maxMean) {
+                              maxMean = meanRaw[c][e];
+                            }
+                          }
+
+                          for (int e = 0; e < nElements; e++) {
+                            if (meanRaw[c][e] < 0.0) {
+                              boolean isLargeNegative = Math.abs(meanRaw[c][e]) > 0.25 * maxMean;
+                              if (isLargeNegative) {
+                                LOGGER.warn(
+                                    "Clipboard export — cluster {} '{}': element '{}' has a strongly "
+                                        + "negative mean ({}) — background subtraction may have overshot. "
+                                        + "Clamping to 0.",
+                                    c, finalCr.clusterNames()[c], elementNames[e], meanRaw[c][e]);
+                              }
+                              meanRaw[c][e] = 0.0;
+                            }
+                          }
+                        }
+
+                        // Build columns: first column is element names, then one column per cluster
+                        List<List<String>> columns = new ArrayList<>();
+
+                        List<String> elementCol = new ArrayList<>();
+                        elementCol.add("Element");
+                        for (int e = 0; e < nElements; e++) {
+                          elementCol.add(elementNames[e]);
+                        }
+                        columns.add(elementCol);
+
+                        for (int c = 0; c < finalCr.k(); c++) {
+                          if (finalCr.sizes()[c] < minClusterSizePie) {
+                            continue;
+                          }
+
+                          double total = 0.0;
+                          for (int e = 0; e < nElements; e++) {
+                            total = total + meanRaw[c][e];
+                          }
+
+                          List<String> col = new ArrayList<>();
+                          col.add(finalCr.clusterNames()[c] + " (n="
+                              + finalCr.sizes()[c]
+                              + " µ=" + SnF.doubleToString(total, NF.D1C1) + ")");
+                          for (int e = 0; e < nElements; e++) {
+                            double pct = (total > 0.0) ? meanRaw[c][e] / total * 100.0 : 0.0;
+                            col.add(SnF.doubleToString(pct, NF.D1C2));
+                          }
+                          columns.add(col);
+                        }
+
+                        TabBlockColl coll = new TabBlockColl(writer, false);
+                        TabBlock block = new TabBlock();
+                        for (List<String> column : columns) {
+                          block.addCol(new TabCol(column));
+                        }
+                        coll.add(block);
+                        coll.export();
+                      });
+
+                      plotBoxRef.get().getChildren().add(UiUtil.putOnAnchorWithoutInsets(new HBox(3,
+                          clustersToClipboardBtn, savePopulationsBtn, clearMergedBtn)));
                     }
-
-                    // Build columns: first column is element names, then one column per cluster
-                    List<List<String>> columns = new ArrayList<>();
-
-                    List<String> elementCol = new ArrayList<>();
-                    elementCol.add("Element");
-                    for (int e = 0; e < nElements; e++) {
-                      elementCol.add(elementNames[e]);
-                    }
-                    columns.add(elementCol);
-
-                    for (int c = 0; c < finalCr.k(); c++) {
-                      if (finalCr.sizes()[c] < minClusterSizePie) {
-                        continue;
-                      }
-
-                      double total = 0.0;
-                      for (int e = 0; e < nElements; e++) {
-                        total = total + meanRaw[c][e];
-                      }
-
-                      List<String> col = new ArrayList<>();
-                      col.add(finalCr.clusterNames()[c] + " (n="
-                          + finalCr.sizes()[c]
-                          + " µ=" + SnF.doubleToString(total, NF.D1C1) + ")");
-                      for (int e = 0; e < nElements; e++) {
-                        double pct = (total > 0.0) ? meanRaw[c][e] / total * 100.0 : 0.0;
-                        col.add(SnF.doubleToString(pct, NF.D1C2));
-                      }
-                      columns.add(col);
-                    }
-
-                    TabBlockColl coll = new TabBlockColl(writer, false);
-                    TabBlock block = new TabBlock();
-                    for (List<String> column : columns) {
-                      block.addCol(new TabCol(column));
-                    }
-                    coll.add(block);
-                    coll.export();
-                  });
-
-                  plotBoxRef.get().getChildren().add(UiUtil.putOnAnchorWithoutInsets(new HBox(3,
-                      clustersToClipboardBtn, savePopulationsBtn, clearMergedBtn)));
-                }
-              }
-
-              Platform.runLater(() -> {
-                try {
-                  if (plotBoxRef.get() != null) {
-                    targetPane.setCenter(plotBoxRef.get());
-                    plotBoxRef.set(new VBox());
-
-                  } else {
-                    // just some empty dummy
-                    Platform.runLater(() -> {
-                      try {
-                        targetPane.setCenter(new AnchorPane());
-                      } catch (Exception e) {
-                        Platform.runLater(() -> targetPane.setCenter(new AnchorPane()));
-                        LOGGER.error("Error while plotting! "
-                            + " Message: " + ExceptionUtils.getMessage(e)
-                            + " Details: " + ExceptionUtils.getStackTrace(e));
-                      }
-                    });
                   }
-                } catch (Exception e) {
-                  Platform.runLater(() -> targetPane.setCenter(new AnchorPane()));
-                  LOGGER.error("Error while plotting! "
-                      + " Message: " + ExceptionUtils.getMessage(e)
-                      + " Details: " + ExceptionUtils.getStackTrace(e));
                 }
-              });
+
+                Platform.runLater(() -> {
+                  try {
+                    if (plotBoxRef.get() != null) {
+                      targetPane.setCenter(plotBoxRef.get());
+                      plotBoxRef.set(new VBox());
+
+                    } else {
+                      // just some empty dummy
+                      Platform.runLater(() -> {
+                        try {
+                          targetPane.setCenter(new AnchorPane());
+                        } catch (Exception e) {
+                          Platform.runLater(() -> targetPane.setCenter(new AnchorPane()));
+                          LOGGER.error("Error while plotting! "
+                              + " Message: " + ExceptionUtils.getMessage(e)
+                              + " Details: " + ExceptionUtils.getStackTrace(e));
+                        }
+                      });
+                    }
+                  } catch (Exception e) {
+                    Platform.runLater(() -> targetPane.setCenter(new AnchorPane()));
+                    LOGGER.error("Error while plotting! "
+                        + " Message: " + ExceptionUtils.getMessage(e)
+                        + " Details: " + ExceptionUtils.getStackTrace(e));
+                  }
+                });
 
 
-              progress.set(1d);
-              return new EmptyTaskResult();
+                progress.set(1d);
+                return new EmptyTaskResult();
 
-            } catch (Exception e) {
-              Platform.runLater(() -> targetPane.setCenter(new AnchorPane()));
-              LOGGER.error("Error while plotting! "
-                  + " Message: " + ExceptionUtils.getMessage(e)
-                  + " Details: " + ExceptionUtils.getStackTrace(e));
-              return new EmptyTaskResult();
+              } catch (Exception e) {
+                Platform.runLater(() -> targetPane.setCenter(new AnchorPane()));
+                LOGGER.error("Error while plotting! "
+                    + " Message: " + ExceptionUtils.getMessage(e)
+                    + " Details: " + ExceptionUtils.getStackTrace(e));
+                return new EmptyTaskResult();
+              }
             }
-          }
-        };
+          };
 
-        SpTool3Main.getRunTime().getTaskManager().forceToGraphPool(
-            new SimpleLinearBatch<>(graphTask.getTaskName(), graphTask, false,
-                new EmptyTaskResult()));
+          SpTool3Main.getRunTime().getTaskManager().forceToGraphPool(
+              new SimpleLinearBatch<>(graphTask.getTaskName(), graphTask, false,
+                  new EmptyTaskResult()));
+        }
       } else {
         Platform.runLater(() -> targetPane.setCenter(new AnchorPane()));
       }
@@ -5820,7 +6128,7 @@ public abstract class Viewers {
                       // calc LOD
                       boolean isNet = plainSet.getEventParameter().equals(EventParameter.NET_AREA)
                           || plainSet.getEventParameter().equals(EventParameter.NET_HEIGHT);
-                      double maxThrLOD = sample.getMaxThr(channel, populationID, isNet, qUnit);
+                      double maxThrLOD = sample.getMaxNetThr(channel, populationID, isNet, qUnit);
                       maxThrLOD = plainSet.getMathMod().calc(maxThrLOD);
 
                       EventType eventType = plainSet.getEventType();
@@ -5870,6 +6178,14 @@ public abstract class Viewers {
                       // Default way to retrieve data.
                       double[] data = sample.getData(channel, populationID, eventType,
                           plainSet.getEventParameter(), qUnit);
+
+                      if (eventType.equals(EventType.BG) || eventType.equals(EventType.RAW)) {
+                        if (plainSet.isJitterBG()) {
+                          data = Statistics.quantileSampleWithMurmurHashedJitter(data,
+                              plainSet.getNumberOfBGEvents(),
+                              2);
+                        }
+                      }
 
                       // check if compute nonzero before applying math operations
                       if (plainSet.isComputeNonzero()) {
@@ -5927,8 +6243,9 @@ public abstract class Viewers {
                 for (ChartComponent chartComponent : histoComponents) {
                   double[] data = chartComponent.getData().getX();
                   if (data.length > 2) {
-                    double bandwidth = BinWidthEstimator.silvermanRule(data)
-                        * plainSet.getCustomKernelBandwidth();
+                    double bandwidth = BinWidthEstimator.silvermanRule(data);
+                    if (!Double.isFinite(bandwidth)) bandwidth = 1;
+                    bandwidth = bandwidth * plainSet.getCustomKernelBandwidth();
                     KernelDensity kd = new KernelDensity(data, bandwidth);
                     double maxVal = ArrUtils.getMax(data);
                     // reduce step size if small range or log plot
@@ -6344,8 +6661,10 @@ public abstract class Viewers {
         for (ChartComponent chartComponent : histoComponents) {
           double[] data = chartComponent.getData().getX();
           if (data.length > 2) {
-            double bandwidth = BinWidthEstimator.silvermanRule(data)
-                * plainSet.getCustomKernelBandwidth();
+            double bandwidth = BinWidthEstimator.silvermanRule(data);
+            if (!Double.isFinite(bandwidth)) bandwidth = 1;
+            bandwidth = bandwidth * plainSet.getCustomKernelBandwidth();
+
             KernelDensity kd = new KernelDensity(data, bandwidth);
             double maxVal = ArrUtils.getMax(data);
             // CLAUDE fixed number of points instead of a fixed step size:

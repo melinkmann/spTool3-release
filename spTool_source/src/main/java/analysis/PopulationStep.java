@@ -17,6 +17,8 @@
 
 package analysis;
 
+import java.io.IOException;
+import java.io.ObjectInputStream;
 import java.io.Serial;
 import java.io.Serializable;
 import java.util.Arrays;
@@ -190,7 +192,7 @@ public interface PopulationStep extends Serializable {
     private final String paramSetLabel;
     private final List<Channel> channels;
 
-    public ManualAlignFilterSubtype(String paramSetLabel,List<Channel> channels) {
+    public ManualAlignFilterSubtype(String paramSetLabel, List<Channel> channels) {
       this.paramSetLabel = paramSetLabel;
       this.channels = channels;
     }
@@ -329,19 +331,22 @@ public interface PopulationStep extends Serializable {
     private static final long serialVersionUID = 1_000_000L;
 
     private final SearchAlgorithm searchAlgorithm;
+    // set whether this is first, second, ... search operation, i.e., branch
+    private final int searchBranchIndex;
 
-    public SearchSubtype(SearchAlgorithm searchAlgorithm) {
+    public SearchSubtype(SearchAlgorithm searchAlgorithm, int searchBranchIndex) {
       this.searchAlgorithm = searchAlgorithm;
+      this.searchBranchIndex = searchBranchIndex;
     }
 
     @Override
     public int customHash() {
-      return Objects.hash(searchAlgorithm);
+      return Objects.hash(searchAlgorithm, searchBranchIndex);
     }
 
     @Override
     public String translate() {
-      return searchAlgorithm.shortString();
+      return searchAlgorithm.shortString() + "(" + searchBranchIndex + ")";
     }
 
     @Override
@@ -349,12 +354,19 @@ public interface PopulationStep extends Serializable {
       boolean isEquiv = false;
       if (other instanceof SearchSubtype) {
         isEquiv = searchAlgorithm == ((SearchSubtype) other).searchAlgorithm;
+        isEquiv = isEquiv && Objects.equals(searchBranchIndex, ((SearchSubtype) other).searchBranchIndex);
       }
       return isEquiv;
     }
 
     public SearchAlgorithm getSearchAlgorithm() {
       return searchAlgorithm;
+    }
+
+    @Serial
+    private void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException {
+      // Default deserialization if parameterHash needs specific handling
+      in.defaultReadObject();
     }
   }
 

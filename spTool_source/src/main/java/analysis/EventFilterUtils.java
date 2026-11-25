@@ -20,7 +20,8 @@ package analysis;
 import java.util.ArrayList;
 import java.util.List;
 
-import math.stat.MovingAverage;
+import math.stat.CentredMovingAverage;
+import math.stat.ShiftingMovingAverage;
 
 public abstract class EventFilterUtils {
 
@@ -69,11 +70,8 @@ public abstract class EventFilterUtils {
       // Skip if period = 1
       if (moavPeriod > 1) {
         // Average moavPeriod = 3 (according to first pub version)
-        MovingAverage moav = new MovingAverage(moavPeriod);
-        for (int i = 0; i < filteredDifferences.size(); i++) {
-          moav.add(filteredDifferences.get(i));
-          filteredDifferences.set(i, moav.getMean());
-        }
+        CentredMovingAverage moav = new CentredMovingAverage(moavPeriod);
+        filteredDifferences = moav.getMean(filteredDifferences);
       }
 
       // Identify sign
@@ -127,7 +125,7 @@ public abstract class EventFilterUtils {
           Implicitly, the negative flank is registered, since without it,
           we would not have had the change of sign that allowed us to identify another rising flank.
           All in all, since peaks RISE way more sharply than they fall, focusing on the rising edge
-          likely makes sense as the signal-to-noise ratio is to out advantage.
+          likely makes sense as the signal-to-noise ratio is to our advantage.
           Overall, this way, we can quite elegantly only count rising edges.
           This also means, that we do not require any elaborate formula to calculate how many
           changes would be caused by n peaks in case of counting both falling and rising edges.
@@ -200,11 +198,8 @@ public abstract class EventFilterUtils {
       double[] smoothValues = new double[values.length];
       if (moavPeriod > 1) {
         // Average moavPeriod = 3 (according to first pub version)
-        MovingAverage moav = new MovingAverage(moavPeriod);
-        for (int i = 0; i < values.length; i++) {
-          moav.add(values[i]);
-          smoothValues[i] = moav.getMean();
-        }
+        CentredMovingAverage moav = new CentredMovingAverage(moavPeriod);
+        smoothValues = moav.getMean(values);
       }
 
       // prepare analysis
@@ -284,7 +279,7 @@ public abstract class EventFilterUtils {
           Implicitly, the negative flank is registered, since without it,
           we would not have had the change of sign that allowed us to identify another rising flank.
           All in all, since peaks RISE way more sharply than they fall, focusing on the rising edge
-          likely makes sense as the signal-to-noise ratio is to out advantage.
+          likely makes sense as the signal-to-noise ratio is to our advantage.
           Overall, this way, we can quite elegantly only count rising edges.
           This also means, that we do not require any elaborate formula to calculate how many
           changes would be caused by n peaks in case of counting both falling and rising edges.

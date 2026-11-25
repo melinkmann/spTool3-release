@@ -18,15 +18,18 @@
 package io.impl;
 
 import dataModelNew.Sample;
+
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.DoubleConsumer;
+
 import math.units.Unit;
 
 public interface CsvInterpreter {
 
-  public default List<String[]> readPreview(Path file, int lines)  {
-    return  new ArrayList<>();
+  public default List<String[]> readPreview(Path file, int lines) {
+    return new ArrayList<>();
   }
 
   Unit getUnit();
@@ -34,5 +37,9 @@ public interface CsvInterpreter {
   List<Sample> getSamples();
 
   void parse(Path file);
+
+  default void parse(Path file, DoubleConsumer progressCallback) {
+    parse(file);
+  }
 
 }

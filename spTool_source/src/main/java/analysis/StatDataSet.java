@@ -55,4 +55,5 @@ public interface StatDataSet extends Serializable {
 
   double calcPValue(double intensity);
 
+  double calcTruncatedPValue(double intensity, double threshold);
 }

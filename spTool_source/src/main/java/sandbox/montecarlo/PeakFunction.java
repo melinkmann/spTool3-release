@@ -76,7 +76,7 @@ public class PeakFunction implements UnivariateFunction {
     this.icl = estimateWidthAtHeight(5);
     this.fwhm = estimateWidthAtHeight(50);
 
-    this.largestInteg = timeAtMaximum + 2 * icl;
+    this.largestInteg = timeAtMaximum + 4 * icl; //3.2.8 -> was 2 * icl
   }
 
   public PeakFunction(double d, double y_vap, double v) {

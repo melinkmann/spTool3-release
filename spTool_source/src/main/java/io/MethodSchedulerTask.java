@@ -66,6 +66,9 @@ public class MethodSchedulerTask {
       currentPath.set(path);
 
       BatchTask watchTask = new BatchTask() {
+
+        final AtomicDouble progress = new AtomicDouble(1);
+
         @Override
         public String getTaskName() {
           return "Method folder watch";
@@ -73,7 +76,7 @@ public class MethodSchedulerTask {
 
         @Override
         public AtomicDouble getProgress() {
-          return new AtomicDouble(1);
+          return progress;
         }
 
         @Override
@@ -176,7 +179,7 @@ public class MethodSchedulerTask {
             }
 
             // if we do not move, stop watching
-            if (!moveFiles){
+            if (!moveFiles) {
               break;
             }
 

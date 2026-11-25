@@ -39,6 +39,14 @@ public enum FilterOptions {
   },
 
 
+  ALIGNED_OVER_RANGE {
+    @Override
+    public String toString() {
+      return "Aligned over range";
+    }
+  },
+
+
   /*
   ROI based on user input - for each element
    */

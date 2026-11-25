@@ -23,9 +23,11 @@ import util.ArrUtils;
 public class DeadTimeUtil {
 
   public static double[] applyDeadTime(double[] signal, double tau, DeadTimeModel type,
-      double dwellTime) {
+                                       double dwellTime, boolean isFaraday) {
 
-    if (type.equals(DeadTimeModel.PARALYZING)) {
+    if (isFaraday || type.equals(DeadTimeModel.NONE)) {
+      // do nothing
+    } else if (type.equals(DeadTimeModel.PARALYZING)) {
       // Convert to cps
       ArrUtils.divideOverriding(signal, dwellTime);
       for (int i = 0; i < signal.length; i++) {

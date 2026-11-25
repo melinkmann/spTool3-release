@@ -20,6 +20,7 @@ package tasks.single;
 import analysis.*;
 import analysis.Baseline.ThrFormalism;
 import analysis.Baseline.ThrMeasureOfSignificance;
+import core.SpTool3Main;
 import dataModelNew.Sample;
 import dataModelNew.SampleImpl;
 import dataModelNew.TISeries;
@@ -57,14 +58,17 @@ public class SearchTask extends AbstractWorkingTask implements WorkingTask {
 
   private final PopulationBranch branch;
   private final NormalSearchParams params;
+  private final int searchBranchIndex;
   private final AtomicReference<Sample> sampleRef;
   private final List<Channel> selIsotopes;
 
   public SearchTask(String taskName, PopulationBranch branch, NormalSearchParams params,
+                    int searchBranchIndex,
                     AtomicReference<Sample> sampleRef, List<Channel> selChannels) {
     super(taskName);
     this.branch = branch;
     this.params = (NormalSearchParams) params.getCopyWithPreviousDateFileAndID();
+    this.searchBranchIndex = searchBranchIndex;
     this.sampleRef = sampleRef;
     this.selIsotopes = new ArrayList<>(selChannels);
   }
@@ -186,8 +190,10 @@ public class SearchTask extends AbstractWorkingTask implements WorkingTask {
                     }
 
                     case SPLIT_CORRECTION_SMOOTH -> {
+                      boolean saveSmooth = SpTool3Main.getRunTime()
+                          .getConfParams().getStoreSmoothedSearchDataAsChannel().getValue();
                       coll = SearchUtils.smoothAndSplitCorrectSearch(trace, trace.getTISeries(),
-                          start, stop, height, smoothType, smoothWidth);
+                          start, stop, height, smoothType, smoothWidth, saveSmooth);
                       popParSummary.add("SmoothWidth", params.getSmoothGaussianWidth(),
                           SnF.doubleToString(smoothWidth, NF.D1C1));
                       break;
@@ -198,11 +204,11 @@ public class SearchTask extends AbstractWorkingTask implements WorkingTask {
                     break;
                   }
 
-                  PopulationID populationID = branch.startBranchForTrace(trace, params);
+                  PopulationID populationID = branch.startBranchForTrace(trace, params, searchBranchIndex);
 
                   String popLabel = params.getPopulationName().getValue();
                   if (!popLabel.isEmpty()) {
-                    populationID.setLabel(popLabel);
+                    populationID.setMethodLabel(popLabel);
                   }
 
                   Population population = new NpPopulation(
@@ -406,7 +412,6 @@ public class SearchTask extends AbstractWorkingTask implements WorkingTask {
               }
             } else {
               // p-value approach
-              List<Trace> interestingTraces = new ArrayList<>(traces);
 
               // ################################################################################
               // find interesting traces
@@ -429,7 +434,7 @@ public class SearchTask extends AbstractWorkingTask implements WorkingTask {
                 case ALL_LOADED -> {
                 }
                 case SELECTED -> {
-                  traces.removeIf(t -> !selIsotopes.contains(t.getChannel().getIsotope()));
+                  traces.removeIf(t -> !selIsotopes.contains(t.getChannel()));
                 }
                 case POSITIVE_LIST_SELECTION -> {
                   traces.removeIf(t -> !includedIsotopes.contains(t.getChannel().getIsotope()));
@@ -441,6 +446,8 @@ public class SearchTask extends AbstractWorkingTask implements WorkingTask {
                   // keep as is, we should not reach this branch
                 }
               }
+
+              List<Trace> interestingTraces = new ArrayList<>(traces);
 
               for (Trace trace : interestingTraces) {
 
@@ -774,11 +781,12 @@ public class SearchTask extends AbstractWorkingTask implements WorkingTask {
                       popParSummary.add("pStartStop", pStartStop, SnF.doubleToString(startStopPValue,
                           NF.D1C3));
                       popParSummary.add("MZ", preScreenMap.size() + "/" + interestingTraces.size());
-                      PopulationID populationID = branch.startBranchForTrace(trace, params);
+                      PopulationID populationID = branch.startBranchForTrace(trace, params,
+                          searchBranchIndex);
 
                       String popLabel = params.getPopulationName().getValue();
                       if (!popLabel.isEmpty()) {
-                        populationID.setLabel(popLabel);
+                        populationID.setMethodLabel(popLabel);
                       }
 
                       Population population = new NpPopulation(

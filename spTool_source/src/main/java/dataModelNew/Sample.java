@@ -156,7 +156,8 @@ public interface Sample extends Serializable {
     return new SpectralRegion(getSpectralData(popID));
   }
 
-  void clearSpectralData();
+  // true if sth was removed
+  boolean clearSpectralData(@Nullable PopulationID populationID);
 
   /**
    * @param channel Channel that may or may not be present in this sample.
@@ -245,9 +246,9 @@ public interface Sample extends Serializable {
   /**
    * Returns the highest intensity height threshold used to mark a peak height LD.
    */
-  double getMaxThr(@Nullable Channel channel, PopulationID populationID, boolean netSignal);
+  double getMaxNetThr(@Nullable Channel channel, PopulationID populationID, boolean netSignal);
 
-  double getMaxThr(@Nullable Channel channel, PopulationID populationID, boolean netSignal, Unit unit);
+  double getMaxNetThr(@Nullable Channel channel, PopulationID populationID, boolean netSignal, Unit unit);
 
   List<Event> getNPEvents(Channel channel, PopulationID popID);
 
@@ -311,6 +312,8 @@ public interface Sample extends Serializable {
 
   String tabRawMean(Channel channel);
 
+  String tabNonzeroRawMean(Channel channel);
+
   String tabRawMeanCPS(Channel channel);
 
   String tabRawMedian(Channel channel);
@@ -346,6 +349,14 @@ public interface Sample extends Serializable {
   String tabPNC(Channel channel, PopulationID populationID);
 
   String tabPopNpRate(Channel channel, PopulationID populationID);
+
+  String tabPopNpRateCorr(Channel channel, PopulationID populationID);
+
+  String tabPopNpRateLoss(Channel channel, PopulationID populationID);
+
+  String tabPopNpRateCorrMax(Channel channel, PopulationID populationID);
+
+  String tabPopNpRateObsv10Pct(Channel channel, PopulationID populationID);
 
   String tabPopNpMean(Channel channel, PopulationID populationID);
 

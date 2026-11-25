@@ -34,6 +34,7 @@ import gui.dialog.FxStageButton;
 import gui.dialog.caseImpl.*;
 import gui.dialog.notification.NotificationFactory;
 import gui.listAndSearch.SampleListAndTable;
+import gui.table.TableFactory;
 import gui.util.TextFieldUtils;
 import gui.util.UiUtil;
 import io.*;
@@ -129,6 +130,7 @@ public class MainWindowController {
   public SplitPane sampleChooserSplitPane;
   public TableView<FxSample> sampleTableView;
   public TableView<FxChannel> channelTableView;
+  private boolean channelTableViewColumnExt = false;
   public Text channelTableViewFeedbackText;
   public ListView<FxEntry<SampleSet>> sampleSetListView;
   public ListView<PopulationID> populationView;
@@ -252,6 +254,7 @@ public class MainWindowController {
         populationView,
         SelectionMode.SINGLE,
         true);
+    channelTableViewColumnExt = SpTool3Main.getRunTime().getConfParams().getExtendChannelTable().getValue();
 
     sampleSetBorderPane.setTop(combinedSampleListAndSearchView.getSearchFld());
 
@@ -682,8 +685,8 @@ public class MainWindowController {
                 }
 
                 // check file type
-                String limitingType = SpTool3Main.getRunTime().getConfParams()
-                    .getDragDropImportFileType().getValue();
+                String limitingType =
+                    SpTool3Main.getRunTime().getConfParams().getDragDropImportFileType().getValue();
                 // Check if limit is given
                 if (!limitingType.isEmpty()) {
                   recursivePaths.removeIf(p -> !PathUtil.getExtensionWithDot(p).equals(limitingType));
@@ -1093,6 +1096,18 @@ public class MainWindowController {
     });
   }
 
+  public void updateTableColumns() {
+    Platform.runLater(() -> {
+      boolean newState = SpTool3Main.getRunTime().getConfParams().getExtendChannelTable().getValue();
+      if (newState != channelTableViewColumnExt) {
+        channelTableViewColumnExt = newState;
+        channelTableView.getColumns().clear(); // else they pile-up
+        TableFactory.setupIsotopeTable(channelTableView);
+        combinedSampleListAndSearchView.fireSampleChange();
+      }
+    });
+  }
+
   public List<Sample> getSelSamples() {
     List<Sample> sel = sampleTableView.getSelectionModel().getSelectedItems()
         .stream()
@@ -1139,6 +1154,23 @@ public class MainWindowController {
     List<PopulationID> sel = new ArrayList<>(
         populationView.getSelectionModel().getSelectedItems());
     return sel;
+  }
+
+  public void randomlySelectIsotopes(int n) {
+    int size = channelTableView.getItems().size();
+    int count = Math.min(n, size); // don't ask for more rows than exist
+
+    List<Integer> indices = new ArrayList<>();
+    for (int i = 0; i < size; i++) {
+      indices.add(i);
+    }
+    Collections.shuffle(indices);
+
+    channelTableView.getSelectionModel().clearSelection();
+
+    for (int i = 0; i < count; i++) {
+      channelTableView.getSelectionModel().select(indices.get(i));
+    }
   }
 
   public Unit getUnit() {

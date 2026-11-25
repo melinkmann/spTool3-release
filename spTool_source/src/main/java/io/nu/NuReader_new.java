@@ -25,7 +25,6 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import core.SpTool3Main;
 import gui.dialog.notification.NotificationFactory;
-import io.fair_acc.dataset.spi.fastutil.DoubleArrayList;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
@@ -1063,17 +1062,41 @@ public class NuReader_new {
   // This handles whether bytes are wrapped or not
   private static byte[] readIntegBytes(Path filePath) throws IOException {
     byte[] bytes = Files.readAllBytes(filePath);
-    if (bytes.length >= 2
+    if (bytes.length >= 18
         && (bytes[0] & 0xFF) == GZIP_MAGIC_1
         && (bytes[1] & 0xFF) == GZIP_MAGIC_2) {
-      // LOGGER.trace("readIntegBytes: decompressing GZIP file: " + filePath);
-      try (GZIPInputStream gzis = new GZIPInputStream(new ByteArrayInputStream(bytes))) {
-        bytes = gzis.readAllBytes();
+
+      // Last 4 bytes of a gzip file = uncompressed size (little-endian)
+      int n = (bytes[bytes.length - 4] & 0xFF)
+          | (bytes[bytes.length - 3] & 0xFF) << 8
+          | (bytes[bytes.length - 2] & 0xFF) << 16
+          | (bytes[bytes.length - 1] & 0xFF) << 24;
+
+      if (n > 0 && n < (1 << 30)) {
+        try (GZIPInputStream gzis = new GZIPInputStream(new ByteArrayInputStream(bytes), 1 << 16)) {
+          byte[] out = new byte[n];                          // allocate once
+          if (gzis.readNBytes(out, 0, n) == n && gzis.read() == -1) {
+            bytes = out;                                      // size matched exactly
+          }
+        } catch (Exception e) {
+          LOGGER.info("Cannot read original size from GZIP. Using dynamic size allocation." +
+              " Message: " + ExceptionUtils.getMessage(e) +
+              " Stack trace: " + ExceptionUtils.getStackTrace(e));
+
+          // Fallback if the trailer was missing/wrong (e.g. multi-member gzip)
+          try (GZIPInputStream gzis = new GZIPInputStream(new ByteArrayInputStream(bytes), 1 << 16)) {
+            bytes = gzis.readAllBytes();
+          }
+        }
+      } else {
+        // Fallback if the trailer was missing/wrong (e.g. multi-member gzip)
+        try (GZIPInputStream gzis = new GZIPInputStream(new ByteArrayInputStream(bytes), 1 << 16)) {
+          bytes = gzis.readAllBytes();
+        }
       }
-    } else {
-      // LOGGER.trace("readIntegBytes: file is uncompressed, reading raw bytes: " + filePath);
     }
     return bytes;
   }
+
 
 }

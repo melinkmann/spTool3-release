@@ -30,6 +30,7 @@ public interface ParamBundle extends Serializable {
   public static final String BUNDLE_ID_ROI_SIG_FACTOR = "roiSigFactorBundle";
   public static final String BUNDLE_ID_ELEMENT = "elementBundle";
   public static final String BUNDLE_ID_SIA = "siaBundle";
+  public static final String BUNDLE_ID_FARADAY = "faradayBundle";
 
   public ParamBundle copy(SpawnControlParameter newParent);
 

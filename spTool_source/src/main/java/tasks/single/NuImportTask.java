@@ -31,6 +31,7 @@ import math.stat.MeasureOfLocation;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import processing.options.DataFlag;
 import processing.options.IsotopeConflictReaderOption;
 import processing.options.TofIsotopeOption;
 import processing.parameterSets.impl.NuInterpreterParams;
@@ -38,6 +39,7 @@ import sandbox.montecarlo.Isotope;
 import tasks.TaskResult;
 import tasks.WorkingTask;
 import tasks.results.FunctionalTaskResult;
+import util.ArrUtils;
 import util.Functional;
 import util.NF;
 
@@ -153,6 +155,7 @@ public class NuImportTask extends AbstractWorkingTask implements WorkingTask {
 
                 TISeries ser = parsedData.tiSeries();
                 List<int[]> blanks = parsedData.blanker();
+                List<Integer> orIndices = ArrUtils.mergeUnique(blanks);
 
                 if (ser == null) {
                   continue;   // channel was not loaded (should not happen, but guard anyway)
@@ -166,7 +169,9 @@ public class NuImportTask extends AbstractWorkingTask implements WorkingTask {
                 Isotope isotope = prevSelMzMap.get(parsedData.requestedMZ());
                 if (isotope != null) {
                   Channel channel = new MZChannel(new MSIDImpl(new MZImpl(parsedData.tofMZ())), isotope);
-                  traces.add(new TraceImpl(sample, channel, ser, sia));
+                  Trace trace = new TraceImpl(sample, channel, ser, sia);
+                  trace.setFlags(DataFlag.OVER_RANGE, orIndices);
+                  traces.add(trace);
                 } else {
                   LOGGER.error("Unexpected mismatch of isotope and m/z. Isotope could not be matched.");
                 }
@@ -329,6 +334,7 @@ public class NuImportTask extends AbstractWorkingTask implements WorkingTask {
 
                   TISeries ser = parsedData.tiSeries();
                   List<int[]> blanks = parsedData.blanker();
+                  List<Integer> orIndices = ArrUtils.mergeUnique(blanks);
 
                   if (ser == null) {
                     continue;   // channel was not loaded (should not happen, but guard anyway)
@@ -341,14 +347,18 @@ public class NuImportTask extends AbstractWorkingTask implements WorkingTask {
 
                   Channel channel = channelMap.get(parsedData.tofMZ());
                   if (channel != null) {
-                    traces.add(new TraceImpl(sample, channel, ser, sia));
+                    Trace trace = new TraceImpl(sample, channel, ser, sia);
+                    trace.setFlags(DataFlag.OVER_RANGE, orIndices);
+                    traces.add(trace);
                   } else {
                     // suspect mismatch between theoretical and TOF mz:
                     channel = channelMap.get(parsedData.requestedMZ());
                     if (channel != null) {
                       LOGGER.info("Unexpected match of m/z values! Expected TOF mz but found theoretical mz" +
                           ".");
-                      traces.add(new TraceImpl(sample, channel, ser, sia));
+                      Trace trace = new TraceImpl(sample, channel, ser, sia);
+                      trace.setFlags(DataFlag.OVER_RANGE, orIndices);
+                      traces.add(trace);
                     } else {
                       LOGGER.error("Unexpected mismatch of m/z values: " +
                           "neither TOF mz nor theoretical mz match could be matched!");
@@ -439,13 +449,15 @@ public class NuImportTask extends AbstractWorkingTask implements WorkingTask {
             List<ParsedNuData.ParsedNuDataResult> sortedData = new ArrayList<>(data);
             sortedData.sort(Comparator.comparingDouble(ParsedNuData.ParsedNuDataResult::tofMZ));
 
+            // FIND TISERIES WITH ENOUGH DPs ABOVE THRESHOLD
+            List<ParsedNuData.ParsedNuDataResult> seriesAboveThreshold = new ArrayList<>();
+
             for (int i = 0; i < sortedData.size(); i++) {
               progressValue.set(0.8 + 0.19 * ((double) i) / sortedData.size());
 
               ParsedNuData.ParsedNuDataResult parsedData = sortedData.get(i);
 
               TISeries ser = parsedData.tiSeries();
-              List<int[]> blanks = parsedData.blanker();
 
               if (ser == null) {
                 continue;   // channel was not loaded (should not happen, but guard anyway)
@@ -476,51 +488,75 @@ public class NuImportTask extends AbstractWorkingTask implements WorkingTask {
               }
 
               if (includeTrace) {
-                int roundedNominalIsotopicNumber = (int) Math.round(parsedData.requestedMZ());
+                seriesAboveThreshold.add(parsedData);
+              }
+            }
 
-                //______________ We resolve conflicts with configuration ______________________
-                if (conflictOption.equals(IsotopeConflictReaderOption.USE_DEFAULT)) {
-                  Isotope guessIsotope = SpTool3Main.getRunTime()
-                      .getConfParams().resolveConflictOrGet(roundedNominalIsotopicNumber);
+            // CONVERT "GOOD SERIES" INTO ISOTOPES
+            HashMap<Isotope, ParsedNuData.ParsedNuDataResult> seriesIsotopeMap = new LinkedHashMap<>();
+            for (ParsedNuData.ParsedNuDataResult parsedData : seriesAboveThreshold) {
+              int roundedNominalIsotopicNumber = (int) Math.round(parsedData.requestedMZ());
 
-                  double sia = SiaShapeEstimation.computeShape(ser.getIntensity(), blanks);
-                  if (!Double.isFinite(sia)) {
-                    sia = 0;
-                  }
+              //______________ We resolve conflicts with configuration ______________________
+              if (conflictOption.equals(IsotopeConflictReaderOption.USE_DEFAULT)) {
+                Isotope guessIsotope = SpTool3Main.getRunTime()
+                    .getConfParams().resolveConflictOrGet(roundedNominalIsotopicNumber);
 
-                  // transfer to HDD
-                  if (ser instanceof DTISeriesRAM) {
-                    ser = new DTISeriesHDD((DTISeriesRAM) ser);
-                  }
+                seriesIsotopeMap.put(guessIsotope, parsedData);
 
-                  sample.addTrace(new TraceImpl(sample,
-                      new MZChannel(new MSIDImpl(new MZImpl(parsedData.tofMZ())), guessIsotope),
-                      ser, sia));
-                  validIsotopes.add(guessIsotope);
+                //______________ we add all and e.g. 48 is both Ti and Ca ______________________
+              } else {
+                // add each
+                List<Isotope> matches = Isotope.getFromNominalMass(roundedNominalIsotopicNumber);
+                for (Isotope isotopeMatch : matches) {
 
-                  //______________ we add all and e.g. 48 is both Ti and Ca ______________________
-                } else {
-                  // add each
-                  List<Isotope> matches = Isotope.getFromNominalMass(roundedNominalIsotopicNumber);
-                  for (Isotope isotopeMatch : matches) {
+                  seriesIsotopeMap.put(isotopeMatch, parsedData);
+                }
+              }
+            }
 
-                    double sia = SiaShapeEstimation.computeShape(ser.getIntensity(), blanks);
-                    if (!Double.isFinite(sia)) {
-                      sia = 0;
+            // DECIDE WHAT TO IMPORT
+            HashMap<Isotope, ParsedNuData.ParsedNuDataResult> isotopesToImport = new LinkedHashMap<>();
+            if (params.getLimitPreScreenToDefaultIsotope().getValue()) {
+              for (Isotope isotope : seriesIsotopeMap.keySet()) {
+                Element element = isotope.getElement();
+                if (element != null) {
+                  Isotope defaultIso = SpTool3Main.getRunTime().getConfParams().getDefaultIsotope(element);
+                  if (isotope.equals(defaultIso)) {
+                    ParsedNuData.ParsedNuDataResult correspondingData = seriesIsotopeMap.get(isotope);
+                    if (correspondingData != null) {
+                      isotopesToImport.put(isotope, correspondingData);
                     }
-
-                    // transfer to HDD
-                    if (ser instanceof DTISeriesRAM) {
-                      ser = new DTISeriesHDD((DTISeriesRAM) ser);
-                    }
-
-                    sample.addTrace(new TraceImpl(sample,
-                        new MZChannel(new MSIDImpl(new MZImpl(parsedData.tofMZ())), isotopeMatch),
-                        ser, sia));
-                    validIsotopes.add(isotopeMatch);
                   }
                 }
               }
+            } else {
+              isotopesToImport.putAll(seriesIsotopeMap);
+            }
+
+            // FINALLY, COMPUTE SIA, ADD TO SAMPLE
+            for (Isotope isotope : isotopesToImport.keySet()) {
+              ParsedNuData.ParsedNuDataResult parsedData = isotopesToImport.get(isotope);
+              List<int[]> blanks = parsedData.blanker();
+              List<Integer> orIndices = ArrUtils.mergeUnique(blanks);
+              TISeries ser = parsedData.tiSeries();
+
+              double sia = SiaShapeEstimation.computeShape(ser.getIntensity(), blanks);
+              if (!Double.isFinite(sia)) {
+                sia = 0;
+              }
+
+              // transfer to HDD
+              if (ser instanceof DTISeriesRAM) {
+                ser = new DTISeriesHDD((DTISeriesRAM) ser);
+              }
+
+              Channel channel = new MZChannel(new MSIDImpl(new MZImpl(parsedData.tofMZ())), isotope);
+              Trace trace = new TraceImpl(sample, channel, ser, sia);
+              trace.setFlags(DataFlag.OVER_RANGE, orIndices);
+
+              sample.addTrace(trace);
+              validIsotopes.add(isotope);
             }
 
 
@@ -611,6 +647,7 @@ public class NuImportTask extends AbstractWorkingTask implements WorkingTask {
 
               TISeries ser = parsedData.tiSeries();
               List<int[]> blanks = parsedData.blanker();
+              List<Integer> orIndices = ArrUtils.mergeUnique(blanks);
 
               if (ser == null) {
                 continue;   // channel was not loaded (should not happen, but guard anyway)
@@ -628,7 +665,9 @@ public class NuImportTask extends AbstractWorkingTask implements WorkingTask {
 
               // No isotope matching: use MZChannel.
               Channel channel = new MZChannel(new MSIDImpl(new MZImpl(parsedData.tofMZ(), NF.D1C4)));
-              sample.addTrace(new TraceImpl(sample, channel, ser, sia));
+              Trace trace = new TraceImpl(sample, channel, ser, sia);
+              trace.setFlags(DataFlag.OVER_RANGE, orIndices);
+              sample.addTrace(trace);
             }
 
             if (!sample.getTraces().isEmpty()) {

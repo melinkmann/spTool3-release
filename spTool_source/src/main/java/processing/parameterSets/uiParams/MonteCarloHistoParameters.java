@@ -424,9 +424,9 @@ public class MonteCarloHistoParameters extends AbstractParamSet implements Param
     // Register parent
     super.setParentParameters(
 
-        eventParameter,
-        mathModification,
         eventType,
+        // eventParameter,
+        mathModification,
 
         showHistogram,
         showKernelDensity,
@@ -440,7 +440,16 @@ public class MonteCarloHistoParameters extends AbstractParamSet implements Param
         colorAlpha
     );
 
-    eventType.addConditionalChild(EventType.BG_NP, jitterBackground, backgroundHighlightOption);
+    eventType.addConditionalChild(EventType.NP, eventParameter);
+    eventType.addConditionalChild(EventType.BG, eventParameter, jitterBackground);
+
+    eventType.addConditionalChild(EventType.BG_NP,
+        eventParameter,
+        jitterBackground,
+        backgroundHighlightOption);
+
+    eventType.addConditionalChild(EventType.RAW, jitterBackground);
+
     mathModification.addConditionalChild(MathMod.LOG10, logWithoutZeros);
 
     showHistogram.addConditionalChild(true, binWidthEstimator, histogramNormalization);

@@ -74,7 +74,8 @@ public class AutoFillFxParameter<T extends Serializable>
                Update Children if value is valid
                Note: Set value first since children depend on the value inside the PLAIN parameter.
                */
-          super.notifyValueChange();
+          // super.notifyValueChange();
+          super.notifyItemChange(); // this forces refresh on the abundance fields?
         }
       }
     });

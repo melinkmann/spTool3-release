@@ -37,6 +37,7 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import javax.annotation.Nullable;
 
+import math.stat.MeasureOfLocation;
 import math.units.enums.NMPUnit;
 import math.units.enums.IntensityUnit;
 import math.units.enums.TimeUnit;
@@ -1381,7 +1382,8 @@ public abstract class DataExport {
   }
 
 
-  public static void exportRegionSpectra(Sample mainSample, List<PopulationID> pops, Path dir) {
+  public static void exportRegionSpectra(Sample mainSample, List<PopulationID> pops, boolean useEventData,
+                                         Path dir) {
 
     if (Files.isDirectory(dir)) {
 
@@ -1410,7 +1412,8 @@ public abstract class DataExport {
 
           String label = GlobalIO.cleanupWindowsFileName("LPC_" + popID.getString());
           Path filePath = subDir.resolve(label + ".csv");
-          ExportWriter writer = new CsvExportWriter(filePath.toFile());
+          Character del = SpTool3Main.getRunTime().getConfParams().getDelimiter();
+          ExportWriter writer = new CsvExportWriter(filePath.toFile(), del);
 
           // Data
           int validKeyCounter = 0;
@@ -1467,46 +1470,66 @@ public abstract class DataExport {
         }
       } else {
 
-        for (PopulationID popID : pops) {
+        // merged samples may not have their aligns merged properly?! - exclude them here and TODO implement!
+        if (useEventData && !(mainSample instanceof MergedSample)) {
 
-          Path subDir = dir.resolve(GlobalIO.cleanupWindowsFileName(popID.toString()));
-          PathUtil.createDir(subDir);
+          // file label -> raw event parameter (no quantification, no log2, no z-score)
+          Map<String, EventParameter> eventExports = new LinkedHashMap<>();
+          eventExports.put("Intensity", EventParameter.NET_AREA);
+          eventExports.put("numberOfPoints", EventParameter.NO_OF_POINTS);
+          eventExports.put("heightToBackground", EventParameter.HEIGHT);
+          eventExports.put("Symmetry", EventParameter.ASYMMETRY_FACTOR);
 
-          // Load / create the spectral array data
-          List<SpectralArray> spectralArrays = mainSample.getSpectralData(popID);
-          if (spectralArrays.isEmpty()) {
-            for (Sample s : mainSample.getAllSamples()) {
-              SpectralUtil.computeSpectra(s, popID);
-            }
-            spectralArrays = mainSample.getSpectralData(popID);
-          }
+          for (PopulationID popID : pops) {
 
-          if (!spectralArrays.isEmpty()) {
+            Path subDir = dir.resolve(GlobalIO.cleanupWindowsFileName(popID.toString()));
+            PathUtil.createDir(subDir);
 
             // Sort by MZ for MIA
-            spectralArrays.sort(Comparator.comparingDouble(SpectralArray::getMz));
+            List<Channel> channels = new ArrayList<>(mainSample.listChannels());
+            channels.sort(Comparator.comparingDouble(Channel::getMZ));
 
-            // Collect all feature keys from the first array that has any
-            List<String> featureKeys = new ArrayList<>();
-            for (SpectralArray sa : spectralArrays) {
-              List<String> keys = sa.listAdditionalFeatures();
-              if (!keys.isEmpty()) {
-                featureKeys.addAll(keys);
-                break;
+            for (Map.Entry<String, EventParameter> export : eventExports.entrySet()) {
+              String label = export.getKey();
+              EventParameter parameter = export.getValue();
+
+              // Collect raw event values per channel; skip channels without events in this population
+              List<Channel> usedChannels = new ArrayList<>();
+              List<double[]> channelValues = new ArrayList<>();
+              int eventCount = 0;
+
+              for (Channel ch : channels) {
+                double[] values = mainSample.getData(ch, popID, EventType.NP, parameter,
+                    IntensityUnit.CTS); // raw, unmodified
+                if (values == null || values.length == 0) {
+                  continue;
+                }
+
+                // override height with heightToBG ratio
+                if (parameter.equals(EventParameter.HEIGHT)) {
+                  Trace trace = mainSample.getTrace(ch);
+                  if (trace != null && trace.getBaseline() != null && trace.getBaseline().hasBaseline()) {
+                    Baseline baseline = trace.getBaseline();
+                    double meanBln = MeasureOfLocation.MEAN.calc(
+                        baseline.getBackgroundDistribution().getLocation());
+                    if (meanBln > 0) {
+                      values = ArrUtils.divide(values, meanBln);
+                    }
+                  }
+                }
+
+                usedChannels.add(ch);
+                channelValues.add(values);
+                eventCount = Math.max(eventCount, values.length);
               }
-            }
 
-            // Build a combined list: null = intensity, non-null = feature key
-            List<String> allExports = new ArrayList<>();
-            allExports.add(null); // intensity first
-            allExports.addAll(featureKeys);
+              if (usedChannels.isEmpty()) {
+                continue;
+              }
 
-            int regionCount = spectralArrays.get(0).getIntensity().length;
-
-            for (String featureKey : allExports) {
-              String label = featureKey == null ? "Intensity" : featureKey;
               Path filePath = subDir.resolve(label + ".csv");
-              ExportWriter writer = new CsvExportWriter(filePath.toFile());
+              Character del = SpTool3Main.getRunTime().getConfParams().getDelimiter();
+              ExportWriter writer = new CsvExportWriter(filePath.toFile(), del);
 
               writer.writeLine(DataExport.getShortMeta(mainSample));
               writer.writeLine(List.of("SP_COMPOSITION_MATRIX_SPTOOL"));
@@ -1517,38 +1540,123 @@ public abstract class DataExport {
               header.add("MZ");
               header.add("Isotope");
               header.add("Element");
-              for (int r = 0; r < regionCount; r++) {
+              for (int r = 0; r < eventCount; r++) {
                 header.add("Particle " + (r + 1));
               }
               writer.writeLine(header);
 
-              // One row per SpectralArray (i.e. per m/z)
-              for (SpectralArray spectralArray : spectralArrays) {
+              // One row per channel
+              for (int c = 0; c < usedChannels.size(); c++) {
+                Channel ch = usedChannels.get(c);
+                double[] values = channelValues.get(c);
+
                 List<String> row = new ArrayList<>();
-
-                String mz = SnF.doubleToString(spectralArray.getMz(), NF.D1C6);
+                String mz = SnF.doubleToString(ch.getMZ(), NF.D1C6);
                 row.add(mz);
-
-                Channel ch = spectralArray.getChannel();
-                row.add(ch.getUIString());
                 if (ch.getIsotope() != null) {
                   row.add(ch.getIsotope().getElement().getSymbol());
                 } else {
                   row.add(mz);
                 }
+                row.add(ch.getCategory().getUIString());
 
-                double[] values = featureKey == null
-                    ? spectralArray.getIntensity()
-                    : spectralArray.getAdditionalFeature(featureKey);
-
-                if (values != null) {
-                  row.addAll(SnF.doubleToStrList(values, NF.D1C6));
+                row.addAll(SnF.doubleToStrList(values, NF.D1C6));
+                // pad if this channel has fewer events than the longest one, so columns stay aligned
+                for (int r = values.length; r < eventCount; r++) {
+                  row.add("");
                 }
 
                 writer.writeLine(row);
               }
 
               writer.close();
+            }
+          }
+        } else {
+          for (PopulationID popID : pops) {
+
+            Path subDir = dir.resolve(GlobalIO.cleanupWindowsFileName(popID.toString()));
+            PathUtil.createDir(subDir);
+
+            // Load / create the spectral array data
+            List<SpectralArray> spectralArrays = mainSample.getSpectralData(popID);
+            if (spectralArrays.isEmpty()) {
+              for (Sample s : mainSample.getAllSamples()) {
+                SpectralUtil.computeSpectra(s, popID);
+              }
+              spectralArrays = mainSample.getSpectralData(popID);
+            }
+
+            if (!spectralArrays.isEmpty()) {
+
+              // Sort by MZ for MIA
+              spectralArrays.sort(Comparator.comparingDouble(SpectralArray::getMz));
+
+              // Collect all feature keys from the first array that has any
+              List<String> featureKeys = new ArrayList<>();
+              for (SpectralArray sa : spectralArrays) {
+                List<String> keys = sa.listAdditionalFeatures();
+                if (!keys.isEmpty()) {
+                  featureKeys.addAll(keys);
+                  break;
+                }
+              }
+
+              // Build a combined list: null = intensity, non-null = feature key
+              List<String> allExports = new ArrayList<>();
+              allExports.add(null); // intensity first
+              allExports.addAll(featureKeys);
+
+              int regionCount = spectralArrays.get(0).getIntensity().length;
+
+              for (String featureKey : allExports) {
+                String label = featureKey == null ? "Intensity" : featureKey;
+                Path filePath = subDir.resolve(label + ".csv");
+                Character del = SpTool3Main.getRunTime().getConfParams().getDelimiter();
+                ExportWriter writer = new CsvExportWriter(filePath.toFile(), del);
+
+                writer.writeLine(DataExport.getShortMeta(mainSample));
+                writer.writeLine(List.of("SP_COMPOSITION_MATRIX_SPTOOL"));
+                writer.writeLine(List.of("feature=" + label));
+
+                // Header row
+                List<String> header = new ArrayList<>();
+                header.add("MZ");
+                header.add("Isotope");
+                header.add("Element");
+                for (int r = 0; r < regionCount; r++) {
+                  header.add("Particle " + (r + 1));
+                }
+                writer.writeLine(header);
+
+                // One row per SpectralArray (i.e. per m/z)
+                for (SpectralArray spectralArray : spectralArrays) {
+                  List<String> row = new ArrayList<>();
+
+                  String mz = SnF.doubleToString(spectralArray.getMz(), NF.D1C6);
+                  row.add(mz);
+
+                  Channel ch = spectralArray.getChannel();
+                  if (ch.getIsotope() != null) {
+                    row.add(ch.getIsotope().getElement().getSymbol());
+                  } else {
+                    row.add(mz);
+                  }
+                  row.add(ch.getCategory().getUIString());
+
+                  double[] values = featureKey == null
+                      ? spectralArray.getIntensity()
+                      : spectralArray.getAdditionalFeature(featureKey);
+
+                  if (values != null) {
+                    row.addAll(SnF.doubleToStrList(values, NF.D1C6));
+                  }
+
+                  writer.writeLine(row);
+                }
+
+                writer.close();
+              }
             }
           }
         }
@@ -1568,7 +1676,8 @@ public abstract class DataExport {
 
         String label = "LPC";
         Path filePath = subDir.resolve(label + ".csv");
-        ExportWriter writer = new CsvExportWriter(filePath.toFile());
+        Character del = SpTool3Main.getRunTime().getConfParams().getDelimiter();
+        ExportWriter writer = new CsvExportWriter(filePath.toFile(),del);
 
         // find all keys across samples
         HashSet<String> allKeys = new LinkedHashSet<>();
@@ -1744,7 +1853,8 @@ public abstract class DataExport {
 
             // Output dir and writer
             Path filePath = dir.resolve("line_" + (i + 1) + ".csv");
-            ExportWriter writer = new CsvExportWriter(filePath.toFile());
+            Character del = SpTool3Main.getRunTime().getConfParams().getDelimiter();
+            ExportWriter writer = new CsvExportWriter(filePath.toFile(), del);
 
             // Data
             IncompleteParticleMatrix matrix = ((IncompleteSample) sample).getMatrix(popID);

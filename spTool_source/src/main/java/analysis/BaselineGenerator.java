@@ -59,7 +59,7 @@ public abstract class BaselineGenerator {
      */
     BaselineDynamic baselineDynamic = par.getBaselineDynamics().getValue();
     double widthPerSlice = par.getBaselinePointsPerSegment().getValue();
-    int pointsPerSlice = (int) Math.ceil(widthPerSlice/(1000*dwellTimeSec));
+    int pointsPerSlice = (int) Math.ceil(widthPerSlice / (1000 * dwellTimeSec));
     pointsPerSlice = Math.max(10, pointsPerSlice);
 
     if (baselineDynamic.equals(BaselineDynamic.CONSTANT)) {
@@ -156,6 +156,7 @@ public abstract class BaselineGenerator {
           yield CompoundPoissonTable.getID();
         }
       }
+      case NEGATIVE_BINOMIAL -> ResettableStatDataSet.NegativeBinomial.getID();
 
       // essentially not needed as there should not be another option...
       default -> PoissonNormal.getID();
@@ -647,7 +648,7 @@ public abstract class BaselineGenerator {
         data[j] = data[i]; // Move valid elements forward
         j++;
       }
-      // System.out.println(i + ": " + Arrays.toString(data)); // Expected: [5.6, 3.4, 7.8]
+      // System.out.println(i + ": " + Arrays.toString(data));
     }
     double[] filteredData = Arrays.copyOfRange(data, 0, j); // Optional truncation
     return filteredData;

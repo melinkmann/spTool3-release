@@ -17,6 +17,8 @@
 
 package dataModelNew.mz;
 
+import javax.annotation.Nullable;
+import java.io.IOException;
 import java.io.Serial;
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -29,26 +31,45 @@ public class MSIDImpl implements MSID, Serializable {
   @Serial
   private static final long serialVersionUID = 1_000_000L;
 
+  @Nullable
+  private final String categoryLabel;
+  @Nullable
+  private final String adductLabel;
   private final List<MZ> mzList;
 
   //Dummy
   public MSIDImpl() {
+    this.categoryLabel = null;
+    this.adductLabel = null;
     this.mzList = new ArrayList<>();
   }
 
   public MSIDImpl(MZ q1mz) {
+    this.categoryLabel = null;
+    this.adductLabel = null;
+    this.mzList = new ArrayList<>();
+    mzList.add(q1mz);
+  }
+
+  public MSIDImpl(@Nullable String categoryLabel, @Nullable String adductLabel, MZ q1mz) {
+    this.categoryLabel = categoryLabel;
+    this.adductLabel = adductLabel;
     this.mzList = new ArrayList<>();
     mzList.add(q1mz);
   }
 
   public MSIDImpl(MZ q1mz, MZ q3mz) {
+    this.categoryLabel = null;
+    this.adductLabel = null;
     this.mzList = new ArrayList<>();
     mzList.add(q1mz);
     mzList.add(q3mz);
   }
 
   // Copy constructor (and potentially if list is provided)
-  public MSIDImpl(List<MZ> mzList) {
+  public MSIDImpl(@Nullable String categoryLabel, @Nullable String adductLabel, List<MZ> mzList) {
+    this.categoryLabel = categoryLabel;
+    this.adductLabel = adductLabel;
     this.mzList = new ArrayList<>(mzList);
   }
 
@@ -67,12 +88,30 @@ public class MSIDImpl implements MSID, Serializable {
     for (MZ mz : mzList) {
       mzListCopy.add(mz.copy());
     }
-    return new MSIDImpl(mzListCopy);
+    return new MSIDImpl(categoryLabel, adductLabel, mzListCopy);
   }
 
   @Override
   public ChannelCategory getCategory() {
-    return new DefaultChannelCategory(getUIString(), getUniqueXmlString());
+    if (categoryLabel == null) {
+      return new DefaultChannelCategory(getUIString(), getUniqueXmlString());
+    } else {
+      if (adductLabel != null) {
+        return new DefaultChannelCategory(categoryLabel + adductLabel, getUniqueXmlString());
+      } else {
+        return new DefaultChannelCategory(categoryLabel, getUniqueXmlString());
+      }
+
+    }
+  }
+
+  @Override
+  public String getAdductLabel() {
+    if (adductLabel != null) {
+      return adductLabel;
+    } else {
+      return "N/A";
+    }
   }
 
   @Override
@@ -85,6 +124,11 @@ public class MSIDImpl implements MSID, Serializable {
           .map(MZ::getUIString)
           .collect(Collectors.joining("-"));
     }
+
+    // if (adductLabel != null) {
+    //   str += adductLabel;
+    // }
+
     return str;
   }
 
@@ -94,6 +138,14 @@ public class MSIDImpl implements MSID, Serializable {
     String str = mzList.stream()
         .map(MZ::getUniqueXmlString)
         .collect(Collectors.joining(""));
+
+    if (categoryLabel != null) {
+      str += categoryLabel;
+    }
+
+    if (adductLabel != null) {
+      str += adductLabel;
+    }
 
     return Channel.wrap(str);
   }
@@ -107,11 +159,25 @@ public class MSIDImpl implements MSID, Serializable {
       return false;
     }
     MSIDImpl ms = (MSIDImpl) o;
-    return Objects.equals(ms.mzList, mzList);
+    boolean equals = Objects.equals(ms.mzList, mzList);
+    if (categoryLabel != null) {
+      equals = equals && Objects.equals(ms.categoryLabel, categoryLabel);
+    }
+    if (adductLabel != null) {
+      equals = equals && Objects.equals(ms.adductLabel, adductLabel);
+    }
+    return equals;
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(mzList);
+    return Objects.hash(mzList, categoryLabel, adductLabel);
+  }
+
+  @Serial
+  private void readObject(java.io.ObjectInputStream in) throws IOException, ClassNotFoundException {
+
+    in.defaultReadObject();
+
   }
 }

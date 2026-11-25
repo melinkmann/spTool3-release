@@ -26,6 +26,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.w3c.dom.Element;
 import processing.parameterSets.ParamBundle;
+import util.Functional;
 
 // https://stackoverflow.com/questions/16852247/how-to-serialize-a-generic-class-in-java
 public interface Parameter<T extends Serializable> extends Serializable {
@@ -72,6 +73,10 @@ public interface Parameter<T extends Serializable> extends Serializable {
   void setCurrentValueAsDefault();
 
   public void resetToDefault();
+
+  public void setRefresh(Functional refresh);
+
+  void callRefresh();
 
   List<Parameter<T>> getSelf();
 

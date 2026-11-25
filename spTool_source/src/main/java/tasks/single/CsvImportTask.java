@@ -62,7 +62,7 @@ public class CsvImportTask extends AbstractWorkingTask implements WorkingTask {
           + " in thread " + Thread.currentThread().getId());
 
       CsvInterpreter csvInterpreter = params.getInterpreter();
-      csvInterpreter.parse(path);
+      csvInterpreter.parse(path,  this::setProgress);
       result.addAll(csvInterpreter.getSamples());
       csvInterpreter = null; // idea: offer for GC?
 

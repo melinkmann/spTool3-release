@@ -70,11 +70,12 @@ public class StringParameter extends AbstractParameter<String> implements Serial
     String defaultValue = xmlElement.getAttribute(XmlUtil.PAR_DEFAULT_ATTRIBUTE);
     String isExpertStr = xmlElement.getAttribute(XmlUtil.PAR_EXPERT_ATTRIBUTE);
 
-    if (value != null && !value.isEmpty()) {
+    /// WE must allow empty values here or else empty fields cannot be read!
+    if (value != null) {
       setValue(StringEscapeUtils.unescapeXml(value));
     }
 
-    if (defaultValue != null && !defaultValue.isEmpty()) {
+    if (defaultValue != null) {
       setDefaultValue(StringEscapeUtils.unescapeXml(defaultValue));
     }
 

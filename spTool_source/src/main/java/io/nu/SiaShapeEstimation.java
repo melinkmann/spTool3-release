@@ -50,7 +50,7 @@ public class SiaShapeEstimation {
 
       // from the config
       double alpha = SpTool3Main.getRunTime().getConfParams().getSiaParticleFilterAlpha().getValue();
-      double increasedAlpha = SpTool3Main.getRunTime().getConfParams().getSiaParticleFilterAlpha().getValue();
+      double increasedAlpha = SpTool3Main.getRunTime().getConfParams().getSiaParticleFilterAlphaLowerLimit().getValue();
 
       boolean[] blankerMask = buildBlankerMask(intensity.length, blankedRanges);
 
@@ -143,7 +143,7 @@ public class SiaShapeEstimation {
     return shape;
   }
 
-  public static double[] filterDataIteratively(double[] targetData, double alpha, double increasedAlpha,
+    public static double[] filterDataIteratively(double[] targetData, double alpha, double increasedAlpha,
                                                double meanCriterion) {
     boolean iterate = true;
 

@@ -34,6 +34,7 @@ import math.units.enums.NMPUnit;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
+import processing.options.Delimiter;
 import processing.options.EventParameter;
 import processing.options.MathMod;
 import processing.parameterSets.*;
@@ -85,6 +86,9 @@ public class ExporterParams extends AbstractParamSet implements ParamSet {
   private final Parameter<EventParameter> particleEventParameter;
   private final Parameter<NMPUnit> particleUnitParameter;
 
+  public final Parameter<String> exportRegionSpectraBtnPar;
+  private final Parameter<Boolean> useEventDataForRegions;
+
   public final Parameter<String> exportEMDBtnPar;
   private final Parameter<EventParameter> emdEventParameter;
   private final Parameter<MathMod> emdMathParameter;
@@ -107,6 +111,7 @@ public class ExporterParams extends AbstractParamSet implements ParamSet {
         ExportTarget.class,
         false,
         "exportFormat");
+
 
     this.exportRawDataBtnPar = new ButtonParameter("Action",
         "Run export of raw data",
@@ -280,6 +285,38 @@ public class ExporterParams extends AbstractParamSet implements ParamSet {
         "emdEventParameter"
     );
 
+    this.exportRegionSpectraBtnPar = new ButtonParameter("Action",
+        "Export region spectra, i.e., a matrix of aligned event net areas.",
+        new SupplierSerializable<Button>() {
+          @Override
+          public Button get() {
+            return new Button("Export region spectra");
+          }
+        },
+        false,
+        "exportRegionSpectraBtnPar"
+    );
+
+    this.useEventDataForRegions = new BooleanParameter(
+        "Source",
+        "Use event data",
+        """
+            If checked, the export will use the aligned event data for the regions export.
+            Otherwise, the export uses the spectral data.
+            What's the difference?
+            
+            - Spectral data: For each aligned event, spTool takes the event's data points and projects them
+                             into every channel (isotope). Background is subtracted and the resulting
+                             net spectral data is reported. If background subtraction is applied to a "blank channel"
+                             (a channel without events), the resulting data scatters around zero.
+            
+            - Event data: In the processing method, there are options to set the area of certain events to zero.
+                          For example, negative area events or borrowed events can be set to zero.
+                          If you want to maintain these decisions in the export, select this checkbox""",
+        true,
+        false,
+        "useEventDataForRegions");
+
     organize();
   }
 
@@ -290,6 +327,7 @@ public class ExporterParams extends AbstractParamSet implements ParamSet {
 
     this.currentExportPath = params.currentExportPath.copyWithoutChildren();
     this.exportFormat = params.exportFormat.copyWithoutChildren();
+
 
     this.exportRawDataBtnPar = params.exportRawDataBtnPar.copyWithoutChildren();
 
@@ -307,6 +345,9 @@ public class ExporterParams extends AbstractParamSet implements ParamSet {
     this.jitterDataPoints = params.jitterDataPoints.copyWithoutChildren();
     this.exportParticleData = params.exportParticleData.copyWithoutChildren();
     this.particleEventParameter = params.particleEventParameter.copyWithoutChildren();
+
+    this.exportRegionSpectraBtnPar = params.exportRegionSpectraBtnPar.copyWithoutChildren();
+    this.useEventDataForRegions = params.useEventDataForRegions.copyWithoutChildren();
 
     this.exportEMDBtnPar = params.exportEMDBtnPar.copyWithoutChildren();
     this.emdEventParameter = params.emdEventParameter.copyWithoutChildren();
@@ -350,6 +391,9 @@ public class ExporterParams extends AbstractParamSet implements ParamSet {
     validParameters.add(exportCustomEventDataBtnPar);
     validParameters.add(new SeparatorParameter());
 
+    validParameters.add(exportRegionSpectraBtnPar);
+    validParameters.add(new SeparatorParameter());
+
     if (SpTool3Main.SHOW_EMD_EXPORT) {
       validParameters.add(exportEMDBtnPar);
       validParameters.add(new SeparatorParameter(true));
@@ -368,6 +412,8 @@ public class ExporterParams extends AbstractParamSet implements ParamSet {
     spCalCompatible.addConditionalChild(true,
         spCalHeight
     );
+
+    exportRegionSpectraBtnPar.addUnconditionalChild(useEventDataForRegions);
 
     // Set decoration
     includePopulationMarkers.setDecoration(new ImageDecoration<>("/img/populationMarker.png"));
@@ -418,6 +464,9 @@ public class ExporterParams extends AbstractParamSet implements ParamSet {
           case "exportParticleData" -> exportParticleData;
           case "particleEventParameter" -> particleEventParameter;
           case "particleUnitParameter" -> particleUnitParameter;
+
+          case "exportRegionSpectraBtnPar" -> exportRegionSpectraBtnPar;
+          case "useEventDataForRegions" -> useEventDataForRegions;
 
           case "emdEventParameter" -> emdEventParameter;
           case "emdMathParameter " -> emdMathParameter;
@@ -472,6 +521,10 @@ public class ExporterParams extends AbstractParamSet implements ParamSet {
 
   public void setCustomEventExportButton(SupplierSerializable<Button> button) {
     ((ButtonParameter) exportCustomEventDataBtnPar).setButtonSupplier(button);
+  }
+
+  public void setRegionsSpectraExportButton(SupplierSerializable<Button> button) {
+    ((ButtonParameter) exportRegionSpectraBtnPar).setButtonSupplier(button);
   }
 
   public Parameter<ExportTarget> getExportFormat() {
@@ -537,6 +590,11 @@ public class ExporterParams extends AbstractParamSet implements ParamSet {
   public Parameter<MathMod> getEmdMathParameter() {
     return emdMathParameter;
   }
+
+  public Parameter<Boolean> getUseEventDataForRegions() {
+    return useEventDataForRegions;
+  }
+
 
 
   ////////////////////////////////////////////////////////////

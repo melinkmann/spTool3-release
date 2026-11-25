@@ -38,6 +38,7 @@ import sandbox.montecarlo.Isotope;
 import util.Functional;
 import util.NF;
 
+import java.io.IOException;
 import java.io.Serial;
 import java.io.Serializable;
 import java.nio.file.Path;
@@ -62,6 +63,7 @@ public class NuInterpreterParams extends AbstractParamSet implements Serializabl
   private final Parameter<Double> preScreenAlpha;
   private final Parameter<Double> preScreenSiaShape;
   private final Parameter<Integer> preScreenDataPoints;
+  private Parameter<Boolean> limitPreScreenToDefaultIsotope;
   private final Parameter<Boolean> savePreScreenResultToMethod;
 
 
@@ -150,6 +152,19 @@ public class NuInterpreterParams extends AbstractParamSet implements Serializabl
         false,
         "preScreenDataPoints");
 
+    this.limitPreScreenToDefaultIsotope = new BooleanParameter(
+        "Isotope",
+        "Only load default isotope of found elements",
+        """
+            If an isotope of an element is found, this option
+            will make sure that only the default isotope of an element is loaded.
+            Example: if Fe56 is found but the default isotope in the configuration is set to 57Fe,
+            57Fe will be loaded""",
+        false,
+        true,
+        "limitPreScreenToDefaultIsotope"
+    );
+
     this.savePreScreenResultToMethod = new BooleanParameter(
         "Result",
         "Save in method",
@@ -176,6 +191,8 @@ public class NuInterpreterParams extends AbstractParamSet implements Serializabl
     this.preScreenAlpha = nuInterpreterParams.preScreenAlpha.copyWithoutChildren();
     this.preScreenSiaShape = nuInterpreterParams.preScreenSiaShape.copyWithoutChildren();
     this.preScreenDataPoints = nuInterpreterParams.preScreenDataPoints.copyWithoutChildren();
+    this.limitPreScreenToDefaultIsotope =
+        nuInterpreterParams.limitPreScreenToDefaultIsotope.copyWithoutChildren();
     this.savePreScreenResultToMethod = nuInterpreterParams.savePreScreenResultToMethod.copyWithoutChildren();
 
 
@@ -215,6 +232,7 @@ public class NuInterpreterParams extends AbstractParamSet implements Serializabl
         preScreenAlpha,
         preScreenSiaShape,
         preScreenConflictResolution,
+        limitPreScreenToDefaultIsotope,
         savePreScreenResultToMethod);
 
     selectedIsotopes.setDecoration(new ParamSetterButtonDecoration<>("Select isotopes", "/img/tableTrace.png",
@@ -286,6 +304,7 @@ public class NuInterpreterParams extends AbstractParamSet implements Serializabl
           case "preScreenConflictResolution" -> preScreenConflictResolution;
           case "preScreenSiaShape" -> preScreenSiaShape;
           case "preScreenDataPoints" -> preScreenDataPoints;
+          case "limitPreScreenToDefaultIsotope" -> limitPreScreenToDefaultIsotope;
           case "savePreScreenResultToMethod" -> savePreScreenResultToMethod;
 
           default -> null;
@@ -347,6 +366,10 @@ public class NuInterpreterParams extends AbstractParamSet implements Serializabl
 
   public Parameter<Boolean> getSavePreScreenResultToMethod() {
     return savePreScreenResultToMethod;
+  }
+
+  public Parameter<Boolean> getLimitPreScreenToDefaultIsotope() {
+    return limitPreScreenToDefaultIsotope;
   }
 
   public void requestSavingIsotopes(List<Isotope> isotopes) {
@@ -427,5 +450,20 @@ public class NuInterpreterParams extends AbstractParamSet implements Serializabl
       }
     }
     return result;
+  }
+
+  @Serial
+  private void readObject(java.io.ObjectInputStream in) throws IOException, ClassNotFoundException {
+
+    in.defaultReadObject();
+
+    // default supplier
+    final NuInterpreterParams defaults = new NuInterpreterParams();
+
+    // Fix missing fields from old serialized versions: we have to use
+    if (limitPreScreenToDefaultIsotope == null) {
+      this.limitPreScreenToDefaultIsotope = defaults.limitPreScreenToDefaultIsotope;
+    }
+
   }
 }

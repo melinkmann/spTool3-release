@@ -40,9 +40,7 @@ public abstract class SpectralUtil {
   public static void computeSpectra(Sample mainSample, PopulationID popID) {
 
     // Check if there are spectral data already
-    if (!mainSample.getSpectralData(popID).isEmpty()) {
-      return;
-    } else {
+    if (mainSample.getSpectralData(popID).isEmpty()) {
 
       // check if we can compute spectra
       boolean isAligned = AnalysisUtils.isAlignedOrPValOrSim(popID);
@@ -107,6 +105,8 @@ public abstract class SpectralUtil {
   /*
   force to zero?
   use BG of particle events if present?
+  TODO: This only works for the synthetic population if ONLY ONE population was simulated.
+   Else, e.g., if one is AuAg and one PbAu, Pb data is missing for the others - some align is needed.
    */
 
   public static List<SpectralArray> getSpectralData(Sample subSample,

@@ -151,6 +151,10 @@ public class FixedStatDataSet implements StatDataSet, Serializable {
     if (distrID == CompoundPoissonTable.getID()) {
       lim = CompoundPoissonTable.compoundCriticalLimit(alpha, location, siaShape);
     }
+    if (distrID == ResettableStatDataSet.NegativeBinomial.getID()) {
+      lim = ResettableStatDataSet.NegativeBinomial
+          .negativeBinomialCriticalLimit(alpha, location + continuityEpsilon, spread);
+    }
     return lim;
   }
 
@@ -173,6 +177,10 @@ public class FixedStatDataSet implements StatDataSet, Serializable {
     }
     if (distrID == CompoundPoissonTable.getID()) {
       lim = CompoundPoissonTable.compoundDetectionLimit(z, location, siaShape);
+    }
+    if (distrID == ResettableStatDataSet.NegativeBinomial.getID()) {
+      lim = ResettableStatDataSet.NegativeBinomial
+          .negativeBinomialDetectionLimit(z, location + continuityEpsilon, spread);
     }
     return lim;
   }
@@ -210,6 +218,14 @@ public class FixedStatDataSet implements StatDataSet, Serializable {
     if (distrID == CompoundPoissonTable.getID()) {
       lim = CompoundPoissonTable.compoundLowerOutlierLimit(alpha, location, siaShape);
     }
+    if (distrID == ResettableStatDataSet.NegativeBinomial.getID()) {
+      if (lowerPoissonLimitZero) {
+        lim = 0;
+      } else {
+        lim = ResettableStatDataSet.NegativeBinomial
+            .negativeBinomialLowerOutlierLimit(alpha, location + continuityEpsilon, spread);
+      }
+    }
     return lim;
   }
 
@@ -241,6 +257,51 @@ public class FixedStatDataSet implements StatDataSet, Serializable {
     }
     if (distrID == CompoundPoissonTable.getID()) {
       pValue = CompoundPoissonTable.calcSurvival(location, siaShape, intensity);
+    }
+    if (distrID == ResettableStatDataSet.NegativeBinomial.getID()) {
+      pValue = ResettableStatDataSet.NegativeBinomial.calcSurvival(location + continuityEpsilon, spread, intensity);
+    }
+    return pValue;
+  }
+
+  private double calcTruncatedPValue(double threshold) {
+    double pSel = 1; // same neutral default as calcPValue
+    if (distrID == Poisson.getID()) {
+      pSel = Poisson.calcTruncatedPValue(location, threshold);
+    }
+    if (distrID == Gaussian.getID()) {
+      pSel = Gaussian.calcTruncatedPValue(location, spread, threshold);
+    }
+    if (distrID == PoissonNormal.getID()) {
+      pSel = PoissonNormal.calcTruncatedPValue(location + continuityEpsilon, threshold);
+    }
+    if (distrID == CurriePoisson.getID()) {
+      // calcPValue uses the exact Poisson for Currie, so the selection probability must too.
+      pSel = Poisson.calcTruncatedPValue(location, threshold);
+    }
+    if (distrID == CompoundPoissonApprox.getID()) {
+      pSel = CompoundPoissonApprox.calcTruncatedPValue(location, siaShape, threshold);
+    }
+    if (distrID == CompoundPoissonTable.getID()) {
+      pSel = CompoundPoissonTable.calcTruncatedPValue(location, siaShape, threshold);
+    }
+    if (distrID == ResettableStatDataSet.NegativeBinomial.getID()) {
+      pSel = ResettableStatDataSet.NegativeBinomial.calcTruncatedPValue(location + continuityEpsilon, spread, threshold);
+    }
+    return pSel;
+  }
+
+  @Override
+  public double calcTruncatedPValue(double intensity, double threshold) {
+    double pValue;
+    if (intensity > threshold) {
+      pValue = calcPValue(intensity) / calcTruncatedPValue(threshold);
+
+      // cap to (0,1]
+      pValue = Math.min(1d, Math.max(Math.nextUp(0d), pValue));
+    } else {
+      pValue = calcPValue(intensity);
+      pValue = Math.min(1d, Math.max(Math.nextUp(0d), pValue));
     }
     return pValue;
   }

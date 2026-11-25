@@ -18,10 +18,12 @@
 package io.export;
 
 import com.opencsv.CSVWriter;
+
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.List;
+
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -44,12 +46,18 @@ public class CsvExportWriter implements ExportWriter {
 
   private final CSVWriter csvWriter;
 
-  public CsvExportWriter(File location) {
+  public CsvExportWriter(File location, Character delimiter) {
     this.location = location;
+    char del;
+    if (delimiter == null) {
+      del = delimiterCSV;
+    } else {
+      del = delimiter;
+    }
     CSVWriter tempWriter;
     try {
       FileWriter fileWriter = new FileWriter(location); // throws the IOException
-      tempWriter = new CSVWriter(fileWriter, delimiterCSV, CSVWriter.NO_QUOTE_CHARACTER,
+      tempWriter = new CSVWriter(fileWriter, del, CSVWriter.NO_QUOTE_CHARACTER,
           CSVWriter.DEFAULT_ESCAPE_CHARACTER, CSVWriter.DEFAULT_LINE_END);
     } catch (IOException e) {
       tempWriter = null;

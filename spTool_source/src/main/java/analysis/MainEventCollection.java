@@ -24,13 +24,10 @@ import dataModelNew.TraceImpl;
 import java.io.Serial;
 import java.io.Serializable;
 import java.lang.ref.SoftReference;
-import java.util.ArrayList;
-import java.util.BitSet;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
+import java.util.*;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import processing.options.EventParameter;
 import util.ArrUtils;
 
@@ -39,8 +36,10 @@ public class MainEventCollection implements EventCollection, Serializable {
   @Serial
   private static final long serialVersionUID = 1_000_000L;
 
+  private static final Logger LOGGER = LogManager.getLogger(MainEventCollection.class);
+
   private final Trace trace; // pointer to know where the data is for easy access
-  private final List<Event> npEvents;
+  protected final List<Event> npEvents;
 
   // accelerate computation but remove if memory is low
   private transient SoftReference<HashMap<EventParameter, double[]>> eventParamRef;
@@ -64,21 +63,13 @@ public class MainEventCollection implements EventCollection, Serializable {
     this.backgroundIndicesRef = new SoftReference<>(null);
   }
 
-  // for the copy constructor AND subEventCollections
-  public MainEventCollection(Trace trace, List<Event> npEvents) {
-    this.npEvents = npEvents;
-    this.trace = trace;
-    this.eventParamRef = new SoftReference<>(null);
-    this.bgParamRef = new SoftReference<>(null);
-    this.backgroundIndicesRef = new SoftReference<>(null);
-  }
 
   // Creates a deep copy.
   public MainEventCollection copy(Trace newTrace) {
     MainEventCollection newCollection = new MainEventCollection(newTrace);
     final List<Event> newEvents = new ArrayList<>();
     for (Event npEvent : npEvents) {
-      newEvents.add(npEvent.copy(this));
+      newEvents.add(npEvent.copy(newCollection));
     }
     newCollection.add(newEvents);
     return newCollection;
@@ -92,14 +83,37 @@ public class MainEventCollection implements EventCollection, Serializable {
 
   @Override
   public void add(Event event) {
-    npEvents.add(event);
-    backgroundIndicesRef = new SoftReference<>(null); // invalidate
+    if (!Objects.equals(event.getCollection(), this)) {
+      npEvents.add(event.copy(this));
+      LOGGER.error("Cannot add event to collection if it does not expose this collection as its" +
+          "referenced collection. The events were copied and copy was added. This indicates a coding error.");
+    } else {
+      npEvents.add(event);
+    }
+
+    // invalidate all cashes
+    invalidateCashes();
   }
 
   @Override
   public void add(List<Event> events) {
-    npEvents.addAll(events);
-    backgroundIndicesRef = new SoftReference<>(null); // invalidate
+    int badEventCounter = 0;
+    for (Event event : events) {
+      if (Objects.equals(event.getCollection(), this)) {
+        npEvents.add(event);
+      } else {
+        npEvents.add(event.copy(this));
+        badEventCounter++;
+      }
+    }
+    if (badEventCounter > 0) {
+      LOGGER.error("Cannot add events to collection if it does not expose this collection as its" +
+              "referenced collection. The events were copied and copy was added. Number of bad events {} / " +
+              "{}. This indicates a coding error.",
+          badEventCounter, events.size());
+    }
+    // invalidate all cashes
+   invalidateCashes();
   }
 
   @Override
@@ -348,5 +362,11 @@ public class MainEventCollection implements EventCollection, Serializable {
 
     result.put(parameter, data);
     return result;
+  }
+
+  public void invalidateCashes() {
+    eventParamRef.clear();
+    bgParamRef.clear();
+    backgroundIndicesRef.clear();
   }
 }

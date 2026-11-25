@@ -146,23 +146,38 @@ public class CsvInterpreterAgilent implements CsvInterpreter {
     List<Channel> mzValues = new ArrayList<>();
 
     /*
-    [0] C:\Agilent\ICPMH\1\DATA\AXK\2022-08-04_microFAST-Test_2-Isotope.b\Test_Au_Ag.d
+    [0] C:\Agilent\ICPMH\1\DATA\XXX\2022-08-04_XXX.b\Test_Au_Ag.d
     [1] Intensity Vs Time,CPS
-    [2] Acquired      : 8/4/2022 2:05:27 PM using Batch 2022-08-04_microFAST-Test_2-Isotope.b
+    [2] Acquired      : 8/4/2022 2:05:27 PM using Batch 2022-08-04_XXX.b
     [3] Time [Sec],Ag107,Au197
     [4] 0.0210,0.00,0.00
     [5] 0.0211,0.00,0.00
     [6] 0.0212,0.00,0.00
      */
 
-    int nameRow = 0;
-    int unitRow = 1;
-    int batchRow = 2;
-    int mzRow = 3;
+    /*
+    D:\Agilent\ICPMH\1\DATA\ser\method\batch.b\data.d,
+    name,
+    Intensity Vs Time,Counts
+    Acquired      : 2026-11-23 12:55:15 using Batch batch.b,
+    Time [Sec],Ag107 -> 107
+    0.02131,0
+    0.02141,0
+    0.02151,0
+     */
+
+    // Detect the layout: number of additional rows before the "Time [Sec]" row compared to the classic format
+    int rowOffset = detectLayout(csv);
+
+    int nameRow = 0; // path is always the first line, i.e., not affected by the offset
+    int unitRow = 1 + rowOffset;
+    int batchRow = 2 + rowOffset;
+    int mzRow = 3 + rowOffset;
     int mzColStart = 1;
     int timeCol = 0;
-    int dataRowStart = 4;
+    int dataRowStart = 4 + rowOffset;
     int signalColStart = 1;
+
     double minSwitchTimeSec = params.getAgilentGasModeSwitchTime().getValue();
     boolean isIonic = params.getIsIonicQmsData().getValue();
     SignalConversionOption conversion = params.getSignalConversionOption().getValue();
@@ -194,7 +209,9 @@ public class CsvInterpreterAgilent implements CsvInterpreter {
           for (int i = mzColStart; i < mzRowStr.length; i++) {
             String rawMZ = mzRowStr[i];
             Channel mz = FileInterpreterUtils.parseAgilentTQmz(rawMZ);
-            mzValues.add(mz);
+            if (mz != null) {
+              mzValues.add(mz);
+            }
           }
           LOGGER.trace("Identified mz " + mzValues.stream()
               .map(Channel::getUIString)
@@ -359,7 +376,8 @@ public class CsvInterpreterAgilent implements CsvInterpreter {
               double[] correctedTime = replaceTimeStamps(time);
               Channel mzChannel = mzValues.get(i);
               // add list
-              if (!tiSeriesListMap.containsKey(mzChannel)) tiSeriesListMap.put(mzChannel, new LinkedHashMap<>());
+              if (!tiSeriesListMap.containsKey(mzChannel))
+                tiSeriesListMap.put(mzChannel, new LinkedHashMap<>());
               tiSeriesListMap.get(mzChannel).put(0, new TISeriesRAM(correctedTime, intensitySeries));
             }
           }
@@ -564,7 +582,7 @@ public class CsvInterpreterAgilent implements CsvInterpreter {
     return result;
   }
 
-  // in some cases, we have see bugs that Agilent csv export had the same time stamp twice
+  // in some cases, we have seen bugs that Agilent csv export had the same time stamp twice
   public static double[] replaceTimeStamps(List<Double> time) {
     double[] result;
     if (time.size() > 2) {
@@ -623,6 +641,60 @@ public class CsvInterpreterAgilent implements CsvInterpreter {
     }
 
     return sections;
+  }
+
+
+  /**
+   * Counts the rows before the "Time [Sec]" header row and returns the offset compared to the classic
+   * Agilent format (time header in row 3). Logs which format was detected.
+   * <p>
+   * offset 0: classic format
+   * <p>
+   * offset 1: newer format with additional sample name line
+   * <p>
+   * If the time header cannot be found, or is found above row 3 (negative offset), the classic format
+   * (offset 0) is assumed.
+   */
+  private static int detectLayout(List<String[]> csv) {
+
+    // classic format: "Time [Sec]" header is in row 3
+    final int CLASSIC_TIME_ROW = 3;
+    // only scan the beginning of the file for the header
+    final int MAX_HEADER_ROWS = 20;
+
+
+    int timeRow = -1;
+    int maxRow = Math.min(csv.size(), MAX_HEADER_ROWS);
+    for (int rowIdx = 0; rowIdx < maxRow && timeRow < 0; rowIdx++) {
+      String[] row = csv.get(rowIdx);
+      if (row != null && row.length > 0 && row[0] != null
+          && row[0].trim().toLowerCase(Locale.ROOT).startsWith("time")) {
+        timeRow = rowIdx;
+      }
+    }
+
+    int rowOffset = 0;
+    if (timeRow < 0) {
+      LOGGER.warn("Could not find the 'Time [Sec]' header row in the first " + maxRow
+          + " rows of the Agilent csv. Assuming classic format.");
+    } else if (timeRow < CLASSIC_TIME_ROW) {
+      // time header above row 3 would result in a negative offset, i.e., negative row indices
+      LOGGER.warn("Unexpected Agilent csv format: time header in row " + timeRow
+          + ", expected row " + CLASSIC_TIME_ROW + " or later. Assuming classic format.");
+    } else {
+      rowOffset = timeRow - CLASSIC_TIME_ROW;
+      if (rowOffset == 0) {
+        LOGGER.info("Detected classic Agilent csv format (time header in row " + timeRow + ").");
+      } else if (rowOffset == 1) {
+        LOGGER.info("Detected newer Agilent csv format with sample name line (time header in row "
+            + timeRow + ").");
+      } else {
+        LOGGER.warn("Unknown Agilent csv format: time header in row " + timeRow
+            + ", expected row " + CLASSIC_TIME_ROW + " or " + (CLASSIC_TIME_ROW + 1)
+            + ". Trying to read with row offset " + rowOffset + ".");
+      }
+    }
+    return rowOffset;
   }
 
 

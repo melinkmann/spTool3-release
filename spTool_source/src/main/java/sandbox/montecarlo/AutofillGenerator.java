@@ -18,6 +18,7 @@
 package sandbox.montecarlo;
 
 import analysis.AnalysisUtils;
+import analysis.Baseline;
 import analysis.PopulationID;
 import core.SpTool3Main;
 import dataModelNew.Sample;
@@ -307,9 +308,13 @@ public class AutofillGenerator {
         mcSets.add(set);
       }
     }
-    method.removeSets(mcSets);
 
     MCSimGeneralParams generalParams = new MCSimGeneralParams();
+
+    // assume tof if more than 1 channel
+    if (selChannels.size() > 1) {
+      generalParams.detectorDistribution.setValue(PDF.COMPOUND_POISSON);
+    }
 
     // global SIA stuff
     double meanSIA = sample.getFilteredMeanSiaShape();
@@ -320,6 +325,9 @@ public class AutofillGenerator {
       generalParams.defaultSiaShapeParameter.setValue(meanSIA);
     }
     HashMap<Element, List<Double>> elementSiaMap = new LinkedHashMap<>();
+    HashMap<Element, List<Double>> elementBlnMaps = new LinkedHashMap<>();
+    HashMap<Element, Double> elementBlnMap = new LinkedHashMap<>();
+    Set<Element> backgroundWasApplied = new HashSet<>();
 
     // reset bundles to zero
     SpawnControlParameter siaSpawn = generalParams.getSiaExceptions();
@@ -343,6 +351,17 @@ public class AutofillGenerator {
           dwellTime = trace.getTISeries().getDT();
         }
         success = true;
+
+        Baseline baseline = trace.getBaseline();
+        if (baseline != null) {
+          double[] muBlnArr = baseline.getBackgroundDistribution().getLocation();
+          if (muBlnArr.length > 0) {
+            double muBln = MeasureOfLocation.MEAN.calc(muBlnArr);
+            if (muBln > 0) {
+              elementBlnMaps.computeIfAbsent(isotope.getElement(), k -> new ArrayList<>()).add(muBln);
+            }
+          }
+        }
 
         double siaShape = trace.getSiaShape();
 
@@ -380,6 +399,18 @@ public class AutofillGenerator {
     }
     siaSpawn.sortBundles();
 
+    // BLN means (one per element)
+    for (Element element : elementBlnMaps.keySet()) {
+      List<Double> means = elementBlnMaps.get(element);
+      if (means.isEmpty()) {
+        continue;
+      }
+      double elementMean = MeasureOfLocation.MEAN.calc(means);
+      if (elementMean > 0) {
+        elementBlnMap.put(element, elementMean);
+      }
+    }
+
     // match pop with available channels
     HashMap<PopulationID, List<Channel>> popChannelMap = new LinkedHashMap<>();
     for (PopulationID selPopID : selPopIDs) {
@@ -392,18 +423,16 @@ public class AutofillGenerator {
 
     // only add pops which are present for the sel channels AND could actually be filled
     HashMap<PopulationID, MCSimParticleParams> popMap = new LinkedHashMap<>();
-    Set<Element> backgroundWasApplied = new HashSet<>();
 
     for (PopulationID popID : popChannelMap.keySet()) {
 
-      if (!AnalysisUtils.isAlignedOrPValOrSim(popID)) {
+      if (!AnalysisUtils.isAlignedOrPValOrSim(popID) && selChannels.size() != 1) {
         continue;
       }
 
       // isotopes are unique per population, so a map keyed by isotope is fine
       HashMap<Isotope, double[]> isotopeData = new LinkedHashMap<>();
       HashMap<Element, List<double[]>> elementDataLists = new LinkedHashMap<>();
-      HashMap<Element, List<Double>> elementBackground = new LinkedHashMap<>();
 
       for (Channel popChannel : popChannelMap.get(popID)) {
         Isotope isotope = popChannel.getIsotope();
@@ -416,17 +445,8 @@ public class AutofillGenerator {
           continue;
         }
 
-        double meanBG = 0;
-        if (bgArr != null && bgArr.length > 0) {
-          meanBG = MeasureOfLocation.MEAN.calc(bgArr);
-          if (Double.isNaN(meanBG)) {
-            meanBG = 0;
-          }
-        }
-
         isotopeData.put(isotope, cts);
         elementDataLists.computeIfAbsent(isotope.getElement(), k -> new ArrayList<>()).add(cts);
-        elementBackground.computeIfAbsent(isotope.getElement(), k -> new ArrayList<>()).add(meanBG);
       }
 
       if (isotopeData.isEmpty()) {
@@ -474,17 +494,20 @@ public class AutofillGenerator {
 
         // apply background only once per element across all populations
         double bgSum = 0;
-        if (backgroundWasApplied.add(element)) {
-          bgSum = ArrUtils.doubleSum(elementBackground.get(element));
-        }
 
+        // Only add element if fraction (i.e., distributed mean signal)
         if (meanFrac > 0) {
+
+          if (backgroundWasApplied.add(element)) {
+            bgSum = elementBlnMap.get(element);
+          }
+
           ParamBundle bundle = nmpElementBundle.addBundle();
           if (bundle instanceof ElementBundle) {
             ((ElementBundle) bundle).elementHeaderParameter.setValue(element);
             ((ElementBundle) bundle).massFraction.setValue(meanFrac);
             // cts?
-            if (nmpSimPar.backgroundUnit.equals(BGUnit.COUNTS)) {
+            if (nmpSimPar.backgroundUnit.getValue().equals(BGUnit.COUNTS)) {
               ((ElementBundle) bundle).backgroundSignalIntensity.setValue(bgSum);
             } else if (dwellTime > 0) {
               ((ElementBundle) bundle).backgroundSignalIntensity.setValue(bgSum / dwellTime);
@@ -503,6 +526,11 @@ public class AutofillGenerator {
     }
 
     if (success && !popMap.isEmpty()) {
+
+      // remove old methods
+      method.removeSets(mcSets);
+
+      // add new methods
       List<ParamSet> sets = new ArrayList<>();
       sets.add(generalParams);
       sets.addAll(popMap.values());

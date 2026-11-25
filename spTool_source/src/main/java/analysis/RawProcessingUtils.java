@@ -215,7 +215,10 @@ public class RawProcessingUtils {
               sample.getRemovedChannelInfo(),
               sample.getRecordedTofRange(),
               sample.getTimeLimitsIndices()[0],
-              sample.getTimeLimitsIndices()[1]);
+              sample.getTimeLimitsIndices()[1],
+              // I think these should not be reset, but kept from the best time resolution available
+              sample.getMeanSiaShape(),
+              sample.getFilteredMeanSiaShape());
           for (Trace ogTrace : groupCollection.keySet()) {
             List<TISeries> tiSeriesList = groupCollection.get(ogTrace);
             if (i < tiSeriesList.size()) {

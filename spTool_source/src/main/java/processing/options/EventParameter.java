@@ -101,6 +101,20 @@ public enum EventParameter {
     public String toString() {
       return "Center time";
     }
+  },
+
+  NET_HEIGHT_TO_NOISE {
+    @Override
+    public String toString() {
+      return "S/N";
+    }
+  },
+
+  GROSS_HEIGHT_TO_BG {
+    @Override
+    public String toString() {
+      return "H/BG";
+    }
   };
 
 

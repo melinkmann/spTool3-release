@@ -26,6 +26,7 @@ import dataModelNew.Trace;
 
 import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import dataModelNew.mz.Channel;
@@ -54,6 +55,8 @@ import util.NF;
 import util.SnF;
 import visualizer.charts.JFreeUtil;
 
+import javax.swing.text.html.Option;
+
 public class FilterTask extends AbstractWorkingTask implements WorkingTask {
 
   private static final Logger LOGGER = LogManager.getLogger(FilterTask.class);
@@ -80,6 +83,10 @@ public class FilterTask extends AbstractWorkingTask implements WorkingTask {
 
     FilterOptions filterOption = params.getFilterOption().getValue();
     boolean setAsMainBranch = params.getSetAsMainBranch().getValue();
+    boolean anyTracesAligned = AnalysisUtils.isAnyAlignedOrPValOrSim(
+        sampleRef.get().getTraces().stream()
+            .map(branch::getID)
+            .toList());
 
 
     // Catch any Exception that may occur in the background that would not go through the stack.
@@ -103,6 +110,9 @@ public class FilterTask extends AbstractWorkingTask implements WorkingTask {
               List<AlignFilterStartStopBundle> alignBundles = params.getAlignFilterStartStopBundles();
 
               String label = params.getAlignFilterID().getValue();
+              boolean applyGlbally = params.getApplyGlobalAlign().getValue();
+              double globalStart = params.start.getValue();
+              double globalEnd = params.end.getValue();
 
               // 1. Identify aligned isotopes and their popIDs
               // A sample could have two branches, so we collect all aligned population IDs
@@ -123,12 +133,19 @@ public class FilterTask extends AbstractWorkingTask implements WorkingTask {
 
                 // Find which of the user-specified limits apply to this population
                 // (only restrictions whose isotope is actually present in this population)
-                HashMap<Channel, AlignFilterStartStopBundle> restrictedChannels = new HashMap<>();
-                for (AlignFilterStartStopBundle alignBundle : alignBundles) {
-                  Isotope restrictedIsotope = alignBundle.isotopeHeaderParameter.getValue().unwrap();
-                  Channel restrictedChannel = AnalysisUtils.getChannel(alignedChannels, restrictedIsotope);
-                  if (restrictedChannel != null) {
-                    restrictedChannels.put(restrictedChannel, alignBundle);
+                HashMap<Channel, Pair<Double, Double>> restrictedChannels = new HashMap<>();
+                if (!applyGlbally) {
+                  for (AlignFilterStartStopBundle alignBundle : alignBundles) {
+                    Isotope restrictedIsotope = alignBundle.isotopeHeaderParameter.getValue().unwrap();
+                    Channel restrictedChannel = AnalysisUtils.getChannel(alignedChannels, restrictedIsotope);
+                    if (restrictedChannel != null) {
+                      restrictedChannels.put(restrictedChannel,
+                          new Pair<>(alignBundle.start.getValue(), alignBundle.end.getValue()));
+                    }
+                  }
+                } else {
+                  for (Channel alignedChannel : alignedChannels) {
+                    restrictedChannels.put(alignedChannel, new Pair<>(globalStart, globalEnd));
                   }
                 }
 
@@ -147,14 +164,13 @@ public class FilterTask extends AbstractWorkingTask implements WorkingTask {
                   if (allEqualSize) {
 
                     // 3. Build a boolean mask of surviving particles
-                    // Start with all particles passing — AND each restriction in turn.
                     // validIndexPositions[p] = true means particle p survives all restrictions.
                     boolean[] validIndexPositions = null;
 
                     for (Channel channel : restrictedChannels.keySet()) {
-                      AlignFilterStartStopBundle alignBundle = restrictedChannels.get(channel);
-                      double lower = alignBundle.start.getValue();
-                      double upper = alignBundle.end.getValue();
+                      Pair<Double, Double> limits = restrictedChannels.get(channel);
+                      double lower = limits.getKey();
+                      double upper = limits.getValue();
                       EventParameter eventParameter = params.getEventParameter().getValue();
                       Unit unit = params.getUnitConversion();
                       MathMod math = params.getMathConversion().getValue();
@@ -243,9 +259,8 @@ public class FilterTask extends AbstractWorkingTask implements WorkingTask {
                               }
 
                               // Note: SubEventCollection means that BG is defined by old pop which is correct
-                              MainEventCollection filteredCollection = new SubEventCollection(trace,
-                                  collection);
-                              filteredCollection.add(survivingEvents);
+                              EventCollection filteredCollection = AnalysisUtils.createSubEventCollection(
+                                  trace, pop, survivingEvents);
 
                               List<Channel> channels = alignedChannels.stream()
                                   .map(Channel::copy)
@@ -324,9 +339,557 @@ public class FilterTask extends AbstractWorkingTask implements WorkingTask {
               }
 
               ////////////////////////////////////////////////////////////////////////////////
-              //////////////////// ISOTOPE BASED FILERS //////////////////////////////////////
+              //////////////////// ALIGNED BLANKERS  //////////////////////////////////////
               ////////////////////////////////////////////////////////////////////////////////
 
+            } else if (filterOption.equals(FilterOptions.ALIGNED_OVER_RANGE)) {
+
+              // Keep track
+              Set<PopulationID> correctedInRange = new HashSet<>();
+              Set<PopulationID> correctedOverRange = new HashSet<>();
+
+              // Aligned: REMOVE ALL BLANKERS ACROSS ALL ISOTOPES
+              List<Integer> overRangeIndices = sample.getTraces().stream()
+                  .map(t -> t.getFlags(DataFlag.OVER_RANGE))
+                  .filter(Objects::nonNull)
+                  .flatMap(Set::stream)
+                  .distinct()
+                  .toList();
+
+              // faster to access
+              HashSet<Integer> overRangeIndicesSet = new HashSet<>(overRangeIndices);
+
+              // 1. Identify aligned isotopes and their popIDs
+              // A sample could have two branches, so we collect all aligned population IDs
+              // and the isotopes that belong to each.
+              HashMap<PopulationID, List<Channel>> alignedIDs = new HashMap<>();
+
+              for (Trace trace : sample.getTraces()) {
+                PopulationID popID = branch.getID(trace);
+                if (AnalysisUtils.isAlignedOrPValOrSim(popID)) {
+                  alignedIDs.computeIfAbsent(popID, k -> new ArrayList<>())
+                      .add(trace.getChannel());
+                }
+              }
+
+              // 2. For each aligned population, apply the over range blanker
+              for (PopulationID popIDKey : alignedIDs.keySet()) {
+                List<Channel> alignedChannels = alignedIDs.get(popIDKey);
+                // Double check that all of these populations have the same size!
+                long distinctSizes = alignedChannels.stream()
+                    .map(sample::getTrace)
+                    .filter(Objects::nonNull)
+                    .map(trace -> trace.getPopulation(popIDKey).getEvents().size())
+                    .distinct()
+                    .count();
+                boolean allEqualSize = distinctSizes <= 1;
+
+                if (allEqualSize) {
+
+                  // All aligned EventCollections have the same indices in their events due to align
+                  Optional<EventCollection> collOpt = alignedChannels.stream()
+                      .map(sample::getTrace)
+                      .filter(Objects::nonNull)
+                      .map(trace -> trace.getPopulation(popIDKey).getEvents())
+                      .findFirst();
+
+                  if (collOpt.isPresent()) {
+                    EventCollection coll = collOpt.get();
+
+                    // 3. Build a boolean mask of surviving events
+                    // overRangeEventsCollectionIndices[E] = true means event E survives all restrictions.
+                    boolean[] overRangeEventsCollectionIndicesMatrix = new boolean[coll.size()];
+
+                    for (int i = 0; i < coll.getNpEvents().size(); i++) {
+                      Event npEvent = coll.getNpEvents().get(i);
+
+                      for (int evtIdx : npEvent.getIndices()) {
+                        if (overRangeIndicesSet.contains(evtIdx)) {
+                          overRangeEventsCollectionIndicesMatrix[i] = true;
+                          break;
+                        }
+                      }
+                    }
+
+                    // 4. Collect surviving particle indices
+                    List<Integer> overRangeEventsCollectionIndices = new ArrayList<>();
+                    List<Integer> inRangeEventsCollectionIndices = new ArrayList<>();
+                    for (int p = 0; p < overRangeEventsCollectionIndicesMatrix.length; p++) {
+                      if (overRangeEventsCollectionIndicesMatrix[p]) {
+                        overRangeEventsCollectionIndices.add(p);
+                      } else {
+                        inRangeEventsCollectionIndices.add(p);
+                      }
+                    }
+
+                    // 5. Slice events for each isotope:
+                    // For each isotope in the aligned population, pick only the surviving
+                    // particle indices from the event list and register a new subpopulation.
+                    for (Channel channel : alignedChannels) {
+                      Trace trace = sample.getTrace(channel);
+                      if (trace != null) {
+
+                        Population oldPop = trace.getPopulation(popIDKey);
+                        if (oldPop != null) {
+
+                          EventCollection collection = oldPop.getEvents();
+                          List<Event> events = collection.getNpEvents();
+
+                          List<Event> inRangeEvents = new ArrayList<>();
+                          List<Event> overRangeEvents = new ArrayList<>();
+
+                          for (int idx : inRangeEventsCollectionIndices) {
+                            if (idx < events.size()) {
+                              inRangeEvents.add(events.get(idx));
+                            }
+                          }
+
+                          for (int idx : overRangeEventsCollectionIndices) {
+                            if (idx < events.size()) {
+                              overRangeEvents.add(events.get(idx));
+                            }
+                          }
+
+                          // For the meta data
+                          List<Channel> channels = alignedChannels.stream()
+                              .map(Channel::copy)
+                              .toList();
+
+                          if (!inRangeEvents.isEmpty()) {
+                            EventCollection newCollection = AnalysisUtils.createSubEventCollection(trace,
+                                oldPop, inRangeEvents);
+                            // (1) Remove existing population from the Trace to avoid pile up of Populations)
+                            trace.removePopulation(popIDKey);
+                            // (2) Update as new ID with the latest step; prepare copy here before altering
+                            // popID
+                            PopulationID idCopy = new PopulationID(popIDKey);
+                            // (2) append existing ID as new main of branch
+                            idCopy.append(new PopulationStep.OverRangeSubtype(
+                                params.getFilterOption().getValue().toString(), "InRng"));
+                            // (3) Add the new Population to the trace
+                            trace.addOverridePopulation(idCopy,
+                                new NpPopulation(
+                                    idCopy,
+                                    oldPop,
+                                    // Note: SubEventCollection means that BG is defined by old pop which
+                                    // is correct
+                                    newCollection,
+                                    inputPopSummary,
+                                    channels),
+                                true);
+                            // (4) Make this new head of branch!
+                            branch.overrideID(trace, idCopy);
+
+                            // ── 6. Slice spectral data for the filtered population ────────
+                            // Same pattern as the HAC save button — slice SpectralArray intensities
+                            // and additional features to surviving particle indices only.
+                            List<SpectralArray> allSpectra = sample.getSpectralData(popIDKey);
+                            if (allSpectra != null && !allSpectra.isEmpty()) {
+
+                              if (!correctedInRange.contains(popIDKey)) {
+                                correctedInRange.add(popIDKey);
+
+                                List<SpectralArray> filteredSpectra = new ArrayList<>();
+
+                                // Each spectral array holds all NP data for one isotope
+                                // (essentially the double[] getData() on an eventCollection)
+                                for (SpectralArray sarr : allSpectra) {
+                                  double[] allIntensities = sarr.getIntensity();
+                                  double[] filteredIntensities =
+                                      new double[inRangeEventsCollectionIndices.size()];
+
+                                  for (int j = 0; j < inRangeEventsCollectionIndices.size(); j++) {
+                                    int particleIdx = inRangeEventsCollectionIndices.get(j);
+                                    if (particleIdx < allIntensities.length) {
+                                      filteredIntensities[j] = allIntensities[particleIdx];
+                                    } else {
+                                      LOGGER.warn("Particle index {} out of bounds for spectral array "
+                                              + "isotope {} (length {}) — filling 0.",
+                                          particleIdx, sarr.getChannel().getUIString(),
+                                          allIntensities.length);
+                                      filteredIntensities[j] = 0.0;
+                                    }
+                                  }
+
+                                  // Slice additional features by the same surviving indices
+                                  HashMap<String, double[]> filteredFeatures = new HashMap<>();
+                                  for (String key : sarr.listAdditionalFeatures()) {
+                                    double[] allFeatureValues = sarr.getAdditionalFeature(key);
+                                    double[] filteredFeatureValues =
+                                        new double[inRangeEventsCollectionIndices.size()];
+
+                                    for (int j = 0; j < inRangeEventsCollectionIndices.size(); j++) {
+                                      int particleIdx = inRangeEventsCollectionIndices.get(j);
+                                      if (allFeatureValues != null && particleIdx < allFeatureValues.length) {
+                                        filteredFeatureValues[j] = allFeatureValues[particleIdx];
+                                      } else {
+                                        filteredFeatureValues[j] = 0.0;
+                                      }
+                                    }
+                                    filteredFeatures.put(key, filteredFeatureValues);
+                                  }
+
+                                  filteredSpectra.add(new SpectralArray(
+                                      sarr.getChannel(),
+                                      filteredIntensities,
+                                      filteredFeatures));
+                                }
+
+                                sample.addSpectralData(idCopy, filteredSpectra);
+                              }
+                            } // END of SPECTRA
+                          }
+
+                          if (!overRangeEvents.isEmpty()) {
+                            EventCollection newCollection = AnalysisUtils.createSubEventCollection(trace,
+                                oldPop, overRangeEvents);
+                            // (1) Existing population was already removed or if not, it should be kept
+                            // trace.removePopulation(popID);
+                            // (2) append existing ID as new main of branch
+                            PopulationID idCopy = new PopulationID(popIDKey);
+                            idCopy.append(new PopulationStep.OverRangeSubtype(
+                                params.getFilterOption().getValue().toString(), "OvRng"));
+                            // (3) Add the new Population to the trace
+                            trace.addOverridePopulation(idCopy,
+                                new NpPopulation(
+                                    idCopy,
+                                    oldPop,
+                                    // Note: SubEventCollection means that BG is defined by old pop which
+                                    // is correct
+                                    newCollection,
+                                    inputPopSummary,
+                                    channels),
+                                true);
+                            // (4) Make this new head of branch!
+                            // branch.overrideID(trace, idCopy); // the overranges should not be new head
+
+                            // ── 6. Slice spectral data for the filtered population ────────
+                            // Same pattern as the HAC save button — slice SpectralArray intensities
+                            // and additional features to surviving particle indices only.
+                            List<SpectralArray> allSpectra = sample.getSpectralData(popIDKey);
+                            if (allSpectra != null && !allSpectra.isEmpty()) {
+
+                              if (!correctedOverRange.contains(popIDKey)) {
+                                correctedOverRange.add(popIDKey);
+
+                                List<SpectralArray> filteredSpectra = new ArrayList<>();
+
+                                // Each spectral array holds all NP data for one isotope
+                                // (essentially the double[] getData() on an eventCollection)
+                                for (SpectralArray sarr : allSpectra) {
+                                  double[] allIntensities = sarr.getIntensity();
+                                  double[] filteredIntensities =
+                                      new double[overRangeEventsCollectionIndices.size()];
+
+                                  for (int j = 0; j < overRangeEventsCollectionIndices.size(); j++) {
+                                    int particleIdx = overRangeEventsCollectionIndices.get(j);
+                                    if (particleIdx < allIntensities.length) {
+                                      filteredIntensities[j] = allIntensities[particleIdx];
+                                    } else {
+                                      LOGGER.warn("Particle index {} out of bounds for spectral array "
+                                              + "isotope {} (length {}) — filling 0.",
+                                          particleIdx, sarr.getChannel().getUIString(),
+                                          allIntensities.length);
+                                      filteredIntensities[j] = 0.0;
+                                    }
+                                  }
+
+                                  // Slice additional features by the same surviving indices
+                                  HashMap<String, double[]> filteredFeatures = new HashMap<>();
+                                  for (String key : sarr.listAdditionalFeatures()) {
+                                    double[] allFeatureValues = sarr.getAdditionalFeature(key);
+                                    double[] filteredFeatureValues =
+                                        new double[overRangeEventsCollectionIndices.size()];
+
+                                    for (int j = 0; j < overRangeEventsCollectionIndices.size(); j++) {
+                                      int particleIdx = overRangeEventsCollectionIndices.get(j);
+                                      if (allFeatureValues != null && particleIdx < allFeatureValues.length) {
+                                        filteredFeatureValues[j] = allFeatureValues[particleIdx];
+                                      } else {
+                                        filteredFeatureValues[j] = 0.0;
+                                      }
+                                    }
+                                    filteredFeatures.put(key, filteredFeatureValues);
+                                  }
+
+                                  filteredSpectra.add(new SpectralArray(
+                                      sarr.getChannel(),
+                                      filteredIntensities,
+                                      filteredFeatures));
+                                }
+
+                                sample.addSpectralData(idCopy, filteredSpectra);
+                              }
+                            }
+                          }
+                        }
+                      }
+
+                    }
+                  }
+                }
+              }
+
+            } else if (filterOption.equals(FilterOptions.OVERLAP) && anyTracesAligned) {
+              /// This block written by Claude Sonnet 5.5 based on the this class file
+              // Overlap parameters (same as in the non-aligned case)
+              /*
+              Note: Hypothetically one could also compute the TIC here and check for weird shape
+              in those peaks. However, this may not work so well due to the light shifts in detection time
+              for different mz. We know that travel times in source and pre-pulser MS region are not
+              steady -> this may shift peaks causing "doublets". Thus, rather check within each channel.
+              It seems pretty unlikely that overlap would not shon in any channel, and one single channel is
+              enough to flag the entire event.
+               */
+              double zIntensity = params.getzIntensity().getValue();
+              double zSegment = params.getzSegment().getValue();
+              int moavPeriod = params.getMoavPeriod().getValue();
+              OverlapSmoothOption smoothTarget = params.getSmoothTargetOption().getValue();
+              boolean listNumberOfEvents = params.getListNumberOfEvents().getValue();
+
+              // 1. Identify aligned isotopes and their popIDs
+              // A sample could have two branches, so we collect all aligned population IDs
+              // and the isotopes that belong to each.
+              HashMap<PopulationID, List<Channel>> alignedIDs = new HashMap<>();
+
+              // Extract active popID from the branch
+              for (Trace trace : sample.getTraces()) {
+                PopulationID activeBranchID = branch.getID(trace);
+                if (AnalysisUtils.isAlignedOrPValOrSim(activeBranchID)) {
+                  alignedIDs.computeIfAbsent(activeBranchID,
+                      k -> new ArrayList<>()).add(trace.getChannel());
+                }
+              }
+
+              // 2. For each aligned population, run the overlap check on ALL traces
+              for (PopulationID popIDKey : alignedIDs.keySet()) {
+                List<Channel> alignedChannels = alignedIDs.get(popIDKey);
+
+                // Double check that all of these populations have the same size!
+                long distinctSizes = alignedChannels.stream()
+                    .map(sample::getTrace)
+                    .filter(Objects::nonNull)
+                    .map(trace -> {
+                      Population pop =trace.getPopulation(popIDKey);
+                      if (pop != null){
+                        return pop.getEvents().size();
+                      }else {
+                        return 0;
+                      }
+                    })
+                    .distinct()
+                    .count();
+                boolean allEqualSize = distinctSizes <= 1;
+
+                // All aligned EventCollections have the same indices in their events due to align
+                Optional<EventCollection> collOpt = alignedChannels.stream()
+                    .map(sample::getTrace)
+                    .filter(Objects::nonNull)
+                    .map(trace -> trace.getPopulation(popIDKey).getEvents())
+                    .findFirst();
+
+                if (allEqualSize && collOpt.isPresent()) {
+
+                  int nParticles = collOpt.get().getNpEvents().size();
+
+                  // 3. nEventsPerParticle[p] = number of overlapping particles found in event p.
+                  // Start with 1 (= normal peak). A particle is flagged as multi-event if ANY of the
+                  // isotopes detects an overlap, hence we take the max over all traces.
+                  int[] nEventsPerParticle = new int[nParticles];
+                  Arrays.fill(nEventsPerParticle, 1);
+
+                  for (Channel channel : alignedChannels) {
+                    Trace trace = sample.getTrace(channel);
+                    if (trace != null && trace.getPopulation(popIDKey) != null) {
+
+                      List<Event> events = trace.getPopulation(popIDKey).getEvents().getNpEvents();
+
+                      // Safety check: indices of events must be consistent across traces
+                      if (events.size() == nParticles) {
+
+                        double[] intensity = trace.getTISeries().getIntensity();
+
+                        for (int p = 0; p < nParticles; p++) {
+
+                          // check breaking condition
+                          if (getIsStopped().get()) {
+                            break;
+                          }
+
+                          int nEvents;
+                          if (smoothTarget.equals(OverlapSmoothOption.RAW_DATA)) {
+                            nEvents = EventFilterUtils.checkForMultiParticleEvent_rawSmooth(
+                                intensity,
+                                events.get(p),
+                                zIntensity,
+                                zSegment,
+                                moavPeriod);
+                          } else {
+                            nEvents = EventFilterUtils.checkForMultiParticleEvent_derivativeSmooth(
+                                intensity,
+                                events.get(p),
+                                zIntensity,
+                                zSegment,
+                                moavPeriod);
+                          }
+
+                          // If it thinks its 0, likely should be overwritten with 1, i.e., normal peak.
+                          nEvents = Math.max(nEvents, 1);
+                          nEventsPerParticle[p] = Math.max(nEventsPerParticle[p], nEvents);
+                        }
+                      } else {
+                        LOGGER.warn("Isotope {} has {} particles but expected {}! Skipping overlap check.",
+                            channel, events.size(), nParticles);
+                      }
+                    }
+                  }
+
+                  // 4. Bucket particle indices by n = 1, 2, 3, ...
+                  TreeMap<Integer, List<Integer>> indicesByN = new TreeMap<>();
+                  for (int p = 0; p < nParticles; p++) {
+                    indicesByN.computeIfAbsent(nEventsPerParticle[p], k -> new ArrayList<>()).add(p);
+                  }
+
+                  // 5. Decide which sub-populations are created (same logic as non-aligned overlap):
+                  // "1" always, n>1 either listed individually or merged into ">1".
+                  LinkedHashMap<String, List<Integer>> subPops = new LinkedHashMap<>();
+                  List<Integer> allGreaterThanOne = new ArrayList<>();
+
+                  for (Map.Entry<Integer, List<Integer>> entry : indicesByN.entrySet()) {
+                    int nEvents = entry.getKey();
+                    if (nEvents == 1) {
+                      subPops.put("1", entry.getValue());
+                    } else if (listNumberOfEvents) {
+                      subPops.put(Integer.toString(nEvents), entry.getValue());
+                    } else {
+                      allGreaterThanOne.addAll(entry.getValue());
+                    }
+                  }
+
+                  if (!allGreaterThanOne.isEmpty()) {
+                    Collections.sort(allGreaterThanOne);
+                    subPops.put(">1", allGreaterThanOne);
+                  }
+
+                  // For the meta data
+                  List<Channel> channels = alignedChannels.stream()
+                      .map(Channel::copy)
+                      .toList();
+
+                  List<SpectralArray> allSpectra = sample.getSpectralData(popIDKey);
+
+                  // 6. Slice events (all isotopes) and spectral data for each sub-population
+                  // and create both the new population as well as slice through the spectral array
+                  for (Map.Entry<String, List<Integer>> subPop : subPops.entrySet()) {
+
+                    String subLabel = subPop.getKey();
+                    List<Integer> subIndices = subPop.getValue();
+
+                    PopulationID spectraID = null;
+
+                    if (!subIndices.isEmpty()) {
+
+                      for (Channel channel : alignedChannels) {
+                        Trace trace = sample.getTrace(channel);
+                        if (trace != null) {
+
+                          Population oldPop = trace.getPopulation(popIDKey);
+                          if (oldPop != null) {
+
+                            List<Event> events = oldPop.getEvents().getNpEvents();
+                            List<Event> subEvents = new ArrayList<>();
+
+                            for (int idx : subIndices) {
+                              if (idx < events.size()) {
+                                subEvents.add(events.get(idx));
+                              }
+                            }
+
+                            EventCollection newCollection = AnalysisUtils.createSubEventCollection(trace,
+                                oldPop, subEvents);
+                            // (1) Keep existing population to compare filter result with idle state
+                            // (2) Update as new ID with the latest step; copy before altering popID
+                            PopulationID idCopy = new PopulationID(popIDKey);
+                            idCopy.append(new MultiEventSubtype(filterOption.toString(), subLabel));
+                            // (3) Add the new Population to the trace
+                            // Note: SubEventCollection means that BG is defined by old pop which is correct
+                            trace.addOverridePopulation(idCopy,
+                                new NpPopulation(
+                                    idCopy,
+                                    oldPop,
+                                    newCollection,
+                                    inputPopSummary,
+                                    channels),
+                                true);
+
+                            // (4) Single events are the new head of branch (same as non-aligned overlap)
+                            if (subLabel.equals("1")) {
+                              branch.overrideID(trace, idCopy);
+                            }
+
+                            spectraID = idCopy;
+                          }
+                        }
+                      }
+
+                      // ── Slice spectral data for this sub-population (once per population) ──
+                      if (spectraID != null && allSpectra != null && !allSpectra.isEmpty()) {
+
+                        List<SpectralArray> filteredSpectra = new ArrayList<>();
+
+                        for (SpectralArray sarr : allSpectra) {
+                          double[] allIntensities = sarr.getIntensity();
+                          double[] filteredIntensities = new double[subIndices.size()];
+
+                          for (int j = 0; j < subIndices.size(); j++) {
+                            int particleIdx = subIndices.get(j);
+                            if (particleIdx < allIntensities.length) {
+                              filteredIntensities[j] = allIntensities[particleIdx];
+                            } else {
+                              LOGGER.warn("Particle index {} out of bounds for spectral array "
+                                      + "isotope {} (length {}) — filling 0.",
+                                  particleIdx, sarr.getChannel().getUIString(), allIntensities.length);
+                              filteredIntensities[j] = 0.0;
+                            }
+                          }
+
+                          // Slice additional features by the same indices
+                          HashMap<String, double[]> filteredFeatures = new HashMap<>();
+                          for (String key : sarr.listAdditionalFeatures()) {
+                            double[] allFeatureValues = sarr.getAdditionalFeature(key);
+                            double[] filteredFeatureValues = new double[subIndices.size()];
+
+                            for (int j = 0; j < subIndices.size(); j++) {
+                              int particleIdx = subIndices.get(j);
+                              if (allFeatureValues != null && particleIdx < allFeatureValues.length) {
+                                filteredFeatureValues[j] = allFeatureValues[particleIdx];
+                              } else {
+                                filteredFeatureValues[j] = 0.0;
+                              }
+                            }
+                            filteredFeatures.put(key, filteredFeatureValues);
+                          }
+
+                          filteredSpectra.add(new SpectralArray(
+                              sarr.getChannel(),
+                              filteredIntensities,
+                              filteredFeatures));
+                        }
+
+                        sample.addSpectralData(spectraID, filteredSpectra);
+                      }
+                    }
+                  }
+                } else {
+                  LOGGER.warn("Overlap filter: aligned population {} has inconsistent sizes — skipping.",
+                      popIDKey);
+                }
+              }
+
+
+              ////////////////////////////////////////////////////////////////////////////////
+              //////////////////// ISOTOPE BASED FILERS //////////////////////////////////////
+              ////////////////////////////////////////////////////////////////////////////////
             } else {
 
 
@@ -398,22 +961,26 @@ public class FilterTask extends AbstractWorkingTask implements WorkingTask {
                       }
 
                       if (multiEventsMap.containsKey(1)) {
+                        EventCollection newCollection = AnalysisUtils.createSubEventCollection(trace,
+                            oldPop, multiEventsMap.get(1));
                         // (1) Keep  existing population to compare filter result with idle state
                         // trace.removePopulation(popID);
-                        // (2) Update as new ID with the latest step; prepare copy here before altering popID
+                        // (2) Update as new ID with the latest step; prepare copy here before altering
+                        // popID
                         PopulationID idCopy = new PopulationID(popID);
                         // (2) append existing ID as new main of branch
                         idCopy.append(new MultiEventSubtype(
                             params.getFilterOption().getValue().toString(),
                             "1"));
-                        // (3) Add the new Population to the trace: SubEventColl keeps BG from MainEventColl.
+                        // (3) Add the new Population to the trace: SubEventColl keeps BG from
+                        // MainEventColl.
                         trace.addOverridePopulation(idCopy,
                             new NpPopulation(
                                 idCopy,
                                 oldPop,
-                                new SubEventCollection(trace, multiEventsMap.get(1), oldPop),
+                                newCollection,
                                 inputPopSummary),
-                            false);
+                            true);
 
                         // Make this new head of branch! Else, OG ID in HashMap is altered, affecting
                         // bucketing in buggy way
@@ -426,6 +993,8 @@ public class FilterTask extends AbstractWorkingTask implements WorkingTask {
                       if (params.getListNumberOfEvents().getValue()) {
                         for (Integer nEvents : multiList) {
                           if (nEvents > 1) {
+                            EventCollection newCollection = AnalysisUtils.createSubEventCollection(trace,
+                                oldPop, multiEventsMap.get(nEvents));
                             // (2) Update as new ID with the latest step
                             PopulationID idCopyTemp = new PopulationID(popID);
                             idCopyTemp.append(new MultiEventSubtype(
@@ -437,9 +1006,9 @@ public class FilterTask extends AbstractWorkingTask implements WorkingTask {
                                 new NpPopulation(
                                     idCopyTemp,
                                     oldPop,
-                                    new SubEventCollection(trace, multiEventsMap.get(nEvents), oldPop),
+                                    newCollection,
                                     inputPopSummary),
-                                false);
+                                true);
                             // (4) Updating the branch: when ID was not just "appended"
                             // branch.overrideID(trace, );
                           }
@@ -451,19 +1020,22 @@ public class FilterTask extends AbstractWorkingTask implements WorkingTask {
                             allGreaterThanOne.addAll(multiEventsMap.get(nEvents));
                           }
                         }
+                        EventCollection newCollection = AnalysisUtils.createSubEventCollection(trace,
+                            oldPop, allGreaterThanOne);
                         // (2) Update as new ID with the latest step (copy is prepared above)
                         PopulationID idCopy = new PopulationID(popID);
                         idCopy.append(new MultiEventSubtype(
                             params.getFilterOption().getValue().toString(),
                             ">1"));
-                        // (3) Add the new Population to the trace: SubEventColl keeps BG from MainEventColl.
+                        // (3) Add the new Population to the trace: SubEventColl keeps BG from
+                        // MainEventColl.
                         trace.addOverridePopulation(idCopy,
                             new NpPopulation(
                                 idCopy,
                                 oldPop,
-                                new SubEventCollection(trace, allGreaterThanOne, oldPop),
+                                newCollection,
                                 inputPopSummary),
-                            false);
+                            true);
                         // (4) Updating the branch: when ID was not just "appended"
                         // branch.overrideID(trace, );
                       }
@@ -480,7 +1052,8 @@ public class FilterTask extends AbstractWorkingTask implements WorkingTask {
 
                       List<Event> eventsToKeep = new ArrayList<>();
                       List<Event> orEventToRemove = new ArrayList<>();
-                      HashSet<Integer> overRangeIndices = trace.getFlags(DataFlag.OVER_RANGE);
+                      HashSet<Integer> overRangeIndices = trace.getFlags(DataFlag.
+                          OVER_RANGE);
 
                       if (overRangeIndices != null && overRangeIndices.isEmpty()) {
                         // just add all to the keep list
@@ -511,6 +1084,8 @@ public class FilterTask extends AbstractWorkingTask implements WorkingTask {
                         }
                       }
 
+                      EventCollection newCollection = AnalysisUtils.createSubEventCollection(trace,
+                          oldPop, eventsToKeep);
                       // (1) Remove existing population from the Trace to avoid pile up of Populations)
                       trace.removePopulation(popID);
                       // (2) Update as new ID with the latest step; prepare copy here before altering popID
@@ -523,14 +1098,16 @@ public class FilterTask extends AbstractWorkingTask implements WorkingTask {
                           new NpPopulation(
                               idCopy,
                               oldPop,
-                              new SubEventCollection(trace, eventsToKeep, oldPop),
+                              newCollection,
                               inputPopSummary),
-                          false);
+                          true);
                       // (4) Make this new head of branch!
                       branch.overrideID(trace, idCopy);
 
 
                       if (!orEventToRemove.isEmpty()) {
+                        newCollection = AnalysisUtils.createSubEventCollection(trace,
+                            oldPop, orEventToRemove);
                         // (1) Existing population was already removed.
                         // trace.removePopulation(popID);
                         // (2) Update as new ID with the latest step
@@ -542,9 +1119,9 @@ public class FilterTask extends AbstractWorkingTask implements WorkingTask {
                             new NpPopulation(
                                 idCopy,
                                 oldPop,
-                                new SubEventCollection(trace, orEventToRemove, oldPop),
+                                newCollection,
                                 inputPopSummary),
-                            false);
+                            true);
 
                       }
                     }
@@ -750,7 +1327,8 @@ public class FilterTask extends AbstractWorkingTask implements WorkingTask {
                           Percentile percentile = new Percentile();
                           // percentile only uses order, which does not changer with math mod, but distance
                           // +1.5IQR scales differently on log scale!
-                          double[] data = sample.getData(channel, popID, EventType.NP, eventParameter, unit);
+                          double[] data = sample.getData(channel, popID, EventType.NP, eventParameter,
+                              unit);
                           // This does not support QUANT:
                           // double[] data = oldPop.getEvents().get(EventType.NP, eventParameter);
 
@@ -793,7 +1371,8 @@ public class FilterTask extends AbstractWorkingTask implements WorkingTask {
                           sigFactor = Math.max(sigFactor, Double.MIN_VALUE);
                           // percentile only uses order, which does not changer with math mod,
                           // but distance +1.5MAD scales differently on log scale!
-                          double[] data = sample.getData(channel, popID, EventType.NP, eventParameter, unit);
+                          double[] data = sample.getData(channel, popID, EventType.NP, eventParameter,
+                              unit);
                           // This does not support QUANT:
                           // double[] data = oldPop.getEvents().get(EventType.NP, eventParameter);
 
@@ -826,7 +1405,8 @@ public class FilterTask extends AbstractWorkingTask implements WorkingTask {
                             continue; // skip to next trace and do not add ROI
                           }
                         } else if (roiCategory.equals(RoiCategory.OTSU)) {
-                          double[] data = sample.getData(channel, popID, EventType.NP, eventParameter, unit);
+                          double[] data = sample.getData(channel, popID, EventType.NP, eventParameter,
+                              unit);
                           data = mathConversion.calc(data);
 
                           BinWidthEstimator estimator = params.getBinWidthEstimator().getValue();
@@ -891,7 +1471,8 @@ public class FilterTask extends AbstractWorkingTask implements WorkingTask {
                             continue;
                           }
                         } else if (roiCategory.equals(RoiCategory.CHANGE_POINT)) {
-                          double[] data = sample.getData(channel, popID, EventType.NP, eventParameter, unit);
+                          double[] data = sample.getData(channel, popID, EventType.NP, eventParameter,
+                              unit);
 
                           data = mathConversion.calc(data);
 
@@ -923,7 +1504,8 @@ public class FilterTask extends AbstractWorkingTask implements WorkingTask {
                             // samples.
 
                             if (otsuRegion.equals(OtsuRegion.UPPER)) {
-                              Pair<Boolean, Double> result = HistogramFilters.findSplitPoint(histData, width);
+                              Pair<Boolean, Double> result = HistogramFilters.findSplitPoint(histData,
+                                  width);
                               foundValidThr = foundValidThr && result.getKey();
                               if (foundValidThr) {
                                 lowerThr = result.getValue();
@@ -932,7 +1514,8 @@ public class FilterTask extends AbstractWorkingTask implements WorkingTask {
                               }
                               upperThr = ArrUtils.getMax(data) + 1; // make sure we are larger than max
                             } else {
-                              Pair<Boolean, Double> result = HistogramFilters.findSplitPoint(histData, width);
+                              Pair<Boolean, Double> result = HistogramFilters.findSplitPoint(histData,
+                                  width);
                               foundValidThr = foundValidThr && result.getKey();
                               if (foundValidThr) {
                                 upperThr = result.getValue();
@@ -980,6 +1563,8 @@ public class FilterTask extends AbstractWorkingTask implements WorkingTask {
                         }
 
 
+                        EventCollection newCollection = AnalysisUtils.createSubEventCollection(trace,
+                            oldPop, eventsToKeep);
                         if (setAsMainBranch) {
                           // (1) Remove existing population from the Trace to avoid pile up of Populations)
                           trace.removePopulation(popID);
@@ -993,9 +1578,9 @@ public class FilterTask extends AbstractWorkingTask implements WorkingTask {
                               new NpPopulation(
                                   idCopy,
                                   oldPop,
-                                  new SubEventCollection(trace, eventsToKeep, oldPop),
+                                  newCollection,
                                   inputPopSummary),
-                              false);
+                              true);
                           // (4) Make this new head of branch!
                           branch.overrideID(trace, idCopy);
 
@@ -1011,9 +1596,9 @@ public class FilterTask extends AbstractWorkingTask implements WorkingTask {
                               new NpPopulation(
                                   idCopy,
                                   oldPop,
-                                  new SubEventCollection(trace, eventsToKeep, oldPop),
+                                  newCollection,
                                   inputPopSummary),
-                              false);
+                              true);
                           // (4) Updating the branch: not necessary as it still has the pointer and ID was
                           // only
                           // "appended"
@@ -1062,6 +1647,8 @@ public class FilterTask extends AbstractWorkingTask implements WorkingTask {
                           noMatchEval);
 
                       if (listMatches) {
+                        EventCollection newCollection = AnalysisUtils.createSubEventCollection(trace,
+                            oldPop, matchFromEval);
                         // (2) Update as new ID with the latest step
                         PopulationID idCopyTemp = new PopulationID(popID);
                         idCopyTemp.append(new PopulationStep.SimMatchSubtype(
@@ -1073,15 +1660,17 @@ public class FilterTask extends AbstractWorkingTask implements WorkingTask {
                             new NpPopulation(
                                 idCopyTemp,
                                 oldPop,
-                                new SubEventCollection(trace, matchFromEval, oldPop),
+                                newCollection,
                                 inputPopSummary),
-                            false);
+                            true);
                         // (4) Updating the branch: when ID was not just "appended"
                         // branch.overrideID(trace, );
                       }
 
 
                       if (listFalsePositives) {
+                        EventCollection newCollection = AnalysisUtils.createSubEventCollection(trace,
+                            oldPop, noMatchEval);
                         // (2) Update as new ID with the latest step
                         PopulationID idCopyTemp = new PopulationID(popID);
                         idCopyTemp.append(new PopulationStep.SimMatchSubtype(
@@ -1093,14 +1682,36 @@ public class FilterTask extends AbstractWorkingTask implements WorkingTask {
                             new NpPopulation(
                                 idCopyTemp,
                                 oldPop,
-                                new SubEventCollection(trace, noMatchEval, oldPop),
+                                newCollection,
                                 inputPopSummary),
-                            false);
+                            true);
                         // (4) Updating the branch: when ID was not just "appended"
                         // branch.overrideID(trace, );
                       }
 
                       if (listFalseNegatives) {
+                        EventCollection newFalseNegCollection = AnalysisUtils.createSubEventCollection(trace,
+                            oldPop, noMatchSim);
+
+                        if (setToZero) {
+                          List<Event> falseNegativeEvents = newFalseNegCollection.getNpEvents();
+                          SubEventCollection falseNegSubEvtColl = AnalysisUtils.createSubEventCollection(
+                              trace, oldPop, falseNegativeEvents);
+
+                          for (Event falseNegEvt : falseNegSubEvtColl.getNpEvents()) {
+                            double assumedBG = falseNegEvt.getBgPerNP();
+                            double area = falseNegEvt.get(EventParameter.AREA);
+                            // make sure, lowest possible is zero
+                            if (assumedBG > area) {
+                              falseNegEvt.setBgPerNP(area);
+                            }
+                          }
+
+                          if (removeZeros) {
+                            falseNegSubEvtColl.removeIf(e -> e.get(EventParameter.NET_AREA) <= 0);
+                          }
+                        }
+
                         // (2) Update as new ID with the latest step
                         PopulationID idCopyTemp = new PopulationID(popID);
                         idCopyTemp.append(new PopulationStep.SimMatchSubtype(
@@ -1111,45 +1722,17 @@ public class FilterTask extends AbstractWorkingTask implements WorkingTask {
                         Population falseNegatives = new NpPopulation(
                             idCopyTemp,
                             oldPop,
-                            new SubEventCollection(trace, noMatchSim, oldPop),
+                            newFalseNegCollection,
                             inputPopSummary);
 
-                        // After adding to new population to its (sub)collection:
-                        // these events are defined from theory point of view with >1cts, hence adjust area
-                        // correction; do this after creating the population
-                        // as creating the pop sets the Collection and Trace
-                        // Note: BG is estimated as <event.setBgPerNP(trace.getEmpiricalMeanBG() * event
-                        // .getNoOfPoints());>
-                        if (setToZero) {
-                          List<Event> falseNegCopy =
-                              new ArrayList<>(falseNegatives.getEvents().getNpEvents());
-                          for (Event falseNegEvt : falseNegCopy) {
-                            double assumedBG = falseNegEvt.getBgPerNP();
-                            double area = falseNegEvt.get(EventParameter.AREA);
-                            // make sure, lowest possible is zero
-                            if (assumedBG > area) {
-                              falseNegEvt.setBgPerNP(area);
-                            }
-                          }
-
-                          if (removeZeros) {
-                            falseNegCopy.removeIf(e -> e.get(EventParameter.NET_AREA) <= 0);
-                          }
-
-                          falseNegatives = new NpPopulation(
-                              idCopyTemp,
-                              oldPop,
-                              new SubEventCollection(trace, falseNegCopy, oldPop),
-                              inputPopSummary);
-                        }
-
-                        trace.addOverridePopulation(idCopyTemp, falseNegatives, false);
+                        trace.addOverridePopulation(idCopyTemp, falseNegatives, true);
                         // (4) Updating the branch: when ID was not just "appended"
                         // branch.overrideID(trace, );
                       }
                     } // end
                   } else {
-                    LOGGER.warn("Failed to apply filter {}! Note that you cannot apply filters to aligned " +
+                    LOGGER.warn("Failed to apply filter {}! Note that you cannot apply filters to aligned" +
+                        " " +
                         "populations. You must apply filters before aligning.", filterOption);
                   }
                 }

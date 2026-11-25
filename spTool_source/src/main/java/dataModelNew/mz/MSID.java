@@ -34,5 +34,7 @@ public interface MSID extends Serializable {
 
   ChannelCategory getCategory();
 
+  String getAdductLabel();
+
 
 }

@@ -345,7 +345,7 @@ public abstract class AnalysisUtils {
     return ids.stream().allMatch(id -> isAligned(id) || isPVal(id) || isSim(id));
   }
 
-  public static boolean isSim(PopulationID id){
+  public static boolean isSim(PopulationID id) {
     return id.getType().equals(PopulationType.SIMULATION);
   }
 
@@ -819,9 +819,47 @@ public abstract class AnalysisUtils {
     return new TISeriesRAM(time, values);
   }
 
-  ////////////////////////////////////////////////////////////////////////////////////////////////
-  ////////////////////////////////////////////////////////////////////////////////////////////////
-  ////////////////////////////////////////////////////////////////////////////////////////////////
+  /// /////////////////////////////////////////////////////////////////////////////////////////////
+  /// ////////////////////////////////////// Manage Populations ///////////////////////////////////
+  /// /////////////////////////////////////////////////////////////////////////////////////////////
+
+  public static MainEventCollection createMainEventCollection(Trace trace, List<Event> npEvents) {
+
+    MainEventCollection newCollection = new MainEventCollection(trace);
+
+    // Existing NP events must be added as a copy or else the Event object does not point to this collection
+    List<Event> copiedEvents = new ArrayList<>();
+    for (Event event : npEvents) {
+      Event copy = event.copy(newCollection);
+      copiedEvents.add(copy);
+    }
+    // Add events to the collection
+    newCollection.add(copiedEvents);
+
+    return newCollection;
+  }
+
+
+  public static SubEventCollection createSubEventCollection(Trace trace,
+                                                            Population parent,
+                                                            List<Event> npEvents) {
+
+    // parent defines the background, i.e., it is the BG defining collection in the subCollection
+    EventCollection bgDefiningCollection = parent.getBgDefiningCollection();
+    SubEventCollection newCollection = new SubEventCollection(trace, bgDefiningCollection);
+
+    // Existing NP events must be added as a copy or else the same Event object is contained in both parent
+    // and new subCollection
+    List<Event> copiedEvents = new ArrayList<>();
+    for (Event event : npEvents) {
+      Event copy = event.copy(newCollection);
+      copiedEvents.add(copy);
+    }
+    // Add events to the collection
+    newCollection.add(copiedEvents);
+
+    return newCollection;
+  }
 
 
 }

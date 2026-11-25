@@ -153,12 +153,12 @@ public class ComputedChannel implements Channel, Serializable {
       return true;
     }
     if (o == null || getClass() != o.getClass()) {
-      return false;
+      return false;   // never equal to Isotope/MZChannel
     }
-    ComputedChannel channel = (ComputedChannel) o;
-    return category == channel.category
-        && Objects.equals(label, channel.label)
-        && Objects.equals(contributingChannels, channel.contributingChannels);
+    ComputedChannel other = (ComputedChannel) o;
+    return category == other.category
+        && Objects.equals(label, other.label)
+        && Objects.equals(contributingChannels, other.contributingChannels);
   }
 
   @Override

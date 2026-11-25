@@ -19,6 +19,7 @@ package sandbox.montecarlo;
 
 import java.util.ArrayList;
 import java.util.List;
+
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import util.ArrUtils;
@@ -27,6 +28,23 @@ public class MacroTimeFrameUtil {
 
   public static final Logger LOGGER = LogManager.getLogger(MacroTimeFrameUtil.class.getName());
 
+  public static int getBlockSize(double microDT, double macroDT) {
+    int blockSize;
+    if (microDT > macroDT) {
+      // indicate that the micro array is returned as is
+      blockSize = 1;
+      LOGGER.error("Micro dwell time is larger than macro dwell time. "
+          + "Cannot create macro time frame.");
+    } else {
+      blockSize = (int) Math.round(macroDT / microDT);
+      // if off by 5 pct, add one
+      if (blockSize * microDT < macroDT * 0.95) {
+        blockSize += 1;
+      }
+    }
+    return blockSize;
+  }
+
   public static double[] groupSignal(double microDT, double macroDT, double[] microData) {
     double[] result;
 
@@ -34,17 +52,12 @@ public class MacroTimeFrameUtil {
 
     // somehow, there were cases that earlier checks failed...
     if (microDT > macroDT) {
-      LOGGER.error(
-          "Micro dwell time is larger than macro dwell time. "
-              + "Cannot create macro time frame.");
+      LOGGER.error("Micro dwell time is larger than macro dwell time. "
+          + "Cannot create macro time frame.");
       result = microData;
     } else {
 
-      int blockSize = (int) (macroDT / microDT);
-      // if off by 5 pct, add one
-      if (blockSize * microDT < macroDT * 0.95) {
-        blockSize += 1;
-      }
+      int blockSize = getBlockSize(microDT, macroDT);
 
       double sum = 0;
       for (int i = 0; i < microData.length; i++) {
@@ -72,11 +85,7 @@ public class MacroTimeFrameUtil {
               + "Cannot create macro time frame.");
       result = microData;
     } else {
-      int blockSize = (int) (macroDT / microDT);
-      // if off by 5 pct, add one
-      if (blockSize * microDT < macroDT * 0.95) {
-        blockSize += 1;
-      }
+      int blockSize = getBlockSize(microDT, macroDT);
 
       for (int i = 0; i < microData.length; i++) {
         if (i > 0 && (i + 1) % blockSize == 0) {

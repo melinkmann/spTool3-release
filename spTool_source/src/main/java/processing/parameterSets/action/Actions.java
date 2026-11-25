@@ -317,6 +317,7 @@ public abstract class Actions {
 
     // Manage populations
     PopulationBranch branch = new PopulationBranch();
+    int searchBranchIndex = 0;
 
     for (ParamSet set : subMethods) {
 
@@ -338,7 +339,8 @@ public abstract class Actions {
         branch.clear(); // resets branch track
         boolean isActive = ((NormalSearchParams) set).getEnableBoolean().getValue();
         if (isActive) {
-          tasks.add(new SearchTask("Search", branch, (NormalSearchParams) set, sample, selChannels));
+          searchBranchIndex++;
+          tasks.add(new SearchTask("Search", branch, (NormalSearchParams) set, searchBranchIndex,sample, selChannels));
           hasActiveSearchBlock = true;
           activeSearchParams = (NormalSearchParams) set;
         }
@@ -352,7 +354,6 @@ public abstract class Actions {
         if (activeSearchParams != null && gatingParams.getForceNewBGDefinition().getValue()) {
           tasks.add(new ComputeBgPerNpTask("Background computation after gating",
               branch, activeSearchParams, sample));
-
         }
       }
 
@@ -882,11 +883,11 @@ public abstract class Actions {
                 .append("\nbeta [%] :").append(SnF.doubleToString(beta, NF.D1C3, NF.D1C3Exp))
                 .append("\nmatch syn [%] :").append(SnF.doubleToString(coverageSim, NF.D1C3, NF.D1C3Exp))
                 .append("\nmatch eval [%] :").append(SnF.doubleToString(coverageEval, NF.D1C3, NF.D1C3Exp))
-                .append("\nalpha pts [%] :").append(SnF.doubleToString(alphaBG, NF.D1C3, NF.D1C3Exp))
+                .append("\nalpha by data pts [%] :").append(SnF.doubleToString(alphaBG, NF.D1C3, NF.D1C3Exp))
 
                 .append("\nnSim [-] :").append(SnF.intToString(simEvts.size(), NF.D1C0))
                 .append("\nnEval [-] :").append(SnF.intToString(evalEvts.size(), NF.D1C0))
-                .append("\nnMatch [-] :").append(SnF.intToString(matchFromSim.size(), NF.D1C0))
+                .append("\nnMatch Sim->Eval [-] :").append(SnF.intToString(matchFromSim.size(), NF.D1C0))
                 .append("\nnSimNoMatch [-] :").append(SnF.intToString(noMatchSim.size(), NF.D1C0))
                 .append("\nnEvalNoMatch [-] :").append(SnF.intToString(noMatchEval.size(), NF.D1C0))
             ;

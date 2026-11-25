@@ -31,7 +31,10 @@ import java.util.Set;
 
 import org.apache.commons.text.StringEscapeUtils;
 import org.w3c.dom.Element;
+import util.Functional;
 import util.Util;
+
+import javax.annotation.Nullable;
 
 public class BooleanParameter extends AbstractParameter<Boolean> implements Serializable,
     Parameter<Boolean> {

@@ -461,7 +461,9 @@ public class MethodView implements ParameterView {
     });
 
     final Button wizardParameterBtn = UiUtil.getToolbarBtn("/img/wizard.png",
-        "Try to load data generator parameters from the selected sample");
+        """
+            Try to load data generator parameters from the selected sample.
+            Note: Event populations must be aligned in order to use this button.""");
 
     wizardParameterBtn.setOnAction(e -> {
       List<Sample> selSamples = SpTool3Main.getRunTime().getMainWindowCtl().getSelSamples();

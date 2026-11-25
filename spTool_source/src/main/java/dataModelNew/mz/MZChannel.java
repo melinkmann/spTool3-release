@@ -30,7 +30,7 @@ public class MZChannel implements Channel, Serializable {
   @Serial
   private static final long serialVersionUID = 1_000_000L;
 
-  private ChannelCategory category;
+  private final ChannelCategory category;
 
   private final MSID msId;
 
@@ -143,33 +143,48 @@ public class MZChannel implements Channel, Serializable {
   }
 
 
+  // Isotope that identifies this channel, or null if there is none
+// (no isotope, or only the Element.UNKNOWN placeholder).
+  @Nullable
+  Isotope getIdentifyingIsotope() {
+    if (isotope == null || Element.UNKNOWN.getIsotopes().get(0).equals(isotope)) {
+      return null;
+    }
+    return isotope;
+  }
 
   @Override
   public boolean equals(Object o) {
     if (this == o) {
       return true;
     }
-    if (o == null) {
-      return false;
-    }
+    Isotope mine = getIdentifyingIsotope();
 
-    // Extract isotope from either IsotopeChannel or MZChannel
-    Isotope otherIsotope = null;
     if (o instanceof IsotopeChannel) {
-      otherIsotope = ((IsotopeChannel) o).getIsotope();
-    } else if (o instanceof MZChannel) {
-      otherIsotope = ((MZChannel) o).getIsotope();
-    } else {
-      return false;
+      // IsotopeChannel has no msId, so it can only match via a real isotope
+      return mine != null && mine.equals(((IsotopeChannel) o).getIsotope());
     }
-
-    // Compare by isotope only
-    return Objects.equals(isotope, otherIsotope);
+    if (o instanceof MZChannel) {
+      MZChannel other = (MZChannel) o;
+      Isotope theirs = other.getIdentifyingIsotope();
+      if (mine != null || theirs != null) {
+        // at least one has a real isotope -> isotope decides
+        return Objects.equals(mine, theirs);
+      }
+      // neither has a real isotope -> compare fields
+      return Objects.equals(msId, other.msId)
+          && Objects.equals(category, other.category);
+    }
+    return false;
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(isotope);
+    Isotope id = getIdentifyingIsotope();
+    if (id != null) {
+      return id.hashCode();   // same value as IsotopeChannel.hashCode()
+    }
+    return Objects.hash(msId, category);
   }
 }
 

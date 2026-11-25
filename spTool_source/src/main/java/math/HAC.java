@@ -386,6 +386,28 @@ public class HAC {
     }
 
     /**
+     * Threshold located p percent of the way down from the root of the dendrogram.
+     * The scale is the full height axis (0 .. highest merge height).
+     *
+     * <ul>
+     *   <li>0 %   -> highest merge height (cut at the root: 1-2 clusters)</li>
+     *   <li>50 %  -> half the root height</li>
+     *   <li>95 %  -> 5 % of the root height (low cut: many clusters)</li>
+     *   <li>100 % -> 0 (every particle is its own cluster)</li>
+     * </ul>
+     *
+     * @param percent value in [0, 100]; out-of-range values are clamped
+     */
+    public double getPercentThreshold(double percent) {
+      if (mergeHeights == null || mergeHeights.length == 0) {
+        return 0.0;
+      }
+      double p = Math.max(0.0, Math.min(100.0, percent));
+      double maxH = mergeHeights[mergeHeights.length - 1];
+      return maxH * (p / 100.0);
+    }
+
+    /**
      * Suggested default threshold: just below the largest gap between
      * consecutive merge heights ("maximum-acceleration cut").
      */

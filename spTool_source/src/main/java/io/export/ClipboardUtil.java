@@ -20,6 +20,8 @@ package io.export;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+
+import javafx.application.Platform;
 import javafx.scene.input.Clipboard;
 import javafx.scene.input.ClipboardContent;
 import org.apache.logging.log4j.LogManager;
@@ -161,7 +163,10 @@ public abstract class ClipboardUtil {
     // Copy to clipboard using JavaFX
     ClipboardContent content = new ClipboardContent();
     content.putString(sb.toString());
-    Clipboard.getSystemClipboard().setContent(content);
+    Platform.runLater(()->{
+      Clipboard.getSystemClipboard().setContent(content);
+    });
+
 
     LOGGER.info("Double array copied to clipboard (one per line).");
   }

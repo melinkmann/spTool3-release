@@ -31,16 +31,22 @@ public class HacInstructionWrapper {
   private final HAC.FittedHAC fittedHAC;
 
   // inputs for comparison
+  private final boolean useSpectralData;
+  private final boolean useQuant;
   private final boolean useLog2;
   private final ZScoreTarget zScoreTarget;
   private final List<Channel> validIsotopes;
 
 
   public HacInstructionWrapper(HAC.FittedHAC fittedHAC,
+                               boolean useSpectralData,
+                               boolean useQuant,
                                boolean useLog2,
                                ZScoreTarget zScoreTarget,
                                List<Channel> validIsotopes) {
     this.fittedHAC = fittedHAC;
+    this.useSpectralData = useSpectralData;
+    this.useQuant = useQuant;
     this.useLog2 = useLog2;
     this.zScoreTarget = zScoreTarget;
     this.validIsotopes = new ArrayList<>(validIsotopes);
@@ -50,12 +56,17 @@ public class HacInstructionWrapper {
     return fittedHAC;
   }
 
-  public boolean isEqualInstructions(boolean useLog2,
+  public boolean isEqualInstructions(boolean useSpectralData,
+                                      boolean useQuant,
+                                     boolean useLog2,
                                      ZScoreTarget zScoreTarget,
                                      List<Channel> validIsotopes) {
+
     boolean equal = this.useLog2 == useLog2;
+    equal = equal && this.useSpectralData == useSpectralData;
+    equal = equal && this.useQuant == useQuant;
     equal = equal && this.zScoreTarget == zScoreTarget;
-    equal = equal && Objects.equals(this.validIsotopes,validIsotopes);
+    equal = equal && Objects.equals(this.validIsotopes, validIsotopes);
 
     boolean equalElements = this.validIsotopes.size() == validIsotopes.size();
     if (equalElements) {

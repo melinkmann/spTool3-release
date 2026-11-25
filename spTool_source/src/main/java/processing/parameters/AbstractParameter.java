@@ -31,6 +31,7 @@ import java.util.Set;
 import org.apache.commons.text.StringEscapeUtils;
 import org.w3c.dom.Element;
 import processing.parameterSets.ParamBundle;
+import util.Functional;
 
 public abstract class AbstractParameter<T extends Serializable> implements Serializable,
     Parameter<T> {
@@ -59,6 +60,14 @@ public abstract class AbstractParameter<T extends Serializable> implements Seria
   // Keyword transient makes sure, initialize to null (just like here).
   // If required, the value is set in the organize() function of a ParamSet.
   private transient Decoration<T> decoration = null;
+
+  // lambda to call upon update
+  private Functional refresh = new Functional() {
+    @Override
+    public void proceed() {
+      // do nothing
+    }
+  };
 
   public AbstractParameter(String label,
                            String explanation,
@@ -153,6 +162,16 @@ public abstract class AbstractParameter<T extends Serializable> implements Seria
   @Override
   public void resetToDefault() {
     setValue(defaultValue);
+  }
+
+  @Override
+  public void setRefresh(Functional refresh) {
+    this.refresh = refresh;
+  }
+
+  @Override
+  public void callRefresh() {
+    this.refresh.proceed();
   }
 
   public void setIsChild(boolean isChild) {

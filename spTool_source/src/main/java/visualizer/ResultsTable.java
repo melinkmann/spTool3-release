@@ -46,7 +46,6 @@ import javafx.util.Duration;
 import math.stat.MeasureOfLocation;
 import math.stat.MeasureOfSpread;
 import math.units.Unit;
-import math.units.enums.NMPUnit;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import processing.options.EventParameter;
@@ -103,7 +102,7 @@ public abstract class ResultsTable {
       paramCol.setCellValueFactory(data -> data.getValue().labelProperty());
       // --- Custom header with button ---
       Label headerLabel = new Label("Parameter");
-      Button showMenuButton = UiUtil.getImageButton( "", "/img/edit.png",
+      Button showMenuButton = UiUtil.getImageButton("", "/img/edit.png",
           "Show context menu to edit the table and select parameters to show.");
       showMenuButton.setPrefWidth(32);
 
@@ -430,6 +429,12 @@ public abstract class ResultsTable {
       }
     },
 
+    RAW_NONZERO_MEAN {
+      public String getValue(Sample s, Channel i, PopulationID p) {
+        return s.tabNonzeroRawMean(i);
+      }
+    },
+
     RAW_MEAN_CPS {
       public String getValue(Sample s, Channel i, PopulationID p) {
         return s.tabRawMeanCPS(i);
@@ -503,7 +508,7 @@ public abstract class ResultsTable {
       }
     },
 
-    POPULATION_HISTORY{
+    POPULATION_HISTORY {
       public String getValue(Sample s, Channel i, PopulationID p) {
         return s.tabPopHistory(i, p);
       }
@@ -558,6 +563,30 @@ public abstract class ResultsTable {
     NP_RATE {
       public String getValue(Sample s, Channel i, PopulationID p) {
         return s.tabPopNpRate(i, p);
+      }
+    },
+
+    NP_RATE_CORR {
+      public String getValue(Sample s, Channel i, PopulationID p) {
+        return s.tabPopNpRateCorr(i, p);
+      }
+    },
+
+    NP_RATE_LOSS{
+      public String getValue(Sample s, Channel i, PopulationID p) {
+        return s.tabPopNpRateLoss(i, p);
+      }
+    },
+
+    NP_RATE_MAX_TRUE {
+      public String getValue(Sample s, Channel i, PopulationID p) {
+        return s.tabPopNpRateCorrMax(i, p);
+      }
+    },
+
+    NP_RATE_OBS_10 {
+      public String getValue(Sample s, Channel i, PopulationID p) {
+        return s.tabPopNpRateObsv10Pct(i, p);
       }
     },
 
@@ -832,7 +861,8 @@ public abstract class ResultsTable {
           SAMPLE_FOLDER,
           SAMPLE_FULL_PATH,
           SAMPLE_COMMENT,
-          SAMPLE_HIGHLIGHT));
+          SAMPLE_HIGHLIGHT,
+          REMOVED_MZ));
     }
 
     public static List<TablePar> getTraceInfo() {
@@ -845,6 +875,7 @@ public abstract class ResultsTable {
             DATA_POINTS,
             TI_SERIES_LIMITS,
             RAW_MEAN,
+            RAW_NONZERO_MEAN,
             RAW_MEDIAN,
             RAW_SD,
             RAW_MAD,
@@ -867,6 +898,7 @@ public abstract class ResultsTable {
             DATA_POINTS,
             TI_SERIES_LIMITS,
             RAW_MEAN,
+            RAW_NONZERO_MEAN,
             RAW_MEDIAN,
             RAW_SD,
             RAW_MAD,
@@ -889,6 +921,10 @@ public abstract class ResultsTable {
             NP_COUNT,
             PNC,
             NP_RATE,
+            NP_RATE_CORR,
+            NP_RATE_LOSS,
+            NP_RATE_MAX_TRUE,
+            NP_RATE_OBS_10,
             NP_MEAN,
             NP_SD,
             NP_MEDIAN,
@@ -925,6 +961,10 @@ public abstract class ResultsTable {
             POPULATION_ADDITIONAL,
             NP_COUNT,
             NP_RATE,
+            NP_RATE_CORR,
+            NP_RATE_LOSS,
+            NP_RATE_MAX_TRUE,
+            NP_RATE_OBS_10,
             NP_MEAN,
             NP_SD,
             NP_MEDIAN,
@@ -1029,14 +1069,15 @@ public abstract class ResultsTable {
         case DATA_POINTS -> "Data points [-]";
         case TI_SERIES_LIMITS -> "Limits";
         case RAW_MEAN -> "Raw mean [cts]";
+        case RAW_NONZERO_MEAN -> "Raw nonzero mean [cts]";
         case RAW_MEDIAN -> "Raw median [cts]";
         case RAW_MEAN_CPS -> "Raw mean [cts/s]";
         case RAW_MEDIAN_CPS -> "Raw median [cts/s]";
         case RAW_SD -> "Raw SD [cts]";
         case RAW_MAD -> "Raw MAD SD [cts]";
         case SIA_SHAPE -> "SIA shape [-]";
-        case MEAN_SIA_SHAPE -> "Mean SIA shape [-]";
-        case MEAN_FILTERED_SIA_SHAPE -> "Mean filtered SIA shape [-]";
+        case MEAN_SIA_SHAPE -> "Mode SIA shape [-]";
+        case MEAN_FILTERED_SIA_SHAPE -> "Mode filtered SIA shape [-]";
 
         case AEROSOL_TE -> "TE [%]";
         case PNC_TE -> "PNC TE [%]";
@@ -1047,6 +1088,10 @@ public abstract class ResultsTable {
         case NP_COUNT -> "NP number [-]";
         case PNC -> "PNC [NP/mL]";
         case NP_RATE -> "NP rate [NP/s]";
+        case NP_RATE_CORR -> "Corrected NP rate [NP/s]";
+        case NP_RATE_LOSS -> "Lost NPs [%]";
+        case NP_RATE_OBS_10 -> "Detected NP rate at 10% loss [NP/s]";
+        case NP_RATE_MAX_TRUE -> "Theoretical max rate [NP/s]";
         case NP_MEAN -> "NP mean net area [cts]";
         case NP_SD -> "NP net area SD [cts]";
         case NP_MEDIAN -> "NP median net area [cts]";
@@ -1072,7 +1117,7 @@ public abstract class ResultsTable {
           Unit unit = SpTool3Main.getRunTime().getConfParams().getCustomEventUnit();
           String mathStr = "";
           if (!math.equals(MathMod.NONE)) {
-            mathStr = math.toString()+ " " ; // add space here or else metpy mathStr produces 2xspace
+            mathStr = math.toString() + " "; // add space here or else metpy mathStr produces 2xspace
           }
           yield "Custom NP mean " + mathStr + p.toString() + " [" + AxisLabel.getUnit(p, unit).getUnit().getUiString() + "]";
         }

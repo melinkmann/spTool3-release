@@ -211,6 +211,7 @@ public abstract class AbstractFxParameter<T extends Serializable> implements FxP
    */
   @Override
   public void notifyItemChange() {
+    plainParameter.callRefresh();
     if (parentSet != null) {
       parentSet.notifyItemChange();
     }
@@ -222,6 +223,7 @@ public abstract class AbstractFxParameter<T extends Serializable> implements FxP
    */
   @Override
   public void notifyValueChange() {
+    plainParameter.callRefresh();
     if (parentSet != null) {
       parentSet.notifyValueChange();
     }

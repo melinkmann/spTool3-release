@@ -36,6 +36,8 @@ public class HistogramFilters {
 
     if (data.length > 2) {
       double bandwidth = BinWidthEstimator.silvermanRule(data) * 1.25d;
+      if (!Double.isFinite(bandwidth)) bandwidth = 1;
+
       KernelDensity kd = new KernelDensity(data, bandwidth);
       double maxVal = ArrUtils.getMax(data);
 
@@ -59,7 +61,7 @@ public class HistogramFilters {
 
   public static Pair<Boolean, Double> findSplitPoint(HistogramDataset histogramDataset, int windowWidth) {
     double val = 0;
-    Pair<Boolean, Double>  result = new Pair<>(false, val);
+    Pair<Boolean, Double> result = new Pair<>(false, val);
 
     // ensure uneven width
     if (windowWidth % 2 == 0) {

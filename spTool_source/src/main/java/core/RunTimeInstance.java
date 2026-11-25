@@ -385,7 +385,7 @@ public class RunTimeInstance {
     return interferenceDatabase;
   }
 
-  public Colors getNextSampleColor() {
+  public synchronized Colors getNextSampleColor() {
     return SAMPLE_COLOR_ITERATOR.next();
   }
 

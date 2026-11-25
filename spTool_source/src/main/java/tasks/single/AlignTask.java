@@ -42,12 +42,11 @@ import tasks.results.EmptyTaskResult;
 import util.ArrUtils;
 import util.Util;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Predicate;
+
+import static analysis.EventAligner.mergeByCoverageWithContributors;
 
 public class AlignTask extends AbstractWorkingTask implements WorkingTask {
 
@@ -84,6 +83,13 @@ public class AlignTask extends AbstractWorkingTask implements WorkingTask {
         mainLoop:
         while (!getIsStopped().get()) {
 
+          // TODO: Include option: set all <THR to zero.
+          //  set the thr as alpha here in the thingy.
+          //  idea: for cluster, we do not want BG to contribute.
+          //  so we just set it to zero. But the statistics will be tricky
+          //  b/c the "falsely assigned" events will scatter around 0
+          //  but with spread widened by having 1 - 15 or so data points.
+
           NetCorrectionOption netSignalChoice = params.getNetCorrectionOption().getValue();
           AlignAlgorithm alignAlgorithm = params.getAlignAlgorithm().getValue();
           IsotopeSelection isotopeSelection = params.getIsotopeSelection().getValue();
@@ -95,6 +101,9 @@ public class AlignTask extends AbstractWorkingTask implements WorkingTask {
           MeasureOfLocation netSignalLocation = params.getNetTimeWindowLocation().getValue();
           boolean suppressNegativeNetValues = params.getSuppressNegativeValues().getValue();
           double netSignalTime = params.getNetTimeWindow().getValue();
+          boolean unilateralMatchToZero = params.getBorrowedEventsToZero().getValue();
+          boolean borrowingViaCriticalLimit = params.getBorrowedEventsViaCriticalLimit().getValue();
+          double borrowingZFactor = params.getBorrowedEventsCriticalLimitZFactor().getValue();
 
           Sample sample = sampleRef.get();
           if (sample instanceof SampleImpl) {
@@ -108,9 +117,12 @@ public class AlignTask extends AbstractWorkingTask implements WorkingTask {
               targetTraces = filteredTraces;
             }
 
+            // This map stores the matching between each dummy event and the contributin collections
+            Map<Event, List<EventCollection>> unilateralMap = new HashMap<>();
+
             // check if any trace is TIC
             boolean hasTIC = filteredTraces.stream()
-                .map(t -> t.getChannel())
+                .map(Trace::getChannel)
                 .anyMatch(c -> c.getCategory().equals(StaticChannelCategory.TIC));
 
             // match traces and requested MZs
@@ -136,6 +148,10 @@ public class AlignTask extends AbstractWorkingTask implements WorkingTask {
               case TIC -> {
                 if (hasTIC) {
                   filteredTraces.removeIf(Predicate.not(t -> t.getChannel().getCategory().equals(StaticChannelCategory.TIC)));
+                  // This would prevent TIC from being part of the align but also disable looking at the
+                  // picking and histogram of TIC...
+                  // targetTraces.removeIf(t -> t.getChannel().getCategory().equals(StaticChannelCategory
+                  // .TIC));
                 } else {
                   // All loaded
                 }
@@ -180,15 +196,20 @@ public class AlignTask extends AbstractWorkingTask implements WorkingTask {
             }
 
             // We extracted the EventCollections from the Traces
-
             if (!eventCollections.isEmpty()) {
 
               List<Event> mergedEvents;
 
               if (alignAlgorithm.equals(AlignAlgorithm.REGION_COVERAGE)) {
-                mergedEvents = EventAligner.mergeByCoverage(eventCollections, 1);
+                if (unilateralMatchToZero) {
+                  unilateralMap = mergeByCoverageWithContributors(eventCollections, 1);
+                  mergedEvents = new ArrayList<>(unilateralMap.keySet());
+                } else {
+                  mergedEvents = EventAligner.mergeByCoverage(eventCollections, 1);
+                }
               } else {
                 mergedEvents = EventAligner.mergeByConnection(eventCollections);
+                unilateralMap = new HashMap<>();
               }
 
               if (!mergedEvents.isEmpty()) {
@@ -207,10 +228,34 @@ public class AlignTask extends AbstractWorkingTask implements WorkingTask {
                     MainEventCollection coll = new MainEventCollection(trace);
                     double[] yData = trace.getTISeries().getIntensity();
 
+                    // Aligned events that exist only because other traces had an event here
+                    List<Event> zeroNetEvents = new ArrayList<>();
+                    // This trace's own events (before alignment), and whether it took part in the alignment.
+                    // Traces that only receive the result (alignIntoAllChannels) must not be zeroed.
+                    EventCollection oldCollection = oldPop.getEvents();
+                    // This one should be guaranteed from logic above but check anyway!
+                    boolean oldCollWasMerged = eventCollections.contains(oldCollection);
+
                     for (Event mergedEvent : mergedEvents) {
                       Event copy = new NpEvent(coll, mergedEvent.getIndicesList());
                       copy.calcPeakIndex(yData);
                       coll.add(copy);
+
+                      // Decide whether this aligned event is "borrowed" from other traces.
+                      // - contributors = the collections that had a real event of their own inside this
+                      // aligned event. It is null when there is no such info (option off, or Contact mode);
+                      // then nothing is zeroed.
+                      // - collectionWasMerged = this trace/collection took part in the alignment.
+                      // Traces that only receive the result (alignIntoAllChannels) are never zeroed.
+                      // If the trace took part but is not in contributors, it had no event here itself:
+                      // the event exists only because other traces had one. Remember it, its net area is
+                      // set to zero later.
+                      List<EventCollection> contributingCollections = unilateralMap.get(mergedEvent);
+                      if (contributingCollections != null
+                          && oldCollWasMerged
+                          && !contributingCollections.contains(oldCollection)) {
+                        zeroNetEvents.add(copy);
+                      }
                     }
                     if (getIsStopped().get()) {
                       break;
@@ -403,6 +448,23 @@ public class AlignTask extends AbstractWorkingTask implements WorkingTask {
                       }
                     }
 
+                    // Events that exist only because other traces had an event here:
+                    // background = gross area, so net area = 0. This runs after all net-correction
+                    // branches, so it overrides whatever they computed.
+                    if (unilateralMatchToZero && borrowingViaCriticalLimit) {
+                      List<Event> zeroNetEventsBelowTHR = EventAligner.selectBorrowedEventsToZero(
+                          zeroNetEvents,
+                          5,
+                          borrowingZFactor);
+
+                      for (Event event : zeroNetEventsBelowTHR) {
+                        event.setBgPerNP(event.get(EventParameter.AREA));
+                      }
+                    } else if (unilateralMatchToZero) {
+                      for (Event event : zeroNetEvents) {
+                        event.setBgPerNP(event.get(EventParameter.AREA));
+                      }
+                    }
 
                     // add the resulting collection as new leading pop
                     // (1) Remove existing population from the Trace to avoid pile up of Populations)

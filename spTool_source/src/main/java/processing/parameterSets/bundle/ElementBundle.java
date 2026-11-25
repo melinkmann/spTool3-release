@@ -19,16 +19,21 @@ package processing.parameterSets.bundle;
 
 
 import dataModelNew.mz.Element;
+import gui.dialog.DialogUtil;
 import gui.dialog.Fillable;
+import gui.dialog.notification.NotificationFactory;
 import gui.util.TextFormatterOption;
 import io.XmlUtil;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.Serial;
-import java.util.List;
+import java.util.*;
+import java.util.stream.Collectors;
 
 import math.stat.DoePlanner;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import processing.options.BGUnit;
@@ -36,18 +41,18 @@ import processing.options.DistributionModel;
 import processing.options.MCSimIclShapeParameters;
 import processing.parameterSets.ParamBundle;
 import processing.parameterSets.impl.NormalSearchParams;
-import processing.parameters.AutoFillParam;
-import processing.parameters.ComboEnumParameter;
-import processing.parameters.DoubleParameter;
-import processing.parameters.Parameter;
-import processing.parameters.SeparatorParameter;
-import processing.parameters.SpawnControlParameter;
+import processing.parameters.*;
+import sandbox.montecarlo.Isotope;
+import util.Functional;
 import util.NF;
 
 public class ElementBundle implements ParamBundle {
 
   @Serial
   private static final long serialVersionUID = 1_000_000L;
+
+
+  private static final Logger LOGGER = LogManager.getLogger(ElementBundle.class);
 
   private int index = -1;
   private final SpawnControlParameter parentSpawnPar;
@@ -56,8 +61,12 @@ public class ElementBundle implements ParamBundle {
 
   public final Parameter<Double> backgroundSignalIntensity;
   public final Parameter<Double> massFraction;
+
+  public Parameter<Boolean> isotopeAbundanceException;
+  public List<Parameter<Double>> abundances = new ArrayList<>();
   public final Parameter<Double> peakDelay;
   public final Parameter<MCSimIclShapeParameters> peakShape;
+
 
   public final Parameter<Double> d_mu;
   public final Parameter<Double> d_SD;
@@ -97,6 +106,25 @@ public class ElementBundle implements ParamBundle {
         TextFormatterOption.ASSURE_NONZERO_POSITIVE_DOUBLE,
         false,
         wrapID("massFraction"));
+
+    isotopeAbundanceException = new BooleanParameter(
+        "Isotope abundance",
+        "Set custom abundances",
+        """
+            This allows you to set customised isotope abundances.
+            
+            THIS WILL ONLY AFFECT THE PARTICLE COMPOSITION!
+            The background signal will be computed based on natural abundances.
+            
+            - Note that, if you enter values that give a summed isotope abundance > 1,
+            all will be normalised to 1.
+            
+            - Note that these abundances are not strictly mass-based and in spTool, directly mirror the
+            signal ratios between to isotopes. This means that potential mass-bias is not considered
+            unless you already include it in your input abundances""",
+        false,
+        true,
+        wrapID("isotopeAbundanceException"));
 
     peakDelay = new DoubleParameter("Peak delay [µs]",
         "Shift the maximum of an event peak with respect to the true simulated time of arrival",
@@ -157,8 +185,13 @@ public class ElementBundle implements ParamBundle {
     this.elementHeaderParameter = elementBundle.elementHeaderParameter.copyWithoutChildren();
     this.backgroundSignalIntensity = elementBundle.backgroundSignalIntensity.copyWithoutChildren();
     this.massFraction = elementBundle.massFraction.copyWithoutChildren();
+    this.isotopeAbundanceException = elementBundle.isotopeAbundanceException.copyWithoutChildren();
+    this.abundances = elementBundle.abundances.stream()
+        .map(Parameter::copyWithoutChildren)
+        .collect(Collectors.toList());
     this.peakDelay = elementBundle.peakDelay.copyWithoutChildren();
     this.peakShape = elementBundle.peakShape.copyWithoutChildren();
+
 
     this.d_mu = elementBundle.d_mu.copyWithoutChildren();
     this.d_SD = elementBundle.d_SD.copyWithoutChildren();
@@ -170,11 +203,73 @@ public class ElementBundle implements ParamBundle {
     // Header gets the button that has removal capability
     elementHeaderParameter.setDecoration(new RemoveBundleDecoration<>(this));
 
+    isotopeAbundanceException.setRefresh(new Functional() {
+      @Override
+      public void proceed() {
+        // remove all previous children
+        isotopeAbundanceException.clearChildren();
+        // abundances.clear(); // No. Abundance list is "database" to refill with same values/load from xml
+
+        // only populate if select.
+        if (isotopeAbundanceException.getValue()) {
+          // build for all isotopes
+          Element currentSel = elementHeaderParameter.getValue().unwrap();
+          List<Isotope> isotopes = currentSel.getIsotopes();
+          for (Isotope isotope : isotopes) {
+            Parameter<Double> par = null;
+
+            for (Parameter<Double> abundancePar : abundances) {
+              String xmlID = abundancePar.getXmlID();
+              if (xmlID.contains("abundances_")
+                  && xmlID.contains(isotope.getXMLCode())) {
+                par = abundancePar;
+                break;
+              }
+            }
+
+            if (par == null) {
+              par = new DoubleParameter(isotope.getNumberAndElement() + " [0-1]",
+                  "Isotope abundance",
+                  isotope.getAbundance(),
+                  NF.D1C6,
+                  TextFormatterOption.ASSURE_NONZERO_POSITIVE_DOUBLE,
+                  false,
+                  wrapID("abundances_" + isotope.getXMLCode()));
+              abundances.add(par);
+            }
+            // add as conditional child
+            isotopeAbundanceException.addConditionalChild(true, par);
+          }
+        }
+      }
+    });
+
+    // add "reset to default" button: clears the storage (this way residue settings for other elements are
+    // deleted)
+    isotopeAbundanceException.setDecoration(new ButtonDecorationWithRefresh<>("Reset to default abundances",
+        "/img/ctlZ.png",
+        new Functional() {
+          @Override
+          public void proceed() {
+            abundances.clear();
+            isotopeAbundanceException.callRefresh();
+          }
+        }
+    ));
+
     // header carries the children
     elementHeaderParameter.addUnconditionalChild(backgroundSignalIntensity);
     elementHeaderParameter.addUnconditionalChild(massFraction);
+    elementHeaderParameter.addUnconditionalChild(isotopeAbundanceException);
     elementHeaderParameter.addUnconditionalChild(peakDelay);
     elementHeaderParameter.addUnconditionalChild(peakShape);
+    // element change must also fire refresh of the isotope abundances
+    elementHeaderParameter.setRefresh(new Functional() {
+      @Override
+      public void proceed() {
+        isotopeAbundanceException.callRefresh();
+      }
+    });
     //
     peakShape.addConditionalChild(MCSimIclShapeParameters.CUSTOM, d_mu);
     peakShape.addConditionalChild(MCSimIclShapeParameters.CUSTOM, d_SD);
@@ -185,6 +280,9 @@ public class ElementBundle implements ParamBundle {
     //  and would allow e.g., showing all bundle params as an editable table
     elementHeaderParameter.addUnconditionalChild(new SeparatorParameter());
 
+    // this fills in the custom abundances, if selected. Unsure why calling here is required,
+    // it should be enough to call after readFromXML but anyway...
+    isotopeAbundanceException.callRefresh();
   }
 
 
@@ -240,6 +338,45 @@ public class ElementBundle implements ParamBundle {
           par = massFraction;
         }
 
+        if (paramXmlId.contains("abundances")) {
+          for (Isotope isotope : Element.getAllIsotopes()) {
+            if (paramXmlId.contains(isotope.getXMLCode())) {
+              Parameter<Double> isoPar = null;
+
+              // if for some reason we already assigned the isotope to abundance list...
+              for (Parameter<Double> abundancePar : abundances) {
+                String xmlID = abundancePar.getXmlID();
+                if (xmlID.contains("abundances_")
+                    && xmlID.contains(isotope.getXMLCode())) {
+                  isoPar = abundancePar;
+                  break;
+                }
+              }
+
+              // ... else, create a new parameter
+              if (isoPar == null) {
+                isoPar = new DoubleParameter(isotope.getNumberAndElement() + " [0-1]",
+                    "Isotope abundance",
+                    isotope.getAbundance(),
+                    NF.D1C6,
+                    TextFormatterOption.ASSURE_NONZERO_POSITIVE_DOUBLE,
+                    false,
+                    wrapID("abundances_" + isotope.getXMLCode()));
+                abundances.add(isoPar);
+                // make sure to pass pointer so that is will be filled with XML content below
+                par = isoPar;
+              }
+              // do not add as conditional child as here in the switch, element may not have been set!
+              // isotopeAbundanceException.addConditionalChild(true, par);
+            }
+          }
+        }
+
+
+        if (paramXmlId.equals(wrapID("isotopeAbundanceException"))) {
+          par = isotopeAbundanceException;
+        }
+
         if (paramXmlId.equals(wrapID("peakDelay"))) {
           par = peakDelay;
         }
@@ -263,7 +400,8 @@ public class ElementBundle implements ParamBundle {
         }
       }
     }
-
+    // this fills in the custom abundances, if selected
+    isotopeAbundanceException.callRefresh();
   }
 
   /*
@@ -308,6 +446,51 @@ public class ElementBundle implements ParamBundle {
     return elementHeaderParameter.getValueAsString();
   }
 
+  public HashMap<Isotope, Double> getAbundances(Element element) {
+    HashMap<Isotope, Double> abundanceMap = new HashMap<>();
+
+    boolean isCorrectElement = Objects.equals(elementHeaderParameter.getValue().unwrap(), element);
+    // Case A: we do not wish to apply exception or the wrong element was requested
+    if (!isotopeAbundanceException.getValue() || !isCorrectElement) {
+
+      // report if element was wrong
+      if (isCorrectElement) {
+        LOGGER.error("Requested element was not the same as in the container! " +
+            "Natural abundances of the requested element will be used for: {}.", element.getLongName());
+      }
+
+      for (Isotope isotope : element.getIsotopes()) {
+        abundanceMap.put(isotope, isotope.getAbundance());
+      }
+    } else {
+      for (Isotope isotope : element.getIsotopes()) {
+        boolean anyMatchWithParameter = false;
+        for (Parameter<Double> abundanceParameter : abundances) {
+          if (abundanceParameter.getXmlID().contains(isotope.getXMLCode())) {
+            anyMatchWithParameter = true;
+            abundanceMap.put(isotope, abundanceParameter.getValue());
+            break;
+          }
+        }
+        if (!anyMatchWithParameter) {
+          abundanceMap.put(isotope, isotope.getAbundance());
+        }
+      }
+      // Normalise to ensure abundances = 1
+      double abundanceSum = 0;
+      for (Isotope isotope : abundanceMap.keySet()) {
+        abundanceSum += abundanceMap.get(isotope);
+      }
+      if (abundanceSum > 0) {
+        for (Isotope isotope : abundanceMap.keySet()) {
+          abundanceMap.put(isotope, abundanceMap.get(isotope) / abundanceSum);
+        }
+      }
+
+    }
+    return abundanceMap;
+  }
+
 
   @Serial
   private void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException {
@@ -324,6 +507,14 @@ public class ElementBundle implements ParamBundle {
       if (MCSimIclShapeParameters.isDeprecatedEnum(peakShape.getDefaultValue())) {
         peakShape.setValue(MCSimIclShapeParameters.DEFAULT);
       }
+    }
+
+    if (isotopeAbundanceException == null) {
+      isotopeAbundanceException = defaults.isotopeAbundanceException;
+    }
+
+    if (abundances == null) {
+      abundances = defaults.abundances;
     }
 
 

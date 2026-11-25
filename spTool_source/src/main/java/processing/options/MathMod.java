@@ -18,12 +18,15 @@
 package processing.options;
 
 import com.google.common.math.DoubleMath;
+import core.SpTool3Main;
+import math.LinLogTransformation;
+import util.NF;
+import util.SnF;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public enum MathMod {
-
 
   NONE {
     @Override
@@ -176,6 +179,55 @@ public enum MathMod {
       }
       return conv;
     }
+  },
+
+  LINLOG {
+    @Override
+    public String toString() {
+      return "Lin-Log";
+    }
+
+    @Override
+    public String getUiString() {
+      double thr = SpTool3Main.getRunTime().getConfParams().getLinLogScaleCutoff().getValue();
+      String str = SnF.doubleToString(thr, NF.D1C3);
+      return "Lin(<" + str + ")" + str + "·Log10";
+    }
+
+    @Override
+    public double calc(double val) {
+      double thr = SpTool3Main.getRunTime().getConfParams().getLinLogScaleCutoff().getValue();
+      return LinLogTransformation.transform(val, thr);
+    }
+
+    @Override
+    public double invert(double val) {
+      double thr = SpTool3Main.getRunTime().getConfParams().getLinLogScaleCutoff().getValue();
+      return LinLogTransformation.inverse(val, thr);
+    }
+
+    @Override
+    public double[] calc(double[] values) {
+      double thr = SpTool3Main.getRunTime().getConfParams().getLinLogScaleCutoff().getValue();
+
+      double[] conv = new double[values.length];
+      for (int i = 0; i < values.length; i++) {
+        conv[i] = LinLogTransformation.transform(values[i], thr);
+      }
+      return conv;
+    }
+
+
+    @Override
+    public List<Double> calc(List<Double> values) {
+      double thr = SpTool3Main.getRunTime().getConfParams().getLinLogScaleCutoff().getValue();
+
+      List<Double> conv = new ArrayList<>();
+      for (Double v : values) {
+        conv.add(LinLogTransformation.transform(v, thr));
+      }
+      return conv;
+    }
   };
 
   public abstract double calc(double val);
@@ -190,4 +242,5 @@ public enum MathMod {
 
   // Smallest positive double to use as a finite substitute for log10(0)
   public static final double LOG_ZERO = Math.log10(Math.nextUp(0.0));
+
 }

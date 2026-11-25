@@ -112,7 +112,6 @@ javafx {
         implementation 'org.apache.logging.log4j:log4j-api:2.23.1'
         implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-xml:2.17.1'
         // implementation 'com.ibm.icu:icu4j:75.1'
-        implementation 'it.unimi.dsi:dsiutils:2.7.3'
         implementation 'org.jetbrains:annotations:20.1.0'
 // https://mvnrepository.com/artifact/com.github.haifengl/smile-math
         // implementation 'com.github.haifengl:smile-math:2.6.0'
@@ -136,6 +135,8 @@ javafx {
         implementation 'com.github.luben:zstd-jni:1.5.5-11'
         // fast non-boxed arraylists
         // implementation 'it.unimi.dsi:fastutil:8.5.15'
+        // this also needs fastutil: XoroRNG
+         implementation 'it.unimi.dsi:dsiutils:2.7.3'
         //
         implementation 'org.apache.commons:commons-compress:1.27.1'
 
@@ -191,6 +192,7 @@ application {
                                  // "-XX:+UseZGC", // v39 recommended by SH
                                  // "-XX:+UseParallelGC", // new and quite good else XX:+UseG1GC
                                  "-XX:+UseG1GC", // chatgpt says is better at releasing memory
+                                 "-XX:G1HeapRegionSize=32m", // better at handling large arrays added 3.2.8
                                  "-XX:G1PeriodicGCInterval=5000",
                                  "-XX:+ExplicitGCInvokesConcurrent" // NO SPACES BEFORE -XX !!!
     ]

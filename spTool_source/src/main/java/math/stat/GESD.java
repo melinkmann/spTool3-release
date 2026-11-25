@@ -18,6 +18,7 @@
 package math.stat;
 
 import com.google.common.math.Stats;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
@@ -88,10 +89,14 @@ public abstract class GESD {
     // Find observation with largest distance to the mean (both directions + & -)
     double minVal = Collections.min(data);
     double maxVal = Collections.max(data);
-    double absMax = Math.max(Math.abs(minVal - mean), Math.abs(maxVal - mean));
+    double lowerDist = Math.abs(minVal - mean);
+    double upperDist = Math.abs(maxVal - mean);
+    double absMax = Math.max(lowerDist, upperDist);
+    // The observation that is actually farthest from the mean (either the min or the max).
+    double extremeVal = lowerDist > upperDist ? minVal : maxVal;
 
     double testValue = absMax / sd;
-    return new GesdStep(maxVal, testValue, mean, sd);
+    return new GesdStep(extremeVal, testValue, mean, sd);
   }
 
 
@@ -111,18 +116,30 @@ public abstract class GESD {
 
   public static List<Double> test(double[] dataArray, double alpha, int maxOutliers) {
     List<Double> data = ArrUtils.arrToList(dataArray);
-    for (int i = 0; i < maxOutliers + 1; i++) {
+    // critGESD needs the ORIGINAL sample size n and the 1-based iteration i, see NIST.
+    int n = data.size();
+    List<Double> removed = new ArrayList<>();
+    int outlierCount = 0;
+
+    // Run all maxOutliers tests: R_i is the test value of the i-th removal.
+    for (int i = 1; i <= maxOutliers; i++) {
       GesdStep testStat = testStat(data, false);
       double testValue = testStat.testValue;
       double dataValue = testStat.actualDataValue;
-      double critVal = critGESD(data.size(), alpha, i);
+      double critVal = critGESD(n, alpha, i);
 
-      // if test_stat_of_valueY > calculate_critical_value: --> valueY is an outlier.
+      // NIST: the number of outliers is the LARGEST i for which R_i > lambda_i.
       if (testValue > critVal) {
-        data.remove(dataValue);
-      } else {
-        break;
+        outlierCount = i;
       }
+      removed.add(dataValue);
+      data.remove(dataValue);
+    }
+
+    // Only the first outlierCount removed values are outliers; return the rest in original order.
+    data = ArrUtils.arrToList(dataArray);
+    for (int i = 0; i < outlierCount; i++) {
+      data.remove(removed.get(i));
     }
     return data;
   }

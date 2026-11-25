@@ -21,10 +21,7 @@ import com.google.common.collect.Iterables;
 import core.SpTool3Main;
 import it.unimi.dsi.util.XoRoShiRo128PlusRandom;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Iterator;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import javafx.util.Pair;
@@ -79,6 +76,10 @@ public class Statistics {
       XORO_RANDOM.setSeed(System.currentTimeMillis());
       WAS_XORO_RANDOM_SEEDED.set(false);
     }
+  }
+
+  public static Random getXoroRandom() {
+    return XORO_RANDOM;
   }
 
   /*
@@ -950,12 +951,16 @@ public class Statistics {
     List<Double> lognormalRands2 = new ArrayList<>(reduce);
     List<Double> lognormalRands3 = new ArrayList<>(reduce);
     for (int i = 0; i < reduce; i++) {
-      final double norm = XORO_RANDOM.nextGaussian();
+
+      double norm = XORO_RANDOM.nextGaussian();
       double lognormal = FastMath.exp(logNormMu + logNormSigma * norm);
       lognormalRands1.add(lognormal);
 
+      norm = XORO_RANDOM.nextGaussian();
       lognormal = FastMath.exp(logNormMu + logNormSigma * norm);
       lognormalRands2.add(lognormal);
+
+      norm = XORO_RANDOM.nextGaussian();
       lognormal = FastMath.exp(logNormMu + logNormSigma * norm);
       lognormalRands3.add(lognormal);
     }
@@ -1920,11 +1925,11 @@ public class Statistics {
   // ################################################################################################
 
 
-  public static double getCompoundPoissonLnApproxSurvivalPValue(CompoundPoissonModel model,
-                                                                double value,
-                                                                double lambda,
-                                                                double muLog,
-                                                                double sigmaLog) {
+  public static double getCompoundPoissonSurvivalPValue(CompoundPoissonModel model,
+                                                        double value,
+                                                        double lambda,
+                                                        double muLog,
+                                                        double sigmaLog) {
 
     double pValue;
     if (model.equals(CompoundPoissonModel.LOG_APPROX)) {

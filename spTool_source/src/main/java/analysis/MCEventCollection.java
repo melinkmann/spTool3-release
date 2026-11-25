@@ -17,9 +17,11 @@
 
 package analysis;
 
+import core.SpTool3Main;
 import dataModelNew.TISeries;
 import dataModelNew.Trace;
 import dataModelNew.TraceMC;
+
 import java.io.Serial;
 import java.io.Serializable;
 import java.lang.ref.SoftReference;
@@ -29,9 +31,11 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import processing.options.EventParameter;
+import processing.options.EventType;
 import sandbox.montecarlo.ParticlePopulationMatrix;
 import util.ArrUtils;
 
@@ -206,8 +210,8 @@ public class MCEventCollection implements EventCollection,
        */
       bgIndices = new ArrayList<>(getTotalDataPoints() - npBitSet.cardinality());
       for (int i = npBitSet.nextClearBit(0);
-          i >= 0 && i < getTotalDataPoints();
-          i = npBitSet.nextClearBit(i + 1)) {
+           i >= 0 && i < getTotalDataPoints();
+           i = npBitSet.nextClearBit(i + 1)) {
         bgIndices.add(i);
       }
     }
@@ -253,7 +257,15 @@ public class MCEventCollection implements EventCollection,
 
   @Override
   public double[] getNP(EventParameter parameter) {
+    double[] data;
 
+    boolean showGroundTruth = SpTool3Main.getRunTime().getConfParams()
+        .getUseGroundTruthForMCEvents().getValue();
+
+    if (!showGroundTruth) {
+      EventCollection collection = AnalysisUtils.createMainEventCollection(trace, getNpEvents());
+      data = collection.get(EventType.NP, parameter);
+    } else {
     /*
      Ideally, a single zero would probably be more accurate.
      If nothing is present and only zeros are returned, one may be tempted
@@ -261,20 +273,21 @@ public class MCEventCollection implements EventCollection,
      However, to be safe in iterations, may be smart to return something of the same size.
      */
 
-    double[] data = new double[size()];
+      data = new double[size()];
 
-    HashMap<EventParameter, double[]> values = extractValuesChecked();
-    if (values.containsKey(parameter)) {
-      data = values.get(parameter);
+      HashMap<EventParameter, double[]> values = extractValuesChecked();
+      if (values.containsKey(parameter)) {
+        data = values.get(parameter);
       /*
       When exposing getters to outside, make sure to return a copy and the original!
       c.f. the getEvents() call returns an unmodifiableList (which does not exist for arrays)
        */
-      data = ArrUtils.copy(data);
-    } else {
-      LOGGER.trace("Event collection does not provide this parameter type.");
-    }
+        data = ArrUtils.copy(data);
+      } else {
+        LOGGER.trace("Event collection does not provide this parameter type.");
+      }
 
+    }
     return data;
   }
 
@@ -348,7 +361,7 @@ public class MCEventCollection implements EventCollection,
   /**
    * Background data. We do not really have a background data point distribution in the MC data...
    * However, it would make sense, to just use all DP that are not part of an event and go with that
-   * definition. Note that this relies on the assumption that the threshold is 1.
+   * definition. Note that this relies on the assumption that the threshold is 1 or 99% of area.
    */
   @Override
   public double[] getBG(EventParameter parameter) {

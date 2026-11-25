@@ -28,6 +28,7 @@ import java.io.Serializable;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 import io.nu.IsotopePtoeDialog;
 import javafx.stage.Window;
@@ -228,17 +229,29 @@ public class NormalSearchParams extends AbstractParamSet implements ParamSet {
         """
             Each data point above the start threshold is extended in x direction (i.e., time)
             to improve detection for noisy peaks especially at low dwell times.
-            This number gives 'bonus points' to add, depending on the signal intensity:
-            At low signal (y = start threshold), spTool extends the peak around any given data point
-            above the start threshold. The number of these points added is computed from this
-            parameter and the dwell time (e.g., @ DT = 20 µs, 'Bonus points' = 60 µs adds 3 points).
             
-            At higher signal intensity, fewer points will be added (scaling with: 1/intensity).
+            This number defines 'bonus points' that are added to the 'Window' given by
+            the 'Window [µs]' parameter. While the 'Window' parameter always adds the same width around
+            a data point above the the search threshold, the 'Bonus points' depend on the signal intensity:
+            
+            The idea is that a data point with very high signal intensity is easy to detect and
+            likely has other data points in its immediate neighborhood that are also high:
+            These data points are easy to find and do not need any bonus.
+            
+            At low signal (y = start threshold), however, it is hard to spot the data points of a peak.
+            Thus, when the signal is close to the start threshold (i.e., the baseline),
+            we add an ''additional boost'' via the 'bonus points':
+            
+            When (y = start threshold), the 'Window' is extended with bonus points,
+            e.g., for DT = 20 µs and 'Bonus points' = 60 µs, it will add 3 bonus points points.
+            At higher signal intensity, fewer points will be added (scaling with: 1/intensity),
+            by computing bonus points * start threshold / y.
+            
             Usually, peaks with high signal intensity have enough signal to be detected anyway
             and adding too many points increases the danger to cause peak overlap""",
         20d,
         NF.D1C1,
-        TextFormatterOption.ASSURE_NONZERO_POSITIVE_DOUBLE,
+        TextFormatterOption.ASSURE_POSITIVE_DOUBLE,
         false,
         "windowBonusWidth");
 
@@ -252,7 +265,7 @@ public class NormalSearchParams extends AbstractParamSet implements ParamSet {
             all data points a time window of the width specified here be will added to the peak.""",
         20d,
         NF.D1C1,
-        TextFormatterOption.ASSURE_NONZERO_POSITIVE_DOUBLE,
+        TextFormatterOption.ASSURE_POSITIVE_DOUBLE,
         false,
         "windowWidth");
 
@@ -585,7 +598,10 @@ public class NormalSearchParams extends AbstractParamSet implements ParamSet {
   private void organize() {
     // Parent parameters
     super.setParentParameters(
-        enableBoolean,
+        enableBoolean
+    );
+
+    enableBoolean.addConditionalChild(true,
         targetPopulation,
         populationName,
         searchAlgorithm,
@@ -1063,7 +1079,7 @@ public class NormalSearchParams extends AbstractParamSet implements ParamSet {
       this.alphaValue = new DoubleParameter(
           "Alpha",
           "False positive proportion [-] (Not in percent!)",
-          5.0E-4, //0.00135 // 0.05
+          1E-6, //0.00135 // 0.05 // 5.0E-4
           NF.D1C4Exp,
           TextFormatterOption.ASSURE_POS_EXP_DOUBLE,
           false,
@@ -1073,7 +1089,7 @@ public class NormalSearchParams extends AbstractParamSet implements ParamSet {
       this.factor = new DoubleParameter(
           "z-Factor",
           "Instead of an alpha value, the corresponding 'f·SD' = 'z·σ' as a critical factor f can be given",
-          3.29,// 1.645
+          4.75,// 1.645 //3.29
           NF.D1C3,
           TextFormatterOption.ASSURE_NONZERO_POSITIVE_DOUBLE,
           false,

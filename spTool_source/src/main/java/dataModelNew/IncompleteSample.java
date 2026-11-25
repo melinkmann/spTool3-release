@@ -324,8 +324,9 @@ public class IncompleteSample implements Sample, Serializable {
 
 
   @Override
-  public void clearSpectralData() {
+  public boolean clearSpectralData(PopulationID popID) {
     // do nothing
+    return false;
   }
 
 
@@ -521,13 +522,13 @@ public class IncompleteSample implements Sample, Serializable {
   }
 
   @Override
-  public double getMaxThr(@Nullable Channel channel, PopulationID populationID, boolean netSignal) {
+  public double getMaxNetThr(@Nullable Channel channel, PopulationID populationID, boolean netSignal) {
     return 0;
   }
 
   @Override
-  public double getMaxThr(@Nullable Channel channel, PopulationID populationID, boolean netSignal,
-                          Unit unit) {
+  public double getMaxNetThr(@Nullable Channel channel, PopulationID populationID, boolean netSignal,
+                             Unit unit) {
     return 0;
   }
 
@@ -662,6 +663,11 @@ public class IncompleteSample implements Sample, Serializable {
   }
 
   @Override
+  public String tabNonzeroRawMean(Channel channel) {
+    return EMPTY_CELL;
+  }
+
+  @Override
   public String tabRawMeanCPS(Channel channel) {
     return EMPTY_CELL;
   }
@@ -759,6 +765,26 @@ public class IncompleteSample implements Sample, Serializable {
 
   @Override
   public String tabPopNpRate(Channel channel, PopulationID populationID) {
+    return EMPTY_CELL;
+  }
+
+  @Override
+  public String tabPopNpRateCorr(Channel channel, PopulationID populationID) {
+    return EMPTY_CELL;
+  }
+
+  @Override
+  public String tabPopNpRateLoss(Channel channel, PopulationID populationID) {
+    return EMPTY_CELL;
+  }
+
+  @Override
+  public String tabPopNpRateCorrMax(Channel channel, PopulationID populationID) {
+    return EMPTY_CELL;
+  }
+
+  @Override
+  public String tabPopNpRateObsv10Pct(Channel channel, PopulationID populationID) {
     return EMPTY_CELL;
   }
 

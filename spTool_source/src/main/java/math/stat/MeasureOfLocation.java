@@ -186,7 +186,7 @@ public enum MeasureOfLocation implements MeasureOfStat {
   };
 
   public static MeasureOfLocation[] baseline() {
-    return new MeasureOfLocation[]{MEAN, MEDIAN, MEDIAN_NONZERO, MEDIAN_AVOID_ZERO, TRUNCATED_POISSON_MEAN};
+    return new MeasureOfLocation[]{MEAN, MEDIAN, MEDIAN_NONZERO, MEDIAN_AVOID_ZERO};
   }
 
   public static MeasureOfLocation[] window() {

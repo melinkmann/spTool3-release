@@ -19,12 +19,14 @@ package analysis;
 
 import analysis.PopulationStep.SearchSubtype;
 import dataModelNew.Trace;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import javax.annotation.Nullable;
+
 import processing.options.PopulationType;
 import processing.parameterSets.impl.NormalSearchParams;
 
@@ -44,7 +46,8 @@ public class PopulationBranch {
    * A search operation initializes an evaluation branch.
    */
   public synchronized PopulationID startBranchForTrace(Trace trace,
-      NormalSearchParams searchParams) {
+                                                       NormalSearchParams searchParams,
+                                                       int searchBranchIndex) {
 
     PopulationType type = searchParams.getTargetPopulation().getValue();
 
@@ -64,7 +67,10 @@ public class PopulationBranch {
       }
     }
 
-    PopulationStep step = new SearchSubtype(searchParams.getSearchAlgorithm().getValue());
+    PopulationStep step = new SearchSubtype(
+        searchParams.getSearchAlgorithm().getValue(),
+        searchBranchIndex);
+
     PopulationID newID = new PopulationID(type, step);
 
     synchronized (branchMap) {

@@ -90,7 +90,7 @@ public class DriftFactor {
       double rsd = 1;
       // avoid higher "noise" from zero blocks
       yBK = ArrUtils.nonzero(yBK);
-      List<Double> moav = MovingAverage.evaluate(yBK, TOTAL_POINTS, FRAME_RSD);
+      List<Double> moav = ShiftingMovingAverage.evaluate(yBK, TOTAL_POINTS, FRAME_RSD);
       if (moav.size() > 1) {
 
         double sd = MeasureOfSpread.SD.calc(moav);
@@ -117,7 +117,7 @@ public class DriftFactor {
 
       double continuityCounter = 1;
       yBK = yBKCopy; //AverageUtils.averageDrift(trace, populationID, windowSec).getY();
-      moav = MovingAverage.evaluate(yBK, TOTAL_POINTS, FRAME_TREND);
+      moav = ShiftingMovingAverage.evaluate(yBK, TOTAL_POINTS, FRAME_TREND);
       if (moav.size() > 1) {
         // Check for continuity (drift)
         int counter = 0;

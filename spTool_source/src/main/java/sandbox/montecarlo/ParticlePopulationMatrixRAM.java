@@ -18,6 +18,7 @@
 package sandbox.montecarlo;
 
 import analysis.AnalysisUtils;
+import core.SpTool3Main;
 import dataModelNew.TraceMC;
 import dataModelNew.mz.Element;
 
@@ -75,7 +76,7 @@ public class ParticlePopulationMatrixRAM implements ParticlePopulationMatrix, Se
 
   // All the data for a particle except for the integration of the peak.
 
-  public static final double THR = 1;
+  public static final double THR = 1; // 1 cts is a conservative threshold
 
   private final String label;
 
@@ -277,7 +278,8 @@ public class ParticlePopulationMatrixRAM implements ParticlePopulationMatrix, Se
         // Now, for each single peak (not the array with all peaks!):
         // Iterate over the isotopes and normalize signals.
         for (Isotope isotope : element.getIsotopes()) {
-          // Normalizes a peak so that the signal sum matches the signal stated for the peak for the respective isotope.
+          // Normalizes a peak so that the signal sum matches the signal stated for the peak for the
+          // respective isotope.
 
           double isotopeSignal = intensityMap.get(isotope)[index];
           DataList<Integer> isotopeDPs = PeakFunction.normalizeArea(peakDataPoints, isotopeSignal);
@@ -297,8 +299,10 @@ public class ParticlePopulationMatrixRAM implements ParticlePopulationMatrix, Se
        This serves only as an "overview" and maybe for later comparison with ML models.
    --> Randomized data can only really be compared after evaluation.
     Thus, here we must not return, e.g., tiSeries intensity @ index of peak as "gross height"
-    while reporting the integrated height w/o BG as "net". As stated, net my be randomized to be larger than gross.
-    What we can do, is take the net and add the BG. This way, we report and compare strictly before randomization.
+    while reporting the integrated height w/o BG as "net". As stated, net my be randomized to be larger
+    than gross.
+    What we can do, is take the net and add the BG. This way, we report and compare strictly before
+    randomization.
     Any weird effect is due to that fact and it is controllable and expectable.
    */
 
@@ -341,7 +345,14 @@ public class ParticlePopulationMatrixRAM implements ParticlePopulationMatrix, Se
     signal intensity also includes the additional noise from the resampling randomization.
      */
 
-    double thr = THR; // 1 cts is a conservative threshold
+    // if THR = 1, we get problems with tiny peaks!
+    double areaPct = SpTool3Main.getRunTime().getConfParams()
+        .getGroundTruthPeakIntegrationAreaPercent().getValue();
+    areaPct = Math.max(areaPct, Math.nextUp(0d));
+    areaPct = Math.min(areaPct, Math.nextDown(100d));
+    double areaPercentileThr = getThresholdByAreaPercent(isotopeDPs.getY(), areaPct);
+    double thr = Math.min(THR, areaPercentileThr);
+    thr = Math.max(thr, Math.nextUp(0d));
 
     double netHeight = 0;
     double grossHeight;
@@ -356,7 +367,7 @@ public class ParticlePopulationMatrixRAM implements ParticlePopulationMatrix, Se
 
     for (DataPoint<Integer> dp : dataPoints) {
       double y = dp.getY();
-      if (y > thr) {
+      if (y >= thr) {
         netArea += y;
         netHeight = Math.max(netHeight, y);
         if (y == netHeight) {
@@ -419,57 +430,6 @@ public class ParticlePopulationMatrixRAM implements ParticlePopulationMatrix, Se
 
 
   /**
-   * Integrate peaks only to visualize the peaks
-   */
-  public HashMap<Isotope, IndexBufferCollection> integratePeaks(
-      double microDT,
-      double finalTimeStamp,
-      int totalTimeFrameSize,
-      double arrivalTime) {
-
-    // For the actual integration (avoid instantiation for each peak)
-    // final BaseAbstractUnivariateIntegrator trapezoidIntegrator = new TrapezoidIntegrator();
-    final BaseAbstractUnivariateIntegrator integrator = new RombergIntegrator(); // faster than trapezoid!
-    // final BaseAbstractUnivariateIntegrator integrator = new SimpsonIntegrator();
-
-    HashMap<Isotope, IndexBufferCollection> data = new LinkedHashMap<>();
-    List<Element> elements = new ArrayList<>(plasmaDiffusionDMap.keySet());
-    List<Isotope> isotopes = Element.getIsotopes(elements);
-    // pre-fill the map
-    isotopes.forEach(i -> data.put(i, new IndexBufferCollection()));
-
-    // Integrate (only for each element! -  isotopes are calculated via normalization)
-    for (Element element : elements) {
-      LOGGER.trace("Integrating element: " + element.getLongName() + ".");
-
-      // For each event, integrate
-      for (int index = 0; index < numberOfEvents; index++) {
-
-        DataList<Integer> peakDataPoints = integratePeak(
-            index,
-            element,
-            microDT,
-            finalTimeStamp,
-            totalTimeFrameSize,
-            arrivalTime,
-            integrator);
-
-        // Now, for each single peak (not the array with all peaks!):
-        // Iterate over the isotopes and normalize signals.
-        for (Isotope isotope : element.getIsotopes()) {
-          // Normalizes a peak so that the signal sum matches the signal stated for the peak for the respective isotope.
-
-          double isotopeSignal = intensityMap.get(isotope)[index];
-          DataList<Integer> isotopeDPs = PeakFunction.normalizeArea(peakDataPoints, isotopeSignal);
-          // HashMap should contain an IndexBufferCollection for each Isotope already!
-          data.get(isotope).addData(isotopeDPs);
-        }
-      }
-    }
-    return data;
-  }
-
-  /**
    * @param index              index of the event
    * @param microDT            desired "micro dwell time"
    * @param finalTimeStamp     last time stamp of the corresponding time frame
@@ -500,43 +460,6 @@ public class ParticlePopulationMatrixRAM implements ParticlePopulationMatrix, Se
     return peakData;
   }
 
-  /**
-   * This version of the integrator allows to integrate the peaks on an arbitrary time scale in
-   * order to visualize the peaks.
-   *
-   * @param index              index of the event
-   * @param microDT            desired "micro dwell time"
-   * @param finalTimeStamp     last time stamp of the corresponding time frame
-   * @param totalTimeFrameSize length, i.e., number of data points in the time frame
-   * @param arrivalTime        arrival time, i.e., peak maximum
-   * @return
-   */
-  public DataList<Integer> integratePeak(
-      int index,
-      Element element,
-      double microDT,
-      double finalTimeStamp,
-      int totalTimeFrameSize,
-      double arrivalTime,
-      BaseAbstractUnivariateIntegrator integrator) {
-
-    // Build the function
-    PeakFunction peakFunction = new PeakFunction(
-        plasmaDiffusionDMap.get(element)[index],
-        yPositions[index],
-        plasmaVelocities[index]);
-
-    // Integrate
-    DataList<Integer> peakData = peakFunction.integrateEntirePeak(
-        integrator,
-        microDT,
-        finalTimeStamp,
-        totalTimeFrameSize,
-        arrivalTime);
-
-    return peakData;
-  }
-
 
   public double[] getMeanArrivalTimes() {
     double[] averagedArrivalTimes = new double[numberOfEvents];
@@ -546,7 +469,7 @@ public class ParticlePopulationMatrixRAM implements ParticlePopulationMatrix, Se
         double[] arrivalTime = arrivalTimeMap.get(element);
         summedTime += arrivalTime[index];
       }
-      averagedArrivalTimes[index] = summedTime / arrivalTimeMap.keySet().size();
+      averagedArrivalTimes[index] = summedTime / arrivalTimeMap.size();
     }
     return averagedArrivalTimes;
   }
@@ -554,7 +477,8 @@ public class ParticlePopulationMatrixRAM implements ParticlePopulationMatrix, Se
   public HashMap<Isotope, int[]> getPeakMarkerMacroIndices(double macroDT) {
     HashMap<Isotope, int[]> markers = new LinkedHashMap<>();
 
-    // If DT<0, this means that the corresponding TISeries was a Dummy (i.e., the element does not exist in the sample)
+    // If DT<0, this means that the corresponding TISeries was a Dummy (i.e., the element does not exist in
+    // the sample)
     if (macroDT > 0) {
       for (Isotope isotope : intensityMap.keySet()) {
         int[] indices = new int[numberOfEvents];
@@ -565,7 +489,8 @@ public class ParticlePopulationMatrixRAM implements ParticlePopulationMatrix, Se
           int macroFrameIdx = (int) Math.ceil(microFrameStamp / macroDT) - 1;
           // macroFrameIdx = (int) Math.floor(microFrameStamp / macroDT); // TODO: testing
           double macroFrameStamp = macroDT * (macroFrameIdx + 1);
-          // Somehow, sometimes this ends up showing the peak tip marker to the left of the population marker...
+          // Somehow, sometimes this ends up showing the peak tip marker to the left of the population
+          // marker...
           if (macroFrameStamp < microFrameStamp) {
             LOGGER.trace("The event peak time stamp was smaller than the particle arrival time. "
                 + "microFrameStamp: " + microFrameStamp + ". macroFrameStamp:" + macroFrameStamp
@@ -578,6 +503,63 @@ public class ParticlePopulationMatrixRAM implements ParticlePopulationMatrix, Se
       }
     }
     return markers;
+  }
+
+  // Claude Sonnet 5.5: try estimate thresholds from peak area to cut at 99%, (thr=mean of borders)
+  static double getThresholdByAreaPercent(java.util.List<Double> data, double pPercent) {
+    double result = 1;
+    int n = 1;
+    double p = 1;
+
+    n = data.size();
+    p = Math.max(0, Math.min(100, pPercent));
+
+    if (n > 0) {
+      int peak = 1;
+      double sum = 1;
+      int i = 1;
+
+      // 1) highest value, 2) sum of all points
+      peak = 0;
+      sum = 0;
+      for (i = 0; i < n; i++) {
+        sum += data.get(i);
+        if (data.get(i) > data.get(peak)) {
+          peak = i;
+        }
+      }
+
+      // 3) grow the window around the peak until p percent of the sum is covered
+      double target = 1;
+      int lo = 1;
+      int hi = 1;
+      double covered = 1;
+      double left = 1;
+      double right = 1;
+
+      target = sum * p / 100.0;
+      lo = peak;
+      hi = peak;
+      covered = data.get(peak);
+
+      while (covered < target && (lo > 0 || hi < n - 1)) {
+        left = lo > 0 ? data.get(lo - 1) : Double.NEGATIVE_INFINITY;
+        right = hi < n - 1 ? data.get(hi + 1) : Double.NEGATIVE_INFINITY;
+
+        if (left >= right) {
+          lo--;
+          covered += left;
+        } else {
+          hi++;
+          covered += right;
+        }
+      }
+
+      // 4) mean of the two bordering points
+      result = (data.get(lo) + data.get(hi)) / 2.0;
+    }
+
+    return result;
   }
 
 

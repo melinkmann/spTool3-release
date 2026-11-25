@@ -22,7 +22,7 @@ import dataModelNew.*;
 import dataModelNew.mz.*;
 import io.FileInterpreterUtils;
 import io.PathUtil;
-import io.nu.SiaShapeEstimation;
+import io.SiaShapeEstimationBruker;
 import math.stat.Mode;
 import math.units.Unit;
 import math.units.enums.ViewUnits;
@@ -30,13 +30,18 @@ import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import processing.options.EICNormalisation;
+import processing.options.SecondaryThresholdBruker;
 import processing.parameterSets.impl.CsvInterpreterParams;
 import util.ArrUtils;
 import util.NF;
 import util.SnF;
 
+import javax.annotation.Nullable;
 import java.nio.file.Path;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.DoubleConsumer;
+import java.util.stream.IntStream;
 
 public class CsvInterpreterMZMine implements CsvInterpreter {
 
@@ -65,10 +70,27 @@ public class CsvInterpreterMZMine implements CsvInterpreter {
 
   @Override
   public void parse(Path file) {
+    DoubleConsumer progressCallback = value -> {
+      // do nothing
+    };
+    parse(file, progressCallback);
+  }
+
+  @Override
+  public void parse(Path file, DoubleConsumer progressCallback) {
+    progressCallback.accept(0); //set progress
+
+    double electronicNoiseThreshold = params.getElectronicNoiseThreshold().getValue();
+    double siaThresholdParamValue = params.getSiaThresholdValue();
+    boolean loadTruncatedData = params.getLoadTruncatedData();
+    SecondaryThresholdBruker siaThrOption = params.getSiaThresholdOption().getValue();
+    boolean useMLE = params.getEstimateSiaShapeViaMLE().getValue();
+
     final List<String[]> csv = new ArrayList<>();
     try {
       CSVReader reader = FileInterpreterUtils.buildReader(file, params.getDelimiter(),
           params.getCharSet());
+
 
       csv.addAll(reader.readAll());
 
@@ -86,6 +108,7 @@ public class CsvInterpreterMZMine implements CsvInterpreter {
     if (!csv.isEmpty()) {
       List<Trace> traces = new ArrayList<>();
       List<Channel> mzChannels = new ArrayList<>();
+      List<Double> mzValues = new ArrayList<>();
 
       try {
         // find precision
@@ -121,16 +144,98 @@ public class CsvInterpreterMZMine implements CsvInterpreter {
         // Find MZ.
         int firstMZCol = 1;
         for (int i = firstMZCol; i < csv.get(headerLineIndex).length; i++) {
-          if (i < csv.get(headerLineIndex).length) {
-            String mzStr = csv.get(headerLineIndex)[i];
-            double mz = parseChannel(mzStr);
-            mzChannels.add(new MZChannel(new MSIDImpl(new MZImpl(mz, nf))));
+          String header = csv.get(headerLineIndex)[i];
+
+          String idStr = null;
+          double mz = 0;
+          String categoryStr = null;
+          String adductStr = null;
+          String scoreStr = null;
+
+          if (!header.contains(",")) {
+            // old: "746.5821(ID73)"
+            idStr = parseChannelId(header);
+            mz = parseChannel(header);
+          } else {
+            // ver1 "ID3051,mz546.1556,Phenylmethyl: [M+H]+: 0.921"
+            // ver2 "ID304,mz1068.4668,Phenylmethyl,[M-e]+,0.22"
+            // both may end after the mz: "ID2526,mz1073.4576"
+            String[] parts = header.split(",", 3); // ID, mz, annotation
+
+            idStr = parts[0].trim();
+
+            String mzStr = "";
+            if (parts.length > 1) {
+              mzStr = parts[1].replaceFirst("^\\s*mz", "");
+            }
+            mz = parseChannel(mzStr);
+
+            String annotation = "";
+            if (parts.length > 2) {
+              annotation = parts[2].trim();
+            }
+
+            if (annotation.contains(":")) {
+              // ver1: colon separated
+              int adductStart = annotation.indexOf('[');
+
+              if (adductStart >= 0) {
+                int adductEnd = annotation.indexOf(':', adductStart);
+                if (adductEnd < 0) {
+                  adductEnd = annotation.length();
+                }
+                adductStr = annotation.substring(adductStart, adductEnd).trim();
+                categoryStr = annotation.substring(0, adductStart);
+
+                // score: whatever follows the adduct's colon
+                if (adductEnd < annotation.length()) {
+                  scoreStr = annotation.substring(adductEnd + 1).trim();
+                }
+              } else {
+                categoryStr = annotation;
+              }
+              categoryStr = categoryStr.replaceAll("[:\\s]+$", "").trim();
+            } else {
+              // ver2: comma separated (category, adduct, score), or nothing at all
+              String[] a = annotation.split(",", -1);
+
+              categoryStr = a[0].trim();
+              if (a.length > 1) {
+                adductStr = a[1].trim();
+              }
+              if (a.length > 2) {
+                scoreStr = a[2].trim();
+              }
+            }
+
+            if (categoryStr != null && categoryStr.isEmpty()) {
+              categoryStr = null;
+            }
+            if (adductStr != null && adductStr.isEmpty()) {
+              adductStr = null;
+            }
+            if (scoreStr != null && scoreStr.isEmpty()) {
+              scoreStr = null;
+            }
           }
+
+          MZImpl mzImpl = new MZImpl(mz, nf);
+          MSIDImpl msId;
+
+          if (idStr != null && !header.contains(",")) {
+            // old format keeps the ID in the first slot, as before
+            msId = new MSIDImpl(idStr, null, mzImpl);
+          } else {
+            msId = new MSIDImpl(categoryStr, adductStr, mzImpl);
+          }
+
+          MZChannel channel = new MZChannel(msId);
+          mzChannels.add(channel);
+          mzValues.add(channel.getMZ());
         }
 
         List<Double> time = new ArrayList<>();
         List<List<Double>> allIntensitySeries = new ArrayList<>();
-
 
         // assume first line
         for (int lineIdx = headerLineIndex + 1; lineIdx < csv.size(); lineIdx++) {
@@ -153,69 +258,89 @@ public class CsvInterpreterMZMine implements CsvInterpreter {
 
         // Clarify normalisation
         double globalNonzeroMinimum = 0; // mean value
-        List<Double> globalNonzeroMinima = new ArrayList<>();
-        for (List<Double> intensity : allIntensitySeries) {
-          double min = 0;
-          // else, empty list throws no such element exception
-          List<Double> nonzeros = ArrUtils.nonzero(intensity);
-          if (!nonzeros.isEmpty()) {
-            min = Collections.min(nonzeros);
+        if (normalisation.equals(EICNormalisation.SUBTRACT)) {
+          List<Double> globalNonzeroMinima = new ArrayList<>();
+          for (List<Double> intensity : allIntensitySeries) {
+            double min = 0;
+            // else, empty list throws no such element exception
+            List<Double> nonzeros = ArrUtils.nonzero(intensity);
+            if (!nonzeros.isEmpty()) {
+              min = Collections.min(nonzeros);
+            }
+            if (min > 0) {
+              globalNonzeroMinima.add(min);
+            }
           }
-          if (min > 0) {
-            globalNonzeroMinima.add(min);
-          }
+          // Mode should be relatively robust to yield the best value
+          globalNonzeroMinimum = Mode.calc(globalNonzeroMinima);
         }
-        // Mode should be relatively robust to yield the best value
-        globalNonzeroMinimum = Mode.calc(globalNonzeroMinima);
 
         Sample sample = new SampleImpl(sampleName, sampleFile);
         if (mzChannels.size() == allIntensitySeries.size()) {
-          for (int i = 0; i < mzChannels.size(); i++) {
-            // Create sample.
+          final double globalMin = globalNonzeroMinimum;
+          final int nCh = mzChannels.size();
+          final Trace[] resultTraces = new Trace[nCh];
+          final AtomicInteger finishedTraceCounter = new AtomicInteger();
+
+          IntStream.range(0, nCh).parallel().forEach(i -> {
+            // mean single-ion signal depends on mz, so everything derived from it is per channel
+            final double blankMean = params.getBlankMeanSingleIonSignal(mzValues.get(i));
+            double trimThr = 0;
+            if (siaThrOption.equals(SecondaryThresholdBruker.DYNAMIC_FROM_MEAN)) {
+              trimThr = blankMean * siaThresholdParamValue;
+            } else if (siaThrOption.equals(SecondaryThresholdBruker.STATIC)) {
+              trimThr = siaThresholdParamValue;
+            }
+
+            double sia = 0;
             double[] timeArr = ArrUtils.doubleListToArr(time);
             double[] y = ArrUtils.doubleListToArr(allIntensitySeries.get(i));
-            // boolean convertToCts = RawProcessingUtils.checkConversion(conversion, unit, y);
-            // if (convertToCts) {
-            //   LOGGER.trace("Check for unit conversion: applying conversion to counts.");
-            //   y = RawProcessingUtils.cpsToCts(timeArr, y);
-            // }
 
             switch (normalisation) {
               case NONE -> {
               }
               case SUBTRACT -> {
-                double min = ArrUtils.getMin(ArrUtils.nonzero(y));
-                // if this EIC has no values close to zero (too much BG) it will be greater than the mode
-                min = Math.min(min, globalNonzeroMinimum);
-
-                // if min = 10, then we want to subtract 9
-                min += 1;
+                double min = Math.min(ArrUtils.getMin(ArrUtils.nonzero(y)), globalMin) + 1;
                 for (int idx = 0; idx < y.length; idx++) {
                   y[idx] = Math.max(0, y[idx] - min);
                 }
               }
-              // case DIVIDE -> {
-              //   double min = ArrUtils.getMin(ArrUtils.nonzero(y));
-              //   // if this EIC has no values close to zero (too much BG) it will be greater than the mode
-              //   min = Math.min(min, globalNonzeroMinimum);
+              case DIVIDE -> {
+                y = ArrUtils.strictlySmallerThan(y, electronicNoiseThreshold, 0);
+                if (blankMean > 0) {
+                  y = ArrUtils.divide(y, blankMean);
+                  trimThr = trimThr / blankMean;
+                }
 
-              //   // if min = 10, then we divide by 10
-              //   if (min > 0) {
-              //     y = ArrUtils.divide(y, min);
-              //   }
-              // }
+                double[] trimmedY;
+                if (!siaThrOption.equals(SecondaryThresholdBruker.NONE)) {
+                  trimmedY = ArrUtils.strictlySmallerThan(y, trimThr, 0);
+                } else {
+                  trimmedY = y;
+                }
+
+                if (useMLE) {
+                  sia = SiaShapeEstimationBruker.fitSiaLognormalTIMSTOFMLE(y, trimmedY, trimThr)[1];
+                } else {
+                  sia = SiaShapeEstimationBruker.computeShapeTIMSTOF(y, trimmedY);
+                }
+
+                if (!Double.isFinite(sia)) {
+                  sia = 0;
+                }
+
+                if (loadTruncatedData) {
+                  y = trimmedY;
+                }
+
+              }
             }
 
-            // Estimate SIA shape
-            double sia = SiaShapeEstimation.computeShape(y, null);
-            if (!Double.isFinite(sia)) {
-              sia = 0;
-            }
+            resultTraces[i] = new TraceImpl(sample, mzChannels.get(i), new TISeriesHDD(timeArr, y), sia);
+            progressCallback.accept(finishedTraceCounter.incrementAndGet() / (double) nCh);
+          });
 
-            TISeries tiSeries = new TISeriesHDD(timeArr, y);
-            Trace trace = new TraceImpl(sample, mzChannels.get(i), tiSeries, sia);
-            traces.add(trace);
-          }
+          traces.addAll(Arrays.asList(resultTraces));
         } else {
           LOGGER.error("Cannot add samples as there are not as many isotopes as intensity series found.");
         }
@@ -275,6 +400,23 @@ public class CsvInterpreterMZMine implements CsvInterpreter {
     }
 
     return mz;
+  }
+
+  @Nullable
+  public static String parseChannelId(String input) {
+    if (input == null) {
+      return null;
+    }
+
+    int start = input.indexOf('(');
+    int end = input.indexOf(')', start);
+
+    if (start == -1 || end == -1) {
+      return null;
+    }
+
+    String id = input.substring(start + 1, end).trim();
+    return id.isEmpty() ? null : id;
   }
 
   public static double minToSec(double min) {

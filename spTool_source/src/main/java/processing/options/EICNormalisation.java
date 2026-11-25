@@ -30,11 +30,16 @@ public enum EICNormalisation {
     public String toString() {
       return "Subtract";
     }
+  },
+  DIVIDE {
+    @Override
+    public String toString() {
+      return "Divide";
+    }
   };
-//  DIVIDE{
-//    @Override
-//    public String toString() {
-//      return "Divide";
-//    }
-//  }
+
+
+  public static EICNormalisation[] getActive() {
+    return new EICNormalisation[]{NONE, DIVIDE};
+  }
 }

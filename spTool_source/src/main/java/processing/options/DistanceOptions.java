@@ -19,14 +19,14 @@ package processing.options;
 
 public enum DistanceOptions {
 
-  HALF{
+  HALF {
     @Override
     public String toString() {
       return "Half distance";
     }
   },
 
-  STEP_DIFFERENCE{
+  STEP_DIFFERENCE {
     @Override
     public String toString() {
       return "Step difference";
@@ -36,12 +36,19 @@ public enum DistanceOptions {
   CURVATURE {
     @Override
     public String toString() {
-      return "Curvature" +
-          "";
+      return "Curvature";
     }
   },
 
-  CUSTOM{
+
+  PERCENT {
+    @Override
+    public String toString() {
+      return "Percent";
+    }
+  },
+
+  CUSTOM {
     @Override
     public String toString() {
       return "Custom";

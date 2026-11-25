@@ -67,6 +67,25 @@ public interface BundleSupplier extends Serializable {
     }
   }
 
+  public static class FaradayBundleSupplier implements BundleSupplier {
+
+    @Serial
+    private static final long serialVersionUID = 1_000_000L;
+
+    public FaradayBundleSupplier() {
+    }
+
+    @Override
+    public ParamBundle createNewBundle(SpawnControlParameter parentParameter) {
+      return new FaradayBundle(parentParameter);
+    }
+
+    @Override
+    public String getBundleID() {
+      return ParamBundle.BUNDLE_ID_FARADAY;
+    }
+  }
+
   public static class RoiStartStopBundleSupplier implements BundleSupplier {
 
     @Serial

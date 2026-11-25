@@ -38,9 +38,13 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import io.nu.NuReader_new;
+import math.PNCorrection;
 import math.stat.DriftFactor;
+import math.stat.MeasureOfLocation;
+import math.stat.Mode;
 import math.units.Unit;
 import math.units.enums.*;
 import org.apache.commons.lang3.exception.ExceptionUtils;
@@ -89,6 +93,9 @@ public class SampleImpl implements Sample, Serializable {
   // remember time limits for TOF data
   private int inclusiveStartIndex = -1;
   private int inclusiveEndIndex = -1;
+  //
+  private double modeSiaShape = 0;
+  private double modeFilteredSiaShape = 0;
 
   public SampleImpl() {
     this.traces = new LinkedHashMap<>();
@@ -189,7 +196,9 @@ public class SampleImpl implements Sample, Serializable {
                     List<String> removedIsotopeInfo,
                     List<Channel> recordedTofRange,
                     int inclusiveStartIndex,
-                    int inclusiveEndIndex) {
+                    int inclusiveEndIndex,
+                    double modeSiaShape,
+                    double modeFilteredSiaShape) {
     this.nickName = nickName;
     this.matrices = new ArrayList<>();
     for (ParticlePopulationMatrix matrix : matrices) {
@@ -221,6 +230,8 @@ public class SampleImpl implements Sample, Serializable {
     this.recordedTofRange = new ArrayList<>(recordedTofRange);
     this.inclusiveStartIndex = inclusiveStartIndex;
     this.inclusiveEndIndex = inclusiveEndIndex;
+    this.modeSiaShape = modeSiaShape;
+    this.modeFilteredSiaShape = modeFilteredSiaShape;
   }
 
   public Sample copy() {
@@ -239,7 +250,9 @@ public class SampleImpl implements Sample, Serializable {
         removedIsotopeInfo,
         recordedTofRange,
         inclusiveStartIndex,
-        inclusiveEndIndex);
+        inclusiveEndIndex,
+        modeSiaShape,
+        modeFilteredSiaShape);
     newSample.setDoeMatchScore(doeMatchScore);
     return newSample;
   }
@@ -261,7 +274,9 @@ public class SampleImpl implements Sample, Serializable {
         removedIsotopeInfo,
         recordedTofRange,
         inclusiveStartIndex,
-        inclusiveEndIndex);
+        inclusiveEndIndex,
+        modeSiaShape,
+        modeFilteredSiaShape);
     newSample.setDoeMatchScore(doeMatchScore);
     return newSample;
   }
@@ -419,25 +434,36 @@ public class SampleImpl implements Sample, Serializable {
 
   @Override
   public double getFilteredMeanSiaShape() {
-    double lowerLimit = SpTool3Main.getRunTime().getConfParams().getSiaLowerLimit().getValue();
-    double upperLimit = SpTool3Main.getRunTime().getConfParams().getSiaUpperLimit().getValue();
-    double sia = traces.values().stream()
-        .map(Trace::getSiaShape)
-        .filter(d -> d > lowerLimit)
-        .filter(d -> d < upperLimit)
-        .mapToDouble(Double::doubleValue)
-        .average().orElse(0);
-    return sia;
+    if (modeFilteredSiaShape > 0) {
+      // good
+    } else {
+      // Actually, let us return the mode
+      double lowerLimit = SpTool3Main.getRunTime().getConfParams().getSiaLowerLimit().getValue();
+      double upperLimit = SpTool3Main.getRunTime().getConfParams().getSiaUpperLimit().getValue();
+      List<Double> siaShapes = traces.values().stream()
+          .map(Trace::getSiaShape)
+          .filter(Double::isFinite)
+          .filter(d -> d > lowerLimit)
+          .filter(d -> d < upperLimit)
+          .collect(Collectors.toList());
+      modeFilteredSiaShape = Mode.calcNonzero(ArrUtils.round(siaShapes, 2));
+    }
+    return modeFilteredSiaShape;
   }
 
   @Override
   public double getMeanSiaShape() {
-    double sia = traces.values().stream()
-        .map(Trace::getSiaShape)
-        .filter(Double::isFinite)
-        .mapToDouble(Double::doubleValue)
-        .average().orElse(0);
-    return sia;
+    if (modeSiaShape > 0) {
+      // good
+    } else {
+      // Actually, let us return the mode
+      List<Double> siaShapes = traces.values().stream()
+          .map(Trace::getSiaShape)
+          .filter(Double::isFinite)
+          .collect(Collectors.toList());
+      modeSiaShape = Mode.calcNonzero(ArrUtils.round(siaShapes, 2));
+    }
+    return modeSiaShape;
   }
 
   @Override
@@ -577,9 +603,18 @@ public class SampleImpl implements Sample, Serializable {
   }
 
   @Override
-  public void clearSpectralData() {
-    spectra.clear();
-    hacWrapper.clear();
+  public boolean clearSpectralData(@Nullable PopulationID popID) {
+    boolean wasRemoved = false;
+    if (popID != null) {
+      boolean remSpec = spectra.remove(popID) != null;
+      boolean remHac = hacWrapper.remove(popID) != null;
+      wasRemoved = remSpec || remHac;
+    } else {
+      spectra.clear();
+      hacWrapper.clear();
+      wasRemoved = true;
+    }
+    return wasRemoved;
   }
 
   @Override
@@ -647,6 +682,9 @@ public class SampleImpl implements Sample, Serializable {
   @Override
   public void addTrace(Trace trace) {
     traces.put(trace.getChannel(), trace);
+    // reset SIA (not if traces are removed, or else potential bias by filtering isotopes out w/o NPs)
+    modeSiaShape = 0;
+    modeFilteredSiaShape = 0;
   }
 
   @Override
@@ -1111,7 +1149,7 @@ public class SampleImpl implements Sample, Serializable {
   }
 
   @Override
-  public double getMaxThr(@Nullable Channel channel, PopulationID populationID, boolean netSignal) {
+  public double getMaxNetThr(@Nullable Channel channel, PopulationID populationID, boolean netSignal) {
     double maxThr = 0;
     // call getter (possibly null)
     Trace trace = getTrace(channel);
@@ -1145,9 +1183,9 @@ public class SampleImpl implements Sample, Serializable {
   }
 
   @Override
-  public double getMaxThr(@Nullable Channel channel, PopulationID populationID, boolean netSignal,
-                          Unit unit) {
-    double thr = getMaxThr(channel, populationID, netSignal);
+  public double getMaxNetThr(@Nullable Channel channel, PopulationID populationID, boolean netSignal,
+                             Unit unit) {
+    double thr = getMaxNetThr(channel, populationID, netSignal);
     if (unit.equals(IntensityUnit.CTS) || unit.equals(IntensityUnit.JUST_CTS)) {
       return thr;
     } else {
@@ -1405,6 +1443,19 @@ public class SampleImpl implements Sample, Serializable {
   }
 
   @Override
+  public String tabNonzeroRawMean(Channel channel) {
+    Trace trace = getTrace(channel);
+    String val = EMPTY_CELL;
+    if (trace != null) {
+      double[] raw = trace.getTISeries().getIntensity();
+      raw = ArrUtils.nonzero(raw);
+      double mean = MeasureOfLocation.MEAN.calc(raw);
+      val = str(mean, NF.D1C2, NF.D1C2Exp);
+    }
+    return val;
+  }
+
+  @Override
   public String tabRawMeanCPS(Channel channel) {
     String val = EMPTY_CELL;
     Trace trace = getTrace(channel);
@@ -1495,12 +1546,12 @@ public class SampleImpl implements Sample, Serializable {
 
   @Override
   public String tabLodCts(Channel channel, PopulationID populationID) {
-    return str(getMaxThr(channel, populationID, true), NF.D1C2);
+    return str(getMaxNetThr(channel, populationID, true), NF.D1C2);
   }
 
   @Override
   public String tabLodAg(Channel channel, PopulationID populationID) {
-    double[] cts = new double[]{getMaxThr(channel, populationID, true)};
+    double[] cts = new double[]{getMaxNetThr(channel, populationID, true)};
 
     double[] quant = applyQuant(cts, channel, MassUnit.ATTO_GRAM);
     return quant.length > 0 ? str(quant[0], NF.D1C2, NF.D1C2Exp) : EMPTY_CELL;
@@ -1509,14 +1560,14 @@ public class SampleImpl implements Sample, Serializable {
 
   @Override
   public String tabLodNm(Channel channel, PopulationID populationID) {
-    double[] cts = new double[]{getMaxThr(channel, populationID, true)};
+    double[] cts = new double[]{getMaxNetThr(channel, populationID, true)};
     double[] quant = applyQuant(cts, channel, SizeUnit.NANO_METER);
     return quant.length > 0 ? str(quant[0], NF.D1C2, NF.D1C2Exp) : EMPTY_CELL;
   }
 
   @Override
   public String tabLodAmol(Channel channel, PopulationID populationID) {
-    double[] cts = new double[]{getMaxThr(channel, populationID, true)};
+    double[] cts = new double[]{getMaxNetThr(channel, populationID, true)};
     double[] quant = applyQuant(cts, channel, MolarUnit.ATTO_MOL);
     return quant.length > 0 ? str(quant[0], NF.D1C2, NF.D1C2Exp) : EMPTY_CELL;
   }
@@ -1562,6 +1613,111 @@ public class SampleImpl implements Sample, Serializable {
         double duration = pop.getEvents().getCheckedTISeries().getDuration();
         int nNP = t.getPopulation(populationID).getEvents().size();
         val = str(nNP / duration, NF.D1C1);
+      }
+    }
+    return val;
+  }
+
+  @Override
+  public String tabPopNpRateCorr(Channel channel, PopulationID populationID) {
+    String val = EMPTY_CELL;
+    Trace t = getTrace(channel);
+    if (t != null) {
+      Population pop = t.getPopulation(populationID);
+      if (pop != null) {
+        // Note that the synthetic population is not cut if time roi is applied. Hence this "special getter".
+        double duration = pop.getEvents().getCheckedTISeries().getDuration();
+        int nNP = t.getPopulation(populationID).getEvents().size();
+        double dt = pop.getEvents().getCheckedTISeries().getDT();
+        double meanICL = MeasureOfLocation.MEAN.calc(getData(channel,
+            populationID,
+            EventType.NP,
+            EventParameter.DURATION)) / 1E6;
+        double obsvRate = nNP / duration;
+
+        double corrRate = PNCorrection.calcTrueRate(obsvRate, meanICL, dt);
+        if (corrRate > obsvRate) {
+          val = str(corrRate, NF.D1C1);
+        } else {
+          val = "Rate too high for correction!";
+        }
+      }
+    }
+    return val;
+  }
+
+  @Override
+  public String tabPopNpRateLoss(Channel channel, PopulationID populationID) {
+    String val = EMPTY_CELL;
+    Trace t = getTrace(channel);
+    if (t != null) {
+      Population pop = t.getPopulation(populationID);
+      if (pop != null) {
+        // Note that the synthetic population is not cut if time roi is applied. Hence this "special getter".
+        double duration = pop.getEvents().getCheckedTISeries().getDuration();
+        int nNP = t.getPopulation(populationID).getEvents().size();
+        double dt = pop.getEvents().getCheckedTISeries().getDT();
+        double meanICL = MeasureOfLocation.MEAN.calc(getData(channel,
+            populationID,
+            EventType.NP,
+            EventParameter.DURATION)) / 1E6;
+        double obsvRate = nNP / duration;
+
+        double corrRate = PNCorrection.calcTrueRate(obsvRate, meanICL, dt);
+
+        // how many percent were lost without correction?
+        double result = 100 * (corrRate - obsvRate) / corrRate;
+        if (Double.isFinite(result) && result >= 0) {
+          val = str(result, NF.D1C1);
+        } else {
+          val = "Rate too high for correction!";
+        }
+      }
+    }
+    return val;
+  }
+
+  @Override
+  public String tabPopNpRateCorrMax(Channel channel, PopulationID populationID) {
+    String val = EMPTY_CELL;
+    Trace t = getTrace(channel);
+    if (t != null) {
+      Population pop = t.getPopulation(populationID);
+      if (pop != null) {
+        // Note that the synthetic population is not cut if time roi is applied. Hence this "special getter".
+        double dt = pop.getEvents().getCheckedTISeries().getDT();
+        double meanICL = MeasureOfLocation.MEAN.calc(getData(channel,
+            populationID,
+            EventType.NP,
+            EventParameter.DURATION)) / 1E6;
+
+        if (dt > 0 && meanICL > 0) {
+          double maxObsvRate = PNCorrection.maxTrue(meanICL, dt);
+          val = str(maxObsvRate, NF.D1C1);
+        }
+      }
+    }
+    return val;
+  }
+
+  @Override
+  public String tabPopNpRateObsv10Pct(Channel channel, PopulationID populationID) {
+    String val = EMPTY_CELL;
+    Trace t = getTrace(channel);
+    if (t != null) {
+      Population pop = t.getPopulation(populationID);
+      if (pop != null) {
+        // Note that the synthetic population is not cut if time roi is applied. Hence this "special getter".
+        double dt = pop.getEvents().getCheckedTISeries().getDT();
+        double meanICL = MeasureOfLocation.MEAN.calc(getData(channel,
+            populationID,
+            EventType.NP,
+            EventParameter.DURATION)) / 1E6;
+
+        if (dt > 0 && meanICL > 0) {
+          double maxObsvRate = PNCorrection.obsvRateAtLossPercent(10, meanICL, dt);
+          val = str(maxObsvRate, NF.D1C1);
+        }
       }
     }
     return val;

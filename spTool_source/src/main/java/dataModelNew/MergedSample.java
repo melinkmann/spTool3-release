@@ -33,7 +33,9 @@ import java.io.Serializable;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import math.PNCorrection;
 import math.stat.DriftFactor;
+import math.stat.MeasureOfLocation;
 import math.units.Unit;
 import math.units.enums.*;
 import org.apache.commons.lang3.exception.ExceptionUtils;
@@ -450,10 +452,12 @@ public class MergedSample implements Sample, Serializable {
   }
 
   @Override
-  public void clearSpectralData() {
+  public boolean clearSpectralData(PopulationID popID) {
+    boolean wasRem = false;
     for (Sample sample : samples) {
-      sample.clearSpectralData();
+      wasRem = wasRem || sample.clearSpectralData(popID);
     }
+    return wasRem;
   }
 
   @Override
@@ -639,21 +643,21 @@ public class MergedSample implements Sample, Serializable {
   }
 
   @Override
-  public double getMaxThr(@Nullable Channel channel, PopulationID populationID, boolean netSignal) {
+  public double getMaxNetThr(@Nullable Channel channel, PopulationID populationID, boolean netSignal) {
     double maxThr = 0;
     for (Sample sample : samples) {
-      maxThr = Math.max(maxThr, sample.getMaxThr(channel, populationID, netSignal));
+      maxThr = Math.max(maxThr, sample.getMaxNetThr(channel, populationID, netSignal));
     }
     return maxThr;
   }
 
   @Override
-  public double getMaxThr(@Nullable Channel channel, PopulationID populationID, boolean netSignal,
-                          Unit unit) {
+  public double getMaxNetThr(@Nullable Channel channel, PopulationID populationID, boolean netSignal,
+                             Unit unit) {
     double maxThrQ = 0;
     for (Sample sample : samples) {
       if (sample instanceof SampleImpl) {
-        double thr = sample.getMaxThr(channel, populationID, netSignal);
+        double thr = sample.getMaxNetThr(channel, populationID, netSignal);
         if (unit.equals(IntensityUnit.CTS) || unit.equals(IntensityUnit.JUST_CTS)) {
           maxThrQ = Math.max(maxThrQ, thr);
         } else {
@@ -899,6 +903,21 @@ public class MergedSample implements Sample, Serializable {
   }
 
   @Override
+  public String tabNonzeroRawMean(Channel channel) {
+    String val = EMPTY_CELL;
+    double mean = getAllSamples().stream()
+        .map(s -> s.getTrace(channel))
+        .filter(Objects::nonNull)
+        .map(t -> t.getTISeries().getIntensity())
+        .map(ArrUtils::nonzero)
+        .mapToDouble(MeasureOfLocation.MEAN::calc)
+        .average()
+        .orElse(0);
+    val = str(mean, NF.D1C2);
+    return val;
+  }
+
+  @Override
   public String tabRawMeanCPS(Channel channel) {
     String val = EMPTY_CELL;
     Trace trace = getTrace(channel);
@@ -1047,7 +1066,7 @@ public class MergedSample implements Sample, Serializable {
     String result = EMPTY_CELL;
     List<Double> lodList = new ArrayList<>();
     for (Sample sample : samples) {
-      lodList.add(sample.getMaxThr(channel, populationID, true));
+      lodList.add(sample.getMaxNetThr(channel, populationID, true));
     }
     if (!lodList.isEmpty()) {
       double worstLD = Collections.max(lodList);
@@ -1062,7 +1081,7 @@ public class MergedSample implements Sample, Serializable {
     List<Double> lodList = new ArrayList<>();
     for (Sample sample : samples) {
       if (sample instanceof SampleImpl) {
-        double[] cts = new double[]{getMaxThr(channel, populationID, true)};
+        double[] cts = new double[]{getMaxNetThr(channel, populationID, true)};
         double[] quant = ((SampleImpl) sample).applyQuant(cts, channel, MassUnit.ATTO_GRAM);
         if (quant.length > 0) {
           lodList.add(quant[0]);
@@ -1082,7 +1101,7 @@ public class MergedSample implements Sample, Serializable {
     List<Double> lodList = new ArrayList<>();
     for (Sample sample : samples) {
       if (sample instanceof SampleImpl) {
-        double[] cts = new double[]{getMaxThr(channel, populationID, true)};
+        double[] cts = new double[]{getMaxNetThr(channel, populationID, true)};
         double[] quant = ((SampleImpl) sample).applyQuant(cts, channel, SizeUnit.NANO_METER);
         if (quant.length > 0) {
           lodList.add(quant[0]);
@@ -1102,7 +1121,7 @@ public class MergedSample implements Sample, Serializable {
     List<Double> lodList = new ArrayList<>();
     for (Sample sample : samples) {
       if (sample instanceof SampleImpl) {
-        double[] cts = new double[]{getMaxThr(channel, populationID, true)};
+        double[] cts = new double[]{getMaxNetThr(channel, populationID, true)};
         double[] quant = ((SampleImpl) sample).applyQuant(cts, channel, MolarUnit.ATTO_MOL);
         if (quant.length > 0) {
           lodList.add(quant[0]);
@@ -1148,6 +1167,7 @@ public class MergedSample implements Sample, Serializable {
     return val;
   }
 
+
   @Override
   public String tabPopNpRate(Channel channel, PopulationID popID) {
     String val = EMPTY_CELL;
@@ -1166,6 +1186,148 @@ public class MergedSample implements Sample, Serializable {
         .mapToDouble(t -> t.getPopulation(popID).getEvents().getCheckedTISeries().getDuration())
         .sum();
     val = str(sumNP / sumDur, NF.D1C1);
+    return val;
+  }
+
+
+  @Override
+  public String tabPopNpRateCorr(Channel channel, PopulationID populationID) {
+    String val = EMPTY_CELL;
+    double mean = getAllSamples().stream()
+        .map(s -> s.getTrace(channel))
+        .filter(Objects::nonNull)
+        .map(t -> {
+          double result = 0;
+          Population pop = t.getPopulation(populationID);
+          if (pop != null) {
+            // Note that the synthetic population is not cut if time roi is applied. Hence this "special
+            // getter".
+            double duration = pop.getEvents().getCheckedTISeries().getDuration();
+            int nNP = t.getPopulation(populationID).getEvents().size();
+            double dt = pop.getEvents().getCheckedTISeries().getDT();
+            double meanICL = MeasureOfLocation.MEAN.calc(getData(channel,
+                populationID,
+                EventType.NP,
+                EventParameter.DURATION)) / 1E6;
+            double obsvRate = nNP / duration;
+
+            double corrRate = PNCorrection.calcTrueRate(obsvRate, meanICL, dt);
+            result = corrRate;
+          }
+          return result;
+        })
+        .filter(d -> d > 0)
+        .mapToDouble(Double::doubleValue)
+        .average()
+        .orElse(0);
+    val = str(mean, NF.D1C2);
+    return val;
+  }
+
+
+  @Override
+  public String tabPopNpRateLoss(Channel channel, PopulationID populationID) {
+    String val = EMPTY_CELL;
+    double mean = getAllSamples().stream()
+        .map(s -> s.getTrace(channel))
+        .filter(Objects::nonNull)
+        .map(t -> {
+          double result = 0;
+          Population pop = t.getPopulation(populationID);
+          if (pop != null) {
+            // Note that the synthetic population is not cut if time roi is applied. Hence this "special
+            // getter".
+            double duration = pop.getEvents().getCheckedTISeries().getDuration();
+            int nNP = t.getPopulation(populationID).getEvents().size();
+            double dt = pop.getEvents().getCheckedTISeries().getDT();
+            double meanICL = MeasureOfLocation.MEAN.calc(getData(channel,
+                populationID,
+                EventType.NP,
+                EventParameter.DURATION)) / 1E6;
+            double obsvRate = nNP / duration;
+
+            double corrRate = PNCorrection.calcTrueRate(obsvRate, meanICL, dt);
+
+            // how many percent were lost without correction?
+            result = 100 * (corrRate - obsvRate) / corrRate;
+          }
+          return result;
+        })
+        .filter(d -> d > 0)
+        .mapToDouble(Double::doubleValue)
+        .filter(Double::isFinite)
+        .average()
+        .orElse(0);
+
+    val = str(mean, NF.D1C2);
+    return val;
+  }
+
+  @Override
+  public String tabPopNpRateCorrMax(Channel channel, PopulationID populationID) {
+    String val = EMPTY_CELL;
+    double mean = getAllSamples().stream()
+        .map(s -> s.getTrace(channel))
+        .filter(Objects::nonNull)
+        .map(t -> {
+          double result = 0;
+          Population pop = t.getPopulation(populationID);
+          if (pop != null) {
+            // Note that the synthetic population is not cut if time roi is applied. Hence this "special
+            // getter".
+            double dt = pop.getEvents().getCheckedTISeries().getDT();
+            double meanICL = MeasureOfLocation.MEAN.calc(getData(channel,
+                populationID,
+                EventType.NP,
+                EventParameter.DURATION)) / 1E6;
+
+            if (dt > 0 && meanICL > 0) {
+              double maxObsvRate = PNCorrection.maxTrue(meanICL, dt);
+              result = maxObsvRate;
+            }
+          }
+          return result;
+        })
+        .filter(d -> d > 0)
+        .mapToDouble(Double::doubleValue)
+        .filter(Double::isFinite)
+        .average()
+        .orElse(0);
+    val = str(mean, NF.D1C2);
+    return val;
+  }
+
+  @Override
+  public String tabPopNpRateObsv10Pct(Channel channel, PopulationID populationID) {
+    String val = EMPTY_CELL;
+    double mean = getAllSamples().stream()
+        .map(s -> s.getTrace(channel))
+        .filter(Objects::nonNull)
+        .map(t -> {
+          double result = Double.NaN;
+          Population pop = t.getPopulation(populationID);
+          if (pop != null) {
+            // Note that the synthetic population is not cut if time roi is applied. Hence this "special
+            // getter".
+            double dt = pop.getEvents().getCheckedTISeries().getDT();
+            double meanICL = MeasureOfLocation.MEAN.calc(getData(channel,
+                populationID,
+                EventType.NP,
+                EventParameter.DURATION)) / 1E6;
+
+            if (dt > 0 && meanICL > 0) {
+              double obsvRateAtPercent = PNCorrection.obsvRateAtLossPercent(10, meanICL, dt);
+              result = obsvRateAtPercent;
+            }
+          }
+          return result;
+        })
+        .filter(d -> d > 0)
+        .mapToDouble(Double::doubleValue)
+        .filter(Double::isFinite)
+        .average()
+        .orElse(0);
+    val = str(mean, NF.D1C2);
     return val;
   }
 

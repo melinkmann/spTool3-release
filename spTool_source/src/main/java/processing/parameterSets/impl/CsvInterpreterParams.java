@@ -27,6 +27,8 @@ import java.io.Serial;
 import java.io.Serializable;
 import java.nio.file.Path;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
@@ -48,6 +50,8 @@ public class CsvInterpreterParams extends AbstractParamSet implements Serializab
 
   @Serial
   private static final long serialVersionUID = 1000_000_000;
+
+  private static final Logger LOGGER = LogManager.getLogger(CsvInterpreterParams.class);
 
   public static final String XML_ELEMENT_TAG = "FileInterpreterParams";
 
@@ -90,6 +94,17 @@ public class CsvInterpreterParams extends AbstractParamSet implements Serializab
   // for mzmine case
   private Parameter<Integer> digitsPrecision;
   private Parameter<EICNormalisation> eicNormalisation;
+  private Parameter<Boolean> specifyMeanAsGlobalAverage;
+  private Parameter<Double> blankMeanSingleIonSignal;
+  private Parameter<Double> blankMeanSingleIonSignalChannelLow;
+  private Parameter<Double> blankMeanSingleIonSignalLow;
+  private Parameter<Double> blankMeanSingleIonSignalChannelHigh;
+  private Parameter<Double> blankMeanSingleIonSignalHigh;
+  private Parameter<Double> electronicNoiseThreshold;
+  private Parameter<SecondaryThresholdBruker> siaThresholdOption;
+  private Parameter<Double> siaThresholdValue;
+  private Parameter<Boolean> loadTruncatedData;
+  private Parameter<Boolean> estimateSiaShapeViaMLE;
 
   public CsvInterpreterParams() {
     this("Csv import parameters");
@@ -322,7 +337,6 @@ public class CsvInterpreterParams extends AbstractParamSet implements Serializab
     );
 
 
-
     this.digitsPrecision = new IntegerParameter(
         "MZ digits",
         """
@@ -337,15 +351,153 @@ public class CsvInterpreterParams extends AbstractParamSet implements Serializab
         "Normalize",
         """
             Normalizes intensities by either
-            a) subtracting "the smallest non-zero value -1" (if smallest non-zero number is 10, subtract 9)
-            b) dividing by the smallest non-zero value
+            a) subtracting (not recommended)
+            b) dividing by the estimated single ion area
             c) do nothing via option 'None'
             """,
-        EICNormalisation.SUBTRACT,
-        EICNormalisation.values(),
+        EICNormalisation.DIVIDE,
+        EICNormalisation.getActive(),
         EICNormalisation.class,
         true,
         "eicNormalisation"
+    );
+
+    specifyMeanAsGlobalAverage = new BooleanParameter(
+        "Single ion mean",
+        "Global average",
+        """
+            If selected, one mean single ion signal will be used for all m/h channels.
+            Else, you max specify an upper and lower channel and its mean.
+            Between these, linear interpolation is assumed;
+            Outside of the 'calibrated' range, respective upper/lower values will be used
+            (i.e., no extrapolation but the same value)""",
+        true,
+        false,
+        "specifyMeanAsGlobalAverage"
+    );
+
+    blankMeanSingleIonSignal = new DoubleParameter(
+        "Single ion mean",
+        """
+            Normalisation: all digitiser counts are divided by this number""",
+        55d,
+        NF.D1C2,
+        TextFormatterOption.ASSURE_NONZERO_POSITIVE_DOUBLE,
+        false,
+        "blankMeanSingleIonSignal"
+    );
+
+
+    blankMeanSingleIonSignalChannelLow = new DoubleParameter(
+        "Low channel",
+        """
+            The channel (m/z) of the lower single ion signal calibration point""",
+        322d,
+        NF.D1C4,
+        TextFormatterOption.ASSURE_POSITIVE_DOUBLE,
+        false,
+        "blankMeanSingleIonSignalChannelLow"
+    );
+
+    blankMeanSingleIonSignalLow = new DoubleParameter(
+        "Low Single ion mean",
+        """
+            The single ion signal of the lower channel (m/z) calibration point""",
+        70d,
+        NF.D1C1,
+        TextFormatterOption.ASSURE_POSITIVE_DOUBLE,
+        false,
+        "blankMeanSingleIonSignalLow"
+    );
+
+    blankMeanSingleIonSignalChannelHigh = new DoubleParameter(
+        "High channel",
+        """
+            The channel (m/z) of the upper single ion signal calibration point""",
+        2422d,
+        NF.D1C4,
+        TextFormatterOption.ASSURE_POSITIVE_DOUBLE,
+        false,
+        "blankMeanSingleIonSignalChannelHigh"
+    );
+
+    blankMeanSingleIonSignalHigh = new DoubleParameter(
+        "High Single ion mean",
+        """
+            The single ion signal of the upper channel (m/z) calibration point""",
+        50d,
+        NF.D1C1,
+        TextFormatterOption.ASSURE_POSITIVE_DOUBLE,
+        false,
+        "blankMeanSingleIonSignalHigh"
+    );
+
+    this.electronicNoiseThreshold = new DoubleParameter(
+        "Electronic noise level",
+        """
+            All intensity values below this value are considered electronic noise.
+            They will be excluded from the data""",
+        18d,
+        NF.D1C2,
+        TextFormatterOption.ASSURE_POSITIVE_DOUBLE,
+        false,
+        "electronicNoiseThreshold"
+    );
+
+    siaThresholdOption = new ComboEnumParameter<>(
+        "2nd threshold",
+        """
+             Below the main single ion distribution, there is smaller distribution at roughly 1/2 of the
+             mean single ion signal. You may filter out these event.
+            
+             - No removal
+             - Static value: Give a static threshold, e.g., 30 digitiser counts
+             - Dynamic factor: The factor will be multiplied with the 'Single ion mean' to obtain a threshold
+            
+            All data points below the threshold will be ignored for the SIA distribution's
+            shape factor ('SIA sigma') computation.
+            In addition, you may set 'Load truncated data' to true to load the truncated data
+            (this is the recommended way). Uncheck if you want to load and inspect the untruncated data set""",
+        SecondaryThresholdBruker.DYNAMIC_FROM_MEAN,
+        SecondaryThresholdBruker.values(),
+        SecondaryThresholdBruker.class,
+        false,
+        "siaThresholdOption"
+    );
+
+    this.siaThresholdValue = new DoubleParameter(
+        "2nd threshold",
+        """
+            In case of
+            Static value: recommended threshold is circa 30 digitiser counts
+            Dynamic factor: recommended factor is circa 0.5, i.e., half of the mean ion signal""",
+        0.50, //0.56
+        NF.D1C2,
+        TextFormatterOption.ASSURE_POSITIVE_DOUBLE,
+        false,
+        "siaThresholdValue"
+    );
+
+    this.loadTruncatedData = new BooleanParameter(
+        "Import",
+        "Load truncated data",
+        """
+            All data points below the SIA threshold, which is set by the '2nd threshold factor'
+            and the single ion mean (see '2nd threshold factor'), are set to zero""",
+        true,
+        false,
+        "loadTruncatedData"
+    );
+
+    this.estimateSiaShapeViaMLE = new BooleanParameter(
+        "SIA shape",
+        "Use MLE estimator (slow)",
+        """
+            If selected, the SIA shape factor will be estimated using maximum likelihood.
+            This approach appears to provide more accurate estimates but is also substantially more slow""",
+        true,
+        false,
+        "estimateSiaShapeViaMLE"
     );
 
     organize();
@@ -378,6 +530,21 @@ public class CsvInterpreterParams extends AbstractParamSet implements Serializab
     this.lpcImportParameter = csvInterpreterParams.lpcImportParameter.copyWithoutChildren();
     this.digitsPrecision = csvInterpreterParams.digitsPrecision.copyWithoutChildren();
     this.eicNormalisation = csvInterpreterParams.eicNormalisation.copyWithoutChildren();
+    this.specifyMeanAsGlobalAverage = csvInterpreterParams.specifyMeanAsGlobalAverage.copyWithoutChildren();
+    this.blankMeanSingleIonSignal = csvInterpreterParams.blankMeanSingleIonSignal.copyWithoutChildren();
+    this.blankMeanSingleIonSignalChannelLow =
+        csvInterpreterParams.blankMeanSingleIonSignalChannelLow.copyWithoutChildren();
+    this.blankMeanSingleIonSignalLow = csvInterpreterParams.blankMeanSingleIonSignalLow.copyWithoutChildren();
+    this.blankMeanSingleIonSignalChannelHigh =
+        csvInterpreterParams.blankMeanSingleIonSignalChannelHigh.copyWithoutChildren();
+    this.blankMeanSingleIonSignalHigh =
+        csvInterpreterParams.blankMeanSingleIonSignalHigh.copyWithoutChildren();
+
+    this.electronicNoiseThreshold = csvInterpreterParams.electronicNoiseThreshold.copyWithoutChildren();
+    this.siaThresholdOption = csvInterpreterParams.siaThresholdOption.copyWithoutChildren();
+    this.siaThresholdValue = csvInterpreterParams.siaThresholdValue.copyWithoutChildren();
+    this.loadTruncatedData = csvInterpreterParams.loadTruncatedData.copyWithoutChildren();
+    this.estimateSiaShapeViaMLE = csvInterpreterParams.estimateSiaShapeViaMLE.copyWithoutChildren();
     organize();
   }
 
@@ -449,6 +616,26 @@ public class CsvInterpreterParams extends AbstractParamSet implements Serializab
         eicNormalisation
     );
 
+    eicNormalisation.addConditionalChild(EICNormalisation.DIVIDE,
+        electronicNoiseThreshold,
+        siaThresholdOption,
+        specifyMeanAsGlobalAverage,
+        estimateSiaShapeViaMLE);
+
+    specifyMeanAsGlobalAverage.addConditionalChild(true, blankMeanSingleIonSignal);
+    specifyMeanAsGlobalAverage.addConditionalChild(false,
+        blankMeanSingleIonSignalChannelLow,
+        blankMeanSingleIonSignalLow,
+        blankMeanSingleIonSignalChannelHigh,
+        blankMeanSingleIonSignalHigh);
+
+    siaThresholdOption.addConditionalChild(SecondaryThresholdBruker.STATIC,
+        siaThresholdValue,
+        loadTruncatedData);
+    siaThresholdOption.addConditionalChild(SecondaryThresholdBruker.DYNAMIC_FROM_MEAN,
+        siaThresholdValue,
+        loadTruncatedData);
+
     interpreter.addConditionalChild(CsvInterpreters.THERMO_TOPDOWN,
         signalConversionOption,
         isIonicQmsData,
@@ -516,6 +703,19 @@ public class CsvInterpreterParams extends AbstractParamSet implements Serializab
 
           case "digitsPrecision" -> digitsPrecision;
           case "eicNormalisation" -> eicNormalisation;
+          case "specifyMeanAsGlobalAverage" -> specifyMeanAsGlobalAverage;
+          case "blankMeanSingleIonSignal" -> blankMeanSingleIonSignal;
+
+          case "blankMeanSingleIonSignalChannelLow" -> blankMeanSingleIonSignalChannelLow;
+          case "blankMeanSingleIonSignalLow" -> blankMeanSingleIonSignalLow;
+          case "blankMeanSingleIonSignalChannelHigh" -> blankMeanSingleIonSignalChannelHigh;
+          case "blankMeanSingleIonSignalHigh" -> blankMeanSingleIonSignalHigh;
+
+          case "electronicNoiseThreshold" -> electronicNoiseThreshold;
+          case "siaThresholdOption" -> siaThresholdOption;
+          case "siaThresholdValue" -> siaThresholdValue;
+          case "loadTruncatedData" -> loadTruncatedData;
+          case "estimateSiaShapeViaMLE" -> estimateSiaShapeViaMLE;
 
           default -> null;
         };
@@ -640,6 +840,86 @@ public class CsvInterpreterParams extends AbstractParamSet implements Serializab
     return eicNormalisation;
   }
 
+  public double getBlankMeanSingleIonSignal(double mz) {
+    if (!specifyMeanAsGlobalAverage.getValue()) {
+      double channelLow = blankMeanSingleIonSignalChannelLow.getValue();
+      double signalLow = blankMeanSingleIonSignalLow.getValue();
+
+      double channelHigh = blankMeanSingleIonSignalChannelHigh.getValue();
+      double signalHigh = blankMeanSingleIonSignalHigh.getValue();
+
+      // check
+      if (channelLow < channelHigh && signalHigh > 0 && signalLow > 0) {
+
+        if (mz <= channelLow) {
+          return signalLow;
+        }
+
+        if (mz >= channelHigh) {
+          return signalHigh;
+        }
+
+        // Linear interpolation
+        double fraction = (mz - channelLow) / (channelHigh - channelLow);
+        return signalLow + fraction * (signalHigh - signalLow);
+      } else {
+        LOGGER.error("Lower channel must be smaller than upper channel (m/z)! " +
+            "Mean ion signals must be strictly positive!");
+        if (signalHigh > 0 && signalLow > 0) {
+          return (signalHigh + signalLow) / 2d;
+        } else if (signalHigh > 0) {
+          LOGGER.error("Single ion means must be positive!");
+          return signalHigh;
+        } else if (signalLow > 0) {
+          LOGGER.error("Single ion means must be positive!");
+          return signalLow;
+        } else if (blankMeanSingleIonSignal.getValue() > 0) {
+          LOGGER.error("Single ion means must be positive!");
+          return blankMeanSingleIonSignal.getValue();
+        } else {
+          LOGGER.error("Single ion means must be positive!");
+          LOGGER.error("Global mean must be positive! Returning absolute value.");
+          return Math.abs(blankMeanSingleIonSignal.getValue());
+        }
+      }
+    } else {
+      if (blankMeanSingleIonSignal.getValue() > 0) {
+        return blankMeanSingleIonSignal.getValue();
+      } else {
+        LOGGER.error("Global mean must be positive! Returning absolute value.");
+        return Math.abs(blankMeanSingleIonSignal.getValue());
+      }
+    }
+  }
+
+  public Parameter<Double> getElectronicNoiseThreshold() {
+    return electronicNoiseThreshold;
+  }
+
+  public Parameter<Boolean> getEstimateSiaShapeViaMLE() {
+    return estimateSiaShapeViaMLE;
+  }
+
+  public double getSiaThresholdValue() {
+    if (siaThresholdOption.getValue().equals(SecondaryThresholdBruker.NONE)) {
+      return 0;
+    } else {
+      return siaThresholdValue.getValue();
+    }
+  }
+
+  public Parameter<SecondaryThresholdBruker> getSiaThresholdOption() {
+    return siaThresholdOption;
+  }
+
+  public boolean getLoadTruncatedData() {
+    if (siaThresholdOption.getValue().equals(SecondaryThresholdBruker.NONE)) {
+      return false;
+    } else {
+      return loadTruncatedData.getValue();
+    }
+  }
+
   public double getORValue() {
     double or = switch (overRangeRecognition.getValue()) {
       case NONE -> 0.0;
@@ -670,6 +950,51 @@ public class CsvInterpreterParams extends AbstractParamSet implements Serializab
     if (eicNormalisation == null) {
       this.eicNormalisation = defaults.eicNormalisation;
     }
+
+    if (specifyMeanAsGlobalAverage == null) {
+      this.specifyMeanAsGlobalAverage = defaults.specifyMeanAsGlobalAverage;
+    }
+
+    if (blankMeanSingleIonSignal == null) {
+      this.blankMeanSingleIonSignal = defaults.blankMeanSingleIonSignal;
+    }
+
+    if (blankMeanSingleIonSignalChannelLow == null) {
+      this.blankMeanSingleIonSignalChannelLow = defaults.blankMeanSingleIonSignalChannelLow;
+    }
+
+    if (blankMeanSingleIonSignalLow == null) {
+      this.blankMeanSingleIonSignalLow = defaults.blankMeanSingleIonSignalLow;
+    }
+
+    if (blankMeanSingleIonSignalChannelHigh == null) {
+      this.blankMeanSingleIonSignalChannelHigh = defaults.blankMeanSingleIonSignalChannelHigh;
+    }
+
+    if (blankMeanSingleIonSignalHigh == null) {
+      this.blankMeanSingleIonSignalHigh = defaults.blankMeanSingleIonSignalHigh;
+    }
+
+    if (electronicNoiseThreshold == null) {
+      this.electronicNoiseThreshold = defaults.electronicNoiseThreshold;
+    }
+
+    if (siaThresholdOption == null) {
+      this.siaThresholdOption = defaults.siaThresholdOption;
+    }
+
+    if (siaThresholdValue == null) {
+      this.siaThresholdValue = defaults.siaThresholdValue;
+    }
+
+    if (loadTruncatedData == null) {
+      this.loadTruncatedData = defaults.loadTruncatedData;
+    }
+
+    if (estimateSiaShapeViaMLE == null) {
+      this.estimateSiaShapeViaMLE = defaults.estimateSiaShapeViaMLE;
+    }
+
 
   }
 

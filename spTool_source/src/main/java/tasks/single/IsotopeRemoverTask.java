@@ -21,6 +21,7 @@ import analysis.*;
 import dataModelNew.Sample;
 import dataModelNew.SampleImpl;
 import dataModelNew.Trace;
+import math.stat.MeasureOfLocation;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -101,11 +102,14 @@ public class IsotopeRemoverTask extends AbstractWorkingTask implements WorkingTa
                     int nEvt = trace.getNoOfEvents(popID);
                     double duration = trace.getTISeries().getDuration();
                     double rate = nEvt / duration;
-                    double maxNetArea = ArrUtils.getMax(trace.get(popID, EventType.NP, EventParameter.NET_AREA));
+                    double[] netArea = trace.get(popID, EventType.NP, EventParameter.NET_AREA);
+                    double maxNetArea = ArrUtils.getMax(netArea);
+                    double median = MeasureOfLocation.MEDIAN.calc(netArea);
 
                     int lowerCutoff = params.getLowerIsotopeAbsoluteCutoff().getValue();
                     double upperCutoff = params.getUpperIsotopeRateCutoff().getValue();
                     double lowerAreaCutoff = params.getNetAreaThreshold().getValue();
+                    double medianAreaCutoff = params.getIsotopeMeanCutoff().getValue();
                     if (rate > upperCutoff && params.getRemoveMoreIsotopesThan().getValue()) {
                       badTraces.merge(trace,
                           trace.getChannel().getUIString() + ">" + SnF.doubleToString(upperCutoff, NF.D1C1),
@@ -124,6 +128,14 @@ public class IsotopeRemoverTask extends AbstractWorkingTask implements WorkingTa
                           (existing, newVal) -> existing + "&" + newVal);
                       hasChanged.set(true);
                     }
+
+                    if (median < medianAreaCutoff && params.getRemoveBelowIsotopeMean().getValue()) {
+                      badTraces.merge(trace,
+                          trace.getChannel().getUIString() + "<" + median + "cts",
+                          (existing, newVal) -> existing + "&" + newVal);
+                      hasChanged.set(true);
+                    }
+
                   } else {
                     // pop does not even exist -> remove
                     badTraces.put(trace, trace.getChannel().getUIString() + ":N/A");

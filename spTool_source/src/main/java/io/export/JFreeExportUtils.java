@@ -140,7 +140,8 @@ public abstract class JFreeExportUtils {
         path = path.resolve(fileName);
         File file = path.toFile();
 
-        ExportWriter exportWriter = new CsvExportWriter(file);
+        Character del = SpTool3Main.getRunTime().getConfParams().getDelimiter();
+        ExportWriter exportWriter = new CsvExportWriter(file, del);
         writeDataAsTable(chartViewer.getChart(), exportWriter);
         LOGGER.info("Wrote file: " + file);
       }
@@ -155,7 +156,8 @@ public abstract class JFreeExportUtils {
       File file = chooser.showSaveDialog(chartViewer.getScene().getWindow());
       if (file != null) {
 
-        ExportWriter exportWriter = new CsvExportWriter(file);
+        Character del = SpTool3Main.getRunTime().getConfParams().getDelimiter();
+        ExportWriter exportWriter = new CsvExportWriter(file, del);
         writeDataAsTable(chartViewer.getChart(), exportWriter);
         LOGGER.info("Wrote file: " + file);
       }

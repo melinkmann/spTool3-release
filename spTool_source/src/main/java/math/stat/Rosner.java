@@ -28,10 +28,6 @@ import util.ArrUtils;
 
 public abstract class Rosner {
 
-  /*
-  TODO. Double check all of this - unsure if it was all copied correctly form version 2...
-  Especially: call to getCurrentData().. which changes occur in tool2 in the background?!
-   */
 
   private static final Logger LOGGER = LogManager.getLogger(Rosner.class);
 
@@ -99,7 +95,8 @@ public abstract class Rosner {
         }
 
         // Degrees of freedom must be positive & greater than zero!
-        int df = GESD.dfGESD(values.size(), i);
+        // Note: GESD expects the ORIGINAL sample size n and the 1-based iteration (i + 1), see NIST.
+        int df = GESD.dfGESD(data.length, i + 1);
         if (df < 1) {
           // Probably severely underestimated/overestimated the number of outliers.
           LOGGER.warn("Rosner GESD test ran out of degrees of freedom and stopped at"
@@ -110,7 +107,7 @@ public abstract class Rosner {
         }
 
         testValues.add(testValue);
-        critVal = GESD.critGESD(values.size(), alpha, i);
+        critVal = GESD.critGESD(data.length, alpha, i + 1);
         critValues.add(critVal);
 
         // END OF ITERATION
@@ -133,9 +130,9 @@ public abstract class Rosner {
       int outlierCount = 0;
       for (int i = testValues.size() - 1; i >= 0; i--) {
         if (testValues.get(i) > critValues.get(i)) {
-          // Index of each entry is the number of iterations from the calculations before,
-          // i.e. the number of outliers that were removed.
-          outlierCount = i;
+          // Index of each entry is the number of outliers removed BEFORE this test,
+          // i.e. the test at index i is the test for i + 1 outliers.
+          outlierCount = i + 1;
           break;
         }
       }
@@ -148,7 +145,7 @@ public abstract class Rosner {
         */
       Collections.sort(values); // natural order
 
-      for (int i = 0; i <= outlierCount; i++) {
+      for (int i = 0; i < outlierCount; i++) {
         // Calc stat parameters
         double mean = Stats.meanOf(values);
       /*

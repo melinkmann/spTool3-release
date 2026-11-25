@@ -21,18 +21,16 @@ import core.SpTool3Main;
 import dataModelNew.TISeries;
 
 import java.awt.*;
-import java.awt.geom.Point2D;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import dataModelNew.mz.Element;
 import javafx.util.Pair;
 import math.units.enums.ViewUnits;
-import org.jfree.chart.JFreeChart;
 import org.jfree.chart.annotations.XYTextAnnotation;
 import org.jfree.chart.axis.ValueAxis;
 import org.jfree.chart.plot.XYPlot;
-import org.jfree.chart.renderer.xy.XYItemRenderer;
 import org.jfree.chart.ui.TextAnchor;
 import org.jfree.data.statistics.HistogramDataset;
 import org.jfree.data.xy.XYDataset;
@@ -65,10 +63,10 @@ public abstract class JFreeUtil {
       (TRIANGLE_CORNER_A.x() + TRIANGLE_CORNER_B.x() + TRIANGLE_CORNER_C.x())
           / 3.0, (TRIANGLE_CORNER_A.y() + TRIANGLE_CORNER_B.y() + TRIANGLE_CORNER_C.y()) / 3.0);
 
-  public static String buildTooltip(double minAbundance, double minSignal, double maxYValue,
-                                    boolean showAbundance,
-                                    List<Isotope> excludedFromLabel,
-                                    XYIntervalSeriesCollection ds, int series, int item) {
+  public static String buildSpectraTooltip(double minAbundance, double minSignal, double maxYValue,
+                                           boolean showAbundance,
+                                           List<Isotope> excludedFromLabel,
+                                           XYIntervalSeriesCollection ds, int series, int item) {
 
     double mz = ds.getXValue(series, item);
     int nominalMZ = (int) Math.round(mz);
@@ -369,6 +367,32 @@ public abstract class JFreeUtil {
     }
 
     return new Pair<>(xs, ys);
+  }
+
+  /** True if at least one raw component is positive, i.e. the event has a real ternary position. */
+  public static boolean hasTernarySignal(double a, double b, double c) {
+    return a > 0 || b > 0 || c > 0;
+  }
+
+  /** Drops points without ternary signal from the x/y arrays. Only for plotting: indices shift! */
+  public static Pair<double[], double[]> keepTernarySignal(double[] a, double[] b, double[] c,
+                                                           Pair<double[], double[]> xy) {
+    double[] x = xy.getKey();
+    double[] y = xy.getValue();
+    if (x.length != a.length || x.length != b.length || x.length != c.length) {
+      return xy;
+    }
+    double[] xs = new double[x.length];
+    double[] ys = new double[y.length];
+    int m = 0;
+    for (int i = 0; i < x.length; i++) {
+      if (hasTernarySignal(a[i], b[i], c[i])) {
+        xs[m] = x[i];
+        ys[m] = y[i];
+        m++;
+      }
+    }
+    return new Pair<>(Arrays.copyOf(xs, m), Arrays.copyOf(ys, m));
   }
 
 

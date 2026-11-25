@@ -49,8 +49,6 @@ public class NpPopulation implements Population, Serializable {
   private final ThresholdSupplierInstructions heightInstructions;
   private final List<ThresholdSupplierInstructions> gatingInstr;
 
-
-
   // Dummy
   public NpPopulation() {
     this.id = new PopulationID();
@@ -120,6 +118,28 @@ public class NpPopulation implements Population, Serializable {
     this.heightInstructions = npPopulation.getHeightInstructions();
     this.gatingInstr = new ArrayList<>(npPopulation.getGatingInstr());
     this.inputSummary = npPopulation.getInputSummary(); // keep summary from search
+    this.contributingChannels = new ArrayList<>(npPopulation.getContributingChannels());
+    for (Channel ch : contributingChannels) {
+      if (!this.contributingChannels.contains(ch)) {
+        this.contributingChannels.add(ch);
+      }
+    }
+  }
+
+  // Aligned Filter
+  public NpPopulation(PopulationID id,
+                      Population npPopulation,
+                      EventCollection mainEventCollection,
+                      PopParSummary popParSummary,
+                      List<Channel> contributingChannels) {
+    this.id = id;
+    this.mainEventCollection = mainEventCollection;
+    this.drift = DEFAULT_DRIFT;
+    this.startInstructions = npPopulation.getStartInstructions();
+    this.stopInstructions = npPopulation.getStopInstructions();
+    this.heightInstructions = npPopulation.getHeightInstructions();
+    this.gatingInstr = new ArrayList<>(npPopulation.getGatingInstr());
+    this.inputSummary = popParSummary;
     this.contributingChannels = new ArrayList<>(npPopulation.getContributingChannels());
     for (Channel ch : contributingChannels) {
       if (!this.contributingChannels.contains(ch)) {

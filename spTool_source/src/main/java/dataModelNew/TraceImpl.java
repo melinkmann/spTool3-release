@@ -356,9 +356,14 @@ public class TraceImpl implements Trace, Serializable {
     this.populations.put(id, population);
     // spectra only look for equal ID. ID may be equal but processing details (baseline, ...) may change
     if (!preserveSpectra) {
-      parentSample.clearSpectralData();
-    }else{
-      LOGGER.info("Received new population ID but kept spectra!");
+      boolean wasRem = parentSample.clearSpectralData(id);
+      if (wasRem) {
+        LOGGER.trace("Received new population ID and cleared spectra in the sample associated with this " +
+            "population ID!");
+      }
+    } else {
+      // felt like spamming a lot
+      //LOGGER.trace("Received new population ID but kept spectra!");
     }
   }
 
@@ -418,6 +423,7 @@ public class TraceImpl implements Trace, Serializable {
     xySeriesPlotCache.clear();
   }
 
+  // TODO: THIS MUST BE TAKEN INTO ACCOUNT FOR THE BLANKER OR ELSE OVER-RAGE IS MARKED INCORRECTLY
   public void setTISeriesLimits(double lower, double upper, Sample sampleRef) {
     /*
     IMPORTANT: initially, tiSeries and tiSeriesCopy are THE SAME OBJECT.
@@ -436,21 +442,22 @@ public class TraceImpl implements Trace, Serializable {
     if (tiSeries == tiSeriesCopy) {
       this.tiSeriesCopy = tiSeriesCopy.copy();
     }
-    this.tiSeries = RawProcessingUtils.cutTime(tiSeries, lower, upper,sampleRef);
+    this.tiSeries = RawProcessingUtils.cutTime(tiSeries, lower, upper, sampleRef);
     // when we do this, full reset has to occur!
     clearEvaluation();
 
     // clear spectral data (so far we do not store a copy of these, too -> reloading will be triggered)
-    parentSample.clearSpectralData();
+    parentSample.clearSpectralData(null);
   }
 
+  // TODO: THIS MUST BE TAKEN INTO ACCOUNT FOR THE BLANKER OR ELSE OVER-RAGE IS MARKED INCORRECTLY
   public void resetTISeriesLimits() {
     this.tiSeries = tiSeriesCopy;
     // when we do this, full reset has to occur!
     clearEvaluation();
 
     // clear spectral data (so far we do not store a copy of these, too -> reloading will be triggered)
-    parentSample.clearSpectralData();
+    parentSample.clearSpectralData(null);
   }
 
   @Override

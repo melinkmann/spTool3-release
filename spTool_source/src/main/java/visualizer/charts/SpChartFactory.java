@@ -21,7 +21,6 @@ import core.SpTool3Main;
 import dataModelNew.TISeries;
 import gui.StageFactory;
 import gui.util.UiUtil;
-import io.export.DataExport;
 import io.export.JFreeExportUtils;
 
 import java.awt.*;
@@ -60,8 +59,6 @@ import javax.annotation.Nullable;
 
 import math.HAC;
 import math.units.Unit;
-import math.units.enums.IntensityUnit;
-import math.units.enums.TimeUnit;
 import math.units.enums.ViewUnits;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.logging.log4j.LogManager;
@@ -561,7 +558,7 @@ public abstract class SpChartFactory {
         renderer.setDefaultToolTipGenerator(null);
 
         renderer.setDefaultToolTipGenerator((ds, series, item) ->
-            JFreeUtil.buildTooltip(0, 0, maxYValue, true, new ArrayList<>(),
+            JFreeUtil.buildSpectraTooltip(0, 0, maxYValue, true, new ArrayList<>(),
                 (XYIntervalSeriesCollection) ds, series, item)
         );
 
@@ -581,7 +578,8 @@ public abstract class SpChartFactory {
           }
 
           renderer.setDefaultItemLabelGenerator((ds, series, item) ->
-              JFreeUtil.buildTooltip(abundanceCutoff, signalCutoff, maxYValue, false, excludedFromLabel,
+              JFreeUtil.buildSpectraTooltip(abundanceCutoff, signalCutoff, maxYValue, false,
+                  excludedFromLabel,
                   (XYIntervalSeriesCollection) ds, series, item)
           );
 
@@ -2059,6 +2057,7 @@ public abstract class SpChartFactory {
     public DefaultPieDataset<String> getPieDataset() {
       return pieDataset;
     }
+
   }
 
   public static class DendrogramChartData extends ChartData {

@@ -37,6 +37,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 import io.nu.SiaShapeEstimation;
+import math.FaradayCupModel;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -45,6 +46,7 @@ import processing.parameterSets.AvailableParameterSets;
 import processing.parameterSets.Method;
 import processing.parameterSets.ParamSet;
 import processing.parameterSets.bundle.ElementBundle;
+import processing.parameterSets.bundle.FaradayBundle;
 import processing.parameterSets.bundle.SiaBundle;
 import processing.parameterSets.impl.ConfParams;
 import processing.parameterSets.impl.MCSimGeneralParams;
@@ -154,22 +156,16 @@ public class MonteCarloGeneratorTask extends AbstractWorkingTask implements Work
 
             // If we allow e.g. 90 µs and 20 µs, we will get an index mismatch at the end when
             // combining data to the macro frame.
-            if (macroDTSec % microDTSec != 0) {
-              double oldMacroDT = macroDTSec;
-              int intDiv = (int) (macroDTSec / microDTSec);
-              macroDTSec = (intDiv) * microDTSec;
-              if (oldMacroDT < macroDTSec) {
-                LOGGER.trace("Extended dwell time by one grid unit.");
-                macroDTSec = (intDiv + 1) * microDTSec;
-              }
+            // Dwell time = whole number of grid bins, using the same rule as the grouping code.
+            int blockSize = MacroTimeFrameUtil.getBlockSize(microDTSec, macroDTSec);
+            double adjustedMacroDT = blockSize * microDTSec;
+            if (Math.abs(adjustedMacroDT - macroDTSec) > 1e-9 * macroDTSec) {
               LOGGER.warn("Dwell time was not fully divisible by grid time."
                   + " Grid time = " + microDTSec
-                  + " and macro dwell time = " + oldMacroDT
-                  + ". Instead, a new dwell time was calculated: " + macroDTSec
-                  + ". It is possible, that the 'inequality'"
-                  + " is only an artifact due to binary to decimal number conversion."
-                  + " In that case, this message can be ignored.");
+                  + " and macro dwell time = " + macroDTSec
+                  + ". Instead, a new dwell time was calculated: " + adjustedMacroDT + ".");
             }
+            macroDTSec = adjustedMacroDT;   // also snaps away pure floating-point noise
 
               /*
               Important: We must limit the particle appearance to the macro frame.
@@ -220,6 +216,15 @@ public class MonteCarloGeneratorTask extends AbstractWorkingTask implements Work
               Element siaCaseElement = siaBundle.elementHeaderParameter.getValue().unwrap();
               double siaCaseShapePar = siaBundle.siaShapeParameter.getValue();
               siaShapeParameters.put(siaCaseElement, siaCaseShapePar);
+            }
+
+            // Isotopes with Faraday cup detection: if disabled, do not add any
+            HashMap<Isotope, FaradayBundle> faradayIsotopeMap = new HashMap<>();
+            boolean applyFaraday = generalParams.addFaradayDetectionForIsotopes.getValue();
+            if (applyFaraday) {
+              for (FaradayBundle bundle : generalParams.getFaradayBundles()) {
+                faradayIsotopeMap.put(bundle.getIsotope(), bundle);
+              }
             }
 
             /*
@@ -384,6 +389,9 @@ public class MonteCarloGeneratorTask extends AbstractWorkingTask implements Work
                 double signalFraction = elementBundle.massFraction.getValue();
                 double peakDelay = elementBundle.peakDelay.getValue();
 
+                // Custom isotope abundances
+                HashMap<Isotope, Double> abundances = elementBundle.getAbundances(element);
+
                 // Peak properties
                 double chosen_d_mu;
                 double chosen_d_SD;
@@ -405,6 +413,7 @@ public class MonteCarloGeneratorTask extends AbstractWorkingTask implements Work
                 particlePopulationInstruction.addElement(
                     element,
                     signalFraction,
+                    abundances,
                     chosen_d_mu,
                     chosen_d_SD,
                     peakDelay);
@@ -430,6 +439,7 @@ public class MonteCarloGeneratorTask extends AbstractWorkingTask implements Work
             // Data from all backgrounds
             HashMap<Isotope, Double> bgLevels = new LinkedHashMap<>();
             for (Element element : bgIntensities.keySet()) {
+              // Keep BG abundances at natural level (e.g., few enriched U-oxide NPs in environmental matrix)
               bgLevels.putAll(element.calcIsotopeSignalLvl(bgIntensities.get(element)));
             }
 
@@ -596,18 +606,36 @@ public class MonteCarloGeneratorTask extends AbstractWorkingTask implements Work
                 signal = randomizedResolvedSignals.get(isotope.getIsotopicNumber());
               } else {
 
-                // Before transforming to macro array: Apply Dead Time.
+                FaradayBundle faradayBundle = faradayIsotopeMap.get(isotope);
+                boolean isFaraday = faradayBundle != null && applyFaraday;
+
+                // Before transforming to macro array: Apply Dead Time. Option "none" or faraday==true
+                // just returns the signal.
                 DeadTimeUtil.applyDeadTime(
                     signal,
                     deadTimeSec,
                     deadTimeModel,
-                    microDTSec);
+                    microDTSec,
+                    isFaraday);
 
                 LOGGER.trace(" ... global time frame for " + isotope.getNumberAndElement()
                     + " applied dead time.");
 
                 // After dead time -> now we are in the regime of measurable ICP-MS (DT > 1 µs)
-                signal = MacroTimeFrameUtil.groupSignal(microDTSec, macroDTSec, signal);
+                if (isFaraday) {
+                  // This groups the time into DT chunks
+                  signal = FaradayCupModel.applyFromExpected(signal,
+                      blockSize,
+                      microDTSec,
+                      faradayBundle.resistorParameter.getValue(),
+                      faradayBundle.getTauArr(),
+                      faradayBundle.getTauWeightArr(),
+                      faradayBundle.temperatureParameter.getValue());
+                  signalPdfModel = PDF.NONE;
+                } else {
+                  // just group via the "normal" group function
+                  signal = MacroTimeFrameUtil.groupSignal(microDTSec, macroDTSec, signal);
+                }
 
                 LOGGER.trace(" ... global time frame for " + isotope.getNumberAndElement()
                     + " grouped the signal.");
@@ -651,6 +679,7 @@ public class MonteCarloGeneratorTask extends AbstractWorkingTask implements Work
                     }
 
                     // estimate which algorithm to use via the mean background
+                    // TODO: this decision should be made based on the combined signal for isobarics!
                     double cutoffMean = 500;
                     if (macroBgLevel > cutoffMean) {
                       Statistics.resampleCompoundPoissonFastest(signal, siaShape);
@@ -662,24 +691,27 @@ public class MonteCarloGeneratorTask extends AbstractWorkingTask implements Work
                     // keep as is
                   }
                 }
-                LOGGER.trace(" ... global frame for " + isotope.getNumberAndElement() + ": Compound Poisson" +
-                    ".");
+                LOGGER.trace(" ... global frame for {}: Compound Poisson.", isotope.getNumberAndElement());
 
                 // if this is a conflicting isotope, we must store its result to keep same randomization
                 // for its instances
+                // TODO: Consider using mixed SIA shape for the randomisation here. Currently,
+                //  if different shapes are assigned per isotope, we may override with the first element
+                //  that is resolved here! Note that this mixing depends on lambda, i.e.,
+                //  within a particle peak, the mixing ration is different than at baseline.
+                //  This requires a whole new method implementation of "resampleCompoundPoissonFast".
                 if (isoConflictMap.containsKey(isotope.getIsotopicNumber())) {
                   randomizedResolvedSignals.put(isotope.getIsotopicNumber(), signal);
                 }
               }
 
               /*
-               Check for the resulting apparent BG signal: thr -> if NP signal is below 0.1, we consider
+               Check for the resulting apparent BG signal: thr -> if NP signal is below 0.01, we consider
                the peak is over.
                Note that a thr=0.5 will bias the mean to be rather approx. +0.5 than the true value.
                Note that we perform this here for the BG since for a sine BG, we do not know the outcome.
                I think, for the particles, we do not need this.
                */
-              int blockSize = (int) (macroDTSec / microDTSec);
               double empiricalBG = values.getEmpiricalBG(signal, blockSize, 0.01);
 
               LOGGER.trace(" ... global time frame for " + isotope.getNumberAndElement()

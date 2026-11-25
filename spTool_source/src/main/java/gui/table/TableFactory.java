@@ -1066,7 +1066,9 @@ public class TableFactory {
     table.setPlaceholder(placeholderLabel);
 
     // set once, else all menu items are lost
-    table.setContextMenu(new ContextMenu());
+    if (table.getContextMenu() == null) {
+      table.setContextMenu(new ContextMenu());
+    }
     table.setColumnResizePolicy(TableView.UNCONSTRAINED_RESIZE_POLICY);
 
     List<TableColumn<FxChannel, ?>> columns = new ArrayList<>();
@@ -1104,7 +1106,7 @@ public class TableFactory {
     col = new TableColumn<>("Element");
 
     col.setPrefWidth(60);
-    col.setMaxWidth(100);
+    col.setMaxWidth(350);
     col.setStyle("-fx-alignment: CENTER-LEFT;");
 
     col.setComparator(new ChannelTableComparator());

@@ -18,6 +18,7 @@
 package processing.options;
 
 import java.util.Arrays;
+
 import math.Arithmetic;
 import math.stat.Shimazaki;
 import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
@@ -46,14 +47,15 @@ public enum BinWidthEstimator {
 
     @Override
     public double getBinWidth(double[] data, double customValue) {
-      double result = DEFAULT;
+      double result = Double.NaN;
       if (data != null && data.length > 0) {
         DescriptiveStatistics da = new DescriptiveStatistics(data);
         double max = da.getMax();
         double min = da.getMin();
 
         double k = Math.cbrt(2 * data.length);
-        result = ((max - min) / k);
+        double bw = ((max - min) / k);
+        if (bw > 0 && Double.isFinite(bw)) result = bw;
       }
       return result;
     }
@@ -67,7 +69,7 @@ public enum BinWidthEstimator {
 
     @Override
     public double getBinWidth(double[] data, double customValue) {
-      double result = DEFAULT;
+      double result = Double.NaN;
       if (data != null && data.length > 0) {
 
         int nOfObsv = data.length;
@@ -83,7 +85,8 @@ public enum BinWidthEstimator {
 
         double k = 1 + Arithmetic.log2(nOfObsv) + Arithmetic.log2(1 + absSkew / sg1);
 
-        result = ((max - min) / k);
+        double bw = ((max - min) / k);
+        if (bw > 0 && Double.isFinite(bw)) result = bw;
       }
       return result;
     }
@@ -97,14 +100,16 @@ public enum BinWidthEstimator {
 
     @Override
     public double getBinWidth(double[] data, double customValue) {
-      double result = DEFAULT;
+      double result = Double.NaN;
       if (data != null && data.length > 0) {
         DescriptiveStatistics da = new DescriptiveStatistics(data);
         double max = da.getMax();
         double min = da.getMin();
 
         double k = 2 * (Math.cbrt(data.length));
-        result = ((max - min) / k);
+
+        double bw = ((max - min) / k);
+        if (bw > 0 && Double.isFinite(bw)) result = bw;
       }
       return result;
     }
@@ -118,13 +123,16 @@ public enum BinWidthEstimator {
 
     @Override
     public double getBinWidth(double[] data, double customValue) {
+      double result = Double.NaN;
       DescriptiveStatistics da = new DescriptiveStatistics(data);
       double max = da.getMax();
       double min = da.getMin();
 
       double k = Math.sqrt(data.length);
 
-      return ((max - min) / k);
+      double bw = ((max - min) / k);
+      if (bw > 0 && Double.isFinite(bw)) result = bw;
+      return result;
     }
   },
 
@@ -136,7 +144,7 @@ public enum BinWidthEstimator {
 
     @Override
     public double getBinWidth(double[] data, double customValue) {
-      double result = DEFAULT;
+      double result = Double.NaN;
       if (data != null && data.length > 0) {
         DescriptiveStatistics da = new DescriptiveStatistics(data);
         double max = da.getMax();
@@ -144,7 +152,8 @@ public enum BinWidthEstimator {
 
         double k = 1 + Arithmetic.log2(data.length);
 
-        result = ((max - min) / k);
+        double bw = ((max - min) / k);
+        if (bw > 0 && Double.isFinite(bw)) result = bw;
       }
       return result;
     }
@@ -158,12 +167,12 @@ public enum BinWidthEstimator {
 
     @Override
     public double getBinWidth(double[] data, double customValue) {
-      double result = DEFAULT;
+      double result = Double.NaN;
       if (data != null && data.length > 0) {
         DescriptiveStatistics da = new DescriptiveStatistics(data);
         double iqr = da.getPercentile(75) - da.getPercentile(25);
-        double width = (2 * iqr) / (Math.cbrt(data.length));
-        result = width;
+        double bw = (2 * iqr) / (Math.cbrt(data.length));
+        if (bw > 0 && Double.isFinite(bw)) result = bw;
       }
       return result;
     }
@@ -177,11 +186,12 @@ public enum BinWidthEstimator {
 
     @Override
     public double getBinWidth(double[] data, double customValue) {
-      double result = DEFAULT;
+      double result = Double.NaN;
       if (data != null && data.length > 0) {
         double width = Shimazaki.optimalBinWidth(data);
         width = width * 1.25;
-        result = width;
+        double bw = width;
+        if (bw > 0 && Double.isFinite(bw)) result = bw;
       }
       return result;
     }
@@ -195,12 +205,12 @@ public enum BinWidthEstimator {
 
     @Override
     public double getBinWidth(double[] data, double customValue) {
-      double result = DEFAULT;
+      double result = Double.NaN;
       if (data != null && data.length > 0) {
         DescriptiveStatistics da = new DescriptiveStatistics(data);
         double sd = da.getStandardDeviation();
-        double width = (3.49 * sd) / (Math.cbrt(data.length));
-        result = width;
+        double bw = (3.49 * sd) / (Math.cbrt(data.length));
+        if (bw > 0 && Double.isFinite(bw)) result = bw;
       }
       return result;
     }
@@ -220,7 +230,7 @@ public enum BinWidthEstimator {
   };
 
 
-  private static final double DEFAULT = 15;
+  public static final double DEFAULT = 15;
 
   /*
    Normal case: ignore the custom value.
@@ -244,7 +254,7 @@ public enum BinWidthEstimator {
   }
 
   public static double silvermanRule(double[] data) {
-    double result = DEFAULT;
+    double result = Double.NaN;
     if (data != null && data.length > 0) {
       double variance = MathEx.var(data);
       double sd = Math.sqrt(variance);
@@ -254,7 +264,7 @@ public enum BinWidthEstimator {
       int n = data.length;
       double iqr = data[n * 3 / 4] - data[n / 4];
       double h = 1.06 * Math.min(sd, iqr / 1.34) / Math.pow(data.length, 0.2);
-      result = h > 0 ? h : 1;
+      if (h > 0 && Double.isFinite(h)) result = h;
     }
     return result;
   }

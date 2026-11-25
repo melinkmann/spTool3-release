@@ -20,6 +20,7 @@ package sandbox.montecarlo;
 import dataModelNew.mz.Element;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -132,6 +133,7 @@ public class ParticleInstructions {
   public void addElement(
       Element element,
       double signalFraction,
+      HashMap<Isotope, Double> abundances,
       double plasma_d_mu,
       double plasma_d_sd,
       double delay) {
@@ -139,6 +141,7 @@ public class ParticleInstructions {
     this.randElements.add(new RandomElementInstructions(
         element,
         signalFraction,
+        abundances,
         plasma_d_mu,
         plasma_d_sd,
         delay));
@@ -317,8 +320,8 @@ public class ParticleInstructions {
         // Calculate random isotopic composition; then normalize
         for (int i = 0; i < isotopes.size(); i++) {
           Isotope isotope = isotopes.get(i);
-          fractions[i] = Statistics.randomifyPercent(isotope.getAbundance(),
-              isotopeFractionUncertainty);
+          double abundance = randElement.getAbundance(isotope);
+          fractions[i] = Statistics.randomifyPercent(abundance, isotopeFractionUncertainty);
         }
         ArrUtils.normalizeBySumOverriding(fractions);
         ArrUtils.multiplyOverriding(fractions, elementSignalLevel);
@@ -452,6 +455,8 @@ public class ParticleInstructions {
     private final Element element;
     private final double signalFraction;
 
+    private final HashMap<Isotope, Double> customAbundances;
+
     private final CheckedDistribution plasma_d_distr;
 
     private final double delay;
@@ -459,11 +464,14 @@ public class ParticleInstructions {
     public RandomElementInstructions(
         Element element,
         double signalFraction,
+        HashMap<Isotope, Double> customAbundances,
         double plasma_d_mu,
         double plasma_d_sd,
         double delay) {
       this.element = element;
       this.signalFraction = signalFraction;
+
+      this.customAbundances = customAbundances;
 
       this.plasma_d_distr = GettablePDF.GAUSSIAN.get(plasma_d_mu, plasma_d_sd, 0, 0);
 
@@ -484,6 +492,19 @@ public class ParticleInstructions {
 
     public double getDelay() {
       return delay;
+    }
+
+    public double getAbundance(Isotope isotope) {
+      double abundance = isotope.getAbundance();
+      if (customAbundances.containsKey(isotope)) {
+        double val = customAbundances.get(isotope);
+        if (val > 0 && val <= 1) {
+          abundance = val;
+        } else {
+          LOGGER.error("Illegal isotope abundances. Must be 0<a<=1: {}", val);
+        }
+      }
+      return abundance;
     }
   }
 

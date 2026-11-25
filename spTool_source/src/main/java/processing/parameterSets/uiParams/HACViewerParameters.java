@@ -18,7 +18,6 @@
 package processing.parameterSets.uiParams;
 
 import dataModelNew.mz.Channel;
-import dataModelNew.mz.MZValue;
 import gui.util.TextFormatterOption;
 import io.XmlUtil;
 import io.nu.IsotopePtoeDialog;
@@ -55,13 +54,18 @@ public class HACViewerParameters extends AbstractParamSet implements ParamSet {
 
   public static final String XML_ELEMENT_TAG = "HACViewerParameters";
 
+  private Parameter<Boolean> freezeGraphBoolean;
+
   private final Parameter<Double> minFractionPct;
   private final Parameter<Integer> minClusterSizePie;
+
+  private Parameter<Boolean> limitToAndApplyQuantifiedMass;
 
   private Parameter<IsotopeSelection> isotopeSelection;
   private Parameter<String> excludedIsotopes;
   private Parameter<String> includedIsotopes;
   private Parameter<Boolean> flattenIsobarsToDefaults;
+  private Parameter<Boolean> useDataFromSpectra;
 
   private final Parameter<Boolean> useLog2;
   private Parameter<ZScoreTarget> zScoreType;
@@ -69,6 +73,7 @@ public class HACViewerParameters extends AbstractParamSet implements ParamSet {
 
   private final Parameter<DistanceOptions> thresholdOption;
   private final Parameter<Double> distanceThreshold;
+  private Parameter<Double> distanceThresholdPercent;
 
   private final Parameter<Boolean> useLogScaleDendrogram;
   private final Parameter<Boolean> showClusterNumbers;
@@ -77,9 +82,31 @@ public class HACViewerParameters extends AbstractParamSet implements ParamSet {
   private final Parameter<Boolean> useLog2ForCosine;
   private final Parameter<Double> cosineScore;
 
+  private Parameter<Boolean> sortClustersByNumber;
+
 
   public HACViewerParameters() {
     super("HAC viewer parameters", XML_ELEMENT_TAG);
+
+    this.freezeGraphBoolean = new BooleanParameter("On/Off",
+        "Freeze graph",
+        "Activate this sub method",
+        false,
+        false,
+        "freezeGraphBoolean"
+    );
+
+    this.limitToAndApplyQuantifiedMass = new BooleanParameter(
+        "Quantify",
+        "Mass-based HAC",
+        """
+            HAC clustering will be done based on elemental mass.
+            Only elements with a valid quantification will be used for HAC.
+            Isotopes without quantification (calibration) will be ignored""",
+        false,
+        false,
+        "limitToAndApplyQuantifiedMass"
+    );
 
     this.zScoreType = new ComboEnumParameter<>(
         "z-score",
@@ -124,6 +151,17 @@ public class HACViewerParameters extends AbstractParamSet implements ParamSet {
         TextFormatterOption.ASSURE_NONZERO_POSITIVE_DOUBLE,
         false,
         "distanceThreshold"
+    );
+
+    this.distanceThresholdPercent = new DoubleParameter(
+        "[0% - 100%]",
+        """
+            Cuts the tree at % from the top distance value""",
+        95d,
+        NF.D1C2,
+        TextFormatterOption.ASSURE_NONZERO_POSITIVE_DOUBLE,
+        false,
+        "distanceThresholdPercent"
     );
 
 
@@ -220,6 +258,22 @@ public class HACViewerParameters extends AbstractParamSet implements ParamSet {
         "flattenIsobarsToDefaults"
     );
 
+    useDataFromSpectra = new BooleanParameter("Source",
+        "Use data from spectra",
+        """
+            If selected, HAC data will be taken from the mass spectrum itself.
+            For each aligned event, data from all mz are taken from the raw data.
+            This overrides previous processing choices, e.g., setting negative values to 0
+            or setting undetected events in any given channel to zero.
+            Select this option to see elements in the clustering that were not part of the processing before.
+            Note that when 'data from spectra' is not selected, quantified data may be shown.
+            In any case, if 'data from spectra' is not selected, only data for the most abundant of those
+            isotopes that are chosen (via the 'Rules' option) are used.
+            'From spectra' uses all isotopes and sums their signal""",
+        true,
+        false,
+        "useDataFromSpectra"
+    );
 
     useLogScaleDendrogram = new BooleanParameter(
         "y-Axis",
@@ -277,30 +331,46 @@ public class HACViewerParameters extends AbstractParamSet implements ParamSet {
         "useLog2ForCosine"
     );
 
+    this.sortClustersByNumber = new BooleanParameter(
+        "Sort",
+        "Sort pies by number",
+        """
+            Pie charts are shown sorted by the number of events they contain
+            """,
+        true,
+        false,
+        "sortClustersByNumber"
+    );
+
 
     organize();
   }
 
-  public HACViewerParameters(HACViewerParameters iclPeakViewer) {
-    super(iclPeakViewer.getLabelParameter().getValue(), XML_ELEMENT_TAG);
-    super.setComment(iclPeakViewer.getCommentParameter());
+  public HACViewerParameters(HACViewerParameters params) {
+    super(params.getLabelParameter().getValue(), XML_ELEMENT_TAG);
+    super.setComment(params.getCommentParameter());
 
-    minFractionPct = iclPeakViewer.minFractionPct.copyWithoutChildren();
-    minClusterSizePie = iclPeakViewer.minClusterSizePie.copyWithoutChildren();
-    isotopeSelection = iclPeakViewer.isotopeSelection.copyWithoutChildren();
-    excludedIsotopes = iclPeakViewer.excludedIsotopes.copyWithoutChildren();
-    includedIsotopes = iclPeakViewer.includedIsotopes.copyWithoutChildren();
-    flattenIsobarsToDefaults = iclPeakViewer.flattenIsobarsToDefaults.copyWithoutChildren();
-    useLog2 = iclPeakViewer.useLog2.copyWithoutChildren();
-    zScoreType = iclPeakViewer.zScoreType.copyWithoutChildren();
-    thresholdOption = iclPeakViewer.thresholdOption.copyWithoutChildren();
-    distanceThreshold = iclPeakViewer.distanceThreshold.copyWithoutChildren();
-    this.useLogScaleDendrogram = iclPeakViewer.useLogScaleDendrogram.copyWithoutChildren();
-    showClusterNumbers = iclPeakViewer.showClusterNumbers.copyWithoutChildren();
-    this.intensityThreshold = iclPeakViewer.intensityThreshold.copyWithoutChildren();
-    applyCosineFlattening = iclPeakViewer.applyCosineFlattening.copyWithoutChildren();
-    cosineScore = iclPeakViewer.cosineScore.copyWithoutChildren();
-    useLog2ForCosine = iclPeakViewer.useLog2ForCosine.copyWithoutChildren();
+    this.freezeGraphBoolean = params.freezeGraphBoolean.copyWithoutChildren();
+    this.limitToAndApplyQuantifiedMass = params.limitToAndApplyQuantifiedMass.copyWithoutChildren();
+    minFractionPct = params.minFractionPct.copyWithoutChildren();
+    minClusterSizePie = params.minClusterSizePie.copyWithoutChildren();
+    isotopeSelection = params.isotopeSelection.copyWithoutChildren();
+    excludedIsotopes = params.excludedIsotopes.copyWithoutChildren();
+    includedIsotopes = params.includedIsotopes.copyWithoutChildren();
+    flattenIsobarsToDefaults = params.flattenIsobarsToDefaults.copyWithoutChildren();
+    this.useDataFromSpectra = params.useDataFromSpectra.copyWithoutChildren();
+    useLog2 = params.useLog2.copyWithoutChildren();
+    zScoreType = params.zScoreType.copyWithoutChildren();
+    thresholdOption = params.thresholdOption.copyWithoutChildren();
+    distanceThreshold = params.distanceThreshold.copyWithoutChildren();
+    distanceThresholdPercent = params.distanceThresholdPercent.copyWithoutChildren();
+    this.useLogScaleDendrogram = params.useLogScaleDendrogram.copyWithoutChildren();
+    showClusterNumbers = params.showClusterNumbers.copyWithoutChildren();
+    this.intensityThreshold = params.intensityThreshold.copyWithoutChildren();
+    applyCosineFlattening = params.applyCosineFlattening.copyWithoutChildren();
+    cosineScore = params.cosineScore.copyWithoutChildren();
+    useLog2ForCosine = params.useLog2ForCosine.copyWithoutChildren();
+    this.sortClustersByNumber = params.sortClustersByNumber.copyWithoutChildren();
     organize();
   }
 
@@ -326,7 +396,9 @@ public class HACViewerParameters extends AbstractParamSet implements ParamSet {
 
   private void organize() {
 
-    super.setParentParameters(
+    super.setParentParameters(freezeGraphBoolean);
+
+    freezeGraphBoolean.addConditionalChild(false,
         new NoFieldTextParameter("Prepare data", ""),
         intensityThreshold,
         isotopeSelection,
@@ -340,7 +412,8 @@ public class HACViewerParameters extends AbstractParamSet implements ParamSet {
         useLogScaleDendrogram,
         new NoFieldTextParameter("Pie charts", ""),
         minFractionPct,
-        minClusterSizePie
+        minClusterSizePie,
+        sortClustersByNumber
     );
 
     isotopeSelection.addConditionalChild(IsotopeSelection.NEGATIVE_LIST_EXCLUSION, excludedIsotopes);
@@ -410,6 +483,10 @@ public class HACViewerParameters extends AbstractParamSet implements ParamSet {
         }));
 
     thresholdOption.addConditionalChild(DistanceOptions.CUSTOM, distanceThreshold);
+    thresholdOption.addConditionalChild(DistanceOptions.PERCENT, distanceThresholdPercent);
+
+    isotopeSelection.addUnconditionalChild(useDataFromSpectra);
+    useDataFromSpectra.addConditionalChild(false, limitToAndApplyQuantifiedMass);
 
     applyCosineFlattening.addConditionalChild(true, useLog2ForCosine, cosineScore);
   }
@@ -430,6 +507,8 @@ public class HACViewerParameters extends AbstractParamSet implements ParamSet {
           case DATE_PAR_XML_ID -> super.dateCreated;
           case UUID_PAR_XML_ID -> super.uuidString;
 
+          case "freezeGraphBoolean" -> freezeGraphBoolean;
+          case "limitToAndApplyQuantifiedMass" -> limitToAndApplyQuantifiedMass;
           case "intensityThreshold" -> intensityThreshold;
           case "minFractionPct" -> minFractionPct;
           case "minClusterSizePie" -> minClusterSizePie;
@@ -438,17 +517,21 @@ public class HACViewerParameters extends AbstractParamSet implements ParamSet {
           case "excludedIsotopes" -> excludedIsotopes;
           case "includedIsotopes" -> includedIsotopes;
           case "flattenIsobarsToDefaults" -> flattenIsobarsToDefaults;
+          case "useDataFromSpectra" -> useDataFromSpectra;
 
           case "useLog2" -> useLog2;
           case "zScoreType" -> zScoreType;
           case "thresholdOption" -> thresholdOption;
           case "distanceThreshold" -> distanceThreshold;
+          case "distanceThresholdPercent" -> distanceThresholdPercent;
           case "useLogScaleDendrogram" -> useLogScaleDendrogram;
           case "showClusterNumbers" -> showClusterNumbers;
 
           case "applyCosineFlattening" -> applyCosineFlattening;
           case "cosineScore" -> cosineScore;
           case "useLog2ForCosine" -> useLog2ForCosine;
+
+          case "sortClustersByNumber" -> sortClustersByNumber;
 
           default -> null;
         };
@@ -478,6 +561,14 @@ public class HACViewerParameters extends AbstractParamSet implements ParamSet {
 
   // --- Getters ---
 
+  public Parameter<Boolean> getFreezeGraphBoolean() {
+    return freezeGraphBoolean;
+  }
+
+  public Parameter<Boolean> getLimitToAndApplyQuantifiedMass() {
+    return limitToAndApplyQuantifiedMass;
+  }
+
   public Parameter<Double> getMinFractionPct() {
     return minFractionPct;
   }
@@ -506,6 +597,10 @@ public class HACViewerParameters extends AbstractParamSet implements ParamSet {
     return flattenIsobarsToDefaults;
   }
 
+  public Parameter<Boolean> getUseDataFromSpectra() {
+    return useDataFromSpectra;
+  }
+
   public Parameter<Boolean> getUseLog2() {
     return useLog2;
   }
@@ -520,6 +615,10 @@ public class HACViewerParameters extends AbstractParamSet implements ParamSet {
 
   public Parameter<Double> getDistanceThreshold() {
     return distanceThreshold;
+  }
+
+  public Parameter<Double> getDistanceThresholdPercent() {
+    return distanceThresholdPercent;
   }
 
   public Parameter<Boolean> getUseLogScaleDendrogram() {
@@ -542,6 +641,10 @@ public class HACViewerParameters extends AbstractParamSet implements ParamSet {
     return useLog2ForCosine;
   }
 
+  public Boolean sortClusters() {
+    return sortClustersByNumber.getValue();
+  }
+
   @Serial
   private void readObject(java.io.ObjectInputStream in) throws IOException, ClassNotFoundException {
 
@@ -550,8 +653,20 @@ public class HACViewerParameters extends AbstractParamSet implements ParamSet {
     // default supplier
     final HACViewerParameters defaults = new HACViewerParameters();
 
+    if (freezeGraphBoolean == null) {
+      freezeGraphBoolean = defaults.freezeGraphBoolean;
+    }
+
     if (isotopeSelection == null) {
       isotopeSelection = defaults.isotopeSelection;
+    }
+
+    if (useDataFromSpectra == null) {
+      useDataFromSpectra = defaults.useDataFromSpectra;
+    }
+
+    if (limitToAndApplyQuantifiedMass == null) {
+      limitToAndApplyQuantifiedMass = defaults.limitToAndApplyQuantifiedMass;
     }
 
     if (includedIsotopes == null) {
@@ -565,9 +680,16 @@ public class HACViewerParameters extends AbstractParamSet implements ParamSet {
     if (flattenIsobarsToDefaults == null) {
       flattenIsobarsToDefaults = defaults.flattenIsobarsToDefaults;
     }
-
     if (zScoreType == null) {
       zScoreType = defaults.zScoreType;
+    }
+
+    if (sortClustersByNumber == null) {
+      sortClustersByNumber = defaults.sortClustersByNumber;
+    }
+
+    if (distanceThresholdPercent == null) {
+      distanceThresholdPercent = defaults.distanceThresholdPercent;
     }
   }
 }

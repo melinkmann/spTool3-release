@@ -82,17 +82,20 @@ public class EventRangeRoiTask extends AbstractWorkingTask implements WorkingTas
             for (PopulationID populationID : populationIDs) {
               Population oldPop = trace.getPopulation(populationID);
               if (oldPop != null) {
+                EventCollection collection = oldPop.getEvents();
                 PopParSummary summary = oldPop.getInputSummary().copy();
                 summary.add("s", SnF.doubleToString(start, NF.D1C1));
                 summary.add("e", SnF.doubleToString(stop, NF.D1C1));
-                List<Event> npEvents = selSample.getNPEvents(trace.getChannel(), populationID);
-                List<Event> inRoi = new ArrayList<>();
+                // List<Event> npEvents = selSample.getNPEvents(trace.getChannel(), populationID);
+                List<Event> npEvents = collection.getNpEvents();
+                List<Event> inRoiCopy = new ArrayList<>();
                 for (Event npEvent : npEvents) {
                   double value = npEvent.get(eventParameter);
                   if (start <= value && value <= stop) {
-                    inRoi.add(npEvent);
+                    inRoiCopy.add(npEvent);
                   }
                 }
+                EventCollection newCollection = AnalysisUtils.createSubEventCollection(trace, oldPop, inRoiCopy);
 
                 /// ADD
                 // (1) Remove existing population from the Trace to avoid pile up of Populations)
@@ -106,7 +109,7 @@ public class EventRangeRoiTask extends AbstractWorkingTask implements WorkingTas
                     new NpPopulation(
                         idCopy,
                         oldPop,
-                        new SubEventCollection(trace, inRoi, oldPop),
+                        newCollection,
                         oldPop.getInputSummary().copy()),
                     false);
                 // (4) Updating the branch: not necessary as it still has the pointer and ID was only
@@ -122,7 +125,8 @@ public class EventRangeRoiTask extends AbstractWorkingTask implements WorkingTas
                 PopParSummary summary = oldPop.getInputSummary().copy();
                 summary.add("s", SnF.doubleToString(start, NF.D1C1));
                 summary.add("e", SnF.doubleToString(stop, NF.D1C1));
-                IncompleteParticleMatrix incompleteParticleMatrix = ((IncompleteSample) selSample).getMatrix();
+                IncompleteParticleMatrix incompleteParticleMatrix =
+                    ((IncompleteSample) selSample).getMatrix();
 
                 double[] data = AnalysisUtils.getFromIncomplete(incompleteParticleMatrix, eventParameter);
                 List<Integer> validIndices = new ArrayList<>();
@@ -134,7 +138,7 @@ public class EventRangeRoiTask extends AbstractWorkingTask implements WorkingTas
                   }
                 }
 
-                if (!validIndices.isEmpty()){
+                if (!validIndices.isEmpty()) {
                   IncompleteParticleMatrix roiMatrix = incompleteParticleMatrix.roi(validIndices);
 
                   // (1) Remove existing population from the Trace to avoid pile up of Populations)
@@ -146,7 +150,7 @@ public class EventRangeRoiTask extends AbstractWorkingTask implements WorkingTas
                   Population population = new NpPopulation(idCopy,
                       new IncompleteEventCollection(trace, roiMatrix), summary);
                   // (3) Add the new Population to the trace
-                  trace.addOverridePopulation(idCopy, population,false);
+                  trace.addOverridePopulation(idCopy, population, false);
                   // (4) Updating the branch: not necessary as it still has the pointer and ID was only
                   // "appended"
                 }

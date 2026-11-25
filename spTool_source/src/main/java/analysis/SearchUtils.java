@@ -18,10 +18,13 @@
 package analysis;
 
 import dataModelNew.TISeries;
+import dataModelNew.TISeriesRAM;
 import dataModelNew.Trace;
 
 import java.util.*;
 
+import dataModelNew.TraceImpl;
+import dataModelNew.mz.ComputedChannel;
 import math.SavitzkyGolay;
 import math.Smoothing;
 import org.apache.logging.log4j.LogManager;
@@ -55,11 +58,23 @@ public abstract class SearchUtils {
 
     // Assuming average peak width of 500, extend by 10% of peak
     double microSecDT = 1E6 * tiSeries.getDT();
-    int dtBonus = (int) Math.ceil(windowMicroseconds / microSecDT);
-    int bonusPointsAtMean = (int) Math.ceil(bonusPointsAtMeanMicrosec / microSecDT);
-    if (bonusPointsAtMean < 0) {
-      LOGGER.info("Cannot use bonus points smaller than 0. Used bonus points = 0 instead.");
+    int dtBonus;
+
+    if (windowMicroseconds == 0) {
+      dtBonus = 0;
+    } else {
+      dtBonus = (int) Math.ceil(windowMicroseconds / microSecDT);
+    }
+
+    int bonusPointsAtMean;
+    if (bonusPointsAtMeanMicrosec == 0) {
       bonusPointsAtMean = 0;
+    } else {
+      bonusPointsAtMean = (int) Math.ceil(bonusPointsAtMeanMicrosec / microSecDT);
+      if (bonusPointsAtMean < 0) {
+        LOGGER.info("Cannot use bonus points smaller than 0. Used bonus points = 0 instead.");
+        bonusPointsAtMean = 0;
+      }
     }
 
     MainEventCollection collection = new MainEventCollection(trace);
@@ -312,29 +327,60 @@ public abstract class SearchUtils {
                                                                 ThresholdSupplier stopThr,
                                                                 ThresholdSupplier heightThr,
                                                                 SmoothType smoothType,
-                                                                double smoothWidthMicroseconds) {
+                                                                double smoothWidthMicroseconds,
+                                                                boolean saveSmooth) {
 
     // TODO: we should compute the stats THR for the smoothed data...
+    //  Better idea: only smooth the start/stop condition: start/stop is the mean, which should
+    //  result from averaging. We want the peak detection to NOT STOP at spurious zeros.
+    //  However, for outliers (i.e., peak height) we do not want to dilute by using the smoothed data!
 
     double[] yData = tiSeries.getIntensity();
+    double dtMicrosec = (1E6 * trace.getTISeries().getDT());
 
-    int window = (int) Math.ceil(smoothWidthMicroseconds
-        / (1E6 * trace.getTISeries().getDT()));
-    window = Math.max(window, 2);
+    int window;
+    if (dtMicrosec == 0) {
+      window = 0;
+    } else {
+      window = (int) Math.ceil(smoothWidthMicroseconds / dtMicrosec);
+    }
+
+    window = Math.max(window, 2); // TODO: WHY 2?
 
     double[] smooth = yData;
     if (smoothType.equals(SmoothType.SAVITZKY_GOLAY)) {
       smooth = SavitzkyGolay.smoothSG(trace.getTISeries().getIntensity(), window, 3);
+      /*
+      Unsure if Gaussian is a good idea,
+      as this will introduce peak shapes where there are actually no peaks.
       // smooth = KernelSmooth.gaussianSmooth(smooth, window);
-          /*
-          Unsure if Gaussian is a good idea, as this will introduce peak shapes where there are actually no
-           peaks.
-           */
+      */
     } else if (smoothType.equals(SmoothType.MOAV)) {
-      smooth = Smoothing.moavSmooth(yData, window);
+      smooth = Smoothing.centredMoavSmooth(yData, window);
     }
 
+    // make counts
     ArrUtils.ceilOverriding(smooth);
+
+    // We need both as we need the non-smooth height for statistical filtering by height.
+    // Smooth is needed to stabilize start/stop criterion at base.
+    // --> take max of yData and smooth:
+    // For each value, allow smoothed data to fill in gaps in the original data.
+    // Ceil the smooth as smoothing lowers peaks substantially and yields non-integers.
+    double[] data = new double[yData.length];
+    for (int i = 0; i < yData.length; i++) {
+      double y = yData[i];
+      double sY = Math.ceil(smooth[i]);
+      double val = Math.max(y, sY);
+      data[i] = val;
+    }
+
+    if (saveSmooth) {
+      trace.getSample().addTrace(new TraceImpl(
+          trace.getSample(),
+          new ComputedChannel(trace.getChannel().getMZStr() + "_smooth", List.of(trace.getChannel())),
+          new TISeriesRAM(tiSeries.getTime(), data)));
+    }
 
     List<Integer> currentEventIndices = new ArrayList<>();
     double currentPeakHeight = 0;
@@ -343,27 +389,16 @@ public abstract class SearchUtils {
 
     MainEventCollection collection = new MainEventCollection(trace);
 
-    for (int i = 0; i < yData.length; i++) {
-
-      // We need both as we need the non-smooth height for statistical filtering by height.
-      // Smooth is needed to stabilize start/stop criterion at base.
-      double yVal = yData[i];
-      // ceil smooth as smoothing lowers peaks substantially
-      double yMax = Math.max(Math.ceil(smooth[i]), yVal);
-
-      // If we assume QMS data, round the value to skim off potential imprecision ('5.02 cts' or so)
-      if (tiSeries.isInteger()) {
-        yVal = Math.round(yVal);
-        yMax = Math.round(yMax);
-      }
+    for (int i = 0; i < data.length; i++) {
+      double yMaxOfSmoothAndY = data[i];
 
       // Condition: either >start, or the current event has indices (has started) and we are >stop.
       double startThrVal = startThr.interpolateProtected(i, yData.length);
       double stopThrVal = stopThr.interpolateProtected(i, yData.length);
-      if ((yMax >= startThrVal)
-          || (!currentEventIndices.isEmpty() && (yMax >= stopThrVal) && yMax > 0)) {
+      if ((yMaxOfSmoothAndY >= startThrVal)
+          || (!currentEventIndices.isEmpty() && (yMaxOfSmoothAndY >= stopThrVal) && yMaxOfSmoothAndY > 0)) {
         currentEventIndices.add(i);
-        currentPeakHeight = Math.max(currentPeakHeight, yVal);
+        currentPeakHeight = Math.max(currentPeakHeight, yMaxOfSmoothAndY);
         // check if event ended due to end of tISeries (i.e. last index reached) -> add it
         if (i == lastIndex) {
           // if (currentPeakHeight > heightThr.interpolate(i, yData.length)) {

@@ -17,7 +17,8 @@
 
 package math;
 
-import math.stat.MovingAverage;
+import math.stat.CentredMovingAverage;
+import math.stat.ShiftingMovingAverage;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.commons.math3.analysis.interpolation.LoessInterpolator;
 import org.apache.commons.math3.util.FastMath;
@@ -28,10 +29,10 @@ public class Smoothing {
 
   private static final Logger LOGGER = LogManager.getLogger(Smoothing.class);
 
-  public static double[] moavSmooth(double[] data, int moavPeriod) {
+  public static double[] shiftingMoavSmooth(double[] data, int moavPeriod) {
     double[] smoothedData;
     if (data != null) {
-      MovingAverage moav = new MovingAverage(moavPeriod);
+      ShiftingMovingAverage moav = new ShiftingMovingAverage(moavPeriod);
 
       smoothedData = new double[data.length];
 
@@ -39,6 +40,18 @@ public class Smoothing {
         moav.add(data[i]);
         smoothedData[i] = moav.getMean();
       }
+    } else {
+      smoothedData = new double[0];
+    }
+    return smoothedData;
+  }
+
+  public static double[] centredMoavSmooth(double[] data, int moavPeriod) {
+    double[] smoothedData;
+    if (data != null) {
+      CentredMovingAverage moav = new CentredMovingAverage(moavPeriod);
+      smoothedData = moav.getMean(data);
+
     } else {
       smoothedData = new double[0];
     }

@@ -133,6 +133,8 @@ public class ExportViewController implements ParameterView, FxStage, Hotkeyable 
     // custom event parameter export
     exportParamSet.setCustomEventExportButton((SupplierSerializable<Button>) () -> exportCustomEventDataBtn);
 
+    exportParamSet.setRegionsSpectraExportButton((SupplierSerializable<Button>) () -> exportRegionSpectra);
+
     Path currPath = Paths.get(this.exportParamSet.getCurrentExportPath().getValue());
     if (!Files.isDirectory(currPath)) {
       Path defPath = SpTool3Main.getRunTime().getConfParams().getDefaultProjectPath();
@@ -189,7 +191,7 @@ public class ExportViewController implements ParameterView, FxStage, Hotkeyable 
   public void initialize() {
 
     stage.setWidth(700);
-    stage.setHeight(550);
+    stage.setHeight(750);
 
     // Else: "x" does not trigger any of the "goodbye" methods
     stage.setOnCloseRequest(event -> closeAndCancelChanges());
@@ -231,7 +233,7 @@ public class ExportViewController implements ParameterView, FxStage, Hotkeyable 
     if (SpTool3Main.SHOW_PVALUE_EXPORT) {
       buttonBoxItems.add(new Separator(Orientation.HORIZONTAL));
       buttonBoxItems.add(exportPValuesBtn);
-      buttonBoxItems.add(exportRegionSpectra);
+      // buttonBoxItems.add(exportRegionSpectra);
     }
     if (SpTool3Main.SHOW_PRECISION_RECALL_EXPORT) {
       buttonBoxItems.add(new Separator(Orientation.HORIZONTAL));
@@ -294,7 +296,8 @@ public class ExportViewController implements ParameterView, FxStage, Hotkeyable 
                   if (Files.isDirectory(path)) {
                     path = path.resolve(sampleName + ".csv");
                     File file = path.toFile();
-                    writer = new CsvExportWriter(file);
+                    Character del = SpTool3Main.getRunTime().getConfParams().getDelimiter();
+                    writer = new CsvExportWriter(file,del);
                   }
                 }
 
@@ -353,7 +356,8 @@ public class ExportViewController implements ParameterView, FxStage, Hotkeyable 
                 if (Files.isDirectory(path)) {
                   path = path.resolve(dateTag + "ResultsTable" + ".csv");
                   File file = path.toFile();
-                  writer = new CsvExportWriter(file);
+                  Character del = SpTool3Main.getRunTime().getConfParams().getDelimiter();
+                  writer = new CsvExportWriter(file,del);
                 }
               }
 
@@ -425,7 +429,8 @@ public class ExportViewController implements ParameterView, FxStage, Hotkeyable 
                   if (Files.isDirectory(path)) {
                     path = path.resolve(sampleName + ".csv");
                     File file = path.toFile();
-                    writer = new CsvExportWriter(file);
+                    Character del = SpTool3Main.getRunTime().getConfParams().getDelimiter();
+                    writer = new CsvExportWriter(file,del);
                   }
                 }
 
@@ -470,7 +475,8 @@ public class ExportViewController implements ParameterView, FxStage, Hotkeyable 
                 path = PathUtil.addDir(path, "Data", sampleName);
                 PathUtil.createDir(path);
 
-                DataExport.exportRegionSpectra(sample, selPops, path);
+                boolean useEventData = exportParamSet.getUseEventDataForRegions().getValue();
+                DataExport.exportRegionSpectra(sample, selPops, useEventData, path);
               }
 
             }
@@ -489,7 +495,7 @@ public class ExportViewController implements ParameterView, FxStage, Hotkeyable 
                 String pathStr = exportParamSet.getCurrentExportPath().getValue();
                 Path path = Paths.get(pathStr);
                 PathUtil.createDir(path);
-                DataExport.exportLpcAsLines(lpcSamples,selPops, path);
+                DataExport.exportLpcAsLines(lpcSamples, selPops, path);
                 // DataExport.exportLpcMerged(lpcSamples, selPops, path);
               }
             }
@@ -611,7 +617,8 @@ public class ExportViewController implements ParameterView, FxStage, Hotkeyable 
                   String dateTag = Util.getYearMonthDateDayHourMinuteSecond();
                   path = path.resolve(dateTag + "precisionRecall" + ".csv");
                   File file = path.toFile();
-                  writer = new CsvExportWriter(file);
+                  Character del = SpTool3Main.getRunTime().getConfParams().getDelimiter();
+                  writer = new CsvExportWriter(file,del);
                 }
               }
 
@@ -712,7 +719,8 @@ public class ExportViewController implements ParameterView, FxStage, Hotkeyable 
                   String dateTag = Util.getYearMonthDateDayHourMinuteSecond();
                   path = path.resolve(dateTag + "_EmdMetric" + ".csv");
                   File file = path.toFile();
-                  writer = new CsvExportWriter(file);
+                  Character del = SpTool3Main.getRunTime().getConfParams().getDelimiter();
+                  writer = new CsvExportWriter(file,del);
                 }
               }
 
@@ -814,7 +822,8 @@ public class ExportViewController implements ParameterView, FxStage, Hotkeyable 
             if (Files.isDirectory(path)) {
               path = path.resolve(sampleName + ".csv");
               File file = path.toFile();
-              writer = new CsvExportWriter(file);
+              Character del = SpTool3Main.getRunTime().getConfParams().getDelimiter();
+              writer = new CsvExportWriter(file,del);
             }
           }
 
@@ -869,7 +878,8 @@ public class ExportViewController implements ParameterView, FxStage, Hotkeyable 
           if (Files.isDirectory(path)) {
             path = path.resolve(fileName + ".csv");
             File file = path.toFile();
-            writer = new CsvExportWriter(file);
+            Character del = SpTool3Main.getRunTime().getConfParams().getDelimiter();
+            writer = new CsvExportWriter(file,del);
           }
         }
 
@@ -930,7 +940,8 @@ public class ExportViewController implements ParameterView, FxStage, Hotkeyable 
             if (Files.isDirectory(path)) {
               path = path.resolve(sampleName + ".csv");
               File file = path.toFile();
-              writer = new CsvExportWriter(file);
+              Character del = SpTool3Main.getRunTime().getConfParams().getDelimiter();
+              writer = new CsvExportWriter(file,del);
             }
           }
 
@@ -962,7 +973,8 @@ public class ExportViewController implements ParameterView, FxStage, Hotkeyable 
           if (Files.isDirectory(path)) {
             path = path.resolve(fileName + ".csv");
             File file = path.toFile();
-            writer = new CsvExportWriter(file);
+            Character del = SpTool3Main.getRunTime().getConfParams().getDelimiter();
+            writer = new CsvExportWriter(file,del);
           }
         }
 

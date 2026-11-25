@@ -41,30 +41,36 @@ public class PopulationID implements Serializable {
     - Idea: we could add the label of the search instructions to the popID.
       This gives more customization of pop-label AND if applied correctly avoids HashMap
       conflicts/makes them more controllable.
+    - In addition, a Hash that takes the active parameters and their values would be nice to
+      have a unique ID
    */
 
   @Serial
   private static final long serialVersionUID = 1_000_000L;
 
   private String label;
+  private String methodLabel;
   private final PopulationType seed;
   private final List<PopulationStep> history;
 
   // Dummy
   public PopulationID() {
     this.label = "";
+    this.methodLabel = "";
     this.history = new ArrayList<>();
     this.seed = PopulationType.UNDEFINED;
   }
 
   public PopulationID(PopulationType seed) {
     this.label = "";
+    this.methodLabel = "";
     this.history = new ArrayList<>();
     this.seed = seed;
   }
 
   public PopulationID(PopulationType seed, PopulationStep initializingStep) {
     this.label = "";
+    this.methodLabel = "";
     this.history = new ArrayList<>();
     history.add(initializingStep);
     this.seed = seed;
@@ -73,12 +79,14 @@ public class PopulationID implements Serializable {
   // Copy
   public PopulationID(PopulationID id) {
     this.label = id.label;
+    this.methodLabel = id.methodLabel;
     this.history = new ArrayList<>(id.history);
     this.seed = id.seed;
   }
 
   public void append(PopulationStep step) {
     history.add(step);
+    label = "";
   }
 
   public PopulationType getType() {
@@ -95,7 +103,11 @@ public class PopulationID implements Serializable {
   }
 
   public String getString() {
-    StringBuilder builder = new StringBuilder(seed.toString());
+    StringBuilder builder = new StringBuilder();
+    if (methodLabel != null && !methodLabel.isEmpty()) {
+      builder.append(methodLabel).append(". ");
+    }
+    builder.append(seed.toString());
     if (!history.isEmpty()) {
       builder.append(": ");
       for (int i = 0; i < history.size(); i++) {
@@ -112,6 +124,10 @@ public class PopulationID implements Serializable {
 
   public void setLabel(String label) {
     this.label = label;
+  }
+
+  public void setMethodLabel(String methodLabel) {
+    this.methodLabel = methodLabel;
   }
 
   @Override
@@ -133,6 +149,7 @@ public class PopulationID implements Serializable {
     // DONT Objects.hashCode(label)
     // Else: hash within hashmap changes after putting, leading to fail of get(key)
     int hash = 31 * seed.hashCode() + Arrays.hashCode(customStepHashes);
+    hash = 31 * hash + Objects.hashCode(methodLabel);
     return hash;
   }
 
@@ -152,7 +169,7 @@ public class PopulationID implements Serializable {
     // DONT Objects.equals(label, that.label)
     // Else: hash/equals contract is broken since we cannot have it in the hash() (see above)
     if (seed == that.seed && history.size() == that.history.size()) {
-      isEqual = true;
+      isEqual = Objects.equals(methodLabel, that.methodLabel);
       // only make sure each step is also equivalent
       for (int i = 0; i < history.size(); i++) {
         PopulationStep thisStep = history.get(i);
@@ -169,6 +186,9 @@ public class PopulationID implements Serializable {
     in.defaultReadObject();
     if (label == null) {
       label = "";
+    }
+    if (methodLabel == null) {
+      methodLabel = "";
     }
   }
 

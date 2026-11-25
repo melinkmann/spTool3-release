@@ -18,10 +18,15 @@
 package analysis;
 
 import dataModelNew.Trace;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import java.io.Serial;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
+import java.util.function.Predicate;
 
 
 /**
@@ -36,6 +41,8 @@ public class SubEventCollection extends MainEventCollection implements EventColl
   @Serial
   private static final long serialVersionUID = 1_000_000L;
 
+  private static final Logger LOGGER = LogManager.getLogger(SubEventCollection.class);
+
   private final EventCollection backgroundDefiningCollection;
 
   // Dummy
@@ -44,27 +51,23 @@ public class SubEventCollection extends MainEventCollection implements EventColl
     this.backgroundDefiningCollection = new MainEventCollection();
   }
 
+
+  // Also called by copy constructor
   public SubEventCollection(Trace trace, EventCollection backgroundDefiningCollection) {
     super(trace);
+    // added .copy(trace); to produce consistent references with the copy() method of this [???]
     this.backgroundDefiningCollection = backgroundDefiningCollection;
   }
-
-  public SubEventCollection(Trace trace, List<Event> npEvents,
-      Population parentPopulation) {
-    super(trace, npEvents);
-    this.backgroundDefiningCollection = parentPopulation.getBgDefiningCollection();
-  }
-
 
   // Creates a deep copy.
   public SubEventCollection copy(Trace newTrace) {
     EventCollection copyMainBG = backgroundDefiningCollection.copy(newTrace);
     SubEventCollection newCollection = new SubEventCollection(newTrace, copyMainBG);
-        final List<Event> newEvents = new ArrayList<>();
-        for (Event npEvent : getNpEvents()) {
-          newEvents.add(npEvent.copy(this));
-        }
-        newCollection.add(newEvents);
+    final List<Event> newEvents = new ArrayList<>();
+    for (Event npEvent : getNpEvents()) {
+      newEvents.add(npEvent.copy(newCollection));
+    }
+    newCollection.add(newEvents);
     return newCollection;
   }
 
@@ -72,6 +75,54 @@ public class SubEventCollection extends MainEventCollection implements EventColl
   @Override
   public EventCollection getBackgroundDefiningCollection() {
     return backgroundDefiningCollection;
+  }
+
+  @Override
+  public void add(Event event) {
+    if (!Objects.equals(event.getCollection(), this)) {
+      super.add(event.copy(this));
+      LOGGER.error("Cannot add event to sub event-collection if event does not expose this collection as " +
+          "its" +
+          "referenced collection. The events were copied and copy was added. This indicates a coding error.");
+    } else {
+      super.add(event);
+    }
+  }
+
+  @Override
+  public void add(List<Event> events) {
+    int badEventCounter = 0;
+    for (Event event : events) {
+      if (Objects.equals(event.getCollection(), this)) {
+        super.add(event);
+      } else {
+        super.add(event.copy(this));
+        badEventCounter++;
+      }
+    }
+    if (badEventCounter > 0) {
+      LOGGER.error("Cannot add events to sub event-collection if event does not expose this collection as " +
+              "its" +
+              "referenced collection. The events were copied and copy was added. Number of bad events {} / " +
+              "{}. This indicates a coding error.",
+          badEventCounter, events.size());
+    }
+  }
+
+  public boolean remove(Event event) {
+    // remove
+    boolean rem = super.npEvents.remove(event);
+    // invalidate all cashes
+    invalidateCashes();
+    return rem;
+  }
+
+  public boolean removeIf(Predicate<Event> filter) {
+    // remove
+    boolean rem = super.npEvents.removeIf(filter);
+    // invalidate all cashes
+    invalidateCashes();
+    return rem;
   }
 
 

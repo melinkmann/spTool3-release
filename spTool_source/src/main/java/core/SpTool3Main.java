@@ -74,7 +74,8 @@ public class SpTool3Main extends Application {
   public static final Boolean SHOW_PVALUE_EXPORT = true;
   public static final Boolean SHOW_PRECISION_RECALL_EXPORT = true;
 
-  public static final String VERSION_ID = "3.2.7";
+
+  public static final String VERSION_ID = "3.2.8";
 
   public static final String AUTHOR_STATEMENT =
       """     
@@ -98,8 +99,8 @@ public class SpTool3Main extends Application {
           and further single event ICP-MS applications.
           
           Literature:
-          https://doi.org/10.1039/D3JA00292F
-          https://doi.org/10.26434/chemrxiv.15004857/v1
+          Data generator: https://doi.org/10.1039/D6JA00177G
+          Detection statistics: https://doi.org/10.1039/D3JA00292F
           """;
 
 

@@ -72,6 +72,7 @@ public class SingleEventViewerParameters extends AbstractParamSet implements Par
   private final Parameter<Boolean> showPeakParameters;
   private final Parameter<Integer> numberOfBGEvents;
   private final Parameter<Boolean> sortBoolean;
+  private final Parameter<Boolean> invertSortBoolean;
   private final Parameter<EventParameter> eventParameter;
   private final Parameter<Boolean> logYAXis;
   private final Parameter<Integer> numberOfEventsShown;
@@ -131,6 +132,14 @@ public class SingleEventViewerParameters extends AbstractParamSet implements Par
         false,
         "sortBoolean");
 
+    this.invertSortBoolean = new BooleanParameter(
+        "Order",
+        "Reverse",
+        "Sort events in descending order according to the chosen parameter",
+        false,
+        false,
+        "invertSortBoolean");
+
     this.eventParameter = new ComboEnumParameter<>(
         "Sort by",
         "Choose which parameter is used for sorting",
@@ -152,6 +161,7 @@ public class SingleEventViewerParameters extends AbstractParamSet implements Par
     this.showPeakParameters = iclPeakViewer.showPeakParameters.copyWithoutChildren();
     this.numberOfBGEvents = iclPeakViewer.numberOfBGEvents.copyWithoutChildren();
     this.sortBoolean = iclPeakViewer.sortBoolean.copyWithoutChildren();
+    this.invertSortBoolean = iclPeakViewer.invertSortBoolean.copyWithoutChildren();
     this.eventParameter = iclPeakViewer.eventParameter.copyWithoutChildren();
     this.numberOfEventsShown = iclPeakViewer.numberOfEventsShown.copyWithoutChildren();
 
@@ -182,7 +192,7 @@ public class SingleEventViewerParameters extends AbstractParamSet implements Par
 
     // Register parent
     super.setParentParameters(
-         numberOfEventsShown,
+        numberOfEventsShown,
         useCommonYAxis,
         logYAXis,
         showPeakParameters,
@@ -190,7 +200,7 @@ public class SingleEventViewerParameters extends AbstractParamSet implements Par
         sortBoolean
     );
 
-    sortBoolean.addConditionalChild(true, eventParameter);
+    sortBoolean.addConditionalChild(true, invertSortBoolean, eventParameter);
   }
 
 
@@ -216,7 +226,9 @@ public class SingleEventViewerParameters extends AbstractParamSet implements Par
           case "showPeakParameters" -> showPeakParameters;
           case "numberOfBGEvents" -> numberOfBGEvents;
           case "sortBoolean" -> sortBoolean;
+          case "invertSortBoolean" -> invertSortBoolean;
           case "eventParameter" -> eventParameter;
+
 
           default -> null;
         };
@@ -264,6 +276,10 @@ public class SingleEventViewerParameters extends AbstractParamSet implements Par
 
   public Parameter<Boolean> getSortBoolean() {
     return sortBoolean;
+  }
+
+  public Parameter<Boolean> getInvertSortBoolean() {
+    return invertSortBoolean;
   }
 
   public Parameter<EventParameter> getEventParameter() {

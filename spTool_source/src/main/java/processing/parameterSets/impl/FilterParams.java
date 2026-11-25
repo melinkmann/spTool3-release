@@ -93,6 +93,8 @@ public class FilterParams extends AbstractParamSet implements ParamSet {
   // Align filter
   public Parameter<Integer> alignFilterStartStop;
   public Parameter<String> alignFilterID;
+  private Parameter<Boolean> applyGlobalAlign;
+
 
   public FilterParams() {
     super("Filter parameters", XML_ELEMENT_TAG);
@@ -457,6 +459,16 @@ public class FilterParams extends AbstractParamSet implements ParamSet {
         "alignFilterID"
     );
 
+    applyGlobalAlign = new BooleanParameter("Target",
+        "Apply to all channels",
+        """
+            Apply ROI criteria to all channels, e.g.,
+            to allow only events above 20 cts""",
+        true,
+        false,
+        "applyGlobalAlign"
+    );
+
     organize();
   }
 
@@ -498,6 +510,7 @@ public class FilterParams extends AbstractParamSet implements ParamSet {
 
     this.alignFilterStartStop = gatingParams.alignFilterStartStop.copyWithoutChildren();
     this.alignFilterID = gatingParams.alignFilterID.copyWithoutChildren();
+    this.applyGlobalAlign = gatingParams.applyGlobalAlign.copyWithoutChildren();
     organize();
   }
 
@@ -569,11 +582,14 @@ public class FilterParams extends AbstractParamSet implements ParamSet {
 
     filterOption.addConditionalChild(FilterOptions.ALIGNED_FILTER,
         alignFilterID,
-        alignFilterStartStop,
+        applyGlobalAlign,
         eventParameter,
         unitConversion,
         mathConversion,
         setAsMainBranch);
+
+    applyGlobalAlign.addConditionalChild(true, start, end);
+    applyGlobalAlign.addConditionalChild(false, alignFilterStartStop);
   }
 
 
@@ -628,6 +644,7 @@ public class FilterParams extends AbstractParamSet implements ParamSet {
           ///
           case "alignFilterStartStop" -> alignFilterStartStop;
           case "alignFilterID" -> alignFilterID;
+          case "applyGlobalAlign" -> applyGlobalAlign;
 
           default -> null;
         };
@@ -819,6 +836,10 @@ public class FilterParams extends AbstractParamSet implements ParamSet {
     return alignFilterID;
   }
 
+  public Parameter<Boolean> getApplyGlobalAlign() {
+    return applyGlobalAlign;
+  }
+
   @Serial
   private void readObject(java.io.ObjectInputStream in) throws IOException, ClassNotFoundException {
 
@@ -930,6 +951,11 @@ public class FilterParams extends AbstractParamSet implements ParamSet {
     if (alignFilterID == null) {
       this.alignFilterID = defaults.alignFilterID;
     }
+
+    if (applyGlobalAlign == null) {
+      this.applyGlobalAlign = defaults.applyGlobalAlign;
+    }
+
   }
 
 }

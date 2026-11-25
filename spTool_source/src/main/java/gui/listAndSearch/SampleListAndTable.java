@@ -18,6 +18,7 @@
 package gui.listAndSearch;
 
 import analysis.*;
+import com.google.common.util.concurrent.AtomicDouble;
 import core.SpTool3Main;
 import dataModelNew.Sample;
 import dataModelNew.Trace;
@@ -44,6 +45,7 @@ import java.util.stream.Collectors;
 
 import io.nu.IsotopePtoeDialog;
 import javafx.animation.PauseTransition;
+import javafx.application.Platform;
 import javafx.beans.Observable;
 import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
@@ -65,16 +67,17 @@ import javafx.stage.Stage;
 import javafx.stage.Window;
 import javafx.util.Duration;
 import math.stat.MeasureOfLocation;
+import math.stat.MeasureOfSpread;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import processing.options.EventParameter;
 import processing.options.EventType;
 import sandbox.montecarlo.Isotope;
-import util.ArrUtils;
-import util.ClipboardUtils;
-import util.NF;
-import util.SnF;
+import tasks.BatchTask;
+import tasks.TaskResult;
+import tasks.results.FunctionalTaskResult;
+import util.*;
 import visualizer.styles.Colors;
 import visualizer.styles.Colors.SpColor;
 import visualizer.styles.CustomColorPicker;
@@ -839,7 +842,7 @@ public class SampleListAndTable {
         Channel channel = fxChannel.getChannel();
 
         double meanNMP = 0;
-        double meanBG = 0;
+        double sdBG = 0;
         double meanArea = 0;
         double meanHeight = 0;
         int counter = 0;
@@ -856,7 +859,7 @@ public class SampleListAndTable {
                     calc(pop.getEvents().get(EventType.NP, EventParameter.NET_AREA));
                 meanHeight += MeasureOfLocation.MEAN.
                     calc(pop.getEvents().get(EventType.NP, EventParameter.NET_HEIGHT));
-                meanBG += MeasureOfLocation.MEAN.
+                sdBG += MeasureOfSpread.SD.
                     calc(pop.getEvents().get(EventType.BG, EventParameter.AREA));
                 counter++;
               }
@@ -864,14 +867,28 @@ public class SampleListAndTable {
           }
         }
 
+        // Protect against NaN or INF
+        if (!Double.isFinite(meanNMP)){
+          meanNMP = 0;
+        }
+        if (!Double.isFinite(meanArea)){
+          meanArea = 0;
+        }
+        if (!Double.isFinite(sdBG)){
+          sdBG = 0;
+        }
+        if (!Double.isFinite(meanHeight)){
+          meanHeight = 0;
+        }
+
         if (counter > 0) {
           meanNMP = meanNMP / counter;
           meanArea = meanArea / counter;
-          meanBG = meanBG / counter;
+          sdBG = sdBG / counter;
           fxChannel.getNmpCountProperty().set(SnF.doubleToString(meanNMP, NF.D1C1));
-          fxChannel.getMuBGProperty().set(SnF.doubleToString(meanBG, NF.D1C2));
+          fxChannel.getMuBGProperty().set(SnF.doubleToString(sdBG, NF.D1C2));
           fxChannel.getNetAreaProperty().set(SnF.doubleToString(meanArea, NF.D1C1));
-          fxChannel.getSignalToNoiseProperty().set(SnF.doubleToString(meanHeight / Math.max(1, meanBG),
+          fxChannel.getSignalToNoiseProperty().set(SnF.doubleToString(meanHeight / Math.max(1, sdBG),
               NF.D1C1));
         } else {
           fxChannel.getNmpCountProperty().set(" ");
@@ -1090,7 +1107,7 @@ public class SampleListAndTable {
     }
   }
 
-  private void updateChannelFeedbackText(){
+  private void updateChannelFeedbackText() {
     int selCount = channelTableView.getSelectionModel().getSelectedItems().size();
     int allCount = channelTableView.getItems().size();
     channelTableViewFeedbackText.setText(selCount + " / " + allCount);

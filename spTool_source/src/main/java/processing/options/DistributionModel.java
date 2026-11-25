@@ -77,6 +77,13 @@ public enum DistributionModel implements Serializable {
     }
   },
 
+  NEGATIVE_BINOMIAL {
+    @Override
+    public String toString() {
+      return "Negative Binomial";
+    }
+  },
+
   POISSON_COMPOUND {
     @Override
     public String toString() {
@@ -102,7 +109,7 @@ public enum DistributionModel implements Serializable {
   }
 
   public static DistributionModel[] listOptionsForPoisson() {
-    return new DistributionModel[]{POISSON, POISSON_APPROXIMATION, POISSON_CURRIE,
+    return new DistributionModel[]{POISSON, POISSON_APPROXIMATION, POISSON_CURRIE,NEGATIVE_BINOMIAL,
         POISSON_COMPOUND};
   }
 

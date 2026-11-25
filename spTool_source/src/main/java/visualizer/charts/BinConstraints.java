@@ -18,9 +18,14 @@
 package visualizer.charts;
 
 import com.google.common.math.DoubleMath;
+
 import java.util.ArrayList;
 import java.util.List;
+
+import com.google.common.primitives.Doubles;
+import core.SpTool3Main;
 import processing.options.BinWidthEstimator;
+import processing.options.BinWidthHarmonisation;
 import util.ArrUtils;
 
 public class BinConstraints {
@@ -43,14 +48,15 @@ public class BinConstraints {
       dataCopy.add(ArrUtils.copy(arr));
     }
 
-    // Remove all empty data and n=1 as computing on these may lead to unwanted behavior (e.g., max-min=0 for n=1).
+    // Remove all empty data and n=1 as computing on these may lead to unwanted behavior (e.g., max-min=0
+    // for n=1).
     dataCopy.removeIf(d -> d.length == 0);
 
     // When simulations are loaded we may face arrays with zeros only!
     dataCopy.removeIf(ArrUtils::isZero);
 
     // Avoid zero b/c division.
-    double bwCandidate = Double.MAX_VALUE;
+    List<Double> candidates = new ArrayList<>();
     for (double[] arr : dataCopy) {
       double bw;
 
@@ -65,11 +71,17 @@ public class BinConstraints {
           if (DoubleMath.fuzzyEquals(bw, 0, 1E-13)) {
             double min = ArrUtils.getMin(arr);
             double max = ArrUtils.getMax(arr);
+
             double diff = max - min;
             if (DoubleMath.fuzzyEquals(diff, 0, 1E-13)) {
               // min=max:
-              // "difference" from zero to min (zero is only other remaining anchor point)
-              bw = Math.sqrt(min);
+              // what if all zero?
+              if (DoubleMath.fuzzyEquals(min, 0, 1E-13)) {
+                bw = MIN_BIN_WIDTH;
+              } else {
+                // "difference" from zero to min (zero is only other remaining anchor point)
+                bw = Math.sqrt(min);
+              }
             } else {
               // min!=max
               bw = diff / Math.sqrt(arr.length);
@@ -79,8 +91,18 @@ public class BinConstraints {
           bw = Math.sqrt(arr[0]);
         }
       }
+      if (Doubles.isFinite(bw)) {
+        candidates.add(bw);
+      }
       // strive for minimum bin width
-      bwCandidate = Math.min(bwCandidate, bw);
+
+    }
+    // initialise as 1 - usually if there is nothing, the data are mainly zeros, so bar form 0-1 seems fair
+    double bwCandidate = 1;
+    if (!candidates.isEmpty()) {
+      BinWidthHarmonisation harmonisation = SpTool3Main.getRunTime().getConfParams()
+          .getHistogramBinWidthHarmonisation().getValue();
+      bwCandidate = harmonisation.get(candidates);
     }
 
     // clean up: this only triggers if ALL selected data sets are ill-configured (or n=1)
@@ -93,11 +115,17 @@ public class BinConstraints {
       width = MIN_BIN_WIDTH;
     }
 
-    this.min = dataCopy.stream()
+    double dataMin = dataCopy.stream()
         .map(ArrUtils::getMin)
         .mapToDouble(Double::doubleValue)
         .min()
         .orElse(0);
+
+    if (SpTool3Main.getRunTime().getConfParams().getForceHistogramMinToZero().getValue()) {
+      this.min = Math.min(dataMin, 0d);
+    } else {
+      this.min = dataMin;
+    }
 
     double preciseMax = dataCopy.stream()
         .map(ArrUtils::getMax)
@@ -106,7 +134,12 @@ public class BinConstraints {
         .orElse(min + 1);
 
     // if min = max (i.e., likely only one value), avoid having a zero at max-min
-    if (preciseMax == min){
+    if (preciseMax == min) {
+      preciseMax++;
+    }
+
+    // still nor fixed, e.g., b/c the (preciseMax == min) does not trigger?
+    if (DoubleMath.fuzzyEquals(min, preciseMax, 1E-13)) {
       preciseMax++;
     }
 
@@ -139,10 +172,12 @@ public class BinConstraints {
  * fine...
  * <p>
  * For that: find a faster method than the Apache.. e.g. quickselect
- * https://github.com/mpollmeier/Selection-Algorithms/blob/master/src/main/java/com/michaelpollmeier/selection/QuickSelect.
+ * https://github.com/mpollmeier/Selection-Algorithms/blob/master/src/main/java/com/michaelpollmeier
+ * /selection/QuickSelect.
  * or https://guava.dev/releases/21.0/api/docs/com/google/common/math/Quantiles.html
  * https://github.com/jalkanen/speed4j/blob/master/src/main/java/com/ecyrd/speed4j/util/Percentile.java
  * <p>
  * CONSIDER: Creating own HistogramDataset, e.g. backup on the  drive in a Storage
- * https://www.jfree.org/jfreechart/api/javadoc/org/jfree/data/statistics/HistogramDataset.html#HistogramDataset--
+ * https://www.jfree.org/jfreechart/api/javadoc/org/jfree/data/statistics/HistogramDataset
+ * .html#HistogramDataset--
  */

@@ -24,10 +24,12 @@ import gui.dialog.FxStageButton;
 import gui.dialog.notification.NotificationFactory;
 import gui.util.UiUtil;
 import io.XmlUtil;
+
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Collections;
+
 import javafx.fxml.FXML;
 import javafx.geometry.Orientation;
 import javafx.scene.Scene;
@@ -210,6 +212,11 @@ public class ConfigurationViewController implements ParameterView, FxStage, Hotk
 
     // Also set to the runtime if continue (to keep changes)
     SpTool3Main.getRunTime().setConfParams((ConfParams) paramSet);
+
+    // UI table update
+    if (SpTool3Main.getRunTime().getMainWindowCtl() != null) {
+      SpTool3Main.getRunTime().getMainWindowCtl().updateTableColumns();
+    }
 
     // UI Buttons show/hide
     if (SpTool3Main.getRunTime().getGuiParameterManager() != null) {

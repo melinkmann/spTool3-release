@@ -29,7 +29,7 @@ public class SavitzkyGolay {
 
 
   // Modified from chatGPT - calls the library suggested by chatGPT.
-  public static double[] smoothSG(double[] y, int windowSize, int polyOrder) {
+  public static double[]  smoothSG(double[] y, int windowSize, int polyOrder) {
     if (y.length <= 1) {
       return y;
     }

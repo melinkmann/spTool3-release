@@ -65,13 +65,17 @@ public class DTISeriesRAM implements Serializable, TISeries {
     this.sd = tiSeries.getSD();
     this.madSD = tiSeries.getMadSD();
   }
+
   public DTISeriesRAM(double dwellTime, double[] intensity) {
     this.intensity = intensity;
     this.dwellTime = dwellTime;
     this.isInteger = TISeries.checkInteger(intensity);
     this.selectedIndices = new ArrayList<>();
     //
-    updateStatistics(getIntensity());
+    this.mean = Double.NaN;
+    this.median = Double.NaN;
+    this.sd = Double.NaN;
+    this.madSD = Double.NaN;
   }
 
   // Copy
@@ -97,10 +101,21 @@ public class DTISeriesRAM implements Serializable, TISeries {
   }
 
   private void updateStatistics(double[] intensity) {
-    this.mean = MeasureOfLocation.MEAN.calc(intensity);
-    this.median = MeasureOfLocation.MEDIAN.calc(intensity);
-    this.sd = MeasureOfSpread.SD.calc(intensity);
-    this.madSD = MeasureOfSpread.MAD.calc(intensity);
+    if (Double.isNaN(mean)) {
+      this.mean = MeasureOfLocation.MEAN.calc(intensity);
+    }
+
+    if (Double.isNaN(median)) {
+      this.median = MeasureOfLocation.MEDIAN.calc(intensity);
+    }
+
+    if (Double.isNaN(sd)) {
+      this.sd = MeasureOfSpread.SD.calc(intensity);
+    }
+
+    if (Double.isNaN(madSD)) {
+      this.madSD = MeasureOfSpread.MAD.calc(intensity);
+    }
   }
 
   public void setSelectedIndices(List<int[]> selectedIndices) {
@@ -163,7 +178,7 @@ public class DTISeriesRAM implements Serializable, TISeries {
     return intensity;
   }
 
-    public int size() {
+  public int size() {
     int result;
     if (selectedIndices.isEmpty()) {
       result = intensity.length;
@@ -177,20 +192,33 @@ public class DTISeriesRAM implements Serializable, TISeries {
   }
 
   public double getMeanIntensity() {
+    if (Double.isNaN(mean)) {
+      this.mean = MeasureOfLocation.MEAN.calc(intensity);
+    }
     return mean;
   }
 
   public double getMedianIntensity() {
+    if (Double.isNaN(median)) {
+      this.median = MeasureOfLocation.MEDIAN.calc(intensity);
+    }
     return median;
   }
 
   @Override
   public double getSD() {
+    if (Double.isNaN(sd)) {
+      this.sd = MeasureOfSpread.SD.calc(intensity);
+    }
+
     return sd;
   }
 
   @Override
   public double getMadSD() {
+    if (Double.isNaN(madSD)) {
+      this.madSD = MeasureOfSpread.MAD.calc(intensity);
+    }
     return madSD;
   }
 

@@ -37,6 +37,7 @@ import processing.parameterSets.AbstractParamSet;
 import processing.parameterSets.AvailableParameterSets;
 import processing.parameterSets.ParamBundle;
 import processing.parameterSets.ParamSet;
+import processing.parameterSets.bundle.FaradayBundle;
 import processing.parameterSets.bundle.SiaBundle;
 import processing.parameters.*;
 import processing.parameters.BundleSupplier.SiABundleSupplier;
@@ -62,6 +63,8 @@ public class MCSimGeneralParams extends AbstractParamSet implements ParamSet {
   public Parameter<Double> expRampFactor;
 
   public final Parameter<PDF> detectorDistribution;
+  public Parameter<Boolean> addFaradayDetectionForIsotopes;
+  public Parameter<Integer> faradayIsotopes;
 
   public final Parameter<Double> defaultSiaShapeParameter;
   public final Parameter<Integer> siaExceptions;
@@ -214,6 +217,27 @@ public class MCSimGeneralParams extends AbstractParamSet implements ParamSet {
         "detectorDistribution"
     );
 
+    addFaradayDetectionForIsotopes = new BooleanParameter(
+        "Faraday",
+        "Set Faraday cup for isotopes",
+        """
+            If selected, you may specify Faraday-cup detection for certain isotopes""",
+        false,
+        true,
+        "addFaradayDetectionForIsotopes"
+    );
+
+    faradayIsotopes = new SpawnControlParameter(
+        "Faraday channel",
+        "Give an element-specific single ion are (SIA) shape parameter,"
+            + "\n i.e., the 'sigma' parameter in a lognormal distribution."
+            + "\n The default/a good reference value is 0.47",
+        0,
+        new BundleSupplier.FaradayBundleSupplier(),
+        false,
+        "faradayIsotopes");
+
+
     this.defaultSiaShapeParameter = new DoubleParameter("Default SIA shape",
         "The single ion area histogram is assumed to have a lognormal distribution."
             + "\nIts location parameter mu is calculated to yield an expected value of one."
@@ -361,6 +385,8 @@ public class MCSimGeneralParams extends AbstractParamSet implements ParamSet {
     this.oscillationAmplitude = params.oscillationAmplitude.copyWithoutChildren();
     this.expRampFactor = params.expRampFactor.copyWithoutChildren();
     this.detectorDistribution = params.detectorDistribution.copyWithoutChildren();
+    this.addFaradayDetectionForIsotopes = params.addFaradayDetectionForIsotopes.copyWithoutChildren();
+    this.faradayIsotopes = params.faradayIsotopes.copyWithoutChildren();
     this.defaultSiaShapeParameter = params.defaultSiaShapeParameter.copyWithoutChildren();
     this.siaExceptions = params.siaExceptions.copyWithoutChildren();
     this.shotNoiseCoefficient = params.shotNoiseCoefficient.copyWithoutChildren();
@@ -402,12 +428,15 @@ public class MCSimGeneralParams extends AbstractParamSet implements ParamSet {
         isotopeConflictOption,
         deadTimeModel,
         detectorDistribution,
+        addFaradayDetectionForIsotopes,
         oscillation,
         evenPeakSpacing,
         applyDilution
     );
 
     applyDilution.addConditionalChild(true, dilutionFactor);
+
+    addFaradayDetectionForIsotopes.addConditionalChild(true, faradayIsotopes);
 
     deadTimeModel.addConditionalChild(DeadTimeModel.PARALYZING, deadTime);
     deadTimeModel.addConditionalChild(DeadTimeModel.NON_PARALYZING, deadTime);
@@ -472,7 +501,10 @@ public class MCSimGeneralParams extends AbstractParamSet implements ParamSet {
           case "macroDT" -> macroDT;
           case "duration" -> duration;
           case "deadTimeModel" -> deadTimeModel;
+          case "deadTime" -> deadTime;
           case "detectorDistribution" -> detectorDistribution;
+          case "addFaradayDetectionForIsotopes" -> addFaradayDetectionForIsotopes;
+          case "faradayIsotopes" -> faradayIsotopes;
           case "siaExceptions" -> siaExceptions;
           case "defaultSiaShapeParameter" -> defaultSiaShapeParameter;
           case "oscillation" -> oscillation;
@@ -523,8 +555,33 @@ public class MCSimGeneralParams extends AbstractParamSet implements ParamSet {
     return elementBundles;
   }
 
+  public List<FaradayBundle> getFaradayBundles() {
+    List<FaradayBundle> siaBundles = new ArrayList<>();
+
+    if (faradayIsotopes instanceof SpawnControlParameter) {
+      SpawnControlParameter spawnParam = (SpawnControlParameter) faradayIsotopes;
+
+      List<ParamBundle> bundles = spawnParam.getActiveBundlesForProcessing();
+
+      for (ParamBundle bundle : bundles) {
+        if (bundle instanceof FaradayBundle) {
+          siaBundles.add((FaradayBundle) bundle);
+        }
+      }
+    }
+    return siaBundles;
+  }
+
   public SpawnControlParameter getSiaExceptions() {
     return (SpawnControlParameter) siaExceptions;
+  }
+
+  public Parameter<Boolean> getAddFaradayDetectionForIsotopes() {
+    return addFaradayDetectionForIsotopes;
+  }
+
+  public Parameter<Integer> getFaradayIsotopes() {
+    return faradayIsotopes;
   }
 
   @Override
@@ -566,7 +623,13 @@ public class MCSimGeneralParams extends AbstractParamSet implements ParamSet {
       this.estimatedPeakWidth = defaults.estimatedPeakWidth;
     }
 
+    if (addFaradayDetectionForIsotopes == null) {
+      this.addFaradayDetectionForIsotopes = defaults.addFaradayDetectionForIsotopes;
+    }
 
+    if (faradayIsotopes == null) {
+      this.faradayIsotopes = defaults.faradayIsotopes;
+    }
   }
 
 }

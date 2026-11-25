@@ -191,6 +191,7 @@ public class ExecuteSubmethod extends Dialog<ParamSet> implements ParameterView,
       methodPane.setLeft(UiUtil.putOnAnchorWithoutInsets(topToolbar));
     } else {
       topToolbar.getItems().addAll(subMethodToDefaultsBtn);
+      methodPane.setLeft(UiUtil.putOnAnchorWithoutInsets(topToolbar));
     }
     methodPane.setCenter(UiUtil.putOnAnchorWithoutInsets(paramViewerPane));
 

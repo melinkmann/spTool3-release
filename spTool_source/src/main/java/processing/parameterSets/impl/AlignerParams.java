@@ -19,7 +19,6 @@ package processing.parameterSets.impl;
 
 import core.SpTool3Main;
 import dataModelNew.mz.Channel;
-import dataModelNew.mz.MZValue;
 import gui.util.TextFormatterOption;
 import io.XmlUtil;
 import io.nu.IsotopePtoeDialog;
@@ -40,12 +39,10 @@ import util.SnF;
 
 import java.io.IOException;
 import java.io.Serial;
-import java.io.Serializable;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.stream.Collectors;
 
 public class AlignerParams extends AbstractParamSet implements ParamSet {
 
@@ -63,6 +60,10 @@ public class AlignerParams extends AbstractParamSet implements ParamSet {
   private Parameter<String> includedIsotopes;
   private Parameter<String> includeChannelsList;
   private Parameter<Double> includeChannelsPrecision;
+
+  private Parameter<Boolean> borrowedEventsToZero;
+  private Parameter<Boolean> borrowedEventsViaCriticalLimit;
+  private Parameter<Double> borrowedEventsCriticalLimitZFactor;
 
   private final Parameter<NetCorrectionOption> netCorrectionOption;
   private final Parameter<Double> netTimeWindow;
@@ -192,6 +193,40 @@ public class AlignerParams extends AbstractParamSet implements ParamSet {
         false,
         "includeChannelsPrecision");
 
+    borrowedEventsToZero = new BooleanParameter("Matching",
+        "Set borrowed events to zero",
+        """
+            If an event in a channel (e.g, ch1) was not originally detected in the channel ch1 itself but
+            only found by the fact that other channels did have an event at these time stamps,
+            this options sets the events area to zero for the channel ch1.
+            Otherwise, the 'undetected' events will have area values that scatter around zero""",
+        false,
+        false,
+        "borrowedEventsToZero"
+    );
+
+    this.borrowedEventsViaCriticalLimit = new BooleanParameter("Refine",
+        "Allow high intensity borrowing",
+        """
+            When selected, all borrowing events above mean + z · SD will not be set to zero.
+            Mean and SD are computed from the net area of all borrowed events.
+            The idea here is to only set those borrowed events to zero,
+            which likely only consist of background""",
+        false,
+        false,
+        "borrowedEventsViaCriticalLimit"
+    );
+
+    borrowedEventsCriticalLimitZFactor = new DoubleParameter(
+        "z-Factor",
+        """
+            Sets the significance for 'high intensity borrowing'""",
+        3.29,
+        NF.D1C2,
+        TextFormatterOption.ASSURE_NONZERO_POSITIVE_DOUBLE,
+        false,
+        "borrowedEventsCriticalLimitZFactor");
+
     this.netCorrectionOption = new ComboEnumParameter<>(
         "Net correction",
         """
@@ -205,6 +240,7 @@ public class AlignerParams extends AbstractParamSet implements ParamSet {
         NetCorrectionOption.class,
         true,
         "netCorrectionOption");
+
 
     this.netTimeWindow = new DoubleParameter(
         "Time window [s]",
@@ -265,6 +301,9 @@ public class AlignerParams extends AbstractParamSet implements ParamSet {
     this.includedIsotopes = params.includedIsotopes.copyWithoutChildren();
     this.includeChannelsList = params.includeChannelsList.copyWithoutChildren();
     this.includeChannelsPrecision = params.includeChannelsPrecision.copyWithoutChildren();
+    this.borrowedEventsToZero = params.borrowedEventsToZero.copyWithoutChildren();
+    this.borrowedEventsViaCriticalLimit = params.borrowedEventsViaCriticalLimit.copyWithoutChildren();
+    this.borrowedEventsCriticalLimitZFactor = params.borrowedEventsCriticalLimitZFactor.copyWithoutChildren();
     this.netCorrectionOption = params.netCorrectionOption.copyWithoutChildren();
     this.netTimeWindow = params.netTimeWindow.copyWithoutChildren();
     this.netTimeWindowLocation = params.netTimeWindowLocation.copyWithoutChildren();
@@ -396,6 +435,10 @@ public class AlignerParams extends AbstractParamSet implements ParamSet {
           }
         }));
 
+    alignAlgorithm.addConditionalChild(AlignAlgorithm.REGION_COVERAGE, borrowedEventsToZero);
+
+    borrowedEventsToZero.addConditionalChild(true, borrowedEventsViaCriticalLimit);
+    borrowedEventsViaCriticalLimit.addConditionalChild(true, borrowedEventsCriticalLimitZFactor);
 
     netCorrectionOption.addConditionalChild(NetCorrectionOption.INDEX_APPROXIMATION, netTimeWindow,
         netTimeWindowLocation);
@@ -431,6 +474,9 @@ public class AlignerParams extends AbstractParamSet implements ParamSet {
           case "includedIsotopes" -> includedIsotopes;
           case "includeChannelsList" -> includeChannelsList;
           case "includeChannelsPrecision" -> includeChannelsPrecision;
+          case "borrowedEventsToZero" -> borrowedEventsToZero;
+          case "borrowedEventsViaCriticalLimit" -> borrowedEventsViaCriticalLimit;
+          case "borrowedEventsCriticalLimitZFactor" -> borrowedEventsCriticalLimitZFactor;
 
           case "netTimeWindow" -> netTimeWindow;
           case "netCorrectionOption" -> netCorrectionOption;
@@ -519,6 +565,18 @@ public class AlignerParams extends AbstractParamSet implements ParamSet {
     return includeChannelsPrecision;
   }
 
+  public Parameter<Boolean> getBorrowedEventsToZero() {
+    return borrowedEventsToZero;
+  }
+
+  public Parameter<Boolean> getBorrowedEventsViaCriticalLimit() {
+    return borrowedEventsViaCriticalLimit;
+  }
+
+  public Parameter<Double> getBorrowedEventsCriticalLimitZFactor() {
+    return borrowedEventsCriticalLimitZFactor;
+  }
+
   //------------------------------------------------------------------------------------------
 
 
@@ -557,6 +615,18 @@ public class AlignerParams extends AbstractParamSet implements ParamSet {
 
     if (netTimeWindowLocation == null) {
       netTimeWindowLocation = defaults.netTimeWindowLocation;
+    }
+
+    if (borrowedEventsToZero == null) {
+      borrowedEventsToZero = defaults.borrowedEventsToZero;
+    }
+
+    if (borrowedEventsViaCriticalLimit == null) {
+      borrowedEventsViaCriticalLimit = defaults.borrowedEventsViaCriticalLimit;
+    }
+
+    if (borrowedEventsCriticalLimitZFactor == null) {
+      borrowedEventsCriticalLimitZFactor = defaults.borrowedEventsCriticalLimitZFactor;
     }
 
     if (suppressNegativeValues == null) {
